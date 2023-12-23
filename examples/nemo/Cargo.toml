@@ -1,0 +1,33 @@
+[package]
+name = "nemo"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+#build = "build.rs"
+publish = false
+license-file = { workspace = true }
+description = "Network monitoring toolset."
+
+[[bin]]
+name = "nemo"
+path = "src/nemo.rs"
+
+[[bin]]
+name = "host"
+path = "src/host.rs"
+
+[dependencies]
+clap = { workspace = true }
+dimas = { workspace = true }
+makepad-widgets = { workspace = true }
+network-interface = { workspace = true }
+serde = { workspace = true }
+serde_derive = { workspace = true }
+serde_json = { workspace = true }
+sysinfo = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+zenoh = { workspace = true }
+
+[dev-dependencies]
+anyhow  = { workspace = true }

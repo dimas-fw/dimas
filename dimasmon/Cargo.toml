@@ -1,0 +1,16 @@
+[package]
+name = "dimasmon"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license-file = { workspace = true }
+description = "Monitoring Tool for DiMAS"
+
+[dependencies]
+clap = { workspace = true }
+dimas = { workspace = true }
+thiserror = { workspace = true }
+zenoh = { workspace = true }
+
+[dev-dependencies]
+anyhow  = { workspace = true }
