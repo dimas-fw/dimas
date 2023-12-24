@@ -171,6 +171,7 @@ impl NetworkClient {
                             //dbg!(&sample);
                             let device: NetworkDeviceData =
                                 serde_json::from_str(sample.value.to_string().as_str()).unwrap();
+                            //dbg!(&device);
                             let entry = NetworkTreeEntry {
                                 name: device.name.clone() + "/" + &device.ifname,
                                 node: NetworkTreeNode::Host {

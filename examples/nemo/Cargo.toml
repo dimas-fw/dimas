@@ -13,14 +13,14 @@ name = "nemo"
 path = "src/nemo.rs"
 
 [[bin]]
-name = "host"
-path = "src/host.rs"
+name = "nemo-agent"
+path = "src/nemo-agent.rs"
 
 [dependencies]
 clap = { workspace = true }
 dimas = { workspace = true }
+default-net = { workspace = true }
 makepad-widgets = { workspace = true }
-network-interface = { workspace = true }
 serde = { workspace = true }
 serde_derive = { workspace = true }
 serde_json = { workspace = true }

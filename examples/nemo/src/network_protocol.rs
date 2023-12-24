@@ -1,10 +1,7 @@
 //! Copyright © 2023 Stephan Kunz
 
-//use bincode::config;
-//use dimas::prelude::Error;
 use serde_derive::{Deserialize, Serialize};
 use std::{collections::HashMap, net::IpAddr};
-//use zenoh::{value::Value, buffers::{ZBuf, ZSlice}, prelude::{KnownEncoding, Encoding}};
 
 /// A type for representing data about a network node list.
 #[derive(Debug, Default, Clone)]
@@ -16,26 +13,34 @@ pub struct NetworkDeviceList {
 #[derive(Debug, Default, Clone)]
 pub struct NetworkDevice {
     pub uuid: String,
-    pub data: NetworkDeviceData,
-    pub usage: Vec<NetworkTreeNode>,
+    pub data: NetworkDeviceData,}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GatewayIf {
+    pub mac: String,
+    pub address: IpAddr,
 }
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IfAddr {
-    pub address: Option<IpAddr>,
-    pub broadcast: Option<IpAddr>,
-    pub netmask: Option<IpAddr>,
+    pub prefix_len: u8,
+    pub address: IpAddr,
+    pub broadcast: IpAddr,
+    pub hostmask: IpAddr,
+    pub netmask: IpAddr,
 }
 
 /// A type for the data of a network device.
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct NetworkDeviceData {
+    //pub index: u32,
+    pub up: bool,
     /// The name of this device.
     pub name: String,
     pub ifname: String,
-    pub addresses: Vec<IfAddr>,
     pub mac: String,
-    pub index: u32,
+    pub gateway: Option<GatewayIf>,
+    pub addresses: Vec<IfAddr>,
 }
 
 /// A type for representing data about a network tree.
