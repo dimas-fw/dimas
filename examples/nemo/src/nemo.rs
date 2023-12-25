@@ -8,5 +8,5 @@ use nemo::app::app_main;
 // unfortunately cargo doesn't facilitate this without a main.rs stub
 #[tokio::main]
 async fn main() {
-    app_main();
+	app_main();
 }

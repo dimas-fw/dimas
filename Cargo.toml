@@ -9,6 +9,10 @@ members = [
 	"examples/nemo",
 ]
 
+[lints.rust]
+unsafe_code="forbid"
+#unused="allow" # for dev only
+
 [workspace.package]
 version = "0.0.1"
 edition = "2021"
@@ -19,19 +23,20 @@ license-file = "LICENSE"
 
 [workspace.dependencies]
 #async-std = { version = "1", features = ["unstable", "attributes", "tokio1",] }
-anyhow = "1"
+#anyhow = "1"
 #bincode = { git = "https://github.com/bincode-org/bincode", branch = "trunk" }
 clap = { version = "4", features = ["derive"] }
 default-net = "0.21"
 dimas = { path = "dimas" }
+#derive_more = { version = "0.99", features = ["from", "display", "deref",] }
 #makepad-widgets = { path = "../makepad/widgets" }
 makepad-widgets = "0.6"
-serde = "1"
-serde_derive = "1"
+serde = { version = "1", features = ["derive"] }
+#serde_derive = "1"
 serde_json = "1"
 serial_test  = "2"
 sysinfo = "0.30"
-thiserror = "1"
+#thiserror = "1"
 tokio = { version = "1", features = ["full"] }
 #zenoh = { path = "../zenoh/zenoh", features = ["unstable"] }
 zenoh = { version = "0.10.1-rc", features = ["unstable"] }

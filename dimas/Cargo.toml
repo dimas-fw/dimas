@@ -8,9 +8,9 @@ description = "DiMAS - A framework for Distributed Multi Agent Systems"
 
 [dependencies]
 serial_test  = { workspace = true }
-thiserror = { workspace = true }
+#thiserror = { workspace = true }
 tokio = { workspace = true }
 zenoh = { workspace = true }
 
 [dev-dependencies]
-anyhow  = { workspace = true }
+#anyhow  = { workspace = true }

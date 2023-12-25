@@ -22,12 +22,12 @@ dimas = { workspace = true }
 default-net = { workspace = true }
 makepad-widgets = { workspace = true }
 serde = { workspace = true }
-serde_derive = { workspace = true }
+#serde_derive = { workspace = true }
 serde_json = { workspace = true }
 sysinfo = { workspace = true }
-thiserror = { workspace = true }
+#thiserror = { workspace = true }
 tokio = { workspace = true }
 zenoh = { workspace = true }
 
 [dev-dependencies]
-anyhow  = { workspace = true }
+#anyhow  = { workspace = true }

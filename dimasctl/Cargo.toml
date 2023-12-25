@@ -9,8 +9,8 @@ description = "Command Line Interface for DiMAS"
 [dependencies]
 clap = { workspace = true }
 dimas = { workspace = true }
-thiserror = { workspace = true }
+#thiserror = { workspace = true }
 zenoh = { workspace = true }
 
 [dev-dependencies]
-anyhow  = { workspace = true }
+#anyhow  = { workspace = true }

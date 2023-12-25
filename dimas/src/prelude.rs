@@ -1,9 +1,7 @@
 //! Copyright © 2023 Stephan Kunz
 
 // export crates Error type
-pub use crate::error::Error;
-// export result with crates Errror type
-pub type Result<T> = core::result::Result<T, Error>;
+pub use crate::error::{Error, Result};
 // Generic wrapper tuple struct for newtype pattern
 pub struct Wrap<T>(pub T);
 

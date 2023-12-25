@@ -1,13 +1,19 @@
 //! Copyright © 2023 Stephan Kunz
 
-#[derive(thiserror::Error, Debug, Clone)]
-pub enum Error {
-    #[error("Generic {0}")]
-    Generic(String),
-}
+// export Result with crates Error type
+pub type Result<T> = core::result::Result<T, Error>;
 
-impl Default for Error {
-    fn default() -> Self {
-        Self::Generic("error".to_string())
-    }
-}
+// crates temporary Error type
+pub type Error = Box<dyn std::error::Error>;
+
+//#[derive(thiserror::Error, Debug, Clone)]
+//pub enum Error {
+//    #[error("Generic {0}")]
+//    Generic(String),
+//}
+//
+//impl Default for Error {
+//    fn default() -> Self {
+//        Self::Generic("error".to_string())
+//    }
+//}
