@@ -3,10 +3,7 @@
 use makepad_widgets::file_tree::*;
 use makepad_widgets::*;
 
-use crate::{
-	network_client::{NetworkClient, NetworkClientAction},
-	network_protocol::*,
-};
+use crate::network_client::{NetworkClient, NetworkClientAction};
 
 #[derive(Debug, Default)]
 pub struct NetworkSystem {
@@ -25,6 +22,37 @@ pub struct NetworkNode {
 pub struct NetworkEdge {
 	pub name: String,
 	pub network_node_id: FileNodeId,
+}
+
+/// A type for representing data about a network tree.
+#[derive(Debug, Default, Clone)]
+pub struct NetworkTreeData {
+	/// root of the tree.
+	pub root: NetworkTreeNode,
+	pub changed: bool,
+}
+
+/// A type for representing a node in a tree.
+#[derive(Debug, Clone)]
+pub enum NetworkTreeNode {
+	Unknown {},
+	Root { entries: Vec<NetworkTreeEntry> },
+	Host { name: String, ip: String },
+}
+
+impl Default for NetworkTreeNode {
+	fn default() -> Self {
+		Self::Unknown {}
+	}
+}
+
+/// A type for representing a tree entry.
+#[derive(Debug, Default, Clone)]
+pub struct NetworkTreeEntry {
+	/// The name of this entry.
+	pub name: String,
+	/// The node for this entry.
+	pub node: NetworkTreeNode,
 }
 
 #[derive(Debug, Default, Clone)]

@@ -5,13 +5,19 @@ use std::{
 		mpsc::{self, *},
 		Arc, RwLock,
 	},
-	time::Duration,
+	time::Duration, collections::HashMap,
 };
 
 use makepad_widgets::*;
 use zenoh::{prelude::r#async::*, subscriber::Subscriber};
 
-use crate::network_protocol::*;
+use crate::{network_protocol::*, network_tree::*};
+
+/// A type for representing data about a network node list.
+#[derive(Debug, Default, Clone)]
+pub struct NetworkDeviceList {
+	pub nodes: HashMap<NetworkUuid, NetworkDevice>,
+}
 
 #[derive(Debug, Default, Clone)]
 pub enum NetworkResponse {
@@ -150,8 +156,8 @@ impl NetworkClient {
 				let session = zenoh::open(config::peer()).res().await.unwrap().into_arc();
 
 				//first fetch necessary data, than add to list and last insert into tree
-				let uuid = sample.key_expr.to_string();
-				let key_expr = uuid.clone() + "/network";
+				let uuid = NetworkUuid(sample.key_expr.to_string());
+				let key_expr = uuid.clone().0 + "/network";
 				//let session = session.clone();
 				//dbg!(&key_expr);
 				let replies = session
@@ -169,13 +175,15 @@ impl NetworkClient {
 					match reply.sample {
 						Ok(sample) => {
 							//dbg!(&sample);
-							let device: NetworkDeviceData =
+							let device: NetworkDevice =
 								serde_json::from_str(sample.value.to_string().as_str()).unwrap();
 							//dbg!(&device);
+							let data = device.data.unwrap();
+							let name = data.name + "/" + &data.ifname;
 							let entry = NetworkTreeEntry {
-								name: device.name.clone() + "/" + &device.ifname,
+								name: name.clone(),
 								node: NetworkTreeNode::Host {
-									name: device.name.clone(),
+									name,
 									ip: "".to_string(),
 								},
 							};
@@ -213,7 +221,7 @@ impl NetworkClient {
 		//dbg!(&tree_data);
 
 		let list = &mut list.write().unwrap();
-		let uuid = sample.key_expr.to_string();
+		let uuid = NetworkUuid(sample.key_expr.to_string());
 		list.nodes.remove(&uuid);
 
 		//dbg!(&list);

@@ -1,6 +1,6 @@
 //! Copyright © 2023 Stephan Kunz
 
-use std::{time::Duration, sync::Arc};
+use std::{sync::Arc, time::Duration};
 
 use tokio::{sync::Mutex, task::JoinHandle};
 
@@ -95,8 +95,8 @@ mod tests {
 		let h = timer.start().unwrap();
 		let res = tokio::join!(h);
 		match res {
-    	(Ok(_),) => (),
-    	(Err(_),) => panic!("join error"),
+			(Ok(_),) => (),
+			(Err(_),) => panic!("join error"),
 		}
 	}
 }
