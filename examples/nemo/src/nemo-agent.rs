@@ -1,6 +1,7 @@
 //! The agent for nemo, a network monitoring toolset based on DiMAS
 //! Copyright © 2023 Stephan Kunz
 
+// region::    --- modules
 use clap::Parser;
 use dimas::prelude::*;
 use std::{
@@ -12,7 +13,9 @@ use sysinfo::System;
 use zenoh::{config, prelude::r#async::*, queryable::Query};
 
 use nemo::network_protocol::*;
+// endregion:: --- modules
 
+// region::    --- Clap
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
@@ -20,6 +23,7 @@ struct Args {
 	#[arg(short, long, value_parser, default_value_t = String::from("nemo"))]
 	prefix: String,
 }
+// endregion:: --- Clap
 
 fn network(query: Query) {
 	//dbg!(&query);
@@ -89,30 +93,46 @@ async fn main() -> Result<()> {
 	// parse arguments
 	let args = Args::parse();
 
-	// create agent
 	let mut agent = Agent::new(config::peer(), &args.prefix);
-	let agent_id = agent.uuid();
-	//dbg!(&agent_uid);
 
 	// queryable for network interfaces
-	let network_query = agent_id + "/network";
-	//dbg!(&network_query);
-	agent.add_queryable(&network_query, network).await;
+	agent
+		.queryable()
+		.msg_type("network")
+		.callback(network)
+		.add()?;
 
 	// timer for volatile data with different interval
-	let duration = Duration::from_secs(1);
+	let duration = Duration::from_secs(3);
 	let sys = Arc::new(RwLock::new(System::new()));
 	sys.write().unwrap().refresh_all();
 	let sys_clone = sys.clone();
-	agent.add_timer(Some(duration), Repetition::Interval(duration), move || {
-		sys_clone.write().unwrap().refresh_cpu();
-		//dbg!(sys_clone.read().unwrap().global_cpu_info());
-	});
+	agent
+		.timer()
+		.interval(duration)
+		.callback(move |ctx| {
+			sys_clone.write().unwrap().refresh_cpu();
+			//dbg!(sys_clone.read().unwrap().global_cpu_info());
+			//dbg!(&ctx);
+			let message = NetworkMsg::Info("hi1".to_string());
+			let _ = ctx.publish("alert", message);
+		})
+		.add()?;
+
 	let duration = Duration::from_secs(10);
-	agent.add_timer(None, Repetition::Interval(duration), move || {
-		sys.write().unwrap().refresh_memory();
-		//dbg!(sys.read().unwrap().free_memory());
-	});
+	agent
+		.timer()
+		.delay(duration)
+		.interval(duration)
+		.callback(move |ctx| {
+			sys.write().unwrap().refresh_memory();
+			//dbg!(sys.read().unwrap().free_memory());
+			//dbg!(&ctx);
+			let message = NetworkMsg::Alert("hi2".to_string());
+			let _ = ctx.publish("alert", message);
+		})
+		.add()?;
+
 	agent.start().await;
 
 	Ok(())

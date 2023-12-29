@@ -1,33 +1,37 @@
 //! Copyright © 2023 Stephan Kunz
 
+// region:    --- modules
 use std::{
 	sync::{Arc, RwLock},
 	time::Duration,
 };
 
 use tokio::{task::JoinHandle, time::sleep};
-use zenoh::{
-	config::{self, Config},
-	queryable::Query,
-	sample::Sample,
+use zenoh::config::{self, Config};
+
+use crate::{
+	com::{
+		communicator::Communicator, publisher::PublisherBuilder, queryable::QueryableBuilder,
+		subscriber::SubscriberBuilder,
+	},
+	timer::{TimerBuilder, TimerCollection},
 };
+// endregion: --- modules
 
-use crate::{com::communicator::Communicator, prelude::*};
-
-// Composable Agent
-//#[derive(Debug)]
+// region:    --- Agent
+/// Composable Agent
 pub struct Agent<'a> {
-	com: Communicator<'a>,
-	timer: Vec<Arc<RwLock<Timer>>>,
+	com: Arc<Communicator<'a>>,
+	timers: TimerCollection,
 	handles: Vec<JoinHandle<()>>,
 }
 
 impl<'a> Agent<'a> {
 	pub fn new(config: Config, prefix: impl Into<String>) -> Self {
-		let com = Communicator::new(config, prefix);
+		let com = Arc::new(Communicator::new(config, prefix));
 		Self {
 			com,
-			timer: Vec::new(),
+			timers: Arc::new(RwLock::new(Vec::new())),
 			handles: Vec::new(),
 		}
 	}
@@ -36,25 +40,30 @@ impl<'a> Agent<'a> {
 		self.com.uuid()
 	}
 
-	pub async fn add_subscriber(&mut self, key_expr: &str, fctn: fn(Sample)) {
-		self.com.add_subscriber(key_expr, fctn).await;
+	pub fn liveliness(&self) {
+		self.com.add_liveliness()
 	}
 
-	pub async fn add_queryable(&mut self, key_expr: &str, fctn: fn(Query)) {
-		self.com.add_queryable(key_expr, fctn).await;
+	pub fn publisher(&self) -> PublisherBuilder<'a> {
+		PublisherBuilder::default().communicator(self.com.clone())
 	}
 
-	pub fn add_timer<F>(&mut self, delay: Option<Duration>, repetition: Repetition, fctn: F)
-	where
-		F: FnMut() + Send + Sync + Unpin + 'static,
-	{
-		let timer = Arc::new(RwLock::new(Timer::new(delay, repetition, fctn)));
-		self.timer.push(timer);
+	pub fn subscriber(&self) -> SubscriberBuilder<'a> {
+		SubscriberBuilder::default().communicator(self.com.clone())
+	}
+
+	pub fn queryable(&self) -> QueryableBuilder<'a> {
+		QueryableBuilder::default().communicator(self.com.clone())
+	}
+
+	pub fn timer(&self) -> TimerBuilder {
+		TimerBuilder::default()
+			.collection(self.timers.clone())
+			.session(self.com.session())
 	}
 
 	pub async fn start(&mut self) {
-		let timers = self.timer.iter();
-		for timer in timers {
+		for timer in self.timers.read().unwrap().iter() {
 			let h = timer.write().unwrap().start();
 			if let Some(h) = h {
 				self.handles.push(h);
@@ -71,11 +80,11 @@ impl<'a> Default for Agent<'a> {
 		Agent::new(config::peer(), "agent")
 	}
 }
+// endregion: --- Agent
 
 #[cfg(test)]
 mod tests {
 	use super::*;
-	//use serial_test::serial;
 
 	// check, that the auto traits are available
 	fn is_normal<T: Sized + Send + Sync + Unpin>() {}

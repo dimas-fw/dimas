@@ -6,6 +6,7 @@
 
 mod agent;
 mod com;
+mod context;
 mod error;
 mod timer;
 mod utils;

@@ -9,8 +9,8 @@ license-file = { workspace = true }
 description = "Network monitoring toolset."
 
 [[bin]]
-name = "nemo"
-path = "src/nemo.rs"
+name = "nemo-server"
+path = "src/nemo-server.rs"
 
 [[bin]]
 name = "nemo-agent"
@@ -20,7 +20,7 @@ path = "src/nemo-agent.rs"
 clap = { workspace = true }
 dimas = { workspace = true }
 default-net = { workspace = true }
-makepad-widgets = { workspace = true }
+#makepad-widgets = { workspace = true }
 serde = { workspace = true }
 #serde_derive = { workspace = true }
 serde_json = { workspace = true }

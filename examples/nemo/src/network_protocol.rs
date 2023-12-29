@@ -27,6 +27,7 @@ pub struct NetworkDeviceData {
 	pub addresses: Vec<IfAddr>,
 }
 
+/// A type for an interfaces set of addresses.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IfAddr {
 	pub prefix_len: u8,
@@ -34,4 +35,15 @@ pub struct IfAddr {
 	pub broadcast: IpAddr,
 	pub hostmask: IpAddr,
 	pub netmask: IpAddr,
+}
+
+/// A type for network messages.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum NetworkMsg {
+	Fatal(String),
+	Error(String),
+	Alert(String),
+	Warning(String),
+	Info(String),
+	Debug(String),
 }
