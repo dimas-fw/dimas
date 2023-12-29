@@ -18,7 +18,7 @@ pub struct Communicator<'a> {
 	// an optional liveliness subscriber
 	liveliness_subscriber: RwLock<Option<Arc<Subscriber<'a, ()>>>>,
 	// liveliness token
-	_token: Option<LivelinessToken<'a>>,
+	token: RwLock<Option<LivelinessToken<'a>>>,
 	// registered subscribers
 	subscribers: RwLock<Vec<Subscriber<'a, ()>>>,
 	// registered queryables
@@ -30,24 +30,13 @@ impl<'a> Communicator<'a> {
 		tokio::task::block_in_place(move || {
 			tokio::runtime::Handle::current().block_on(async move {
 				let session = Arc::new(zenoh::open(config).res().await.unwrap());
-				let session_clone = session.clone();
 				let prefix = prefix.into();
-				let uuid = prefix.clone() + "/" + &session.zid().to_string();
-				//dbg!(&uuid);
-				let _token = Some(
-					session_clone
-						.liveliness()
-						.declare_token(&uuid)
-						.res()
-						.await
-						.unwrap(),
-				);
 				//dbg!(&_token);
 				Self {
 					prefix,
 					session,
 					liveliness_subscriber: RwLock::new(None),
-					_token,
+					token: RwLock::new(None),
 					subscribers: RwLock::new(Vec::new()),
 					queryables: RwLock::new(Vec::new()),
 				}
@@ -67,53 +56,56 @@ impl<'a> Communicator<'a> {
 		self.session.clone()
 	}
 
-	pub fn add_liveliness(&self) {
-		tokio::task::block_in_place(move || {
-			tokio::runtime::Handle::current().block_on(async move {
-				let key_expr = String::from("nemo/*");
-				//dbg!(&key_expr);
-				// add a liveliness subscriber
-				let s = Arc::new(
-					self.session
-						.liveliness()
-						.declare_subscriber(&key_expr)
-						.callback(move |sample: Sample| {
-							//dbg!(&sample);
-							match sample.kind {
-								SampleKind::Put => {}
-								SampleKind::Delete => {}
-							}
-						})
-						.res()
-						.await
-						.unwrap(),
-				);
-				self.liveliness_subscriber.write().unwrap().replace(s);
+	pub async fn liveliness(&self) {
+		let session = self.session.clone();
+		let uuid = self.prefix.clone() + "/" + &session.zid().to_string();
+		//dbg!(&uuid);
+		let token = session
+			.liveliness()
+			.declare_token(&uuid)
+			.res()
+			.await
+			.unwrap();
+		self.token.write().unwrap().replace(token);
+	}
 
-				// the initial liveliness query
-				let replies = self
-					.session
-					.liveliness()
-					.get(&key_expr)
-					//.timeout(Duration::from_millis(500))
-					.res()
-					.await
-					.unwrap();
+	pub async fn add_liveliness_subscriber(&self, callback: SubscriberCallback) {
+		let key_expr = String::from("nemo/*");
+		//dbg!(&key_expr);
+		// add a liveliness subscriber
+		let s = Arc::new(
+			self.session
+				.liveliness()
+				.declare_subscriber(&key_expr)
+				.callback(callback)
+				.res()
+				.await
+				.unwrap(),
+		);
+		self.liveliness_subscriber.write().unwrap().replace(s);
 
-				while let Ok(reply) = replies.recv_async().await {
-					//dbg!(&reply);
-					match reply.sample {
-						Ok(_sample) => {
-							//dbg!(&sample);
-						}
-						Err(err) => println!(
-							">> Received (ERROR: '{}')",
-							String::try_from(&err).unwrap_or("".to_string())
-						),
-					}
+		// the initial liveliness query
+		let replies = self
+			.session
+			.liveliness()
+			.get(&key_expr)
+			//.timeout(Duration::from_millis(500))
+			.res()
+			.await
+			.unwrap();
+
+		while let Ok(reply) = replies.recv_async().await {
+			//dbg!(&reply);
+			match reply.sample {
+				Ok(sample) => {
+					callback(sample);
 				}
-			})
-		});
+				Err(err) => println!(
+					">> Received (ERROR: '{}')",
+					String::try_from(&err).unwrap_or("".to_string())
+				),
+			}
+		}
 	}
 
 	pub fn add_subscriber(&self, key_expr: &str, callback: SubscriberCallback) {
@@ -147,6 +139,8 @@ impl<'a> Communicator<'a> {
 			})
 		})
 	}
+
+	pub async fn start(&self) {}
 }
 
 impl<'a> Default for Communicator<'a> {

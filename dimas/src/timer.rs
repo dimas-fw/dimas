@@ -1,6 +1,7 @@
 //! Copyright © 2023 Stephan Kunz
 
 // region:    --- modules
+use crate::prelude::*;
 use serde::Serialize;
 use std::{
 	sync::{Arc, RwLock},
@@ -8,8 +9,6 @@ use std::{
 };
 use tokio::{sync::Mutex, task::JoinHandle};
 use zenoh::prelude::sync::SyncResolve;
-
-use crate::prelude::*;
 // endregion: --- modules
 
 // region:    --- types
@@ -24,14 +23,14 @@ pub struct TimerContext {
 }
 
 impl TimerContext {
-	pub fn publish<T>(&self, key_expr: impl Into<String>, message: T) -> Result<()>
+	pub fn publish<T>(&self, msg_name: impl Into<String>, message: T) -> Result<()>
 	where
 		T: Serialize,
 	{
 		let value = serde_json::to_string(&message).unwrap();
 		let session = self.session.clone().unwrap();
 		let key_expr =
-			"nemo".to_string() + "/" + &key_expr.into() + "/" + &session.zid().to_string();
+			"nemo".to_string() + "/" + &msg_name.into() + "/" + &session.zid().to_string();
 		//dbg!(&key_expr);
 		match session.put(&key_expr, value).res_sync() {
 			Ok(_) => Ok(()),

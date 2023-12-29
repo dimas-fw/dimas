@@ -15,16 +15,19 @@ pub struct Context<'a> {
 }
 
 impl<'a> Context<'a> {
-	pub fn _publish<T>(&self, key_expr: impl Into<String>, message: T) -> Result<()>
+	pub fn _publish<T>(&self, msg_name: impl Into<String>, message: T) -> Result<()>
 	where
 		T: Serialize,
 	{
 		let value = serde_json::to_string(&message).unwrap();
+		let key_expr =
+			"nemo".to_string() + "/" + &msg_name.into() + "/" + &self.communicator.uuid();
+		//dbg!(&key_expr);
 		match self
 			.communicator
 			.clone()
 			.session()
-			.put(&key_expr.into(), value)
+			.put(&key_expr, value)
 			.res()
 		{
 			Ok(_) => Ok(()),

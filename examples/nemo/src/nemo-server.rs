@@ -4,7 +4,7 @@
 // region::    --- modules
 use clap::Parser;
 use dimas::prelude::*;
-use zenoh::{config, sample::Sample};
+use zenoh::{config, prelude::SampleKind, sample::Sample};
 //use nemo::network_protocol::*;
 // endregion:: --- modules
 
@@ -18,8 +18,20 @@ struct Args {
 }
 // endregion:: --- Clap
 
-fn alert_subscription(_sample: Sample) {
+fn alert_subscription(sample: Sample) {
 	//dbg!(&sample);
+	match sample.kind {
+		SampleKind::Put => {}
+		SampleKind::Delete => {}
+	}
+}
+
+fn liveliness_subscription(sample: Sample) {
+	//dbg!(&sample);
+	match sample.kind {
+		SampleKind::Put => {}
+		SampleKind::Delete => {}
+	}
 }
 
 #[tokio::main]
@@ -28,8 +40,13 @@ async fn main() -> Result<()> {
 	let args = Args::parse();
 
 	let mut agent = Agent::new(config::peer(), &args.prefix);
+	// activate sending liveliness
+	agent.liveliness().await;
 
-	agent.liveliness();
+	// add a liveliness subscriber to listen for agents
+	agent.liveliness_subscriber(liveliness_subscription).await;
+
+	// listen for network alert messages
 	agent
 		.subscriber()
 		.msg_type("alert")

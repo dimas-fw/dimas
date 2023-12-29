@@ -11,8 +11,10 @@ use zenoh::config::{self, Config};
 
 use crate::{
 	com::{
-		communicator::Communicator, publisher::PublisherBuilder, queryable::QueryableBuilder,
-		subscriber::SubscriberBuilder,
+		communicator::Communicator,
+		publisher::PublisherBuilder,
+		queryable::QueryableBuilder,
+		subscriber::{SubscriberBuilder, SubscriberCallback},
 	},
 	timer::{TimerBuilder, TimerCollection},
 };
@@ -40,8 +42,12 @@ impl<'a> Agent<'a> {
 		self.com.uuid()
 	}
 
-	pub fn liveliness(&self) {
-		self.com.add_liveliness()
+	pub async fn liveliness(&mut self) {
+		self.com.liveliness().await;
+	}
+
+	pub async fn liveliness_subscriber(&self, callback: SubscriberCallback) {
+		self.com.add_liveliness_subscriber(callback).await;
 	}
 
 	pub fn publisher(&self) -> PublisherBuilder<'a> {
@@ -63,6 +69,7 @@ impl<'a> Agent<'a> {
 	}
 
 	pub async fn start(&mut self) {
+		self.com.start().await;
 		for timer in self.timers.read().unwrap().iter() {
 			let h = timer.write().unwrap().start();
 			if let Some(h) = h {
