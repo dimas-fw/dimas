@@ -1,63 +1,36 @@
 //! Copyright © 2023 Stephan Kunz
 
 // region:    --- modules
-use crate::prelude::*;
-use serde::Serialize;
+use crate::{com::communicator::Communicator, context::Context, prelude::*};
 use std::{
 	sync::{Arc, RwLock},
 	time::Duration,
 };
 use tokio::{sync::Mutex, task::JoinHandle};
-use zenoh::prelude::sync::SyncResolve;
 // endregion: --- modules
 
 // region:    --- types
-type TimerFctn = Arc<Mutex<dyn FnMut(Arc<TimerContext>) + Send + Sync + Unpin + 'static>>;
-pub type TimerCollection = Arc<RwLock<Vec<Arc<RwLock<Timer>>>>>;
+type TimerFctn = Arc<Mutex<dyn FnMut(Arc<Context>) + Send + Sync + Unpin + 'static>>;
 // endregion: --- types
-
-// region:    --- TimerContext
-#[derive(Debug, Default, Clone)]
-pub struct TimerContext {
-	session: Option<Arc<zenoh::Session>>,
-}
-
-impl TimerContext {
-	pub fn publish<T>(&self, msg_name: impl Into<String>, message: T) -> Result<()>
-	where
-		T: Serialize,
-	{
-		let value = serde_json::to_string(&message).unwrap();
-		let session = self.session.clone().unwrap();
-		let key_expr =
-			"nemo".to_string() + "/" + &msg_name.into() + "/" + &session.zid().to_string();
-		//dbg!(&key_expr);
-		match session.put(&key_expr, value).res_sync() {
-			Ok(_) => Ok(()),
-			Err(_) => Err("Timer publish failed".into()),
-		}
-	}
-}
-// endregion: --- TimerContext
 
 // region:    --- TimerBuilder
 #[derive(Default, Clone)]
 pub struct TimerBuilder {
-	collection: Option<TimerCollection>,
-	session: Option<Arc<zenoh::Session>>,
+	collection: Option<Arc<RwLock<Vec<Timer>>>>,
+	communicator: Option<Arc<Communicator>>,
 	delay: Option<Duration>,
 	interval: Option<Duration>,
 	callback: Option<TimerFctn>,
 }
 
 impl TimerBuilder {
-	pub fn collection(mut self, collection: TimerCollection) -> Self {
+	pub fn collection(mut self, collection: Arc<RwLock<Vec<Timer>>>) -> Self {
 		self.collection.replace(collection);
 		self
 	}
 
-	pub fn session(mut self, session: Arc<zenoh::Session>) -> Self {
-		self.session.replace(session);
+	pub fn communicator(mut self, communicator: Arc<Communicator>) -> Self {
+		self.communicator.replace(communicator);
 		self
 	}
 
@@ -73,7 +46,7 @@ impl TimerBuilder {
 
 	pub fn callback<F>(mut self, callback: F) -> Self
 	where
-		F: FnMut(Arc<TimerContext>) + Send + Sync + Unpin + 'static,
+		F: FnMut(Arc<Context>) + Send + Sync + Unpin + 'static,
 	{
 		self.callback.replace(Arc::new(Mutex::new(callback)));
 		self
@@ -86,21 +59,23 @@ impl TimerBuilder {
 		if self.callback.is_none() {
 			return Err("No callback given".into());
 		}
-		let mut ctx = Arc::new(TimerContext::default());
-		if self.session.is_some() {
-			let session = Some(self.session.unwrap());
-			ctx = Arc::new(TimerContext { session });
+		let mut ctx = Arc::new(Context::default());
+		if self.communicator.is_some() {
+			let communicator = self.communicator.unwrap();
+			ctx = Arc::new(Context { communicator });
 		}
 		match self.delay {
 			Some(delay) => Ok(Timer::DelayedInterval {
 				delay,
 				interval: self.interval.unwrap(),
 				fctn: self.callback.unwrap(),
+				handle: None,
 				ctx,
 			}),
 			None => Ok(Timer::Interval {
 				interval: self.interval.unwrap(),
 				fctn: self.callback.unwrap(),
+				handle: None,
 				ctx,
 			}),
 		}
@@ -111,7 +86,7 @@ impl TimerBuilder {
 			return Err("No collection given".into());
 		}
 		let c = self.collection.take();
-		let timer = Arc::new(RwLock::new(self.build()?));
+		let timer = self.build()?;
 		c.unwrap().write().unwrap().push(timer);
 		Ok(())
 	}
@@ -124,56 +99,83 @@ pub enum Timer {
 	Interval {
 		interval: Duration,
 		fctn: TimerFctn,
-		ctx: Arc<TimerContext>,
+		handle: Option<JoinHandle<()>>,
+		ctx: Arc<Context>,
 	},
 	DelayedInterval {
 		delay: Duration,
 		interval: Duration,
 		fctn: TimerFctn,
-		ctx: Arc<TimerContext>,
+		handle: Option<JoinHandle<()>>,
+		ctx: Arc<Context>,
 	},
 }
 
 impl Timer {
-	//pub fn context(&self) -> Arc<TimerContext> {
-	//}
-
-	pub fn start(&mut self) -> Option<JoinHandle<()>> {
+	pub fn start(&mut self) -> Result<()> {
 		match self {
 			Timer::Interval {
 				interval,
 				fctn,
+				handle,
 				ctx,
 			} => {
 				let interval = *interval;
 				let fctn = fctn.clone();
 				let ctx = ctx.clone();
-				Some(tokio::spawn(async move {
+				handle.replace(tokio::spawn(async move {
 					loop {
 						let mut fctn = fctn.lock().await;
 						fctn(ctx.clone());
 						tokio::time::sleep(interval).await;
 					}
-				}))
+				}));
+				Ok(())
 			}
 			Timer::DelayedInterval {
 				delay,
 				interval,
 				fctn,
+				handle,
 				ctx,
 			} => {
 				let delay = *delay;
 				let interval = *interval;
 				let fctn = fctn.clone();
 				let ctx = ctx.clone();
-				Some(tokio::spawn(async move {
+				handle.replace(tokio::spawn(async move {
 					tokio::time::sleep(delay).await;
 					loop {
 						let mut fctn = fctn.lock().await;
 						fctn(ctx.clone());
 						tokio::time::sleep(interval).await;
 					}
-				}))
+				}));
+				Ok(())
+			}
+		}
+	}
+
+	pub fn stop(&mut self) -> Result<()> {
+		match self {
+			Timer::Interval {
+				interval: _,
+				fctn: _,
+				handle,
+				ctx: _,
+			} => {
+				handle.take().unwrap().abort();
+				Ok(())
+			}
+			Timer::DelayedInterval {
+				delay: _,
+				interval: _,
+				fctn: _,
+				handle,
+				ctx: _,
+			} => {
+				handle.take().unwrap().abort();
+				Ok(())
 			}
 		}
 	}
@@ -191,7 +193,6 @@ mod tests {
 	fn normal_types() {
 		is_normal::<Timer>();
 		is_normal::<TimerBuilder>();
-		is_normal::<TimerContext>();
 	}
 
 	#[test]
@@ -224,9 +225,9 @@ mod tests {
 			})
 			.build()
 			.unwrap();
-		let h = timer.start().unwrap();
+		timer.start().unwrap();
 		tokio::time::sleep(Duration::from_millis(100)).await;
-		h.abort();
+		timer.stop().unwrap();
 		//let res = tokio::join!(h);
 		//match res {
 		//	(Ok(_),) => (),

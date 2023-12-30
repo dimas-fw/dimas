@@ -3,8 +3,8 @@
 // region:    --- modules
 use super::communicator::Communicator;
 use crate::prelude::*;
-use std::sync::Arc;
-use zenoh::queryable::Query;
+use std::sync::{Arc, RwLock};
+use zenoh::queryable::{Query, Queryable};
 // endregion: --- modules
 
 // region:    --- types
@@ -14,14 +14,20 @@ pub type QueryableCallback = fn(Query);
 // region:    --- QueryableBuilder
 #[derive(Default, Clone)]
 pub struct QueryableBuilder<'a> {
-	communicator: Option<Arc<Communicator<'a>>>,
+	collection: Option<Arc<RwLock<Vec<Queryable<'a, ()>>>>>,
+	communicator: Option<Arc<Communicator>>,
 	key_expr: Option<String>,
 	msg_type: Option<String>,
 	callback: Option<QueryableCallback>,
 }
 
 impl<'a> QueryableBuilder<'a> {
-	pub fn communicator(mut self, communicator: Arc<Communicator<'a>>) -> Self {
+	pub fn collection(mut self, collection: Arc<RwLock<Vec<Queryable<'a, ()>>>>) -> Self {
+		self.collection.replace(collection);
+		self
+	}
+
+	pub fn communicator(mut self, communicator: Arc<Communicator>) -> Self {
 		self.communicator.replace(communicator);
 		self
 	}
@@ -41,7 +47,7 @@ impl<'a> QueryableBuilder<'a> {
 		self
 	}
 
-	pub(crate) fn build(mut self) -> Result<()> {
+	pub(crate) fn build(mut self) -> Result<Queryable<'a, ()>> {
 		if self.communicator.is_none() {
 			return Err("No communicator given".into());
 		}
@@ -59,17 +65,29 @@ impl<'a> QueryableBuilder<'a> {
 				+ "/" + &self.communicator.clone().unwrap().uuid()
 		};
 		//dbg!(&key_expr);
-		self.communicator
+		let q = self
+			.communicator
 			.unwrap()
-			.add_queryable(&key_expr, self.callback.take().unwrap());
-		Ok(())
+			.queryable(&key_expr, self.callback.take().unwrap());
+		Ok(q)
 	}
 
-	pub fn add(self) -> Result<()> {
-		self.build()
+	pub fn add(mut self) -> Result<()> {
+		if self.collection.is_none() {
+			return Err("No collection given".into());
+		}
+
+		let c = self.collection.take();
+		let queryable = self.build()?;
+		c.unwrap().write().unwrap().push(queryable);
+		Ok(())
 	}
 }
 // endregion: --- QueryableBuilder
+
+// region:    --- Queryable
+//pub struct Queryable {}
+// endregion: --- Queryable
 
 #[cfg(test)]
 mod tests {
@@ -85,7 +103,6 @@ mod tests {
 
 	#[test]
 	fn queryable_create() {
-		//let _queryable = QueryableBuilder::default().build().unwrap();
-		//assert!(queryable.context().session());
+		let _builder = QueryableBuilder::default();
 	}
 }

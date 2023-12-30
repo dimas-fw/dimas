@@ -10,8 +10,8 @@ license-file = { workspace = true }
 description = "Network monitoring toolset."
 
 [[bin]]
-name = "nemo-server"
-path = "src/nemo-server.rs"
+name = "nemo-service"
+path = "src/nemo-service.rs"
 
 [[bin]]
 name = "nemo-agent"

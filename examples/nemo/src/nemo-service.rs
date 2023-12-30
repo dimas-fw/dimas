@@ -21,16 +21,24 @@ struct Args {
 fn alert_subscription(sample: Sample) {
 	//dbg!(&sample);
 	match sample.kind {
-		SampleKind::Put => {}
-		SampleKind::Delete => {}
+		SampleKind::Put => {
+			dbg!("add alert");
+		}
+		SampleKind::Delete => {
+			dbg!("delete alert");
+		}
 	}
 }
 
 fn liveliness_subscription(sample: Sample) {
 	//dbg!(&sample);
 	match sample.kind {
-		SampleKind::Put => {}
-		SampleKind::Delete => {}
+		SampleKind::Put => {
+			dbg!("born");
+		}
+		SampleKind::Delete => {
+			dbg!("died");
+		}
 	}
 }
 

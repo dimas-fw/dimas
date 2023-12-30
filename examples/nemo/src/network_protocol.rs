@@ -43,8 +43,8 @@ pub struct IfAddr {
 pub enum NetworkMsg {
 	Fatal(String),
 	Error(String),
-	Alert(String),
 	Warning(String),
+	Hint(String),
 	Info(String),
 	Debug(String),
 }

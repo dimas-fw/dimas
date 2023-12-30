@@ -2,46 +2,32 @@
 
 // region:    --- modules
 use super::{queryable::QueryableCallback, subscriber::SubscriberCallback};
-use std::sync::{Arc, RwLock};
+use crate::prelude::*;
+use serde::Serialize;
+use std::sync::Arc;
 use zenoh::{
-	liveliness::LivelinessToken, prelude::r#async::*, queryable::Queryable, subscriber::Subscriber,
+	liveliness::LivelinessToken,
+	prelude::{r#async::*, sync::SyncResolve},
+	publication::Publisher,
+	queryable::Queryable,
+	subscriber::Subscriber,
 };
 // endregion: --- modules
 
 // region:    --- Communicator
 #[derive(Debug)]
-pub struct Communicator<'a> {
+pub struct Communicator {
 	// prefix to separate agents communicaton
 	prefix: String,
 	// the zenoh session
 	session: Arc<Session>,
-	// an optional liveliness subscriber
-	liveliness_subscriber: RwLock<Option<Arc<Subscriber<'a, ()>>>>,
-	// liveliness token
-	token: RwLock<Option<LivelinessToken<'a>>>,
-	// registered subscribers
-	subscribers: RwLock<Vec<Subscriber<'a, ()>>>,
-	// registered queryables
-	queryables: RwLock<Vec<Queryable<'a, ()>>>,
 }
 
-impl<'a> Communicator<'a> {
+impl Communicator {
 	pub fn new(config: Config, prefix: impl Into<String>) -> Self {
-		tokio::task::block_in_place(move || {
-			tokio::runtime::Handle::current().block_on(async move {
-				let session = Arc::new(zenoh::open(config).res().await.unwrap());
-				let prefix = prefix.into();
-				//dbg!(&_token);
-				Self {
-					prefix,
-					session,
-					liveliness_subscriber: RwLock::new(None),
-					token: RwLock::new(None),
-					subscribers: RwLock::new(Vec::new()),
-					queryables: RwLock::new(Vec::new()),
-				}
-			})
-		})
+		let session = Arc::new(zenoh::open(config).res_sync().unwrap());
+		let prefix = prefix.into();
+		Self { prefix, session }
 	}
 
 	pub fn uuid(&self) -> String {
@@ -56,33 +42,31 @@ impl<'a> Communicator<'a> {
 		self.session.clone()
 	}
 
-	pub async fn liveliness(&self) {
+	pub fn liveliness<'a>(&self) -> LivelinessToken<'a> {
 		let session = self.session.clone();
 		let uuid = self.prefix.clone() + "/" + &session.zid().to_string();
 		//dbg!(&uuid);
-		let token = session
+		session
 			.liveliness()
 			.declare_token(&uuid)
-			.res()
-			.await
-			.unwrap();
-		self.token.write().unwrap().replace(token);
+			.res_sync()
+			.unwrap()
 	}
 
-	pub async fn add_liveliness_subscriber(&self, callback: SubscriberCallback) {
-		let key_expr = String::from("nemo/*");
+	pub async fn liveliness_subscriber<'a>(
+		&self,
+		callback: SubscriberCallback,
+	) -> Subscriber<'a, ()> {
+		let key_expr = self.prefix.clone() + "/*";
 		//dbg!(&key_expr);
-		// add a liveliness subscriber
-		let s = Arc::new(
-			self.session
-				.liveliness()
-				.declare_subscriber(&key_expr)
-				.callback(callback)
-				.res()
-				.await
-				.unwrap(),
-		);
-		self.liveliness_subscriber.write().unwrap().replace(s);
+		// create a liveliness subscriber
+		let s = self
+			.session
+			.liveliness()
+			.declare_subscriber(&key_expr)
+			.callback(callback)
+			.res_sync()
+			.unwrap();
 
 		// the initial liveliness query
 		let replies = self
@@ -90,8 +74,7 @@ impl<'a> Communicator<'a> {
 			.liveliness()
 			.get(&key_expr)
 			//.timeout(Duration::from_millis(500))
-			.res()
-			.await
+			.res_sync()
 			.unwrap();
 
 		while let Ok(reply) = replies.recv_async().await {
@@ -106,44 +89,56 @@ impl<'a> Communicator<'a> {
 				),
 			}
 		}
+		s
 	}
 
-	pub fn add_subscriber(&self, key_expr: &str, callback: SubscriberCallback) {
+	pub fn subscriber<'a>(
+		&self,
+		key_expr: impl Into<String>,
+		callback: SubscriberCallback,
+	) -> Subscriber<'a, ()> {
+		self.session
+			.declare_subscriber(key_expr.into())
+			.callback(callback)
+			.res_sync()
+			.unwrap()
+	}
+
+	pub fn queryable<'a>(
+		&self,
+		key_expr: impl Into<String>,
+		callback: QueryableCallback,
+	) -> Queryable<'a, ()> {
+		self.session
+			.declare_queryable(key_expr.into())
+			.callback(callback)
+			.res_sync()
+			.unwrap()
+	}
+
+	pub fn publisher<'a>(&self, key_expr: impl Into<String>) -> Publisher<'a> {
+		self.session
+			.declare_publisher(key_expr.into())
+			.res_sync()
+			.unwrap()
+	}
+
+	pub fn publish<T>(&self, msg_name: impl Into<String>, message: T) -> Result<()>
+	where
+		T: Serialize,
+	{
+		let value = serde_json::to_string(&message).unwrap();
+		let key_expr =
+			self.prefix.clone() + "/" + &msg_name.into() + "/" + &self.session.zid().to_string();
 		//dbg!(&key_expr);
-		tokio::task::block_in_place(move || {
-			tokio::runtime::Handle::current().block_on(async move {
-				let s: zenoh::subscriber::Subscriber<'_, ()> = self
-					.session
-					.declare_subscriber(key_expr)
-					.callback(callback)
-					.res()
-					.await
-					.unwrap();
-				self.subscribers.write().unwrap().push(s);
-			})
-		})
+		match self.session().put(&key_expr, value).res_sync() {
+			Ok(_) => Ok(()),
+			Err(_) => Err("Context publish failed".into()),
+		}
 	}
-
-	pub fn add_queryable(&self, key_expr: &str, callback: QueryableCallback) {
-		//dbg!(&key_expr);
-		tokio::task::block_in_place(move || {
-			tokio::runtime::Handle::current().block_on(async move {
-				let q = self
-					.session
-					.declare_queryable(key_expr)
-					.callback(callback)
-					.res()
-					.await
-					.unwrap();
-				self.queryables.write().unwrap().push(q);
-			})
-		})
-	}
-
-	pub async fn start(&self) {}
 }
 
-impl<'a> Default for Communicator<'a> {
+impl Default for Communicator {
 	fn default() -> Self {
 		Communicator::new(config::peer(), "peer")
 	}

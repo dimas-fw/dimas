@@ -1,14 +1,6 @@
 //! Copyright © 2023 Stephan Kunz
 
 // region:    --- modules
-use std::{
-	sync::{Arc, RwLock},
-	time::Duration,
-};
-
-use tokio::{task::JoinHandle, time::sleep};
-use zenoh::config::{self, Config};
-
 use crate::{
 	com::{
 		communicator::Communicator,
@@ -16,16 +8,44 @@ use crate::{
 		queryable::QueryableBuilder,
 		subscriber::{SubscriberBuilder, SubscriberCallback},
 	},
-	timer::{TimerBuilder, TimerCollection},
+	timer::{Timer, TimerBuilder},
+};
+use std::{
+	sync::{Arc, RwLock},
+	time::Duration,
+};
+use tokio::time::sleep;
+use zenoh::{
+	config::{self, Config},
+	liveliness::LivelinessToken,
+	publication::Publisher,
+	queryable::Queryable,
+	subscriber::Subscriber,
 };
 // endregion: --- modules
+
+// region:    --- AgentInner
+struct AgentInner<'a> {
+	// an optional liveliness token
+	liveliness_token: RwLock<Option<LivelinessToken<'a>>>,
+	// an optional liveliness subscriber
+	liveliness_subscriber: RwLock<Option<Arc<Subscriber<'a, ()>>>>,
+	// registered subscribers
+	subscribers: Arc<RwLock<Vec<Subscriber<'a, ()>>>>,
+	// registered queryables
+	queryables: Arc<RwLock<Vec<Queryable<'a, ()>>>>,
+	// registered publisher
+	publishers: Arc<RwLock<Vec<Publisher<'a>>>>,
+	// registered timer
+	timers: Arc<RwLock<Vec<Timer>>>,
+}
+// endregion: --- AgentInner
 
 // region:    --- Agent
 /// Composable Agent
 pub struct Agent<'a> {
-	com: Arc<Communicator<'a>>,
-	timers: TimerCollection,
-	handles: Vec<JoinHandle<()>>,
+	com: Arc<Communicator>,
+	inner: AgentInner<'a>,
 }
 
 impl<'a> Agent<'a> {
@@ -33,8 +53,14 @@ impl<'a> Agent<'a> {
 		let com = Arc::new(Communicator::new(config, prefix));
 		Self {
 			com,
-			timers: Arc::new(RwLock::new(Vec::new())),
-			handles: Vec::new(),
+			inner: AgentInner {
+				liveliness_token: RwLock::new(None),
+				liveliness_subscriber: RwLock::new(None),
+				subscribers: Arc::new(RwLock::new(Vec::new())),
+				queryables: Arc::new(RwLock::new(Vec::new())),
+				publishers: Arc::new(RwLock::new(Vec::new())),
+				timers: Arc::new(RwLock::new(Vec::new())),
+			},
 		}
 	}
 
@@ -43,38 +69,46 @@ impl<'a> Agent<'a> {
 	}
 
 	pub async fn liveliness(&mut self) {
-		self.com.liveliness().await;
+		let token: LivelinessToken<'a> = self.com.liveliness();
+		self.inner.liveliness_token.write().unwrap().replace(token);
 	}
 
 	pub async fn liveliness_subscriber(&self, callback: SubscriberCallback) {
-		self.com.add_liveliness_subscriber(callback).await;
-	}
-
-	pub fn publisher(&self) -> PublisherBuilder<'a> {
-		PublisherBuilder::default().communicator(self.com.clone())
+		let subscriber = Arc::new(self.com.liveliness_subscriber(callback).await);
+		self.inner
+			.liveliness_subscriber
+			.write()
+			.unwrap()
+			.replace(subscriber);
 	}
 
 	pub fn subscriber(&self) -> SubscriberBuilder<'a> {
-		SubscriberBuilder::default().communicator(self.com.clone())
+		SubscriberBuilder::default()
+			.collection(self.inner.subscribers.clone())
+			.communicator(self.com.clone())
 	}
 
 	pub fn queryable(&self) -> QueryableBuilder<'a> {
-		QueryableBuilder::default().communicator(self.com.clone())
+		QueryableBuilder::default()
+			.collection(self.inner.queryables.clone())
+			.communicator(self.com.clone())
+	}
+
+	pub fn publisher(&self) -> PublisherBuilder<'a> {
+		PublisherBuilder::default()
+			.collection(self.inner.publishers.clone())
+			.communicator(self.com.clone())
 	}
 
 	pub fn timer(&self) -> TimerBuilder {
 		TimerBuilder::default()
-			.collection(self.timers.clone())
-			.session(self.com.session())
+			.collection(self.inner.timers.clone())
+			.communicator(self.com.clone())
 	}
 
 	pub async fn start(&mut self) {
-		self.com.start().await;
-		for timer in self.timers.read().unwrap().iter() {
-			let h = timer.write().unwrap().start();
-			if let Some(h) = h {
-				self.handles.push(h);
-			}
+		for timer in self.inner.timers.write().unwrap().iter_mut() {
+			let _res = timer.start();
 		}
 		loop {
 			sleep(Duration::from_secs(1)).await;

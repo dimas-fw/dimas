@@ -3,8 +3,8 @@
 // region:    --- modules
 use super::communicator::Communicator;
 use crate::prelude::*;
-use std::sync::Arc;
-use zenoh::sample::Sample;
+use std::sync::{Arc, RwLock};
+use zenoh::{sample::Sample, subscriber::Subscriber};
 // endregion: --- modules
 
 // region:    --- types
@@ -14,14 +14,20 @@ pub type SubscriberCallback = fn(Sample);
 // region:    --- SubscriberBuilder
 #[derive(Default, Clone)]
 pub struct SubscriberBuilder<'a> {
-	communicator: Option<Arc<Communicator<'a>>>,
+	collection: Option<Arc<RwLock<Vec<Subscriber<'a, ()>>>>>,
+	communicator: Option<Arc<Communicator>>,
 	key_expr: Option<String>,
 	msg_type: Option<String>,
 	callback: Option<SubscriberCallback>,
 }
 
 impl<'a> SubscriberBuilder<'a> {
-	pub fn communicator(mut self, communicator: Arc<Communicator<'a>>) -> Self {
+	pub fn collection(mut self, collection: Arc<RwLock<Vec<Subscriber<'a, ()>>>>) -> Self {
+		self.collection.replace(collection);
+		self
+	}
+
+	pub fn communicator(mut self, communicator: Arc<Communicator>) -> Self {
 		self.communicator.replace(communicator);
 		self
 	}
@@ -41,7 +47,7 @@ impl<'a> SubscriberBuilder<'a> {
 		self
 	}
 
-	pub(crate) fn build(mut self) -> Result<()> {
+	pub(crate) fn build(mut self) -> Result<Subscriber<'a, ()>> {
 		if self.communicator.is_none() {
 			return Err("No communicator given".into());
 		}
@@ -54,20 +60,33 @@ impl<'a> SubscriberBuilder<'a> {
 		let key_expr = if self.key_expr.is_some() {
 			self.key_expr.take().unwrap()
 		} else {
-			self.communicator.clone().unwrap().prefix() + "/" + &self.msg_type.unwrap() + "/**"
+			self.communicator.clone().unwrap().prefix() + "/" + &self.msg_type.unwrap() + "/*"
 		};
 		//dbg!(&key_expr);
-		self.communicator
+		let s = self
+			.communicator
 			.unwrap()
-			.add_subscriber(&key_expr, self.callback.take().unwrap());
-		Ok(())
+			.subscriber(&key_expr, self.callback.take().unwrap());
+
+		Ok(s)
 	}
 
-	pub fn add(self) -> Result<()> {
-		self.build()
+	pub fn add(mut self) -> Result<()> {
+		if self.collection.is_none() {
+			return Err("No collection given".into());
+		}
+
+		let c = self.collection.take();
+		let subscriber = self.build()?;
+		c.unwrap().write().unwrap().push(subscriber);
+		Ok(())
 	}
 }
 // endregion: --- SubscriberBuilder
+
+// region:    --- Subscriber
+//pub struct Subscriber {}
+// endregion: --- Subscriber
 
 #[cfg(test)]
 mod tests {
@@ -83,7 +102,6 @@ mod tests {
 
 	#[test]
 	fn subscriber_create() {
-		let _subscriber = SubscriberBuilder::default().build().unwrap();
-		//assert!(subscriber.context().session());
+		let _builder = SubscriberBuilder::default();
 	}
 }

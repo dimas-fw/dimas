@@ -1,20 +1,29 @@
 //! Copyright © 2023 Stephan Kunz
 
+use zenoh::publication::Publisher;
+
 // region:    --- modules
 use super::communicator::Communicator;
 use crate::prelude::*;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 // endregion: --- modules
 
 // region:    --- PublisherBuilder
 #[derive(Default, Clone)]
 pub struct PublisherBuilder<'a> {
-	communicator: Option<Arc<Communicator<'a>>>,
+	collection: Option<Arc<RwLock<Vec<Publisher<'a>>>>>,
+	communicator: Option<Arc<Communicator>>,
 	key_expr: Option<String>,
+	msg_type: Option<String>,
 }
 
 impl<'a> PublisherBuilder<'a> {
-	pub fn communicator(mut self, communicator: Arc<Communicator<'a>>) -> Self {
+	pub fn collection(mut self, collection: Arc<RwLock<Vec<Publisher<'a>>>>) -> Self {
+		self.collection.replace(collection);
+		self
+	}
+
+	pub fn communicator(mut self, communicator: Arc<Communicator>) -> Self {
 		self.communicator.replace(communicator);
 		self
 	}
@@ -24,18 +33,34 @@ impl<'a> PublisherBuilder<'a> {
 		self
 	}
 
-	pub(crate) fn build(self) -> Result<()> {
+	pub(crate) fn build(mut self) -> Result<Publisher<'a>> {
 		if self.communicator.is_none() {
 			return Err("No communicator given".into());
 		}
-		if self.key_expr.is_none() {
-			return Err("No key expression given".into());
+		if self.key_expr.is_none() && self.msg_type.is_none() {
+			return Err("No key expression or msg type given".into());
 		}
-		Ok(())
+
+		let key_expr = if self.key_expr.is_some() {
+			self.key_expr.take().unwrap()
+		} else {
+			let c = self.communicator.clone().unwrap();
+			c.prefix() + "/" + &self.msg_type.unwrap() + "/" + &c.uuid()
+		};
+		//dbg!(&key_expr);
+		let s = self.communicator.unwrap().publisher(&key_expr);
+		Ok(s)
 	}
 
-	pub fn _add(self) -> Result<()> {
-		self.build()
+	pub fn add(mut self) -> Result<()> {
+		if self.collection.is_none() {
+			return Err("No collection given".into());
+		}
+
+		let c = self.collection.take();
+		let subscriber = self.build()?;
+		c.unwrap().write().unwrap().push(subscriber);
+		Ok(())
 	}
 }
 // endregion: --- PublisherBuilder
@@ -54,7 +79,6 @@ mod tests {
 
 	#[test]
 	fn publisher_create() {
-		let _publisher = PublisherBuilder::default().build().unwrap();
-		//assert!(publisher.context().session());
+		let _builder = PublisherBuilder::default();
 	}
 }

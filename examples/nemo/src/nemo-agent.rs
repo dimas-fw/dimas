@@ -66,6 +66,7 @@ async fn main() -> Result<()> {
 			sys_clone.write().unwrap().refresh_cpu();
 			//dbg!(sys_clone.read().unwrap().global_cpu_info());
 			//dbg!(&ctx);
+			dbg!();
 			let message = NetworkMsg::Info("hi1".to_string());
 			let _ = ctx.publish("alert", message);
 		})
@@ -80,7 +81,7 @@ async fn main() -> Result<()> {
 			sys.write().unwrap().refresh_memory();
 			//dbg!(sys.read().unwrap().free_memory());
 			//dbg!(&ctx);
-			let message = NetworkMsg::Alert("hi2".to_string());
+			let message = NetworkMsg::Hint("hi2".to_string());
 			let _ = ctx.publish("alert", message);
 		})
 		.add()?;
