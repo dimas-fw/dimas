@@ -151,9 +151,31 @@ mod tests {
 		is_normal::<Agent<Props>>();
 	}
 
+	#[tokio::test]
+	//#[serial]
+	async fn agent_create_default() {
+		let _agent1: Agent<Props> = Agent::new(config::peer(), "agent1", Props {});
+		let _agent2: Agent<Props> = Agent::new(config::peer(), "agent2", Props {});
+	}
+
+	#[tokio::test(flavor = "current_thread")]
+	//#[serial]
+	async fn agent_create_current() {
+		let _agent1: Agent<Props> = Agent::new(config::peer(), "agent1", Props {});
+		let _agent2: Agent<Props> = Agent::new(config::peer(), "agent2", Props {});
+	}
+
 	#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 	//#[serial]
-	async fn agent_create() {
+	async fn agent_create_restricted() {
 		let _agent1: Agent<Props> = Agent::new(config::peer(), "agent1", Props {});
+		let _agent2: Agent<Props> = Agent::new(config::peer(), "agent2", Props {});
+	}
+
+	#[tokio::test(flavor = "multi_thread")]
+	//#[serial]
+	async fn agent_create_multi() {
+		let _agent1: Agent<Props> = Agent::new(config::peer(), "agent1", Props {});
+		let _agent2: Agent<Props> = Agent::new(config::peer(), "agent2", Props {});
 	}
 }

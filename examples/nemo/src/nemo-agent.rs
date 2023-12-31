@@ -81,7 +81,7 @@ async fn main() -> Result<()> {
 		.add()
 		.await?;
 
-	let duration = Duration::from_secs(3);
+	let duration = Duration::from_secs(5);
 	agent
 		.timer()
 		.delay(duration)

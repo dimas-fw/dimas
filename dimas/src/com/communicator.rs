@@ -3,7 +3,7 @@
 // region:    --- modules
 use crate::prelude::*;
 use serde::Serialize;
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 use zenoh::{
 	liveliness::LivelinessToken,
 	prelude::{r#async::*, sync::SyncResolve},
@@ -70,7 +70,7 @@ impl Communicator {
 			.session
 			.liveliness()
 			.get(&key_expr)
-			//.timeout(Duration::from_millis(500))
+			.timeout(Duration::from_millis(500))
 			.res_async()
 			.await
 			.unwrap();
@@ -133,9 +133,33 @@ mod tests {
 		is_normal::<Communicator>();
 	}
 
+	#[tokio::test]
+	//#[serial]
+	async fn communicator_create_default() {
+		let _peer1 = Communicator::default();
+		let _peer2 = Communicator::new(config::peer(), "peer2");
+		//let _peer3 = Communicator::new(config::client());
+	}
+
+	#[tokio::test(flavor = "current_thread")]
+	//#[serial]
+	async fn communicator_create_single() {
+		let _peer1 = Communicator::default();
+		let _peer2 = Communicator::new(config::peer(), "peer2");
+		//let _peer3 = Communicator::new(config::client());
+	}
+
 	#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 	//#[serial]
-	async fn communicator_create() {
+	async fn communicator_create_restricted() {
+		let _peer1 = Communicator::default();
+		let _peer2 = Communicator::new(config::peer(), "peer2");
+		//let _peer3 = Communicator::new(config::client());
+	}
+
+	#[tokio::test(flavor = "multi_thread")]
+	//#[serial]
+	async fn communicator_create_multi() {
 		let _peer1 = Communicator::default();
 		let _peer2 = Communicator::new(config::peer(), "peer2");
 		//let _peer3 = Communicator::new(config::client());

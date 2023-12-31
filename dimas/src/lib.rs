@@ -8,6 +8,7 @@ mod agent;
 mod com;
 mod context;
 mod error;
+mod message;
 mod timer;
 mod utils;
 

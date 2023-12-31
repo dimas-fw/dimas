@@ -40,10 +40,10 @@ fn liveliness_subscription(sample: Sample) {
 	//dbg!(&sample);
 	match sample.kind {
 		SampleKind::Put => {
-			dbg!("born");
+			dbg!(&sample);
 		}
 		SampleKind::Delete => {
-			dbg!("died");
+			dbg!(&sample);
 		}
 	}
 }

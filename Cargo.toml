@@ -4,8 +4,6 @@ resolver="2"
 
 members = [
 	"dimas",
-	"dimasctl",
-	"dimasmon",
 	"examples/nemo",
 ]
 

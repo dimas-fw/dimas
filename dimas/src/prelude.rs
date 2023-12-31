@@ -8,3 +8,4 @@ pub struct Wrap<T>(pub T);
 // public interface of library
 pub use crate::agent::Agent;
 pub use crate::context::Context;
+pub use crate::message::DimasMessage;

@@ -2,7 +2,7 @@
 
 // region:    --- modules
 use crate::{com::communicator::Communicator, prelude::*};
-use serde::Serialize;
+use serde::*;
 use std::sync::Arc;
 // endregion: --- modules
 
@@ -13,18 +13,18 @@ pub struct Context {
 }
 
 impl Context {
-	pub fn publish<T>(&self, msg_name: impl Into<String>, message: T) -> Result<()>
+	pub fn publish<P>(&self, msg_name: impl Into<String>, message: P) -> Result<()>
 	where
-		T: Serialize,
+		P: Serialize,
 	{
 		self.communicator.publish(msg_name, message)
 	}
 
-	pub fn query<T>(&self, msg_name: impl Into<String>, message: T) -> Result<()>
+	pub fn query<Q>(&self, _msg_name: impl Into<String>, _message: Q) -> Result<()>
 	where
-		T: Serialize,
+		Q: Serialize,
 	{
-		self.communicator.publish(msg_name, message)
+		todo!("not yet implemented")
 	}
 }
 // endregion: --- Context
