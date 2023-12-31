@@ -19,6 +19,13 @@ impl Context {
 	{
 		self.communicator.publish(msg_name, message)
 	}
+
+	pub fn query<T>(&self, msg_name: impl Into<String>, message: T) -> Result<()>
+	where
+		T: Serialize,
+	{
+		self.communicator.publish(msg_name, message)
+	}
 }
 // endregion: --- Context
 

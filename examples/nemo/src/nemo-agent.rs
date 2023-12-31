@@ -4,14 +4,13 @@
 // region::    --- modules
 use clap::Parser;
 use dimas::prelude::*;
+use nemo::network_protocol::*;
 use std::{
 	sync::{Arc, RwLock},
 	time::Duration,
 };
 use sysinfo::System;
 use zenoh::{config, prelude::r#async::*, queryable::Query};
-
-use nemo::network_protocol::*;
 // endregion:: --- modules
 
 // region::    --- Clap
@@ -24,7 +23,14 @@ struct Args {
 }
 // endregion:: --- Clap
 
-fn network(query: Query) {
+#[derive(Default)]
+pub struct AgentProps {
+	pub sys: System,
+}
+
+fn network(ctx: Arc<Context>, props: Arc<RwLock<AgentProps>>, query: Query) {
+	let _ = props;
+	let _ = ctx;
 	//dbg!(&query);
 	tokio::spawn(async move {
 		let key = query.selector().key_expr.to_string();
@@ -43,7 +49,10 @@ async fn main() -> Result<()> {
 	// parse arguments
 	let args = Args::parse();
 
-	let mut agent = Agent::new(config::peer(), &args.prefix);
+	// create & initiaize agents properties
+	let mut properties = AgentProps { sys: System::new() };
+	properties.sys.refresh_all();
+	let mut agent = Agent::new(config::peer(), &args.prefix, properties);
 	// activate sending liveliness
 	agent.liveliness().await;
 
@@ -52,39 +61,42 @@ async fn main() -> Result<()> {
 		.queryable()
 		.msg_type("network")
 		.callback(network)
-		.add()?;
+		.add()
+		.await?;
 
 	// timer for volatile data with different interval
 	let duration = Duration::from_secs(3);
-	let sys = Arc::new(RwLock::new(System::new()));
-	sys.write().unwrap().refresh_all();
-	let sys_clone = sys.clone();
 	agent
 		.timer()
 		.interval(duration)
-		.callback(move |ctx| {
-			sys_clone.write().unwrap().refresh_cpu();
+		.callback(move |ctx, props| {
+			let mut props = props.write().unwrap();
+			props.sys.refresh_cpu();
 			//dbg!(sys_clone.read().unwrap().global_cpu_info());
 			//dbg!(&ctx);
 			dbg!();
 			let message = NetworkMsg::Info("hi1".to_string());
 			let _ = ctx.publish("alert", message);
 		})
-		.add()?;
+		.add()
+		.await?;
 
-	let duration = Duration::from_secs(10);
+	let duration = Duration::from_secs(3);
 	agent
 		.timer()
 		.delay(duration)
 		.interval(duration)
-		.callback(move |ctx| {
-			sys.write().unwrap().refresh_memory();
+		.callback(move |ctx, props| {
+			let mut props = props.write().unwrap();
+			props.sys.refresh_memory();
 			//dbg!(sys.read().unwrap().free_memory());
 			//dbg!(&ctx);
+			dbg!();
 			let message = NetworkMsg::Hint("hi2".to_string());
 			let _ = ctx.publish("alert", message);
 		})
-		.add()?;
+		.add()
+		.await?;
 
 	agent.start().await;
 

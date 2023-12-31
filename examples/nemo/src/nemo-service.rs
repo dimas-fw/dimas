@@ -1,6 +1,8 @@
 //! The server/router for nemo, a network monitoring toolset based on DiMAS
 //! Copyright © 2023 Stephan Kunz
 
+use std::sync::{Arc, RwLock};
+
 // region::    --- modules
 use clap::Parser;
 use dimas::prelude::*;
@@ -18,14 +20,18 @@ struct Args {
 }
 // endregion:: --- Clap
 
-fn alert_subscription(sample: Sample) {
-	//dbg!(&sample);
+struct AgentProps {}
+
+fn new_alert_subscription(ctx: Arc<Context>, props: Arc<RwLock<AgentProps>>, sample: Sample) {
+	let _ = props;
+	let _ = ctx;
 	match sample.kind {
 		SampleKind::Put => {
-			dbg!("add alert");
+			dbg!(sample.value.to_string());
+			//let message: M = serde_json::from_str(sample.value).unwrap().to_owned();
 		}
 		SampleKind::Delete => {
-			dbg!("delete alert");
+			todo!("received delete");
 		}
 	}
 }
@@ -47,7 +53,8 @@ async fn main() -> Result<()> {
 	// parse arguments
 	let args = Args::parse();
 
-	let mut agent = Agent::new(config::peer(), &args.prefix);
+	let properties = AgentProps {};
+	let mut agent: Agent<AgentProps> = Agent::new(config::peer(), &args.prefix, properties);
 	// activate sending liveliness
 	agent.liveliness().await;
 
@@ -58,8 +65,9 @@ async fn main() -> Result<()> {
 	agent
 		.subscriber()
 		.msg_type("alert")
-		.callback(alert_subscription)
-		.add()?;
+		.callback(new_alert_subscription)
+		.add()
+		.await?;
 
 	agent.start().await;
 	Ok(())

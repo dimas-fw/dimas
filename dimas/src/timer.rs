@@ -10,21 +10,29 @@ use tokio::{sync::Mutex, task::JoinHandle};
 // endregion: --- modules
 
 // region:    --- types
-type TimerFctn = Arc<Mutex<dyn FnMut(Arc<Context>) + Send + Sync + Unpin + 'static>>;
+type TimerCallback<P> =
+	Arc<Mutex<dyn FnMut(Arc<Context>, Arc<RwLock<P>>) + Send + Sync + Unpin + 'static>>;
 // endregion: --- types
 
 // region:    --- TimerBuilder
 #[derive(Default, Clone)]
-pub struct TimerBuilder {
-	collection: Option<Arc<RwLock<Vec<Timer>>>>,
+pub struct TimerBuilder<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	collection: Option<Arc<RwLock<Vec<Timer<P>>>>>,
 	communicator: Option<Arc<Communicator>>,
 	delay: Option<Duration>,
 	interval: Option<Duration>,
-	callback: Option<TimerFctn>,
+	callback: Option<TimerCallback<P>>,
+	props: Option<Arc<RwLock<P>>>,
 }
 
-impl TimerBuilder {
-	pub fn collection(mut self, collection: Arc<RwLock<Vec<Timer>>>) -> Self {
+impl<P> TimerBuilder<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	pub fn collection(mut self, collection: Arc<RwLock<Vec<Timer<P>>>>) -> Self {
 		self.collection.replace(collection);
 		self
 	}
@@ -46,18 +54,26 @@ impl TimerBuilder {
 
 	pub fn callback<F>(mut self, callback: F) -> Self
 	where
-		F: FnMut(Arc<Context>) + Send + Sync + Unpin + 'static,
+		F: FnMut(Arc<Context>, Arc<RwLock<P>>) + Send + Sync + Unpin + 'static,
 	{
 		self.callback.replace(Arc::new(Mutex::new(callback)));
 		self
 	}
 
-	pub(crate) fn build(self) -> Result<Timer> {
+	pub fn properties(mut self, properties: Arc<RwLock<P>>) -> Self {
+		self.props.replace(properties);
+		self
+	}
+
+	pub(crate) async fn build(self) -> Result<Timer<P>> {
 		if self.interval.is_none() {
 			return Err("No interval given".into());
 		}
 		if self.callback.is_none() {
 			return Err("No callback given".into());
+		}
+		if self.props.is_none() {
+			return Err("No properties given".into());
 		}
 		let mut ctx = Arc::new(Context::default());
 		if self.communicator.is_some() {
@@ -68,25 +84,27 @@ impl TimerBuilder {
 			Some(delay) => Ok(Timer::DelayedInterval {
 				delay,
 				interval: self.interval.unwrap(),
-				fctn: self.callback.unwrap(),
+				callback: self.callback.unwrap(),
 				handle: None,
-				ctx,
+				context: ctx,
+				props: self.props.unwrap(),
 			}),
 			None => Ok(Timer::Interval {
 				interval: self.interval.unwrap(),
-				fctn: self.callback.unwrap(),
+				callback: self.callback.unwrap(),
 				handle: None,
-				ctx,
+				context: ctx,
+				props: self.props.unwrap(),
 			}),
 		}
 	}
 
-	pub fn add(mut self) -> Result<()> {
+	pub async fn add(mut self) -> Result<()> {
 		if self.collection.is_none() {
 			return Err("No collection given".into());
 		}
 		let c = self.collection.take();
-		let timer = self.build()?;
+		let timer = self.build().await?;
 		c.unwrap().write().unwrap().push(timer);
 		Ok(())
 	}
@@ -95,38 +113,47 @@ impl TimerBuilder {
 
 // region:    --- Timer
 //#[derive(Debug, Clone)]
-pub enum Timer {
+pub enum Timer<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
 	Interval {
 		interval: Duration,
-		fctn: TimerFctn,
+		callback: TimerCallback<P>,
 		handle: Option<JoinHandle<()>>,
-		ctx: Arc<Context>,
+		context: Arc<Context>,
+		props: Arc<RwLock<P>>,
 	},
 	DelayedInterval {
 		delay: Duration,
 		interval: Duration,
-		fctn: TimerFctn,
+		callback: TimerCallback<P>,
 		handle: Option<JoinHandle<()>>,
-		ctx: Arc<Context>,
+		context: Arc<Context>,
+		props: Arc<RwLock<P>>,
 	},
 }
 
-impl Timer {
+impl<T> Timer<T>
+where
+	T: Send + Sync + Unpin + 'static,
+{
 	pub fn start(&mut self) -> Result<()> {
 		match self {
 			Timer::Interval {
 				interval,
-				fctn,
+				callback,
 				handle,
-				ctx,
+				context,
+				props,
 			} => {
 				let interval = *interval;
-				let fctn = fctn.clone();
-				let ctx = ctx.clone();
+				let cb = callback.clone();
+				let ctx = context.clone();
+				let props = props.clone();
 				handle.replace(tokio::spawn(async move {
 					loop {
-						let mut fctn = fctn.lock().await;
-						fctn(ctx.clone());
+						cb.lock().await(ctx.clone(), props.clone());
 						tokio::time::sleep(interval).await;
 					}
 				}));
@@ -135,19 +162,20 @@ impl Timer {
 			Timer::DelayedInterval {
 				delay,
 				interval,
-				fctn,
+				callback,
 				handle,
-				ctx,
+				context,
+				props,
 			} => {
 				let delay = *delay;
 				let interval = *interval;
-				let fctn = fctn.clone();
-				let ctx = ctx.clone();
+				let cb = callback.clone();
+				let ctx = context.clone();
+				let props = props.clone();
 				handle.replace(tokio::spawn(async move {
 					tokio::time::sleep(delay).await;
 					loop {
-						let mut fctn = fctn.lock().await;
-						fctn(ctx.clone());
+						cb.lock().await(ctx.clone(), props.clone());
 						tokio::time::sleep(interval).await;
 					}
 				}));
@@ -160,9 +188,10 @@ impl Timer {
 		match self {
 			Timer::Interval {
 				interval: _,
-				fctn: _,
+				callback: _,
 				handle,
-				ctx: _,
+				context: _,
+				props: _,
 			} => {
 				handle.take().unwrap().abort();
 				Ok(())
@@ -170,9 +199,10 @@ impl Timer {
 			Timer::DelayedInterval {
 				delay: _,
 				interval: _,
-				fctn: _,
+				callback: _,
 				handle,
-				ctx: _,
+				context: _,
+				props: _,
 			} => {
 				handle.take().unwrap().abort();
 				Ok(())
@@ -186,44 +216,54 @@ impl Timer {
 mod tests {
 	use super::*;
 
+	#[derive(Default)]
+	struct Props {}
+
 	// check, that the auto traits are available
 	fn is_normal<T: Sized + Send + Sync + Unpin>() {}
 
 	#[test]
 	fn normal_types() {
-		is_normal::<Timer>();
-		is_normal::<TimerBuilder>();
+		is_normal::<Timer<Props>>();
+		is_normal::<TimerBuilder<Props>>();
 	}
 
-	#[test]
-	fn timer_create() {
+	#[tokio::test]
+	async fn timer_create() {
+		let test = Arc::new(RwLock::new(Props {}));
 		let _timer1 = TimerBuilder::default()
 			.interval(Duration::from_millis(100))
-			.callback(|_data| {
+			.callback(|_data, _props| {
 				dbg!();
 			})
+			.properties(test)
 			.build()
+			.await
 			.unwrap();
 		//assert!(timer1.context().session());
 
 		let _timer2 = TimerBuilder::default()
 			.delay(Duration::from_millis(10000))
 			.interval(Duration::from_millis(100))
-			.callback(|data| {
-				dbg!(&data);
+			.callback(|_data, _props| {
+				dbg!();
 			})
+			.properties(Arc::new(RwLock::new(Props {})))
 			.build()
+			.await
 			.unwrap();
 	}
 
 	#[tokio::test]
-	async fn timer_start() {
+	async fn timer_run() {
 		let mut timer = TimerBuilder::default()
-			.interval(Duration::from_millis(100))
-			.callback(|data| {
-				dbg!(&data);
+			.interval(Duration::from_millis(10))
+			.callback(|_data, _props| {
+				dbg!();
 			})
+			.properties(Arc::new(RwLock::new(Props {})))
 			.build()
+			.await
 			.unwrap();
 		timer.start().unwrap();
 		tokio::time::sleep(Duration::from_millis(100)).await;

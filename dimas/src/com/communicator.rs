@@ -1,7 +1,6 @@
 //! Copyright © 2023 Stephan Kunz
 
 // region:    --- modules
-use super::{queryable::QueryableCallback, subscriber::SubscriberCallback};
 use crate::prelude::*;
 use serde::Serialize;
 use std::sync::Arc;
@@ -9,7 +8,6 @@ use zenoh::{
 	liveliness::LivelinessToken,
 	prelude::{r#async::*, sync::SyncResolve},
 	publication::Publisher,
-	queryable::Queryable,
 	subscriber::Subscriber,
 };
 // endregion: --- modules
@@ -42,21 +40,19 @@ impl Communicator {
 		self.session.clone()
 	}
 
-	pub fn liveliness<'a>(&self) -> LivelinessToken<'a> {
+	pub async fn liveliness<'a>(&self) -> LivelinessToken<'a> {
 		let session = self.session.clone();
 		let uuid = self.prefix.clone() + "/" + &session.zid().to_string();
 		//dbg!(&uuid);
 		session
 			.liveliness()
 			.declare_token(&uuid)
-			.res_sync()
+			.res_async()
+			.await
 			.unwrap()
 	}
 
-	pub async fn liveliness_subscriber<'a>(
-		&self,
-		callback: SubscriberCallback,
-	) -> Subscriber<'a, ()> {
+	pub async fn liveliness_subscriber<'a>(&self, callback: fn(Sample)) -> Subscriber<'a, ()> {
 		let key_expr = self.prefix.clone() + "/*";
 		//dbg!(&key_expr);
 		// create a liveliness subscriber
@@ -65,7 +61,8 @@ impl Communicator {
 			.liveliness()
 			.declare_subscriber(&key_expr)
 			.callback(callback)
-			.res_sync()
+			.res_async()
+			.await
 			.unwrap();
 
 		// the initial liveliness query
@@ -74,7 +71,8 @@ impl Communicator {
 			.liveliness()
 			.get(&key_expr)
 			//.timeout(Duration::from_millis(500))
-			.res_sync()
+			.res_async()
+			.await
 			.unwrap();
 
 		while let Ok(reply) = replies.recv_async().await {
@@ -92,34 +90,11 @@ impl Communicator {
 		s
 	}
 
-	pub fn subscriber<'a>(
-		&self,
-		key_expr: impl Into<String>,
-		callback: SubscriberCallback,
-	) -> Subscriber<'a, ()> {
-		self.session
-			.declare_subscriber(key_expr.into())
-			.callback(callback)
-			.res_sync()
-			.unwrap()
-	}
-
-	pub fn queryable<'a>(
-		&self,
-		key_expr: impl Into<String>,
-		callback: QueryableCallback,
-	) -> Queryable<'a, ()> {
-		self.session
-			.declare_queryable(key_expr.into())
-			.callback(callback)
-			.res_sync()
-			.unwrap()
-	}
-
-	pub fn publisher<'a>(&self, key_expr: impl Into<String>) -> Publisher<'a> {
+	pub async fn create_publisher<'a>(&self, key_expr: impl Into<String>) -> Publisher<'a> {
 		self.session
 			.declare_publisher(key_expr.into())
-			.res_sync()
+			.res_async()
+			.await
 			.unwrap()
 	}
 

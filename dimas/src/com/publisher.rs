@@ -1,12 +1,14 @@
 //! Copyright © 2023 Stephan Kunz
 
-use zenoh::publication::Publisher;
-
 // region:    --- modules
 use super::communicator::Communicator;
 use crate::prelude::*;
 use std::sync::{Arc, RwLock};
 // endregion: --- modules
+
+// region:    --- types
+//pub type PublisherCallback<P> = fn(Arc<Context>, Arc<RwLock<P>>, sample: Sample);
+// endregion: --- types
 
 // region:    --- PublisherBuilder
 #[derive(Default, Clone)]
@@ -33,7 +35,10 @@ impl<'a> PublisherBuilder<'a> {
 		self
 	}
 
-	pub(crate) fn build(mut self) -> Result<Publisher<'a>> {
+	pub async fn add(mut self) -> Result<()> {
+		if self.collection.is_none() {
+			return Err("No collection given".into());
+		}
 		if self.communicator.is_none() {
 			return Err("No communicator given".into());
 		}
@@ -48,22 +53,25 @@ impl<'a> PublisherBuilder<'a> {
 			c.prefix() + "/" + &self.msg_type.unwrap() + "/" + &c.uuid()
 		};
 		//dbg!(&key_expr);
-		let s = self.communicator.unwrap().publisher(&key_expr);
-		Ok(s)
-	}
-
-	pub fn add(mut self) -> Result<()> {
-		if self.collection.is_none() {
-			return Err("No collection given".into());
-		}
-
+		let publ = self
+			.communicator
+			.take()
+			.unwrap()
+			.create_publisher(key_expr)
+			.await;
+		let p = Publisher { _publisher: publ };
 		let c = self.collection.take();
-		let subscriber = self.build()?;
-		c.unwrap().write().unwrap().push(subscriber);
+		c.unwrap().write().unwrap().push(p);
 		Ok(())
 	}
 }
 // endregion: --- PublisherBuilder
+
+// region:    --- Publisher
+pub struct Publisher<'a> {
+	_publisher: zenoh::publication::Publisher<'a>,
+}
+// endregion: --- Publisher
 
 #[cfg(test)]
 mod tests {
@@ -74,6 +82,7 @@ mod tests {
 
 	#[test]
 	fn normal_types() {
+		is_normal::<Publisher>();
 		is_normal::<PublisherBuilder>();
 	}
 

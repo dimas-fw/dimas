@@ -2,27 +2,35 @@
 
 // region:    --- modules
 use super::communicator::Communicator;
-use crate::prelude::*;
+use crate::{context::Context, prelude::*};
 use std::sync::{Arc, RwLock};
-use zenoh::queryable::{Query, Queryable};
+use tokio::task::JoinHandle;
+use zenoh::prelude::r#async::AsyncResolve;
 // endregion: --- modules
 
 // region:    --- types
-pub type QueryableCallback = fn(Query);
+pub type QueryableCallback<P> = fn(Arc<Context>, Arc<RwLock<P>>, query: zenoh::queryable::Query);
 // endregion: --- types
 
 // region:    --- QueryableBuilder
 #[derive(Default, Clone)]
-pub struct QueryableBuilder<'a> {
-	collection: Option<Arc<RwLock<Vec<Queryable<'a, ()>>>>>,
-	communicator: Option<Arc<Communicator>>,
-	key_expr: Option<String>,
-	msg_type: Option<String>,
-	callback: Option<QueryableCallback>,
+pub struct QueryableBuilder<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	pub(crate) collection: Option<Arc<RwLock<Vec<Queryable<P>>>>>,
+	pub(crate) communicator: Option<Arc<Communicator>>,
+	pub(crate) props: Option<Arc<RwLock<P>>>,
+	pub(crate) key_expr: Option<String>,
+	pub(crate) msg_type: Option<String>,
+	pub(crate) callback: Option<QueryableCallback<P>>,
 }
 
-impl<'a> QueryableBuilder<'a> {
-	pub fn collection(mut self, collection: Arc<RwLock<Vec<Queryable<'a, ()>>>>) -> Self {
+impl<P> QueryableBuilder<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	pub fn collection(mut self, collection: Arc<RwLock<Vec<Queryable<P>>>>) -> Self {
 		self.collection.replace(collection);
 		self
 	}
@@ -42,12 +50,12 @@ impl<'a> QueryableBuilder<'a> {
 		self
 	}
 
-	pub fn callback(mut self, callback: QueryableCallback) -> Self {
+	pub fn callback(mut self, callback: QueryableCallback<P>) -> Self {
 		self.callback.replace(callback);
 		self
 	}
 
-	pub(crate) fn build(mut self) -> Result<Queryable<'a, ()>> {
+	pub async fn add(mut self) -> Result<()> {
 		if self.communicator.is_none() {
 			return Err("No communicator given".into());
 		}
@@ -60,49 +68,87 @@ impl<'a> QueryableBuilder<'a> {
 		let key_expr = if self.key_expr.is_some() {
 			self.key_expr.take().unwrap()
 		} else {
-			self.communicator.clone().unwrap().prefix()
-				+ "/" + &self.msg_type.unwrap()
-				+ "/" + &self.communicator.clone().unwrap().uuid()
+			self.communicator.clone().unwrap().prefix() + "/" + &self.msg_type.unwrap() + "/*"
 		};
-		//dbg!(&key_expr);
-		let q = self
-			.communicator
-			.unwrap()
-			.queryable(&key_expr, self.callback.take().unwrap());
-		Ok(q)
-	}
 
-	pub fn add(mut self) -> Result<()> {
-		if self.collection.is_none() {
-			return Err("No collection given".into());
+		let mut ctx = Arc::new(Context::default());
+		if self.communicator.is_some() {
+			let communicator = self.communicator.unwrap();
+			ctx = Arc::new(Context { communicator });
 		}
+		//dbg!(&key_expr);
+		let q = Queryable {
+			key_expr,
+			callback: self.callback.take().unwrap(),
+			handle: None,
+			context: ctx,
+			props: self.props.unwrap(),
+		};
 
 		let c = self.collection.take();
-		let queryable = self.build()?;
-		c.unwrap().write().unwrap().push(queryable);
+		c.unwrap().write().unwrap().push(q);
 		Ok(())
 	}
 }
 // endregion: --- QueryableBuilder
 
 // region:    --- Queryable
-//pub struct Queryable {}
+pub struct Queryable<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	key_expr: String,
+	callback: QueryableCallback<P>,
+	handle: Option<JoinHandle<()>>,
+	context: Arc<Context>,
+	props: Arc<RwLock<P>>,
+}
+
+impl<P> Queryable<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	pub fn start(&mut self) -> Result<()> {
+		let key_expr = self.key_expr.clone();
+		let cb = self.callback;
+		let ctx = self.context.clone();
+		let props = self.props.clone();
+		self.handle.replace(tokio::spawn(async move {
+			let session = ctx.communicator.session();
+			let subscriber = session
+				.declare_queryable(&key_expr)
+				.res_async()
+				.await
+				.unwrap();
+
+			loop {
+				let query = subscriber.recv_async().await.unwrap();
+				dbg!(&query);
+				cb(ctx.clone(), props.clone(), query);
+			}
+		}));
+		Ok(())
+	}
+
+	pub fn stop(&mut self) -> Result<()> {
+		self.handle.take().unwrap().abort();
+		Ok(())
+	}
+}
 // endregion: --- Queryable
 
 #[cfg(test)]
 mod tests {
 	use super::*;
 
+	struct Props {}
+
 	// check, that the auto traits are available
 	fn is_normal<T: Sized + Send + Sync + Unpin>() {}
 
 	#[test]
 	fn normal_types() {
-		is_normal::<QueryableBuilder>();
-	}
-
-	#[test]
-	fn queryable_create() {
-		let _builder = QueryableBuilder::default();
+		is_normal::<Queryable<Props>>();
+		is_normal::<QueryableBuilder<Props>>();
 	}
 }

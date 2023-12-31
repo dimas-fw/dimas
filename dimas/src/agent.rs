@@ -4,9 +4,9 @@
 use crate::{
 	com::{
 		communicator::Communicator,
-		publisher::PublisherBuilder,
-		queryable::QueryableBuilder,
-		subscriber::{SubscriberBuilder, SubscriberCallback},
+		publisher::{Publisher, PublisherBuilder},
+		queryable::{Queryable, QueryableBuilder},
+		subscriber::{Subscriber, SubscriberBuilder},
 	},
 	timer::{Timer, TimerBuilder},
 };
@@ -15,52 +15,46 @@ use std::{
 	time::Duration,
 };
 use tokio::time::sleep;
-use zenoh::{
-	config::{self, Config},
-	liveliness::LivelinessToken,
-	publication::Publisher,
-	queryable::Queryable,
-	subscriber::Subscriber,
-};
+use zenoh::{config::Config, liveliness::LivelinessToken};
 // endregion: --- modules
 
-// region:    --- AgentInner
-struct AgentInner<'a> {
+// region:    --- Agent
+pub struct Agent<'a, P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	com: Arc<Communicator>,
 	// an optional liveliness token
 	liveliness_token: RwLock<Option<LivelinessToken<'a>>>,
 	// an optional liveliness subscriber
-	liveliness_subscriber: RwLock<Option<Arc<Subscriber<'a, ()>>>>,
+	liveliness_subscriber: RwLock<Option<Arc<zenoh::subscriber::Subscriber<'a, ()>>>>,
 	// registered subscribers
-	subscribers: Arc<RwLock<Vec<Subscriber<'a, ()>>>>,
+	subscribers: Arc<RwLock<Vec<Subscriber<P>>>>,
 	// registered queryables
-	queryables: Arc<RwLock<Vec<Queryable<'a, ()>>>>,
+	queryables: Arc<RwLock<Vec<Queryable<P>>>>,
 	// registered publisher
 	publishers: Arc<RwLock<Vec<Publisher<'a>>>>,
 	// registered timer
-	timers: Arc<RwLock<Vec<Timer>>>,
-}
-// endregion: --- AgentInner
-
-// region:    --- Agent
-/// Composable Agent
-pub struct Agent<'a> {
-	com: Arc<Communicator>,
-	inner: AgentInner<'a>,
+	timers: Arc<RwLock<Vec<Timer<P>>>>,
+	// The agents propertie structure
+	props: Arc<RwLock<P>>,
 }
 
-impl<'a> Agent<'a> {
-	pub fn new(config: Config, prefix: impl Into<String>) -> Self {
+impl<'a, P> Agent<'a, P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	pub fn new(config: Config, prefix: impl Into<String>, properties: P) -> Self {
 		let com = Arc::new(Communicator::new(config, prefix));
 		Self {
 			com,
-			inner: AgentInner {
-				liveliness_token: RwLock::new(None),
-				liveliness_subscriber: RwLock::new(None),
-				subscribers: Arc::new(RwLock::new(Vec::new())),
-				queryables: Arc::new(RwLock::new(Vec::new())),
-				publishers: Arc::new(RwLock::new(Vec::new())),
-				timers: Arc::new(RwLock::new(Vec::new())),
-			},
+			liveliness_token: RwLock::new(None),
+			liveliness_subscriber: RwLock::new(None),
+			subscribers: Arc::new(RwLock::new(Vec::new())),
+			queryables: Arc::new(RwLock::new(Vec::new())),
+			publishers: Arc::new(RwLock::new(Vec::new())),
+			timers: Arc::new(RwLock::new(Vec::new())),
+			props: Arc::new(RwLock::new(properties)),
 		}
 	}
 
@@ -69,56 +63,75 @@ impl<'a> Agent<'a> {
 	}
 
 	pub async fn liveliness(&mut self) {
-		let token: LivelinessToken<'a> = self.com.liveliness();
-		self.inner.liveliness_token.write().unwrap().replace(token);
+		let token: LivelinessToken<'a> = self.com.liveliness().await;
+		self.liveliness_token.write().unwrap().replace(token);
 	}
 
-	pub async fn liveliness_subscriber(&self, callback: SubscriberCallback) {
+	pub async fn liveliness_subscriber(&self, callback: fn(zenoh::sample::Sample)) {
 		let subscriber = Arc::new(self.com.liveliness_subscriber(callback).await);
-		self.inner
-			.liveliness_subscriber
+		self.liveliness_subscriber
 			.write()
 			.unwrap()
 			.replace(subscriber);
 	}
 
-	pub fn subscriber(&self) -> SubscriberBuilder<'a> {
-		SubscriberBuilder::default()
-			.collection(self.inner.subscribers.clone())
-			.communicator(self.com.clone())
+	pub fn subscriber(&self) -> SubscriberBuilder<P> {
+		SubscriberBuilder {
+			collection: Some(self.subscribers.clone()),
+			communicator: Some(self.com.clone()),
+			props: Some(self.props.clone()),
+			key_expr: None,
+			msg_type: None,
+			callback: None,
+		}
 	}
 
-	pub fn queryable(&self) -> QueryableBuilder<'a> {
-		QueryableBuilder::default()
-			.collection(self.inner.queryables.clone())
-			.communicator(self.com.clone())
+	pub fn queryable(&self) -> QueryableBuilder<P> {
+		QueryableBuilder {
+			collection: Some(self.queryables.clone()),
+			communicator: Some(self.com.clone()),
+			props: Some(self.props.clone()),
+			key_expr: None,
+			msg_type: None,
+			callback: None,
+		}
 	}
 
 	pub fn publisher(&self) -> PublisherBuilder<'a> {
 		PublisherBuilder::default()
-			.collection(self.inner.publishers.clone())
+			.collection(self.publishers.clone())
 			.communicator(self.com.clone())
 	}
 
-	pub fn timer(&self) -> TimerBuilder {
+	pub fn timer(&self) -> TimerBuilder<P>
+	where
+		P: Default,
+	{
 		TimerBuilder::default()
-			.collection(self.inner.timers.clone())
+			.collection(self.timers.clone())
 			.communicator(self.com.clone())
+			.properties(self.props.clone())
 	}
 
 	pub async fn start(&mut self) {
-		for timer in self.inner.timers.write().unwrap().iter_mut() {
+		for subscriber in self.subscribers.write().unwrap().iter_mut() {
+			let _res = subscriber.start();
+		}
+		for timer in self.timers.write().unwrap().iter_mut() {
 			let _res = timer.start();
 		}
 		loop {
 			sleep(Duration::from_secs(1)).await;
 		}
 	}
-}
 
-impl<'a> Default for Agent<'a> {
-	fn default() -> Self {
-		Agent::new(config::peer(), "agent")
+	pub async fn stop(&mut self) {
+		for timer in self.timers.write().unwrap().iter_mut() {
+			let _res = timer.stop();
+		}
+		for subscriber in self.subscribers.write().unwrap().iter_mut() {
+			let _res = subscriber.stop();
+		}
 	}
 }
 // endregion: --- Agent
@@ -126,20 +139,21 @@ impl<'a> Default for Agent<'a> {
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use zenoh::config;
 
 	// check, that the auto traits are available
 	fn is_normal<T: Sized + Send + Sync + Unpin>() {}
 
+	struct Props {}
+
 	#[test]
 	fn normal_types() {
-		is_normal::<Agent>();
+		is_normal::<Agent<Props>>();
 	}
 
 	#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 	//#[serial]
 	async fn agent_create() {
-		let _agent1 = Agent::default();
-		let _agent2 = Agent::new(config::peer(), "agent2");
-		//let _agent3 = Agent::new(config::client());
+		let _agent1: Agent<Props> = Agent::new(config::peer(), "agent1", Props {});
 	}
 }
