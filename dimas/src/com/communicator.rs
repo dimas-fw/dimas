@@ -1,6 +1,6 @@
 //! Copyright © 2023 Stephan Kunz
 
-// region:    --- modules
+// region:		--- modules
 use crate::prelude::*;
 use serde::Serialize;
 use std::{sync::Arc, time::Duration};
@@ -10,9 +10,9 @@ use zenoh::{
 	publication::Publisher,
 	subscriber::Subscriber,
 };
-// endregion: --- modules
+// endregion:	--- modules
 
-// region:    --- Communicator
+// region:		--- Communicator
 #[derive(Debug)]
 pub struct Communicator {
 	// prefix to separate agents communicaton
@@ -118,7 +118,7 @@ impl Default for Communicator {
 		Communicator::new(config::peer(), "peer")
 	}
 }
-// endregion: --- Communicator
+// endregion:	--- Communicator
 
 #[cfg(test)]
 mod tests {

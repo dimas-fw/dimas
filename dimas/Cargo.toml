@@ -8,6 +8,7 @@ license-file = { workspace = true }
 description = "DiMAS - A framework for Distributed Multi Agent Systems"
 
 [dependencies]
+chrono = { workspace = true }
 clap = { workspace = true }
 serde = { workspace = true }
 #serde_derive = { workspace = true }

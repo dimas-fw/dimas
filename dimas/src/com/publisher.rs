@@ -1,16 +1,16 @@
 //! Copyright © 2023 Stephan Kunz
 
-// region:    --- modules
+// region:		--- modules
 use super::communicator::Communicator;
 use crate::prelude::*;
 use std::sync::{Arc, RwLock};
-// endregion: --- modules
+// endregion:	--- modules
 
-// region:    --- types
+// region:		--- types
 //pub type PublisherCallback<P> = fn(Arc<Context>, Arc<RwLock<P>>, sample: Sample);
-// endregion: --- types
+// endregion:	--- types
 
-// region:    --- PublisherBuilder
+// region:		--- PublisherBuilder
 #[derive(Default, Clone)]
 pub struct PublisherBuilder<'a> {
 	collection: Option<Arc<RwLock<Vec<Publisher<'a>>>>>,
@@ -65,13 +65,13 @@ impl<'a> PublisherBuilder<'a> {
 		Ok(())
 	}
 }
-// endregion: --- PublisherBuilder
+// endregion:	--- PublisherBuilder
 
-// region:    --- Publisher
+// region:		--- Publisher
 pub struct Publisher<'a> {
 	_publisher: zenoh::publication::Publisher<'a>,
 }
-// endregion: --- Publisher
+// endregion:	--- Publisher
 
 #[cfg(test)]
 mod tests {

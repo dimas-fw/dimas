@@ -1,7 +1,7 @@
 //! The agent for nemo, a network monitoring toolset based on DiMAS
 //! Copyright © 2023 Stephan Kunz
 
-// region::    --- modules
+// region:		--- modules
 use clap::Parser;
 use dimas::prelude::*;
 use nemo::network_protocol::*;
@@ -11,9 +11,9 @@ use std::{
 };
 use sysinfo::System;
 use zenoh::{config, prelude::r#async::*, queryable::Query};
-// endregion:: --- modules
+// endregion:	--- modules
 
-// region::    --- Clap
+// region:		--- Clap
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
@@ -21,7 +21,7 @@ struct Args {
 	#[arg(short, long, value_parser, default_value_t = String::from("nemo"))]
 	prefix: String,
 }
-// endregion:: --- Clap
+// endregion:	--- Clap
 
 #[derive(Default)]
 pub struct AgentProps {

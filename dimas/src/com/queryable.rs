@@ -1,18 +1,18 @@
 //! Copyright © 2023 Stephan Kunz
 
-// region:    --- modules
+// region:		--- modules
 use super::communicator::Communicator;
 use crate::{context::Context, prelude::*};
 use std::sync::{Arc, RwLock};
 use tokio::task::JoinHandle;
 use zenoh::prelude::r#async::AsyncResolve;
-// endregion: --- modules
+// endregion:	--- modules
 
-// region:    --- types
+// region:		--- types
 pub type QueryableCallback<P> = fn(Arc<Context>, Arc<RwLock<P>>, query: zenoh::queryable::Query);
-// endregion: --- types
+// endregion:	--- types
 
-// region:    --- QueryableBuilder
+// region:		--- QueryableBuilder
 #[derive(Default, Clone)]
 pub struct QueryableBuilder<P>
 where
@@ -90,9 +90,9 @@ where
 		Ok(())
 	}
 }
-// endregion: --- QueryableBuilder
+// endregion:	--- QueryableBuilder
 
-// region:    --- Queryable
+// region:		--- Queryable
 pub struct Queryable<P>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -135,7 +135,7 @@ where
 		Ok(())
 	}
 }
-// endregion: --- Queryable
+// endregion:	--- Queryable
 
 #[cfg(test)]
 mod tests {

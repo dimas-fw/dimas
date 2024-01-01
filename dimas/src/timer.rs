@@ -1,20 +1,20 @@
 //! Copyright © 2023 Stephan Kunz
 
-// region:    --- modules
+// region:		--- modules
 use crate::{com::communicator::Communicator, context::Context, prelude::*};
 use std::{
 	sync::{Arc, RwLock},
 	time::Duration,
 };
 use tokio::{sync::Mutex, task::JoinHandle};
-// endregion: --- modules
+// endregion:	--- modules
 
-// region:    --- types
+// region:		--- types
 type TimerCallback<P> =
 	Arc<Mutex<dyn FnMut(Arc<Context>, Arc<RwLock<P>>) + Send + Sync + Unpin + 'static>>;
-// endregion: --- types
+// endregion:	--- types
 
-// region:    --- TimerBuilder
+// region:		--- TimerBuilder
 #[derive(Default, Clone)]
 pub struct TimerBuilder<P>
 where
@@ -109,9 +109,9 @@ where
 		Ok(())
 	}
 }
-// endregion: --- TimerBuilder
+// endregion:	--- TimerBuilder
 
-// region:    --- Timer
+// region:		--- Timer
 //#[derive(Debug, Clone)]
 pub enum Timer<P>
 where
@@ -210,7 +210,7 @@ where
 		}
 	}
 }
-// endregion: --- Timer
+// endregion:	--- Timer
 
 #[cfg(test)]
 mod tests {

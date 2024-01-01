@@ -1,13 +1,18 @@
 //! Copyright © 2023 Stephan Kunz
 
+// region:		--- modules
 use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
 use sysinfo::System;
+// endregion:	---modules
 
+// region:		--- types
 /// Type for network UUID
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct NetworkUuid(pub String);
+// endregion:	--- types
 
+// region:		--- NetworkDevice
 /// A type for representing a network device.
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct NetworkDevice {
@@ -36,17 +41,6 @@ pub struct IfAddr {
 	pub broadcast: IpAddr,
 	pub hostmask: IpAddr,
 	pub netmask: IpAddr,
-}
-
-/// A type for network messages.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum NetworkMsg {
-	Fatal(String),
-	Error(String),
-	Warning(String),
-	Hint(String),
-	Info(String),
-	Debug(String),
 }
 
 pub fn network_devices() -> Vec<NetworkDevice> {
@@ -104,4 +98,33 @@ pub fn network_devices() -> Vec<NetworkDevice> {
 		}
 	}
 	res
+}
+// endregion:	--- NetworkDevice
+
+// region:		--- NetworkMsg
+/// A type for network messages.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum NetworkMsg {
+	Fatal(String),
+	Error(String),
+	Warning(String),
+	Hint(String),
+	Info(String),
+	Debug(String),
+}
+// endregion:	--- NetworkMsg
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	// check, that the auto traits are available
+	fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+
+	#[test]
+	fn normal_types() {
+		is_normal::<NetworkDevice>();
+		is_normal::<NetworkDeviceData>();
+		is_normal::<NetworkMsg>();
+	}
 }

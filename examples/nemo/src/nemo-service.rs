@@ -3,14 +3,14 @@
 
 use std::sync::{Arc, RwLock};
 
-// region::    --- modules
+// region:		--- modules
 use clap::Parser;
 use dimas::prelude::*;
 use zenoh::{config, prelude::SampleKind, sample::Sample};
 //use nemo::network_protocol::*;
-// endregion:: --- modules
+// endregion:	--- modules
 
-// region::    --- Clap
+// region:		--- Clap
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
@@ -18,7 +18,7 @@ struct Args {
 	#[arg(short, long, value_parser, default_value_t = String::from("nemo"))]
 	prefix: String,
 }
-// endregion:: --- Clap
+// endregion:	--- Clap
 
 struct AgentProps {}
 

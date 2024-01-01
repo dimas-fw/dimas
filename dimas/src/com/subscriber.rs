@@ -1,18 +1,18 @@
 //! Copyright © 2023 Stephan Kunz
 
-// region:    --- modules
+// region:		--- modules
 use super::communicator::Communicator;
 use crate::{context::Context, prelude::*};
 use std::sync::{Arc, RwLock};
 use tokio::task::JoinHandle;
 use zenoh::prelude::{r#async::AsyncResolve, Sample};
-// endregion: --- modules
+// endregion:	--- modules
 
-// region:    --- types
+// region:		--- types
 pub type SubscriberCallback<P> = fn(Arc<Context>, Arc<RwLock<P>>, sample: Sample);
-// endregion: --- types
+// endregion:	--- types
 
-// region:    --- SubscriberBuilder
+// region:		--- SubscriberBuilder
 #[derive(Clone)]
 pub struct SubscriberBuilder<P>
 where
@@ -80,9 +80,9 @@ where
 		Ok(())
 	}
 }
-// endregion: --- SubscriberBuilder
+// endregion:	--- SubscriberBuilder
 
-// region:    --- Subscriber
+// region:		--- Subscriber
 pub struct Subscriber<P>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -124,7 +124,7 @@ where
 		Ok(())
 	}
 }
-// endregion: --- Subscriber
+// endregion:	--- Subscriber
 
 #[cfg(test)]
 mod tests {

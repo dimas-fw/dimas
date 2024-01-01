@@ -1,12 +1,12 @@
 //! Copyright © 2023 Stephan Kunz
 
-// region:    --- modules
+// region:		--- modules
 use crate::{com::communicator::Communicator, prelude::*};
 use serde::*;
 use std::sync::Arc;
-// endregion: --- modules
+// endregion:	--- modules
 
-// region:    --- Context
+// region:		--- Context
 #[derive(Debug, Clone, Default)]
 pub struct Context {
 	pub communicator: Arc<Communicator>,
@@ -27,7 +27,7 @@ impl Context {
 		todo!("not yet implemented")
 	}
 }
-// endregion: --- Context
+// endregion:	--- Context
 
 #[cfg(test)]
 mod tests {

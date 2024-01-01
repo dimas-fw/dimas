@@ -9,3 +9,4 @@ pub struct Wrap<T>(pub T);
 pub use crate::agent::Agent;
 pub use crate::context::Context;
 pub use crate::message::DimasMessage;
+pub use crate::message::Message;

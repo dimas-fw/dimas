@@ -1,6 +1,6 @@
 //! Copyright © 2023 Stephan Kunz
 
-// region:    --- modules
+// region:		--- modules
 use crate::{
 	com::{
 		communicator::Communicator,
@@ -16,9 +16,9 @@ use std::{
 };
 use tokio::time::sleep;
 use zenoh::{config::Config, liveliness::LivelinessToken};
-// endregion: --- modules
+// endregion:	--- modules
 
-// region:    --- Agent
+// region:		--- Agent
 pub struct Agent<'a, P>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -134,7 +134,7 @@ where
 		}
 	}
 }
-// endregion: --- Agent
+// endregion:	--- Agent
 
 #[cfg(test)]
 mod tests {
