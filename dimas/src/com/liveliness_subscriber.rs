@@ -96,10 +96,10 @@ where
 {
 	pub fn start(&mut self) -> Result<()> {
 		let key_expr = self.key_expr.clone();
-		dbg!(&key_expr);
 		let cb = self.callback;
 		let ctx = self.context.clone();
 		let props = self.props.clone();
+		//dbg!(&key_expr);
 		self.handle.replace(tokio::spawn(async move {
 			let session = ctx.communicator.session();
 			let subscriber = session
@@ -112,8 +112,36 @@ where
 				let sample = subscriber.recv_async().await.unwrap();
 				cb(ctx.clone(), props.clone(), sample);
 			}
-
 		}));
+
+		// the initial liveliness query
+		let key_expr = self.key_expr.clone();
+		let cb = self.callback;
+		let ctx = self.context.clone();
+		let props = self.props.clone();
+		tokio::spawn(async move {
+			let session = ctx.communicator.session();
+			let replies = session
+				.liveliness()
+				.get(&key_expr)
+				//.timeout(Duration::from_millis(500))
+				.res().await
+				.unwrap();
+
+			while let Ok(reply) = replies.recv_async().await {
+				match reply.sample {
+					Ok(sample) => {
+						//dbg!(&sample);
+						cb(ctx.clone(), props.clone(), sample);
+					}
+					Err(err) => println!(
+						">> Received (ERROR: '{}')",
+						String::try_from(&err).unwrap_or("".to_string())
+					),
+				}
+			}
+		});
+
 		Ok(())
 	}
 

@@ -128,7 +128,7 @@ where
 	pub async fn start(&mut self) {
 		// start liveliness subscriber
 		if self.liveliness_subscriber.read().unwrap().is_some() {
-			let _res = self.liveliness_subscriber.write().unwrap().as_mut().unwrap().start();
+			let _res = self.liveliness_subscriber.write().as_mut().unwrap().as_mut().unwrap().start();
 		}
 		// start all registered subscribers
 		for subscriber in self.subscribers.write().unwrap().iter_mut() {

@@ -42,10 +42,10 @@ fn liveliness_subscription(ctx: Arc<Context>, props: Arc<RwLock<AgentProps>>, sa
 	let _ = ctx;
 	match sample.kind {
 		SampleKind::Put => {
-			dbg!(&sample);
+			dbg!(&sample.key_expr);
 		}
 		SampleKind::Delete => {
-			dbg!(&sample);
+			dbg!(&sample.key_expr);
 		}
 	}
 }
