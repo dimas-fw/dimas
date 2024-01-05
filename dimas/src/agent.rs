@@ -6,7 +6,7 @@ use crate::{
 		communicator::Communicator,
 		publisher::{Publisher, PublisherBuilder},
 		queryable::{Queryable, QueryableBuilder},
-		subscriber::{Subscriber, SubscriberBuilder},
+		subscriber::{Subscriber, SubscriberBuilder}, liveliness_subscriber::{LivelinessSubscriberBuilder, LivelinessSubscriber},
 	},
 	timer::{Timer, TimerBuilder},
 };
@@ -19,15 +19,16 @@ use zenoh::{config::Config, liveliness::LivelinessToken};
 // endregion:	--- modules
 
 // region:		--- Agent
+//#[derive(Debug)]
 pub struct Agent<'a, P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: std::fmt::Debug + Send + Sync + Unpin + 'static,
 {
 	com: Arc<Communicator>,
 	// an optional liveliness token
 	liveliness_token: RwLock<Option<LivelinessToken<'a>>>,
 	// an optional liveliness subscriber
-	liveliness_subscriber: RwLock<Option<Arc<zenoh::subscriber::Subscriber<'a, ()>>>>,
+	liveliness_subscriber: Arc<RwLock<Option<LivelinessSubscriber<P>>>>,
 	// registered subscribers
 	subscribers: Arc<RwLock<Vec<Subscriber<P>>>>,
 	// registered queryables
@@ -42,14 +43,14 @@ where
 
 impl<'a, P> Agent<'a, P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: std::fmt::Debug + Send + Sync + Unpin + 'static,
 {
 	pub fn new(config: Config, prefix: impl Into<String>, properties: P) -> Self {
 		let com = Arc::new(Communicator::new(config, prefix));
 		Self {
 			com,
 			liveliness_token: RwLock::new(None),
-			liveliness_subscriber: RwLock::new(None),
+			liveliness_subscriber: Arc::new(RwLock::new(None)),
 			subscribers: Arc::new(RwLock::new(Vec::new())),
 			queryables: Arc::new(RwLock::new(Vec::new())),
 			publishers: Arc::new(RwLock::new(Vec::new())),
@@ -62,24 +63,35 @@ where
 		self.com.uuid()
 	}
 
-	pub async fn liveliness(&mut self) {
-		let token: LivelinessToken<'a> = self.com.liveliness().await;
+	pub async fn liveliness(&mut self, msg_type: impl Into<String>) {
+		let token: LivelinessToken<'a> = self.com.liveliness(msg_type).await;
 		self.liveliness_token.write().unwrap().replace(token);
 	}
 
-	pub async fn liveliness_subscriber(&self, callback: fn(zenoh::sample::Sample)) {
-		let subscriber = Arc::new(self.com.liveliness_subscriber(callback).await);
-		self.liveliness_subscriber
-			.write()
-			.unwrap()
-			.replace(subscriber);
+	//pub async fn liveliness_subscriber(&self, callback: fn(zenoh::sample::Sample)) {
+	//	let subscriber = Arc::new(self.com.liveliness_subscriber(callback).await);
+	//	self.liveliness_subscriber
+	//		.write()
+	//		.unwrap()
+	//		.replace(subscriber);
+	//}
+
+	pub fn liveliness_subscriber(&self) -> LivelinessSubscriberBuilder<P> {
+		LivelinessSubscriberBuilder {
+			subscriber: self.liveliness_subscriber.clone(),
+			communicator: self.com.clone(),
+			props: self.props.clone(),
+			key_expr: None,
+			msg_type: None,
+			callback: None,
+		}
 	}
 
 	pub fn subscriber(&self) -> SubscriberBuilder<P> {
 		SubscriberBuilder {
-			collection: Some(self.subscribers.clone()),
-			communicator: Some(self.com.clone()),
-			props: Some(self.props.clone()),
+			collection: self.subscribers.clone(),
+			communicator: self.com.clone(),
+			props: self.props.clone(),
 			key_expr: None,
 			msg_type: None,
 			callback: None,
@@ -114,23 +126,46 @@ where
 	}
 
 	pub async fn start(&mut self) {
+		// start liveliness subscriber
+		if self.liveliness_subscriber.read().unwrap().is_some() {
+			let _res = self.liveliness_subscriber.write().unwrap().as_mut().unwrap().start();
+		}
+		// start all registered subscribers
 		for subscriber in self.subscribers.write().unwrap().iter_mut() {
 			let _res = subscriber.start();
 		}
+		// start all registered queryables
+		for queryable in self.queryables.write().unwrap().iter_mut() {
+			let _res = queryable.start();
+		}
+		// start all registered timers
 		for timer in self.timers.write().unwrap().iter_mut() {
 			let _res = timer.start();
 		}
+
+		// main loop so that agent stays alive
 		loop {
 			sleep(Duration::from_secs(1)).await;
 		}
 	}
 
 	pub async fn stop(&mut self) {
+		// reverse order of start!
+		// stop all registered timers
 		for timer in self.timers.write().unwrap().iter_mut() {
 			let _res = timer.stop();
 		}
+		// stop all registered queryables
+		for queryable in self.queryables.write().unwrap().iter_mut() {
+			let _res = queryable.stop();
+		}
+		// stop all registered subscribers
 		for subscriber in self.subscribers.write().unwrap().iter_mut() {
 			let _res = subscriber.stop();
+		}
+		// stop liveliness subscriber
+		if self.liveliness_subscriber.read().unwrap().is_some() {
+			let _res = self.liveliness_subscriber.write().unwrap().as_mut().unwrap().stop();
 		}
 	}
 }
@@ -144,6 +179,7 @@ mod tests {
 	// check, that the auto traits are available
 	fn is_normal<T: Sized + Send + Sync + Unpin>() {}
 
+	#[derive(Debug)]
 	struct Props {}
 
 	#[test]

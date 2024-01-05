@@ -29,6 +29,7 @@ clap = { version = "^4.0", features = ["derive"] }
 default-net = "^0.21"
 dimas = { path = "dimas" }
 #derive_more = { version = "^0.99", features = ["from", "display", "deref",] }
+derive_more = "^0.99"
 #makepad-widgets = { path = "../makepad/widgets" }
 #makepad-widgets = "^0.6"
 serde = { version = "^1.0", features = ["derive"] }

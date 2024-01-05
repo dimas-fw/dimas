@@ -2,9 +2,10 @@
 
 // region:    --- modules
 pub mod communicator;
+pub mod liveliness_subscriber;
 pub mod publisher;
-pub mod queryable;
 pub mod subscriber;
+pub mod queryable;
 // endregion: --- modules
 
 #[cfg(test)]

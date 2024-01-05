@@ -23,7 +23,7 @@ struct Args {
 }
 // endregion:	--- Clap
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct AgentProps {
 	pub sys: System,
 }
@@ -31,14 +31,14 @@ pub struct AgentProps {
 fn network(ctx: Arc<Context>, props: Arc<RwLock<AgentProps>>, query: Query) {
 	let _ = props;
 	let _ = ctx;
-	//dbg!(&query);
+	dbg!(&query);
 	tokio::spawn(async move {
 		let key = query.selector().key_expr.to_string();
 		let interfaces = network_devices();
 		for interface in interfaces {
 			let sample =
 				Sample::try_from(key.clone(), serde_json::to_string(&interface).unwrap()).unwrap();
-			//dbg!(&sample);
+			dbg!(&sample);
 			query.reply(Ok(sample)).res().await.unwrap();
 		}
 	});
@@ -54,7 +54,7 @@ async fn main() -> Result<()> {
 	properties.sys.refresh_all();
 	let mut agent = Agent::new(config::peer(), &args.prefix, properties);
 	// activate sending liveliness
-	agent.liveliness().await;
+	agent.liveliness("alive").await;
 
 	// queryable for network interfaces
 	agent

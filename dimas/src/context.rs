@@ -20,7 +20,7 @@ impl Context {
 		self.communicator.publish(msg_name, message)
 	}
 
-	pub fn query<Q>(&self, _msg_name: impl Into<String>, _message: Q) -> Result<()>
+	pub async fn query<Q>(&self, _query_name: impl Into<String>, _message: Q) -> Result<()>
 	where
 		Q: Serialize,
 	{

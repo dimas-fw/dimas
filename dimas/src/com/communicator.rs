@@ -40,9 +40,9 @@ impl Communicator {
 		self.session.clone()
 	}
 
-	pub async fn liveliness<'a>(&self) -> LivelinessToken<'a> {
+	pub async fn liveliness<'a>(&self, msg_type: impl Into<String>) -> LivelinessToken<'a> {
 		let session = self.session.clone();
-		let uuid = self.prefix.clone() + "/" + &session.zid().to_string();
+		let uuid = self.prefix.clone() + "/" + &msg_type.into() + "/" + &session.zid().to_string();
 		//dbg!(&uuid);
 		session
 			.liveliness()

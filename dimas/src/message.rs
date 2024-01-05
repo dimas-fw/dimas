@@ -1,43 +1,56 @@
 // Copyright © 2023 Stephan Kunz
 
 // region:		--- modules
+use std::any::Any;
 use chrono::{Local, NaiveDateTime};
 use serde::{Deserialize, Serialize};
 // endregion:	--- modules
 
-// region:		--- Message
-pub trait Message {
-	fn content<T>(&self) -> &T;
-	fn utc(&self) -> NaiveDateTime;
-}
-// endregion:	--- Message
-
 // region:		--- DimasMessage
-#[derive(Serialize, Deserialize)]
-pub struct DimasMessage<T> {
+//pub trait DimasMessage {
+//	type Msg;
+//	fn content(&self) -> &Self::Msg;
+//	fn utc(&self) -> NaiveDateTime;
+//}
+// endregion:	--- DimasMessage
+
+// region:		--- Message
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Message<T> {
 	utc: NaiveDateTime,
 	content: T,
 }
 
-impl<T> DimasMessage<T> {
-	pub fn new(content: T) -> DimasMessage<T> {
-		DimasMessage {
+impl<T> Message<T> 
+	where T: Any
+{
+	pub fn new(content: T) -> Message<T> {
+		Message {
 			utc: Local::now().naive_utc(),
 			content,
 		}
 	}
-}
 
-impl<T> Message for DimasMessage<T> {
-	fn content<R>(&self) -> &R {
-		todo!()
+	pub fn content(&self) -> &T {
+		&self.content
 	}
 
-	fn utc(&self) -> NaiveDateTime {
+	pub fn utc(&self) -> NaiveDateTime {
 		self.utc
 	}
 }
-// endregion:	--- DimasMessage
+
+//impl<T> DimasMessage for Message<T> {
+//	type Msg = T;
+//	fn content(&self) -> &T {
+//		todo!()
+//	}
+//
+//	fn utc(&self) -> NaiveDateTime {
+//		self.utc
+//	}
+//}
+// endregion:	--- Message
 
 #[cfg(test)]
 mod tests {
@@ -50,7 +63,7 @@ mod tests {
 
 	#[test]
 	fn normal_types() {
-		//is_normal::<Message>();
-		is_normal::<DimasMessage<_Props>>();
+		//is_normal::<DimasMessage>();
+		is_normal::<Message<_Props>>();
 	}
 }

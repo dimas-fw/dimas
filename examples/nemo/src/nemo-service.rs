@@ -20,6 +20,7 @@ struct Args {
 }
 // endregion:	--- Clap
 
+#[derive(Debug)]
 struct AgentProps {}
 
 fn new_alert_subscription(ctx: Arc<Context>, props: Arc<RwLock<AgentProps>>, sample: Sample) {
@@ -36,8 +37,9 @@ fn new_alert_subscription(ctx: Arc<Context>, props: Arc<RwLock<AgentProps>>, sam
 	}
 }
 
-fn liveliness_subscription(sample: Sample) {
-	//dbg!(&sample);
+fn liveliness_subscription(ctx: Arc<Context>, props: Arc<RwLock<AgentProps>>, sample: Sample) {
+	let _ = props;
+	let _ = ctx;
 	match sample.kind {
 		SampleKind::Put => {
 			dbg!(&sample);
@@ -56,10 +58,13 @@ async fn main() -> Result<()> {
 	let properties = AgentProps {};
 	let mut agent: Agent<AgentProps> = Agent::new(config::peer(), &args.prefix, properties);
 	// activate sending liveliness
-	agent.liveliness().await;
+	agent.liveliness("alive").await;
 
 	// add a liveliness subscriber to listen for agents
-	agent.liveliness_subscriber(liveliness_subscription).await;
+	agent.liveliness_subscriber()
+		.callback(liveliness_subscription)
+		.msg_type("alive")
+		.add().await?;
 
 	// listen for network alert messages
 	agent

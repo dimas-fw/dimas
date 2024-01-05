@@ -1,12 +1,14 @@
 //! Copyright © 2023 Stephan Kunz
 
-// export crates Error type
-pub use crate::error::{Error, Result};
-// Generic wrapper tuple struct for newtype pattern
-pub struct Wrap<T>(pub T);
-
-// public interface of library
+// region:    --- modules
 pub use crate::agent::Agent;
 pub use crate::context::Context;
-pub use crate::message::DimasMessage;
+pub use crate::error::{Error, Result};
 pub use crate::message::Message;
+// endregeion:  --- modules
+
+// region:    --- types
+// Generic wrapper tuple struct for newtype pattern
+#[repr(transparent)]
+pub struct Wrap<T>(pub T);
+// endregion: --- types
