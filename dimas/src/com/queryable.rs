@@ -123,7 +123,7 @@ where
 
 			loop {
 				let query = subscriber.recv_async().await.unwrap();
-				dbg!(&query);
+				//dbg!(&query);
 				cb(ctx.clone(), props.clone(), query);
 			}
 		}));

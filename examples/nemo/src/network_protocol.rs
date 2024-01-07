@@ -2,14 +2,25 @@
 
 // region:		--- modules
 use serde::{Deserialize, Serialize};
-use std::net::IpAddr;
+use std::{
+	net::IpAddr,
+	sync::{Arc, RwLock},
+};
 use sysinfo::System;
 // endregion:	---modules
 
 // region:		--- types
 /// Type for network UUID
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[repr(transparent)]
+#[derive(Default, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct NetworkUuid(pub String);
+
+impl std::fmt::Debug for NetworkUuid {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        //f.debug_tuple("NetworkUuid").field(&self.0).finish()
+				f.write_str(&self.0)
+    }
+}
 // endregion:	--- types
 
 // region:		--- NetworkDevice
@@ -113,6 +124,36 @@ pub enum NetworkMsg {
 	Debug(String),
 }
 // endregion:	--- NetworkMsg
+
+// region:		--- NetworkTree
+/// A type for a tree of network devices
+#[derive(Default)]
+pub struct NetworkTreeNode {
+	pub uuid: NetworkUuid,
+	pub agent_id: String,
+	pub data: Option<NetworkDeviceData>,
+	pub gateway: Option<Arc<NetworkTreeNode>>,
+	pub children: RwLock<Vec<Arc<NetworkTreeNode>>>,
+}
+
+impl NetworkTreeNode {}
+
+impl std::fmt::Debug for NetworkTreeNode {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let mut gw = "None".to_string();
+		if self.gateway.is_some() {
+			gw = self.gateway.clone().unwrap().uuid.0.clone();
+		} 
+		f.debug_struct("NetworkTreeNode")
+			.field("uuid", &self.uuid)
+			.field("agent_id", &self.agent_id)
+			.field("data", &self.data)
+			.field("gateway uuid", &gw)
+			.field("children", &self.children.read().unwrap())
+			.finish_non_exhaustive()
+	}
+}
+// endregion:	--- NetworkTree
 
 #[cfg(test)]
 mod tests {

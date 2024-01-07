@@ -31,14 +31,14 @@ pub struct AgentProps {
 fn network(ctx: Arc<Context>, props: Arc<RwLock<AgentProps>>, query: Query) {
 	let _ = props;
 	let _ = ctx;
-	dbg!(&query);
+	//dbg!(&query);
 	tokio::spawn(async move {
 		let key = query.selector().key_expr.to_string();
-		let interfaces = network_devices();
-		for interface in interfaces {
+		let devices = network_devices();
+		for device in devices {
 			let sample =
-				Sample::try_from(key.clone(), serde_json::to_string(&interface).unwrap()).unwrap();
-			dbg!(&sample);
+				Sample::try_from(key.clone(), serde_json::to_string(&device).unwrap()).unwrap();
+			//dbg!(&sample);
 			query.reply(Ok(sample)).res().await.unwrap();
 		}
 	});
@@ -54,7 +54,7 @@ async fn main() -> Result<()> {
 	properties.sys.refresh_all();
 	let mut agent = Agent::new(config::peer(), &args.prefix, properties);
 	// activate sending liveliness
-	agent.liveliness("alive").await;
+	agent.liveliness(true);
 
 	// queryable for network interfaces
 	agent
@@ -74,7 +74,7 @@ async fn main() -> Result<()> {
 			props.sys.refresh_cpu();
 			//dbg!(sys_clone.read().unwrap().global_cpu_info());
 			//dbg!(&ctx);
-			dbg!();
+			//dbg!();
 			let message = NetworkMsg::Info("hi1".to_string());
 			let _ = ctx.publish("alert", message);
 		})
@@ -91,7 +91,7 @@ async fn main() -> Result<()> {
 			props.sys.refresh_memory();
 			//dbg!(sys.read().unwrap().free_memory());
 			//dbg!(&ctx);
-			dbg!();
+			//dbg!();
 			let message = NetworkMsg::Hint("hi2".to_string());
 			let _ = ctx.publish("alert", message);
 		})

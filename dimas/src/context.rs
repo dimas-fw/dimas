@@ -13,6 +13,10 @@ pub struct Context {
 }
 
 impl Context {
+	pub fn uuid(&self) -> String {
+		self.communicator.uuid()
+	}
+
 	pub fn publish<P>(&self, msg_name: impl Into<String>, message: P) -> Result<()>
 	where
 		P: Serialize,

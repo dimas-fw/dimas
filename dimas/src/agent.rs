@@ -4,9 +4,10 @@
 use crate::{
 	com::{
 		communicator::Communicator,
+		liveliness_subscriber::{LivelinessSubscriber, LivelinessSubscriberBuilder},
 		publisher::{Publisher, PublisherBuilder},
 		queryable::{Queryable, QueryableBuilder},
-		subscriber::{Subscriber, SubscriberBuilder}, liveliness_subscriber::{LivelinessSubscriberBuilder, LivelinessSubscriber},
+		subscriber::{Subscriber, SubscriberBuilder},
 	},
 	timer::{Timer, TimerBuilder},
 };
@@ -18,12 +19,17 @@ use tokio::time::sleep;
 use zenoh::{config::Config, liveliness::LivelinessToken};
 // endregion:	--- modules
 
+// region:		--- types
+//type AgentProps<P> = std::fmt::Debug + Send + Sync + Unpin + 'static;
+// endregion:	--- types
+
 // region:		--- Agent
 //#[derive(Debug)]
 pub struct Agent<'a, P>
 where
 	P: std::fmt::Debug + Send + Sync + Unpin + 'static,
 {
+	liveliness: bool,
 	com: Arc<Communicator>,
 	// an optional liveliness token
 	liveliness_token: RwLock<Option<LivelinessToken<'a>>>,
@@ -48,6 +54,7 @@ where
 	pub fn new(config: Config, prefix: impl Into<String>, properties: P) -> Self {
 		let com = Arc::new(Communicator::new(config, prefix));
 		Self {
+			liveliness: false,
 			com,
 			liveliness_token: RwLock::new(None),
 			liveliness_subscriber: Arc::new(RwLock::new(None)),
@@ -63,18 +70,9 @@ where
 		self.com.uuid()
 	}
 
-	pub async fn liveliness(&mut self, msg_type: impl Into<String>) {
-		let token: LivelinessToken<'a> = self.com.liveliness(msg_type).await;
-		self.liveliness_token.write().unwrap().replace(token);
+	pub fn liveliness(&mut self, activate: bool) {
+		self.liveliness = activate;
 	}
-
-	//pub async fn liveliness_subscriber(&self, callback: fn(zenoh::sample::Sample)) {
-	//	let subscriber = Arc::new(self.com.liveliness_subscriber(callback).await);
-	//	self.liveliness_subscriber
-	//		.write()
-	//		.unwrap()
-	//		.replace(subscriber);
-	//}
 
 	pub fn liveliness_subscriber(&self) -> LivelinessSubscriberBuilder<P> {
 		LivelinessSubscriberBuilder {
@@ -126,18 +124,33 @@ where
 	}
 
 	pub async fn start(&mut self) {
-		// start liveliness subscriber
-		if self.liveliness_subscriber.read().unwrap().is_some() {
-			let _res = self.liveliness_subscriber.write().as_mut().unwrap().as_mut().unwrap().start();
+		// start all registered queryables
+		for queryable in self.queryables.write().unwrap().iter_mut() {
+			let _res = queryable.start();
 		}
 		// start all registered subscribers
 		for subscriber in self.subscribers.write().unwrap().iter_mut() {
 			let _res = subscriber.start();
 		}
-		// start all registered queryables
-		for queryable in self.queryables.write().unwrap().iter_mut() {
-			let _res = queryable.start();
+		// start liveliness subscriber
+		if self.liveliness_subscriber.read().unwrap().is_some() {
+			let _res = self
+				.liveliness_subscriber
+				.write()
+				.as_mut()
+				.unwrap()
+				.as_mut()
+				.unwrap()
+				.start();
 		}
+
+		// activate liveliness
+		if self.liveliness {
+			let msg_type = "alive";
+			let token: LivelinessToken<'a> = self.com.liveliness(msg_type).await;
+			self.liveliness_token.write().unwrap().replace(token);
+		}
+
 		// start all registered timers
 		for timer in self.timers.write().unwrap().iter_mut() {
 			let _res = timer.start();
@@ -155,17 +168,28 @@ where
 		for timer in self.timers.write().unwrap().iter_mut() {
 			let _res = timer.stop();
 		}
-		// stop all registered queryables
-		for queryable in self.queryables.write().unwrap().iter_mut() {
-			let _res = queryable.stop();
+
+		// stop liveliness
+		self.liveliness_token.write().unwrap().take();
+		self.liveliness = false;
+
+		// stop liveliness subscriber
+		if self.liveliness_subscriber.read().unwrap().is_some() {
+			let _res = self
+				.liveliness_subscriber
+				.write()
+				.unwrap()
+				.as_mut()
+				.unwrap()
+				.stop();
 		}
 		// stop all registered subscribers
 		for subscriber in self.subscribers.write().unwrap().iter_mut() {
 			let _res = subscriber.stop();
 		}
-		// stop liveliness subscriber
-		if self.liveliness_subscriber.read().unwrap().is_some() {
-			let _res = self.liveliness_subscriber.write().unwrap().as_mut().unwrap().stop();
+		// stop all registered queryables
+		for queryable in self.queryables.write().unwrap().iter_mut() {
+			let _res = queryable.stop();
 		}
 	}
 }

@@ -5,7 +5,7 @@ use super::communicator::Communicator;
 use crate::{context::Context, prelude::*};
 use std::sync::{Arc, RwLock};
 use tokio::task::JoinHandle;
-use zenoh::prelude::{Sample, r#async::AsyncResolve};
+use zenoh::prelude::{r#async::AsyncResolve, Sample};
 // endregion:	--- modules
 
 // region:		--- types
@@ -125,7 +125,8 @@ where
 				.liveliness()
 				.get(&key_expr)
 				//.timeout(Duration::from_millis(500))
-				.res().await
+				.res()
+				.await
 				.unwrap();
 
 			while let Ok(reply) = replies.recv_async().await {

@@ -1,9 +1,9 @@
 // Copyright © 2023 Stephan Kunz
 
 // region:		--- modules
-use std::any::Any;
 use chrono::{Local, NaiveDateTime};
 use serde::{Deserialize, Serialize};
+use std::any::Any;
 // endregion:	--- modules
 
 // region:		--- DimasMessage
@@ -21,8 +21,9 @@ pub struct Message<T> {
 	content: T,
 }
 
-impl<T> Message<T> 
-	where T: Any
+impl<T> Message<T>
+where
+	T: Any,
 {
 	pub fn new(content: T) -> Message<T> {
 		Message {
