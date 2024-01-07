@@ -6,6 +6,7 @@ use std::sync::{Arc, RwLock};
 // region:		--- modules
 use clap::Parser;
 use dimas::prelude::*;
+use nemo::network_protocol::NetworkMsg;
 use zenoh::{config, prelude::SampleKind, sample::Sample};
 //use nemo::network_protocol::*;
 // endregion:	--- modules
@@ -26,13 +27,14 @@ struct AgentProps {}
 fn new_alert_subscription(ctx: Arc<Context>, props: Arc<RwLock<AgentProps>>, sample: Sample) {
 	let _ = props;
 	let _ = ctx;
+	let message = serde_json::from_str::<NetworkMsg>(&sample.value.to_string()).unwrap().to_owned();
+	dbg!(&message);
 	match sample.kind {
 		SampleKind::Put => {
-			dbg!(sample.value.to_string());
-			//let message: M = serde_json::from_str(sample.value).unwrap().to_owned();
+			//dbg!("as put");
 		}
 		SampleKind::Delete => {
-			todo!("received delete");
+			//dbg!("as delete");
 		}
 	}
 }
@@ -40,12 +42,13 @@ fn new_alert_subscription(ctx: Arc<Context>, props: Arc<RwLock<AgentProps>>, sam
 fn liveliness_subscription(ctx: Arc<Context>, props: Arc<RwLock<AgentProps>>, sample: Sample) {
 	let _ = props;
 	let _ = ctx;
+	dbg!(&sample.key_expr);
 	match sample.kind {
 		SampleKind::Put => {
-			dbg!(&sample.key_expr);
+			//dbg!("as put");
 		}
 		SampleKind::Delete => {
-			dbg!(&sample.key_expr);
+			//dbg!("as delete");
 		}
 	}
 }
