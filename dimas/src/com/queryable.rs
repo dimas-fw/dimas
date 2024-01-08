@@ -110,6 +110,7 @@ where
 {
 	pub fn start(&mut self) -> Result<()> {
 		let key_expr = self.key_expr.clone();
+		//dbg!(&key_expr);
 		let cb = self.callback;
 		let ctx = self.context.clone();
 		let props = self.props.clone();

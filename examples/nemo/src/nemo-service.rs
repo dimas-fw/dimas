@@ -7,12 +7,7 @@ use std::sync::{Arc, RwLock};
 use clap::Parser;
 use dimas::prelude::*;
 use nemo::network_protocol::*;
-use zenoh::{
-	config,
-	prelude::{r#async::AsyncResolve, SampleKind},
-	query::ConsolidationMode,
-	sample::Sample,
-};
+use zenoh::prelude::*;
 //use nemo::network_protocol::*;
 // endregion:	--- modules
 
@@ -49,49 +44,34 @@ fn new_alert_subscription(ctx: Arc<Context>, props: Arc<RwLock<AgentProps>>, sam
 }
 
 fn liveliness_subscription(ctx: Arc<Context>, props: Arc<RwLock<AgentProps>>, sample: Sample) {
-	let _ = props;
-	let _ = ctx;
-	let agent_id = sample.key_expr.to_string().replace("nemo/alive/", "");
-	dbg!(&agent_id);
+	let repl = ctx.prefix() + "/alive/";
+	let agent_id = sample.key_expr.to_string().replace(&repl, "");
+	let query_name = "network/".to_string() + &agent_id;
+	//dbg!(&agent_id);
 	//dbg!(&sample.key_expr);
 	match sample.kind {
 		SampleKind::Put => {
 			// query remote device
-			//dbg!("remote");
-			let key_expr = "nemo/network/".to_string() + &agent_id;
-			tokio::spawn(async move {
-				let replies = ctx
-					.communicator
-					.session()
-					.get(&key_expr)
-					// ensure to get more than one interface from a host
-					.consolidation(ConsolidationMode::None)
-					//.timeout(Duration::from_millis(100))
-					.res()
-					.await
-					.unwrap();
-				//dbg!(&replies);
-
-				while let Ok(reply) = replies.recv_async().await {
-					//dbg!(&reply);
-					match reply.sample {
-						Ok(sample) => {
-							//dbg!(&sample);
-							let device = serde_json::from_str::<NetworkDevice>(
-								&sample.value.to_string(),
-							)
-							.unwrap()
-							.to_owned();
-							//dbg!(&device);
-							add_node(props.clone(), agent_id.clone(), device).unwrap();
-						}
-						Err(err) => println!(
-							">> No data (ERROR: '{}')",
-							String::try_from(&err).unwrap_or("".to_string())
-						),
-					}
+			//dbg!("query");
+			match ctx.query(
+				ctx.clone(),
+				props.clone(),
+				query_name.clone(),
+				ConsolidationMode::None,
+				handle_query_response,
+			) {
+				Ok(_) => {}
+				Err(error) => {
+					dbg!(error);
+					let _ = ctx.query(
+						ctx.clone(),
+						props.clone(),
+						query_name,
+						ConsolidationMode::None,
+						handle_query_response,
+					);
 				}
-			});
+			}
 		}
 		SampleKind::Delete => {
 			remove_nodes(props.clone(), agent_id).unwrap();
@@ -99,16 +79,31 @@ fn liveliness_subscription(ctx: Arc<Context>, props: Arc<RwLock<AgentProps>>, sa
 	}
 }
 
+fn handle_query_response(ctx: Arc<Context>, props: Arc<RwLock<AgentProps>>, sample: Sample) {
+	let _ = ctx;
+	//dbg!("response");
+	//dbg!(&sample);
+	let device = serde_json::from_str::<NetworkDevice>(&sample.value.to_string())
+		.unwrap()
+		.to_owned();
+	//dbg!(&device);
+	let repl = ctx.prefix() + "/network/";
+	let agent_id = sample.key_expr.to_string().replace(&repl, "");
+	//dbg!(&agent_id);
+	add_node(props.clone(), agent_id, device).unwrap();
+}
+
 fn remove_nodes(props: Arc<RwLock<AgentProps>>, id: impl Into<String>) -> Result<()> {
+	//dbg!("remove");
 	// root comes from that agent
 	let root = props.read().unwrap().root.clone();
 	if root.is_some() {
 		let agent_id = root.unwrap().clone().agent_id.clone();
-		if  agent_id == id.into() {
+		if agent_id == id.into() {
 			let _x = props.write().unwrap().root.take();
 		}
 	}
-	dbg!(&props);
+	//dbg!(&props);
 	Ok(())
 }
 
@@ -117,7 +112,8 @@ fn add_node(
 	id: impl Into<String>,
 	device: NetworkDevice,
 ) -> Result<()> {
-	dbg!(&props);
+	//dbg!("add");
+	//dbg!(&props);
 	let agent_id = id.into();
 	//dbg!(&agent_id);
 	// first have a look for the gateway in the tree
@@ -144,7 +140,7 @@ fn add_node(
 		}
 	}
 
-	dbg!(&props);
+	//dbg!(&props);
 	Ok(())
 }
 

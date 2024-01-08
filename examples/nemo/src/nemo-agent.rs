@@ -31,6 +31,7 @@ pub struct AgentProps {
 fn network(ctx: Arc<Context>, props: Arc<RwLock<AgentProps>>, query: Query) {
 	let _ = props;
 	let _ = ctx;
+	//dbg!("received");
 	//dbg!(&query);
 	tokio::spawn(async move {
 		let key = query.selector().key_expr.to_string();

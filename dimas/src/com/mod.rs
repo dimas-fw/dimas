@@ -4,6 +4,7 @@
 pub mod communicator;
 pub mod liveliness_subscriber;
 pub mod publisher;
+pub mod query;
 pub mod queryable;
 pub mod subscriber;
 // endregion: --- modules

@@ -3,13 +3,18 @@
 // region:		--- modules
 use crate::prelude::*;
 use serde::Serialize;
-use std::{sync::Arc, time::Duration};
+use std::{
+	sync::{Arc, RwLock},
+	time::Duration,
+};
 use zenoh::{
 	liveliness::LivelinessToken,
 	prelude::{r#async::*, sync::SyncResolve},
 	publication::Publisher,
 	subscriber::Subscriber,
 };
+
+use super::query::QueryCallback;
 // endregion:	--- modules
 
 // region:		--- Communicator
@@ -110,6 +115,48 @@ impl Communicator {
 			Ok(_) => Ok(()),
 			Err(_) => Err("Context publish failed".into()),
 		}
+	}
+
+	pub fn query<P>(
+		&self,
+		ctx: Arc<Context>,
+		props: Arc<RwLock<P>>,
+		query_name: impl Into<String>,
+		mode: ConsolidationMode,
+		callback: QueryCallback<P>,
+	) -> Result<()>
+	where
+		P: Send + Sync + Unpin + 'static,
+	{
+		let key_expr = self.prefix.clone() + "/" + &query_name.into();
+		//dbg!(&key_expr);
+		let ctx = ctx.clone();
+		let props = props.clone();
+		let session = self.session();
+
+		let replies = session
+			.get(&key_expr)
+			// ensure to get more than one interface from a host
+			.consolidation(mode)
+			//.timeout(Duration::from_millis(1000))
+			.res_sync()
+			.unwrap();
+		//dbg!(&replies);
+
+		while let Ok(reply) = replies.recv() {
+			//dbg!(&reply);
+			match reply.sample {
+				Ok(sample) => {
+					//dbg!(&sample);
+					callback(ctx.clone(), props.clone(), sample)
+				}
+				Err(err) => println!(
+					">> No data (ERROR: '{}')",
+					String::try_from(&err).unwrap_or("".to_string())
+				),
+			}
+		}
+		Ok(())
 	}
 }
 

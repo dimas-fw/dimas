@@ -16,10 +16,10 @@ use sysinfo::System;
 pub struct NetworkUuid(pub String);
 
 impl std::fmt::Debug for NetworkUuid {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        //f.debug_tuple("NetworkUuid").field(&self.0).finish()
-				f.write_str(&self.0)
-    }
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		//f.debug_tuple("NetworkUuid").field(&self.0).finish()
+		f.write_str(&self.0)
+	}
 }
 // endregion:	--- types
 
@@ -143,7 +143,7 @@ impl std::fmt::Debug for NetworkTreeNode {
 		let mut gw = "None".to_string();
 		if self.gateway.is_some() {
 			gw = self.gateway.clone().unwrap().uuid.0.clone();
-		} 
+		}
 		f.debug_struct("NetworkTreeNode")
 			.field("uuid", &self.uuid)
 			.field("agent_id", &self.agent_id)

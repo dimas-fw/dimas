@@ -144,6 +144,9 @@ where
 				.start();
 		}
 
+		// wait a little bit before starting active part
+		tokio::time::sleep(Duration::from_millis(100)).await;
+
 		// activate liveliness
 		if self.liveliness {
 			let msg_type = "alive";

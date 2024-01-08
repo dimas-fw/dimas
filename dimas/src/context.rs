@@ -1,9 +1,13 @@
 //! Copyright © 2023 Stephan Kunz
 
 // region:		--- modules
-use crate::{com::communicator::Communicator, prelude::*};
+use crate::{
+	com::{communicator::Communicator, query::QueryCallback},
+	prelude::*,
+};
 use serde::*;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
+use zenoh::query::ConsolidationMode;
 // endregion:	--- modules
 
 // region:		--- Context
@@ -17,6 +21,10 @@ impl Context {
 		self.communicator.uuid()
 	}
 
+	pub fn prefix(&self) -> String {
+		self.communicator.prefix()
+	}
+
 	pub fn publish<P>(&self, msg_name: impl Into<String>, message: P) -> Result<()>
 	where
 		P: Serialize,
@@ -24,11 +32,19 @@ impl Context {
 		self.communicator.publish(msg_name, message)
 	}
 
-	pub async fn query<Q>(&self, _query_name: impl Into<String>, _message: Q) -> Result<()>
+	pub fn query<P>(
+		&self,
+		ctx: Arc<Context>,
+		props: Arc<RwLock<P>>,
+		query_name: impl Into<String>,
+		mode: ConsolidationMode,
+		callback: QueryCallback<P>,
+	) -> Result<()>
 	where
-		Q: Serialize,
+		P: Send + Sync + Unpin + 'static,
 	{
-		todo!("not yet implemented")
+		self.communicator
+			.query(ctx, props, query_name, mode, callback)
 	}
 }
 // endregion:	--- Context

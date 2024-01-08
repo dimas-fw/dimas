@@ -10,7 +10,6 @@ use zenoh::prelude::{r#async::AsyncResolve, Sample};
 
 // region:		--- types
 pub type SubscriberCallback<P> = fn(Arc<Context>, Arc<RwLock<P>>, sample: Sample);
-// msg: Box<dyn DimasMessage<Msg=dyn Any>>
 // endregion:	--- types
 
 // region:		--- SubscriberBuilder
