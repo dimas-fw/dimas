@@ -1,27 +1,30 @@
 # Copyright © 2023 Stephan Kunz
 [package]
-name = "dimas"
+name = "pubsub"
 rust-version = { workspace = true }
 version = { workspace = true }
 edition = { workspace = true }
 authors = { workspace = true }
+publish = false
 license-file = { workspace = true }
-description = "DiMAS - A framework for Distributed Multi Agent Systems"
+description = "Publisher/Subscriber example"
 
 [lints]
 workspace = true
 
+[[bin]]
+name = "publisher"
+path = "src/publisher.rs"
+
+[[bin]]
+name = "subscriber"
+path = "src/subscriber.rs"
+
 [dependencies]
-chrono = { workspace = true }
 clap = { workspace = true }
-derive_more = { workspace = true }
-serde = { workspace = true }
-#serde_derive = { workspace = true }
+dimas = { workspace = true }
 serde_json = { workspace = true }
-#serial_test  = { workspace = true }
-#thiserror = { workspace = true }
 tokio = { workspace = true }
 zenoh = { workspace = true }
 
 [dev-dependencies]
-#anyhow  = { workspace = true }

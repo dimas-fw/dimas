@@ -56,7 +56,8 @@ where
 	where
 		F: FnMut(Arc<Context>, Arc<RwLock<P>>) + Send + Sync + Unpin + 'static,
 	{
-		self.callback.replace(Arc::new(Mutex::new(callback)));
+		self.callback
+			.replace(Arc::new(Mutex::new(callback)));
 		self
 	}
 

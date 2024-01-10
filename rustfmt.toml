@@ -5,5 +5,5 @@ hard_tabs = true
 edition = "2021"
 
 max_width = 100
-# chain_width = 50
-# array_width = 50
+chain_width = 50
+array_width = 50

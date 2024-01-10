@@ -133,7 +133,12 @@ where
 			let _res = subscriber.start();
 		}
 		// start liveliness subscriber
-		if self.liveliness_subscriber.read().unwrap().is_some() {
+		if self
+			.liveliness_subscriber
+			.read()
+			.unwrap()
+			.is_some()
+		{
 			let _res = self
 				.liveliness_subscriber
 				.write()
@@ -151,7 +156,10 @@ where
 		if self.liveliness {
 			let msg_type = "alive";
 			let token: LivelinessToken<'a> = self.com.liveliness(msg_type).await;
-			self.liveliness_token.write().unwrap().replace(token);
+			self.liveliness_token
+				.write()
+				.unwrap()
+				.replace(token);
 		}
 
 		// start all registered timers
@@ -177,7 +185,12 @@ where
 		self.liveliness = false;
 
 		// stop liveliness subscriber
-		if self.liveliness_subscriber.read().unwrap().is_some() {
+		if self
+			.liveliness_subscriber
+			.read()
+			.unwrap()
+			.is_some()
+		{
 			let _res = self
 				.liveliness_subscriber
 				.write()
