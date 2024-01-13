@@ -4,8 +4,8 @@
 // region:		--- modules
 use clap::Parser;
 use dimas::prelude::*;
+use zenoh::{sample::Sample, prelude::SampleKind};
 use std::sync::{Arc, RwLock};
-use zenoh::{config, prelude::r#async::*};
 // endregion:	--- modules
 
 // region:		--- Clap
@@ -41,17 +41,17 @@ async fn main() -> Result<()> {
 	// parse arguments
 	let args = Args::parse();
 
-	// create & initiaize agents properties
+	// create & initialize agents properties
 	let properties = AgentProps {};
-	
-  // create an agent with the properties
-  let mut agent = Agent::new(config::peer(), &args.prefix, properties);
-	
-  // activate sending liveliness signal
+
+	// create an agent with the properties
+	let mut agent = Agent::new(Config::default(), &args.prefix, properties);
+
+	// activate sending liveliness signal
 	agent.liveliness(true);
 
 	// add a liveliness subscriber to listen for other agents
-  // the subscriber will also get its own liveliness signal
+	// the subscriber will also get its own liveliness signal
 	agent
 		.liveliness_subscriber()
 		.callback(liveliness_subscription)

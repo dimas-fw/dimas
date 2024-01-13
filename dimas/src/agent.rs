@@ -51,7 +51,7 @@ impl<'a, P> Agent<'a, P>
 where
 	P: std::fmt::Debug + Send + Sync + Unpin + 'static,
 {
-	pub fn new(config: Config, prefix: impl Into<String>, properties: P) -> Self {
+	pub fn new(config: crate::config::Config, prefix: impl Into<String>, properties: P) -> Self {
 		let com = Arc::new(Communicator::new(config, prefix));
 		Self {
 			liveliness: false,
@@ -214,7 +214,6 @@ where
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use zenoh::config;
 
 	// check, that the auto traits are available
 	fn is_normal<T: Sized + Send + Sync + Unpin>() {}
@@ -230,28 +229,28 @@ mod tests {
 	#[tokio::test]
 	//#[serial]
 	async fn agent_create_default() {
-		let _agent1: Agent<Props> = Agent::new(config::peer(), "agent1", Props {});
-		let _agent2: Agent<Props> = Agent::new(config::peer(), "agent2", Props {});
+		let _agent1: Agent<Props> = Agent::new(crate::config::Config::local(), "agent1", Props {});
+		let _agent2: Agent<Props> = Agent::new(crate::config::Config::local(), "agent2", Props {});
 	}
 
 	#[tokio::test(flavor = "current_thread")]
 	//#[serial]
 	async fn agent_create_current() {
-		let _agent1: Agent<Props> = Agent::new(config::peer(), "agent1", Props {});
-		let _agent2: Agent<Props> = Agent::new(config::peer(), "agent2", Props {});
+		let _agent1: Agent<Props> = Agent::new(crate::config::Config::local(), "agent1", Props {});
+		let _agent2: Agent<Props> = Agent::new(crate::config::Config::local(), "agent2", Props {});
 	}
 
 	#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 	//#[serial]
 	async fn agent_create_restricted() {
-		let _agent1: Agent<Props> = Agent::new(config::peer(), "agent1", Props {});
-		let _agent2: Agent<Props> = Agent::new(config::peer(), "agent2", Props {});
+		let _agent1: Agent<Props> = Agent::new(crate::config::Config::local(), "agent1", Props {});
+		let _agent2: Agent<Props> = Agent::new(crate::config::Config::local(), "agent2", Props {});
 	}
 
 	#[tokio::test(flavor = "multi_thread")]
 	//#[serial]
 	async fn agent_create_multi() {
-		let _agent1: Agent<Props> = Agent::new(config::peer(), "agent1", Props {});
-		let _agent2: Agent<Props> = Agent::new(config::peer(), "agent2", Props {});
+		let _agent1: Agent<Props> = Agent::new(crate::config::Config::local(), "agent1", Props {});
+		let _agent2: Agent<Props> = Agent::new(crate::config::Config::local(), "agent2", Props {});
 	}
 }

@@ -27,8 +27,8 @@ pub struct Communicator {
 }
 
 impl Communicator {
-	pub fn new(config: Config, prefix: impl Into<String>) -> Self {
-		let session = Arc::new(zenoh::open(config).res_sync().unwrap());
+	pub fn new(config: crate::config::Config, prefix: impl Into<String>) -> Self {
+		let session = Arc::new(zenoh::open(config.zenoh_config()).res_sync().unwrap());
 		let prefix = prefix.into();
 		Self { prefix, session }
 	}
@@ -162,7 +162,7 @@ impl Communicator {
 
 impl Default for Communicator {
 	fn default() -> Self {
-		Communicator::new(config::peer(), "peer")
+		Communicator::new(crate::config::Config::local(), "peer")
 	}
 }
 // endregion:	--- Communicator
@@ -184,7 +184,7 @@ mod tests {
 	//#[serial]
 	async fn communicator_create_default() {
 		let _peer1 = Communicator::default();
-		let _peer2 = Communicator::new(config::peer(), "peer2");
+		let _peer2 = Communicator::new(crate::config::Config::local(), "peer2");
 		//let _peer3 = Communicator::new(config::client());
 	}
 
@@ -192,23 +192,20 @@ mod tests {
 	//#[serial]
 	async fn communicator_create_single() {
 		let _peer1 = Communicator::default();
-		let _peer2 = Communicator::new(config::peer(), "peer2");
-		//let _peer3 = Communicator::new(config::client());
+		let _peer2 = Communicator::new(crate::config::Config::local(), "peer2");
 	}
 
 	#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 	//#[serial]
 	async fn communicator_create_restricted() {
 		let _peer1 = Communicator::default();
-		let _peer2 = Communicator::new(config::peer(), "peer2");
-		//let _peer3 = Communicator::new(config::client());
+		let _peer2 = Communicator::new(crate::config::Config::local(), "peer2");
 	}
 
 	#[tokio::test(flavor = "multi_thread")]
 	//#[serial]
 	async fn communicator_create_multi() {
 		let _peer1 = Communicator::default();
-		let _peer2 = Communicator::new(config::peer(), "peer2");
-		//let _peer3 = Communicator::new(config::client());
+		let _peer2 = Communicator::new(crate::config::Config::local(), "peer2");
 	}
 }

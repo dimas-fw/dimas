@@ -5,7 +5,6 @@
 use clap::Parser;
 use dimas::prelude::*;
 use std::sync::{Arc, RwLock};
-use zenoh::config;
 // endregion:	--- modules
 
 // region:		--- Clap
@@ -26,12 +25,12 @@ async fn main() -> Result<()> {
 	// parse arguments
 	let args = Args::parse();
 
-	// create & initiaize agents properties
+	// create & initialize agents properties
 	let properties = AgentProps {};
-	
-  // create an agent with the properties
-  let mut agent = Agent::new(config::peer(), &args.prefix, properties);
-	
+
+	// create an agent with the properties
+	let mut agent = Agent::new(Config::default(), &args.prefix, properties);
+
 	agent.start().await;
 
 	Ok(())

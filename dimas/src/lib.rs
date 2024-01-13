@@ -7,6 +7,7 @@
 // region:    --- modules
 mod agent;
 mod com;
+mod config;
 mod context;
 mod error;
 mod message;
