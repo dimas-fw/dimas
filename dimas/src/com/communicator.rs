@@ -13,7 +13,7 @@ use zenoh::prelude::{r#async::*, sync::SyncResolve};
 use zenoh::liveliness::LivelinessToken;
 #[cfg(feature="publisher")]
 use zenoh::publication::Publisher;
-#[cfg(feature="subscriber")]
+#[cfg(any(feature="subscriber", feature="liveliness"))]
 use zenoh::subscriber::Subscriber;
 #[cfg(feature = "query")]
 use super::query::QueryCallback;

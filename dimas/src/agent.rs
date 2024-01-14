@@ -4,7 +4,7 @@
 use crate::com::communicator::Communicator;
 use std::{
 	sync::{Arc, RwLock},
-	time::Duration,
+	time::Duration, marker::PhantomData,
 };
 use tokio::time::sleep;
 use zenoh::config::Config;
@@ -34,6 +34,7 @@ pub struct Agent<'a, P>
 where
 	P: std::fmt::Debug + Send + Sync + Unpin + 'static,
 {
+	pd: PhantomData<&'a P>,
 	#[cfg(feature="liveliness")]
 	liveliness: bool,
 	com: Arc<Communicator>,
@@ -68,7 +69,9 @@ where
 {
 	pub fn new(config: crate::config::Config, prefix: impl Into<String>, properties: P) -> Self {
 		let com = Arc::new(Communicator::new(config, prefix));
+		let pd = PhantomData { };
 		Self {
+			pd,
 			#[cfg(feature="liveliness")]
 			liveliness: false,
 			com,
@@ -214,27 +217,30 @@ where
 			let _res = timer.stop();
 		}
 
-		// stop liveliness
 		#[cfg(feature="liveliness")]
-		self.liveliness_token.write().unwrap().take();
-		self.liveliness = false;
-
-		// stop liveliness subscriber
-		#[cfg(feature="liveliness")]
-		if self
-			.liveliness_subscriber
-			.read()
-			.unwrap()
-			.is_some()
 		{
-			let _res = self
+			// stop liveliness
+			self.liveliness_token.write().unwrap().take();
+			self.liveliness = false;
+
+			// stop liveliness subscriber
+			#[cfg(feature="liveliness")]
+			if self
 				.liveliness_subscriber
-				.write()
+				.read()
 				.unwrap()
-				.as_mut()
-				.unwrap()
-				.stop();
+				.is_some()
+			{
+				let _res = self
+					.liveliness_subscriber
+					.write()
+					.unwrap()
+					.as_mut()
+					.unwrap()
+					.stop();
+			}
 		}
+
 		// stop all registered subscribers
 		#[cfg(feature="subscriber")]
 		for subscriber in self.subscribers.write().unwrap().iter_mut() {
