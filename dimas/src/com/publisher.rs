@@ -52,6 +52,7 @@ impl<'a> PublisherBuilder<'a> {
 			let c = self.communicator.clone().unwrap();
 			c.prefix() + "/" + &self.msg_type.unwrap() + "/" + &c.uuid()
 		};
+
 		//dbg!(&key_expr);
 		let publ = self
 			.communicator

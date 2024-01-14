@@ -9,7 +9,7 @@ pub struct Config(zenoh::config::Config);
 impl Default for Config {
 	fn default() -> Self {
 		let mut res = zenoh::config::peer();
-		// add to use every interface for connection
+		// use every interface for connection
 		res.insert_json5("connect/endpoints", r#"["tcp/0.0.0.0/7447"]"#);
 		Config(res)
 	}

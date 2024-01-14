@@ -18,8 +18,9 @@ path = "src/liveliness.rs"
 
 [dependencies]
 clap = { workspace = true }
-dimas = { workspace = true }
+dimas = { workspace = true, features = ["liveliness"] }
 tokio = { workspace = true }
 zenoh = { workspace = true }
 
 [dev-dependencies]
+

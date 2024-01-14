@@ -7,13 +7,15 @@ use std::{
 	sync::{Arc, RwLock},
 	time::Duration,
 };
-use zenoh::{
-	liveliness::LivelinessToken,
-	prelude::{r#async::*, sync::SyncResolve},
-	publication::Publisher,
-	subscriber::Subscriber,
-};
+use zenoh::prelude::{r#async::*, sync::SyncResolve};
 
+#[cfg(feature="liveliness")]
+use zenoh::liveliness::LivelinessToken;
+#[cfg(feature="publisher")]
+use zenoh::publication::Publisher;
+#[cfg(feature="subscriber")]
+use zenoh::subscriber::Subscriber;
+#[cfg(feature = "query")]
 use super::query::QueryCallback;
 // endregion:	--- modules
 
@@ -44,7 +46,7 @@ impl Communicator {
 	pub fn session(&self) -> Arc<Session> {
 		self.session.clone()
 	}
-
+	#[cfg(feature="liveliness")]
 	pub async fn liveliness<'a>(&self, msg_type: impl Into<String>) -> LivelinessToken<'a> {
 		let session = self.session.clone();
 		let uuid = self.prefix.clone() + "/" + &msg_type.into() + "/" + &session.zid().to_string();
@@ -57,6 +59,7 @@ impl Communicator {
 			.unwrap()
 	}
 
+	#[cfg(feature="liveliness")]
 	pub async fn liveliness_subscriber<'a>(&self, callback: fn(Sample)) -> Subscriber<'a, ()> {
 		let key_expr = self.prefix.clone() + "/*";
 		//dbg!(&key_expr);
@@ -95,6 +98,7 @@ impl Communicator {
 		s
 	}
 
+	#[cfg(feature="publisher")]
 	pub async fn create_publisher<'a>(&self, key_expr: impl Into<String>) -> Publisher<'a> {
 		self.session
 			.declare_publisher(key_expr.into())
@@ -103,6 +107,7 @@ impl Communicator {
 			.unwrap()
 	}
 
+	#[cfg(feature="publisher")]
 	pub fn publish<T>(&self, msg_name: impl Into<String>, message: T) -> Result<()>
 	where
 		T: Serialize,
@@ -117,6 +122,7 @@ impl Communicator {
 		}
 	}
 
+	#[cfg(feature="query")]
 	pub fn query<P>(
 		&self,
 		ctx: Arc<Context>,

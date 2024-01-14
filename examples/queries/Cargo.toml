@@ -22,7 +22,7 @@ path = "src/query.rs"
 
 [dependencies]
 clap = { workspace = true }
-dimas = { workspace = true }
+dimas = { workspace = true, features = ["query", "queryable"] }
 tokio = { workspace = true }
 zenoh = { workspace = true }
 

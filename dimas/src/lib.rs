@@ -11,6 +11,7 @@ mod config;
 mod context;
 mod error;
 mod message;
+#[cfg(feature="timer")]
 mod timer;
 mod utils;
 

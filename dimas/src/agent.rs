@@ -1,22 +1,27 @@
 //! Copyright © 2023 Stephan Kunz
 
 // region:		--- modules
-use crate::{
-	com::{
-		communicator::Communicator,
-		liveliness_subscriber::{LivelinessSubscriber, LivelinessSubscriberBuilder},
-		publisher::{Publisher, PublisherBuilder},
-		queryable::{Queryable, QueryableBuilder},
-		subscriber::{Subscriber, SubscriberBuilder},
-	},
-	timer::{Timer, TimerBuilder},
-};
+use crate::com::communicator::Communicator;
 use std::{
 	sync::{Arc, RwLock},
 	time::Duration,
 };
 use tokio::time::sleep;
-use zenoh::{config::Config, liveliness::LivelinessToken};
+use zenoh::config::Config;
+#[cfg(feature="liveliness")]
+use zenoh::liveliness::LivelinessToken;
+#[cfg(feature="liveliness")]
+use crate::com::liveliness_subscriber::{LivelinessSubscriber, LivelinessSubscriberBuilder};
+#[cfg(feature="publisher")]
+use crate::com::publisher::{Publisher, PublisherBuilder};
+#[cfg(feature="subscriber")]
+use crate::com::subscriber::{Subscriber, SubscriberBuilder};
+//#[cfg(feature="query")]
+//use crate::com::query::{Query, QueryBuilder};
+#[cfg(feature="queryable")]
+use crate::com::queryable::{Queryable, QueryableBuilder};
+#[cfg(feature="timer")]
+use crate::timer::{Timer, TimerBuilder};
 // endregion:	--- modules
 
 // region:		--- types
@@ -29,19 +34,29 @@ pub struct Agent<'a, P>
 where
 	P: std::fmt::Debug + Send + Sync + Unpin + 'static,
 {
+	#[cfg(feature="liveliness")]
 	liveliness: bool,
 	com: Arc<Communicator>,
 	// an optional liveliness token
+	#[cfg(feature="liveliness")]
 	liveliness_token: RwLock<Option<LivelinessToken<'a>>>,
 	// an optional liveliness subscriber
+	#[cfg(feature="liveliness")]
 	liveliness_subscriber: Arc<RwLock<Option<LivelinessSubscriber<P>>>>,
 	// registered subscribers
+	#[cfg(feature="subscriber")]
 	subscribers: Arc<RwLock<Vec<Subscriber<P>>>>,
 	// registered queryables
+	#[cfg(feature="queryable")]
 	queryables: Arc<RwLock<Vec<Queryable<P>>>>,
 	// registered publisher
+	#[cfg(feature="publisher")]
 	publishers: Arc<RwLock<Vec<Publisher<'a>>>>,
+	// registered queries
+	//#[cfg(feature="query")]
+	//queries: Arc<RwLock<Vec<Query<P>>>>,
 	// registered timer
+	#[cfg(feature="timer")]
 	timers: Arc<RwLock<Vec<Timer<P>>>>,
 	// The agents propertie structure
 	props: Arc<RwLock<P>>,
@@ -54,13 +69,20 @@ where
 	pub fn new(config: crate::config::Config, prefix: impl Into<String>, properties: P) -> Self {
 		let com = Arc::new(Communicator::new(config, prefix));
 		Self {
+			#[cfg(feature="liveliness")]
 			liveliness: false,
 			com,
+			#[cfg(feature="liveliness")]
 			liveliness_token: RwLock::new(None),
+			#[cfg(feature="liveliness")]
 			liveliness_subscriber: Arc::new(RwLock::new(None)),
+			#[cfg(feature="subscriber")]
 			subscribers: Arc::new(RwLock::new(Vec::new())),
+			#[cfg(feature="queryable")]
 			queryables: Arc::new(RwLock::new(Vec::new())),
+			#[cfg(feature="publisher")]
 			publishers: Arc::new(RwLock::new(Vec::new())),
+			#[cfg(feature="timer")]
 			timers: Arc::new(RwLock::new(Vec::new())),
 			props: Arc::new(RwLock::new(properties)),
 		}
@@ -70,10 +92,12 @@ where
 		self.com.uuid()
 	}
 
+	#[cfg(feature="liveliness")]
 	pub fn liveliness(&mut self, activate: bool) {
 		self.liveliness = activate;
 	}
 
+	#[cfg(feature="liveliness")]
 	pub fn liveliness_subscriber(&self) -> LivelinessSubscriberBuilder<P> {
 		LivelinessSubscriberBuilder {
 			subscriber: self.liveliness_subscriber.clone(),
@@ -85,6 +109,7 @@ where
 		}
 	}
 
+	#[cfg(feature="subscriber")]
 	pub fn subscriber(&self) -> SubscriberBuilder<P> {
 		SubscriberBuilder {
 			collection: self.subscribers.clone(),
@@ -96,6 +121,7 @@ where
 		}
 	}
 
+	#[cfg(feature="queryable")]
 	pub fn queryable(&self) -> QueryableBuilder<P> {
 		QueryableBuilder {
 			collection: Some(self.queryables.clone()),
@@ -107,12 +133,14 @@ where
 		}
 	}
 
+	#[cfg(feature="publisher")]
 	pub fn publisher(&self) -> PublisherBuilder<'a> {
 		PublisherBuilder::default()
 			.collection(self.publishers.clone())
 			.communicator(self.com.clone())
 	}
 
+	#[cfg(feature="timer")]
 	pub fn timer(&self) -> TimerBuilder<P>
 	where
 		P: Default,
@@ -125,14 +153,17 @@ where
 
 	pub async fn start(&mut self) {
 		// start all registered queryables
+		#[cfg(feature="queryable")]
 		for queryable in self.queryables.write().unwrap().iter_mut() {
 			let _res = queryable.start();
 		}
 		// start all registered subscribers
+		#[cfg(feature="subscriber")]
 		for subscriber in self.subscribers.write().unwrap().iter_mut() {
 			let _res = subscriber.start();
 		}
 		// start liveliness subscriber
+		#[cfg(feature="liveliness")]
 		if self
 			.liveliness_subscriber
 			.read()
@@ -153,6 +184,7 @@ where
 		tokio::time::sleep(Duration::from_millis(100)).await;
 
 		// activate liveliness
+		#[cfg(feature="liveliness")]
 		if self.liveliness {
 			let msg_type = "alive";
 			let token: LivelinessToken<'a> = self.com.liveliness(msg_type).await;
@@ -163,6 +195,7 @@ where
 		}
 
 		// start all registered timers
+		#[cfg(feature="timer")]
 		for timer in self.timers.write().unwrap().iter_mut() {
 			let _res = timer.start();
 		}
@@ -176,15 +209,18 @@ where
 	pub async fn stop(&mut self) {
 		// reverse order of start!
 		// stop all registered timers
+		#[cfg(feature="timer")]
 		for timer in self.timers.write().unwrap().iter_mut() {
 			let _res = timer.stop();
 		}
 
 		// stop liveliness
+		#[cfg(feature="liveliness")]
 		self.liveliness_token.write().unwrap().take();
 		self.liveliness = false;
 
 		// stop liveliness subscriber
+		#[cfg(feature="liveliness")]
 		if self
 			.liveliness_subscriber
 			.read()
@@ -200,10 +236,12 @@ where
 				.stop();
 		}
 		// stop all registered subscribers
+		#[cfg(feature="subscriber")]
 		for subscriber in self.subscribers.write().unwrap().iter_mut() {
 			let _res = subscriber.stop();
 		}
 		// stop all registered queryables
+		#[cfg(feature="queryable")]
 		for queryable in self.queryables.write().unwrap().iter_mut() {
 			let _res = queryable.stop();
 		}

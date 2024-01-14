@@ -25,3 +25,12 @@ zenoh = { workspace = true }
 
 [dev-dependencies]
 #anyhow  = { workspace = true }
+
+[features]
+all = ["liveliness", "publisher", "subscriber", "query", "queryable", "timer"]
+liveliness = []
+publisher = []
+subscriber = []
+query = []
+queryable = []
+timer = []
