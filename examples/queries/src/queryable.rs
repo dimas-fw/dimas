@@ -1,5 +1,5 @@
 //! DiMAS queryable example
-//! Copyright © 2023 Stephan Kunz
+//! Copyright © 2024 Stephan Kunz
 
 // region:		--- modules
 use clap::Parser;

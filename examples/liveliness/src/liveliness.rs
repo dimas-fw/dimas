@@ -1,11 +1,11 @@
 //! DiMAS liveliness example
-//! Copyright © 2023 Stephan Kunz
+//! Copyright © 2024 Stephan Kunz
 
 // region:		--- modules
 use clap::Parser;
 use dimas::prelude::*;
-use zenoh::{sample::Sample, prelude::SampleKind};
 use std::sync::{Arc, RwLock};
+use zenoh::{prelude::SampleKind, sample::Sample};
 // endregion:	--- modules
 
 // region:		--- Clap

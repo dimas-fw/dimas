@@ -8,7 +8,7 @@ pub mod liveliness_subscriber;
 pub mod publisher;
 #[cfg(feature = "query")]
 pub mod query;
-#[cfg(feature ="queryable")]
+#[cfg(feature = "queryable")]
 pub mod queryable;
 #[cfg(feature = "subscriber")]
 pub mod subscriber;

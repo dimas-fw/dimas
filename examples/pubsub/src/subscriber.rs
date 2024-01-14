@@ -1,11 +1,11 @@
 //! DiMAS subscriber example
-//! Copyright © 2023 Stephan Kunz
+//! Copyright © 2024 Stephan Kunz
 
 // region:		--- modules
 use clap::Parser;
 use dimas::prelude::*;
 use std::sync::{Arc, RwLock};
-use zenoh::{sample::Sample, prelude::SampleKind};
+use zenoh::{prelude::SampleKind, sample::Sample};
 // endregion:	--- modules
 
 // region:		--- Clap

@@ -1,4 +1,4 @@
-# Copyright © 2023 Stephan Kunz
+# Copyright © 2024 Stephan Kunz
 [package]
 name = "pubsub"
 rust-version = { workspace = true }
