@@ -16,7 +16,7 @@ use std::any::Any;
 
 // region:		--- Message
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Message<T> {
+struct Message<T> {
 	utc: NaiveDateTime,
 	content: T,
 }
@@ -25,7 +25,7 @@ impl<T> Message<T>
 where
 	T: Any,
 {
-	pub fn new(content: T) -> Message<T> {
+	fn new(content: T) -> Message<T> {
 		Message {
 			utc: Local::now().naive_utc(),
 			content,

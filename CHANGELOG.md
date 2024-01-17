@@ -16,10 +16,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 
-## [Unreleased]
+## [0.0.1] - 2024-
 
 ### Added
-- Example: A netwotk monitoringg toolset
+- agent with
+  - liveliness
+  - basic timer
+  - basic pub/sub functionality
+  - basic query/queryable functionality
+- Examples: 
+  - Liveliness
+  - Timer / Publisher / Subscriber
+  - Query / Queryable
 
 
 ## [0.0.0] - 2023-09-19

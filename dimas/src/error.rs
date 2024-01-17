@@ -1,10 +1,10 @@
 //! Copyright © 2023 Stephan Kunz
 
 // region:    --- types
-// export Result with crates Error type
+/// Enables simplified usage of Result with crates Error type
 pub type Result<T> = core::result::Result<T, Error>;
 
-// crates temporary Error type
+/// crates temporary Error type
 pub type Error = Box<dyn std::error::Error>;
 // endregion: --- types
 

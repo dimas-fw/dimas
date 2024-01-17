@@ -1,13 +1,19 @@
 //! Copyright © 2023 Stephan Kunz
 
 // region:		--- modules
-use crate::com::communicator::Communicator;
 #[cfg(feature = "liveliness")]
 use crate::com::liveliness_subscriber::{LivelinessSubscriber, LivelinessSubscriberBuilder};
 #[cfg(feature = "publisher")]
 use crate::com::publisher::{Publisher, PublisherBuilder};
 #[cfg(feature = "subscriber")]
 use crate::com::subscriber::{Subscriber, SubscriberBuilder};
+#[cfg(feature = "query")]
+use crate::com::query::{Query, QueryBuilder};
+#[cfg(feature = "queryable")]
+use crate::com::queryable::{Queryable, QueryableBuilder};
+#[cfg(feature = "timer")]
+use crate::timer::{Timer, TimerBuilder};
+use crate::com::communicator::Communicator;
 use std::{
 	marker::PhantomData,
 	sync::{Arc, RwLock},
@@ -17,12 +23,6 @@ use tokio::time::sleep;
 use zenoh::config::Config;
 #[cfg(feature = "liveliness")]
 use zenoh::liveliness::LivelinessToken;
-//#[cfg(feature="query")]
-//use crate::com::query::{Query, QueryBuilder};
-#[cfg(feature = "queryable")]
-use crate::com::queryable::{Queryable, QueryableBuilder};
-#[cfg(feature = "timer")]
-use crate::timer::{Timer, TimerBuilder};
 // endregion:	--- modules
 
 // region:		--- types
@@ -30,7 +30,7 @@ use crate::timer::{Timer, TimerBuilder};
 // endregion:	--- types
 
 // region:		--- Agent
-//#[derive(Debug)]
+/// implementation of an agent
 pub struct Agent<'a, P>
 where
 	P: std::fmt::Debug + Send + Sync + Unpin + 'static,
@@ -55,8 +55,8 @@ where
 	#[cfg(feature = "publisher")]
 	publishers: Arc<RwLock<Vec<Publisher<'a>>>>,
 	// registered queries
-	//#[cfg(feature="query")]
-	//queries: Arc<RwLock<Vec<Query<P>>>>,
+	#[cfg(feature = "query")]
+	queries: Arc<RwLock<Vec<Query>>>,
 	// registered timer
 	#[cfg(feature = "timer")]
 	timers: Arc<RwLock<Vec<Timer<P>>>>,
@@ -68,6 +68,7 @@ impl<'a, P> Agent<'a, P>
 where
 	P: std::fmt::Debug + Send + Sync + Unpin + 'static,
 {
+	/// Create an instance of an agent.
 	pub fn new(config: crate::config::Config, prefix: impl Into<String>, properties: P) -> Self {
 		let com = Arc::new(Communicator::new(config, prefix));
 		let pd = PhantomData {};
@@ -86,21 +87,25 @@ where
 			queryables: Arc::new(RwLock::new(Vec::new())),
 			#[cfg(feature = "publisher")]
 			publishers: Arc::new(RwLock::new(Vec::new())),
+			#[cfg(feature = "query")]
+			queries: Arc::new(RwLock::new(Vec::new())),
 			#[cfg(feature = "timer")]
 			timers: Arc::new(RwLock::new(Vec::new())),
 			props: Arc::new(RwLock::new(properties)),
 		}
 	}
 
-	pub fn uuid(&self) -> String {
+	fn uuid(&self) -> String {
 		self.com.uuid()
 	}
 
+	/// activate sending liveliness information
 	#[cfg(feature = "liveliness")]
 	pub fn liveliness(&mut self, activate: bool) {
 		self.liveliness = activate;
 	}
 
+	/// get a builder for a subscriber for the liveliness information
 	#[cfg(feature = "liveliness")]
 	pub fn liveliness_subscriber(&self) -> LivelinessSubscriberBuilder<P> {
 		LivelinessSubscriberBuilder {
@@ -113,6 +118,7 @@ where
 		}
 	}
 
+	/// get a builder for a Subscriber
 	#[cfg(feature = "subscriber")]
 	pub fn subscriber(&self) -> SubscriberBuilder<P> {
 		SubscriberBuilder {
@@ -125,6 +131,7 @@ where
 		}
 	}
 
+	/// get a builder for a Queryable
 	#[cfg(feature = "queryable")]
 	pub fn queryable(&self) -> QueryableBuilder<P> {
 		QueryableBuilder {
@@ -137,6 +144,7 @@ where
 		}
 	}
 
+	/// get a builder for a Publisher
 	#[cfg(feature = "publisher")]
 	pub fn publisher(&self) -> PublisherBuilder<'a> {
 		PublisherBuilder::default()
@@ -144,6 +152,20 @@ where
 			.communicator(self.com.clone())
 	}
 
+	/// get a builder for a Query
+	#[cfg(feature = "query")]
+	pub fn query(&self) -> QueryBuilder<P> {
+		QueryBuilder {
+			collection: self.queries.clone(),
+			communicator: self.com.clone(),
+			props: self.props.clone(),
+			key_expr: None,
+			msg_type: None,
+			callback: None,
+		}
+	}
+
+	/// get a builder for a Timer
 	#[cfg(feature = "timer")]
 	pub fn timer(&self) -> TimerBuilder<P>
 	where
@@ -155,6 +177,7 @@ where
 			.properties(self.props.clone())
 	}
 
+	/// start the agent
 	pub async fn start(&mut self) {
 		// start all registered queryables
 		#[cfg(feature = "queryable")]
@@ -210,6 +233,7 @@ where
 		}
 	}
 
+	/// stop the agent
 	pub async fn stop(&mut self) {
 		// reverse order of start!
 		// stop all registered timers

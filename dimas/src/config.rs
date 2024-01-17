@@ -2,11 +2,13 @@
 
 use zenoh::config::{ConnectConfig, ValidatedMap};
 
+/// Manages the agents configuration
 #[repr(transparent)]
 #[derive(Debug, Clone)]
 pub struct Config(zenoh::config::Config);
 
 impl Default for Config {
+	/// create a default configuration that connecs to agents in same subnet
 	fn default() -> Self {
 		let mut res = zenoh::config::peer();
 		// use every interface for connection
@@ -16,6 +18,7 @@ impl Default for Config {
 }
 
 impl Config {
+	/// create a configuration that only connectssto agents on same host
 	pub fn local() -> Self {
 		let res = zenoh::config::peer();
 		Config(res)

@@ -10,20 +10,24 @@ use zenoh::query::ConsolidationMode;
 // endregion:	--- modules
 
 // region:		--- Context
+/// Context makes all relevant data of the agent accessible via accessor methods.
 #[derive(Debug, Clone, Default)]
 pub struct Context {
-	pub communicator: Arc<Communicator>,
+	pub(crate) communicator: Arc<Communicator>,
 }
 
 impl Context {
+	/// get the agents uuid
 	pub fn uuid(&self) -> String {
 		self.communicator.uuid()
 	}
 
+	/// get the agents prefix
 	pub fn prefix(&self) -> String {
 		self.communicator.prefix()
 	}
 
+	/// method to do an ad hoc publishing
 	#[cfg(feature = "publisher")]
 	pub fn publish<P>(&self, msg_name: impl Into<String>, message: P) -> Result<()>
 	where
@@ -32,6 +36,7 @@ impl Context {
 		self.communicator.publish(msg_name, message)
 	}
 
+	/// method to do an ad hoc query
 	#[cfg(feature = "query")]
 	pub fn query<P>(
 		&self,
