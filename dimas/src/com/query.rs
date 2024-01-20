@@ -9,7 +9,7 @@ use zenoh::sample::Sample;
 
 // region:		--- types
 #[allow(clippy::module_name_repetitions)]
-pub type QueryCallback<P> = fn(Arc<Context>, Arc<RwLock<P>>, sample: Sample);
+pub type QueryCallback<P> = fn(&Arc<Context>, &Arc<RwLock<P>>, sample: Sample);
 // endregion:	--- types
 
 // region:		--- QueryBuilder

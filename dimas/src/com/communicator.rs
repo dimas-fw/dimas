@@ -1,31 +1,32 @@
 //! Copyright © 2023 Stephan Kunz
 
 // region:		--- modules
-use crate::prelude::*;
-use serde::Serialize;
-use std::{
-	sync::{Arc, RwLock},
-	time::Duration,
-};
+use std::sync::Arc;
 use zenoh::prelude::{r#async::*, sync::SyncResolve};
 
 #[cfg(feature = "query")]
+use crate::context::Context;
+#[cfg(feature = "query")]
 use super::query::QueryCallback;
-#[cfg(feature = "liveliness")]
-use zenoh::liveliness::LivelinessToken;
+#[cfg(feature = "query")]
+use std::sync::RwLock;
+#[cfg(feature = "publisher")]
+use serde::Serialize;
 #[cfg(feature = "publisher")]
 use zenoh::publication::Publisher;
-#[cfg(any(feature = "subscriber", feature = "liveliness"))]
-use zenoh::subscriber::Subscriber;
+#[cfg(feature = "publisher")]
+use crate::prelude::*;
+#[cfg(feature = "liveliness")]
+use zenoh::liveliness::LivelinessToken;
 // endregion:	--- modules
 
 // region:		--- Communicator
 #[derive(Debug)]
 pub struct Communicator {
 	// prefix to separate agents communicaton
-	prefix: String,
+	pub(crate) prefix: String,
 	// the zenoh session
-	session: Arc<Session>,
+	pub(crate) session: Arc<Session>,
 }
 
 impl Communicator {
@@ -48,9 +49,6 @@ impl Communicator {
 		self.prefix.clone()
 	}
 
-	pub fn session(&self) -> Arc<Session> {
-		self.session.clone()
-	}
 	#[cfg(feature = "liveliness")]
 	pub async fn liveliness<'a>(&self, msg_type: impl Into<String> + Send) -> LivelinessToken<'a> {
 		let session = self.session.clone();
@@ -62,45 +60,6 @@ impl Communicator {
 			.res_async()
 			.await
 			.expect("should never happen")
-	}
-
-	#[cfg(feature = "liveliness")]
-	pub async fn liveliness_subscriber<'a>(&self, callback: fn(Sample)) -> Subscriber<'a, ()> {
-		let key_expr = self.prefix.clone() + "/*";
-		//dbg!(&key_expr);
-		// create a liveliness subscriber
-		let s = self
-			.session
-			.liveliness()
-			.declare_subscriber(&key_expr)
-			.callback(callback)
-			.res_async()
-			.await
-			.expect("should never happen");
-
-		// the initial liveliness query
-		let replies = self
-			.session
-			.liveliness()
-			.get(&key_expr)
-			.timeout(Duration::from_millis(500))
-			.res_async()
-			.await
-			.expect("should never happen");
-
-		while let Ok(reply) = replies.recv_async().await {
-			//dbg!(&reply);
-			match reply.sample {
-				Ok(sample) => {
-					callback(sample);
-				}
-				Err(err) => println!(
-					">> Received (ERROR: '{}')",
-					String::try_from(&err).expect("to be implemented")
-				),
-			}
-		}
-		s
 	}
 
 	#[cfg(feature = "publisher")]
@@ -121,7 +80,7 @@ impl Communicator {
 		let key_expr =
 			self.prefix.clone() + "/" + &msg_name.into() + "/" + &self.session.zid().to_string();
 		//dbg!(&key_expr);
-		match self.session().put(&key_expr, value).res_sync() {
+		match self.session.put(&key_expr, value).res_sync() {
 			Ok(()) => Ok(()),
 			Err(_) => Err("Context publish failed".into()),
 		}
@@ -142,7 +101,7 @@ impl Communicator {
 		//dbg!(&key_expr);
 		let ctx = ctx;
 		let props = props;
-		let session = self.session();
+		let session = self.session.clone();
 
 		let replies = session
 			.get(&key_expr)
@@ -158,7 +117,7 @@ impl Communicator {
 			match reply.sample {
 				Ok(sample) => {
 					//dbg!(&sample);
-					callback(ctx.clone(), props.clone(), sample);
+					callback(&ctx, &props, sample);
 				}
 				Err(err) => println!(
 					">> No data (ERROR: '{}')",

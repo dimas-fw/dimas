@@ -24,10 +24,8 @@ struct Args {
 #[derive(Debug, Default)]
 pub struct AgentProps {}
 
-fn query_callback(ctx: Arc<Context>, props: Arc<RwLock<AgentProps>>, sample: Sample) {
+fn query_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, sample: Sample) {
 	// to avoid clippy message
-	let _props = props;
-	let _ctx = ctx;
 	let sample = sample;
 	let message =
 		serde_json::from_str::<String>(&sample.value.to_string()).expect("could not deserialize");

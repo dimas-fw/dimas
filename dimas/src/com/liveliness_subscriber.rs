@@ -109,7 +109,7 @@ where
 		let props = self.props.clone();
 		//dbg!(&key_expr);
 		self.handle.replace(tokio::spawn(async move {
-			let session = ctx.communicator.session();
+			let session = ctx.communicator.session.clone();
 			let subscriber = session
 				.liveliness()
 				.declare_subscriber(&key_expr)
@@ -131,7 +131,7 @@ where
 		let ctx = self.context.clone();
 		let props = self.props.clone();
 		tokio::spawn(async move {
-			let session = ctx.communicator.session();
+			let session = ctx.communicator.session.clone();
 			let replies = session
 				.liveliness()
 				.get(&key_expr)

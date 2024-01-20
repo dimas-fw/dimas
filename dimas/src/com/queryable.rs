@@ -10,7 +10,7 @@ use zenoh::prelude::r#async::AsyncResolve;
 
 // region:		--- types
 #[allow(clippy::module_name_repetitions)]
-pub type QueryableCallback<P> = fn(Arc<Context>, Arc<RwLock<P>>, query: zenoh::queryable::Query);
+pub type QueryableCallback<P> = fn(&Arc<Context>, &Arc<RwLock<P>>, query: zenoh::queryable::Query);
 // endregion:	--- types
 
 // region:		--- QueryableBuilder
@@ -127,7 +127,7 @@ where
 		let ctx = self.context.clone();
 		let props = self.props.clone();
 		self.handle.replace(tokio::spawn(async move {
-			let session = ctx.communicator.session();
+			let session = ctx.communicator.session.clone();
 			let subscriber = session
 				.declare_queryable(&key_expr)
 				.res_async()
@@ -140,7 +140,7 @@ where
 					.await
 					.expect("should never happen");
 				//dbg!(&query);
-				cb(ctx.clone(), props.clone(), query);
+				cb(&ctx, &props, query);
 			}
 		}));
 	}

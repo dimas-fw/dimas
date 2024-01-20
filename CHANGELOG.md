@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 
-## [0.0.1] - 2024-
+## [0.0.1] - 2024-01-21
 
 ### Added
 - agent with
@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Examples: 
   - Liveliness
   - Timer / Publisher / Subscriber
-  - Query / Queryable
+  - Timer / Query / Queryable
 
 
 ## [0.0.0] - 2023-09-19

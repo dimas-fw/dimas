@@ -10,7 +10,7 @@ use zenoh::prelude::{r#async::AsyncResolve, Sample};
 
 // region:		--- types
 #[allow(clippy::module_name_repetitions)]
-pub type SubscriberCallback<P> = fn(Arc<Context>, Arc<RwLock<P>>, sample: Sample);
+pub type SubscriberCallback<P> = fn(&Arc<Context>, &Arc<RwLock<P>>, sample: Sample);
 // endregion:	--- types
 
 // region:		--- SubscriberBuilder
@@ -121,7 +121,7 @@ where
 		let ctx = self.context.clone();
 		let props = self.props.clone();
 		self.handle.replace(tokio::spawn(async move {
-			let session = ctx.communicator.session();
+			let session = ctx.communicator.session.clone();
 			let subscriber = session
 				.declare_subscriber(&key_expr)
 				.res_async()
@@ -133,7 +133,7 @@ where
 					.recv_async()
 					.await
 					.expect("should never happen");
-				cb(ctx.clone(), props.clone(), sample);
+				cb(&ctx, &props, sample);
 			}
 		}));
 	}

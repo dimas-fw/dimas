@@ -14,14 +14,18 @@ use std::sync::{Arc, RwLock};
 // region:		--- PublisherBuilder
 #[allow(clippy::module_name_repetitions)]
 #[derive(Default, Clone)]
-pub struct PublisherBuilder<'a> {
+pub struct PublisherBuilder<'a, P> {
 	pub(crate) collection: Arc<RwLock<Vec<Publisher<'a>>>>,
 	pub(crate) communicator: Arc<Communicator>,
+	pub(crate) props: Arc<RwLock<P>>,
 	pub(crate) key_expr: Option<String>,
 	pub(crate) msg_type: Option<String>,
 }
 
-impl<'a> PublisherBuilder<'a> {
+impl<'a, P> PublisherBuilder<'a, P> 
+where
+	P: Send + Sync + Unpin + 'static,
+{
 	pub fn key_expr(mut self, key_expr: impl Into<String>) -> Self {
 		self.key_expr.replace(key_expr.into());
 		self
@@ -41,6 +45,7 @@ impl<'a> PublisherBuilder<'a> {
 		};
 
 		//dbg!(&key_expr);
+		let _props = self.props.clone();
 		let publ = self.communicator.create_publisher(key_expr).await;
 		let p = Publisher { _publisher: publ };
 		self.collection
@@ -62,17 +67,14 @@ pub struct Publisher<'a> {
 mod tests {
 	use super::*;
 
+	struct Props {}
+
 	// check, that the auto traits are available
 	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
 
 	#[test]
 	const fn normal_types() {
 		is_normal::<Publisher>();
-		is_normal::<PublisherBuilder>();
-	}
-
-	#[test]
-	fn publisher_create() {
-		let _builder = PublisherBuilder::default();
+		is_normal::<PublisherBuilder<Props>>();
 	}
 }

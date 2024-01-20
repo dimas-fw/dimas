@@ -146,10 +146,11 @@ where
 
 	/// get a builder for a Publisher
 	#[cfg(feature = "publisher")]
-	pub fn publisher(&self) -> PublisherBuilder<'a> {
+	pub fn publisher(&self) -> PublisherBuilder<'a, P> {
 		PublisherBuilder {
 			collection: self.publishers.clone(),
 			communicator: self.com.clone(),
+			props: self.props.clone(),
 			key_expr: None,
 			msg_type: None,
 		}
@@ -188,6 +189,9 @@ where
 	/// # Panics
 	///
 	pub async fn start(&mut self) {
+		// avoid warning
+		let _props = self.props.clone();
+
 		// start all registered queryables
 		#[cfg(feature = "queryable")]
 		self.queryables

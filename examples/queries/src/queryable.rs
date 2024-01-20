@@ -23,20 +23,21 @@ pub struct AgentProps {
 	counter: i128,
 }
 
-fn queryable(ctx: Arc<Context>, props: Arc<RwLock<AgentProps>>, query: Query) {
+fn queryable(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, query: Query) {
 	//dbg!(&query);
 	// to avoid clippy message
-	let _ctx = ctx;
-	let p = props;
 	let query = query;
-	let value = p.read().expect("should never happen").counter.to_string();
+	let value = props
+		.read()
+		.expect("should never happen")
+		.counter
+		.to_string();
 	println!("Received query {}", &value);
 
 	let key = query.selector().key_expr.to_string();
 	let sample = Sample::try_from(
 		key,
-		serde_json::to_string(&value)
-			.expect("should never happen"),
+		serde_json::to_string(&value).expect("should never happen"),
 	)
 	.expect("should never happen");
 
@@ -45,7 +46,10 @@ fn queryable(ctx: Arc<Context>, props: Arc<RwLock<AgentProps>>, query: Query) {
 		.res_sync()
 		.expect("should never happen");
 
-	p.write().expect("should never happen").counter += 1;
+	props
+		.write()
+		.expect("should never happen")
+		.counter += 1;
 }
 
 #[tokio::main]
