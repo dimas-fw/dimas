@@ -1,4 +1,4 @@
-//! DiMAS subscriber example
+//! `DiMAS` subscriber example
 //! Copyright © 2024 Stephan Kunz
 
 // region:		--- modules
@@ -22,11 +22,12 @@ struct Args {
 pub struct AgentProps {}
 
 fn hello_subscription(ctx: Arc<Context>, props: Arc<RwLock<AgentProps>>, sample: Sample) {
-	let _ = props;
-	let _ = ctx;
+	// to avoid clippy message
+	let _props = props;
+	let _ctx = ctx;
+	let sample = sample;
 	let message = serde_json::from_str::<String>(&sample.value.to_string())
-		.unwrap()
-		.to_owned();
+		.expect("could not deserialize");
 	match sample.kind {
 		SampleKind::Put => {
 			println!("Received '{}'", &message);
@@ -54,7 +55,7 @@ async fn main() -> Result<()> {
 		.msg_type("hello")
 		.callback(hello_subscription)
 		.add()
-		.await?;
+		.expect("should never happen");
 
 	agent.start().await;
 

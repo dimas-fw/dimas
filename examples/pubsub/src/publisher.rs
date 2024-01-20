@@ -1,13 +1,10 @@
-//! DiMAS publisher example
+//! `DiMAS` publisher example
 //! Copyright © 2024 Stephan Kunz
 
 // region:		--- modules
 use clap::Parser;
 use dimas::prelude::*;
-use std::{
-	sync::{Arc, RwLock},
-	time::Duration,
-};
+use std::time::Duration;
 // endregion:	--- modules
 
 // region:		--- Clap
@@ -41,15 +38,14 @@ async fn main() -> Result<()> {
 	agent
 		.timer()
 		.interval(duration)
-		.callback(move |ctx, props| {
+		.callback(move |ctx, _props| {
 			let text = message.clone() + " [" + &counter.to_string() + "]";
 			println!("Sending '{}'", &text);
 			// publishing with ad-hoc publisher
 			let _ = ctx.publish("hello", text);
 			counter += 1;
 		})
-		.add()
-		.await?;
+		.add()?;
 
 	agent.start().await;
 

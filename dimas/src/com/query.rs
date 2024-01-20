@@ -8,10 +8,12 @@ use zenoh::sample::Sample;
 // endregion:	--- modules
 
 // region:		--- types
+#[allow(clippy::module_name_repetitions)]
 pub type QueryCallback<P> = fn(Arc<Context>, Arc<RwLock<P>>, sample: Sample);
 // endregion:	--- types
 
 // region:		--- QueryBuilder
+#[allow(clippy::module_name_repetitions)]
 #[derive(Clone)]
 pub struct QueryBuilder<P>
 where
@@ -44,25 +46,32 @@ where
 		self
 	}
 
-	pub async fn add(mut self) -> Result<()> {
+	pub fn add(mut self) -> Result<()> {
 		if self.key_expr.is_none() && self.msg_type.is_none() {
 			return Err("No key expression or msg type given".into());
 		}
-		if self.callback.is_none() {
+		let _callback = if self.callback.is_none() {
 			return Err("No callback given".into());
-		}
-		let key_expr = if self.key_expr.is_some() {
-			self.key_expr.take().unwrap()
 		} else {
-			self.communicator.clone().prefix() + "/" + &self.msg_type.unwrap() + "/*"
+			self.callback.expect("should never happen")
+		};
+		let key_expr = if self.key_expr.is_some() {
+			self.key_expr.take().expect("should never happen")
+		} else {
+			self.communicator.clone().prefix()
+				+ "/" + &self.msg_type.expect("should never happen")
+				+ "/*"
 		};
 
 		let communicator = self.communicator;
-		let ctx = Arc::new(Context { communicator });
+		let _ctx = Arc::new(Context { communicator });
 
 		let s = Query { key_expr };
 
-		self.collection.write().unwrap().push(s);
+		self.collection
+			.write()
+			.expect("should never happen")
+			.push(s);
 		Ok(())
 	}
 }
@@ -80,10 +89,10 @@ mod tests {
 	struct Props {}
 
 	// check, that the auto traits are available
-	fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
 
 	#[test]
-	fn normal_types() {
+	const fn normal_types() {
 		is_normal::<Query>();
 		is_normal::<QueryBuilder<Props>>();
 	}

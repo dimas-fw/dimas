@@ -1,4 +1,4 @@
-//! DiMAS liveliness example
+//! `DiMAS` liveliness example
 //! Copyright © 2024 Stephan Kunz
 
 // region:		--- modules
@@ -21,7 +21,11 @@ struct Args {
 #[derive(Debug, Default)]
 pub struct AgentProps {}
 
-fn liveliness_subscription(ctx: Arc<Context>, props: Arc<RwLock<AgentProps>>, sample: Sample) {
+fn liveliness_subscription(ctx: Arc<Context>, 	props: Arc<RwLock<AgentProps>>, sample: Sample) {
+	// to avoid clippy message
+	let _props = props;
+	let ctx = ctx;
+	let sample = sample;
 	let repl = ctx.prefix() + "/alive/";
 	let agent_id = sample.key_expr.to_string().replace(&repl, "");
 	match sample.kind {
@@ -56,8 +60,7 @@ async fn main() -> Result<()> {
 		.liveliness_subscriber()
 		.callback(liveliness_subscription)
 		.msg_type("alive")
-		.add()
-		.await?;
+		.add()?;
 
 	agent.start().await;
 

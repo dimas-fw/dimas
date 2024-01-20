@@ -9,10 +9,12 @@ use zenoh::prelude::{r#async::AsyncResolve, Sample};
 // endregion:	--- modules
 
 // region:		--- types
+#[allow(clippy::module_name_repetitions)]
 pub type SubscriberCallback<P> = fn(Arc<Context>, Arc<RwLock<P>>, sample: Sample);
 // endregion:	--- types
 
 // region:		--- SubscriberBuilder
+#[allow(clippy::module_name_repetitions)]
 #[derive(Clone)]
 pub struct SubscriberBuilder<P>
 where
@@ -45,17 +47,21 @@ where
 		self
 	}
 
-	pub async fn add(mut self) -> Result<()> {
+	pub fn add(mut self) -> Result<()> {
 		if self.key_expr.is_none() && self.msg_type.is_none() {
 			return Err("No key expression or msg type given".into());
 		}
-		if self.callback.is_none() {
+		let callback = if self.callback.is_none() {
 			return Err("No callback given".into());
-		}
-		let key_expr = if self.key_expr.is_some() {
-			self.key_expr.take().unwrap()
 		} else {
-			self.communicator.clone().prefix() + "/" + &self.msg_type.unwrap() + "/*"
+			self.callback.expect("should never happen")
+		};
+		let key_expr = if self.key_expr.is_some() {
+			self.key_expr.take().expect("should never happen")
+		} else {
+			self.communicator.clone().prefix()
+				+ "/" + &self.msg_type.expect("should never happen")
+				+ "/*"
 		};
 
 		let communicator = self.communicator;
@@ -63,13 +69,16 @@ where
 
 		let s = Subscriber {
 			key_expr,
-			callback: self.callback.take().unwrap(),
+			callback,
 			handle: None,
 			context: ctx,
 			props: self.props,
 		};
 
-		self.collection.write().unwrap().push(s);
+		self.collection
+			.write()
+			.expect("should never happen")
+			.push(s);
 		Ok(())
 	}
 }
@@ -87,11 +96,26 @@ where
 	props: Arc<RwLock<P>>,
 }
 
+impl<P> std::fmt::Debug for Subscriber<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("Subscriber")
+			.field("key_expr", &self.key_expr)
+			//.field("callback", &self.callback)
+			//.field("handle", &self.handle)
+			//.field("context", &self.context)
+			//.field("props", &self.props)
+			.finish_non_exhaustive()
+	}
+}
+
 impl<P> Subscriber<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	pub fn start(&mut self) -> Result<()> {
+	pub fn start(&mut self) {
 		let key_expr = self.key_expr.clone();
 		let cb = self.callback;
 		let ctx = self.context.clone();
@@ -102,19 +126,23 @@ where
 				.declare_subscriber(&key_expr)
 				.res_async()
 				.await
-				.unwrap();
+				.expect("should never happen");
 
 			loop {
-				let sample = subscriber.recv_async().await.unwrap();
+				let sample = subscriber
+					.recv_async()
+					.await
+					.expect("should never happen");
 				cb(ctx.clone(), props.clone(), sample);
 			}
 		}));
-		Ok(())
 	}
 
-	pub fn stop(&mut self) -> Result<()> {
-		self.handle.take().unwrap().abort();
-		Ok(())
+	pub fn stop(&mut self) {
+		self.handle
+			.take()
+			.expect("should never happen")
+			.abort();
 	}
 }
 // endregion:	--- Subscriber
@@ -126,10 +154,10 @@ mod tests {
 	struct Props {}
 
 	// check, that the auto traits are available
-	fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
 
 	#[test]
-	fn normal_types() {
+	const fn normal_types() {
 		is_normal::<Subscriber<Props>>();
 		is_normal::<SubscriberBuilder<Props>>();
 	}

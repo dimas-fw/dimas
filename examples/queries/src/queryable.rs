@@ -1,4 +1,4 @@
-//! DiMAS queryable example
+//! `DiMAS` queryable example
 //! Copyright © 2024 Stephan Kunz
 
 // region:		--- modules
@@ -22,9 +22,11 @@ struct Args {
 pub struct AgentProps {}
 
 fn queryable(ctx: Arc<Context>, props: Arc<RwLock<AgentProps>>, query: Query) {
-	let _ = props;
-	let _ = ctx;
-	let key = query.selector().key_expr.to_string();
+	// to avoid clippy message
+	let _props = props;
+	let _ctx = ctx;
+	let query = query;
+	let _key = query.selector().key_expr.to_string();
 	dbg!(&query);
 }
 
@@ -44,8 +46,7 @@ async fn main() -> Result<()> {
 		.queryable()
 		.msg_type("query")
 		.callback(queryable)
-		.add()
-		.await?;
+		.add()?;
 
 	agent.start().await;
 

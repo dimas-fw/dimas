@@ -30,10 +30,11 @@ pub struct Communicator {
 
 impl Communicator {
 	pub fn new(config: crate::config::Config, prefix: impl Into<String>) -> Self {
+		let cfg = config;
 		let session = Arc::new(
-			zenoh::open(config.zenoh_config())
+			zenoh::open(cfg.zenoh_config())
 				.res_sync()
-				.unwrap(),
+				.expect("could not create zenoh session"),
 		);
 		let prefix = prefix.into();
 		Self { prefix, session }
@@ -51,7 +52,7 @@ impl Communicator {
 		self.session.clone()
 	}
 	#[cfg(feature = "liveliness")]
-	pub async fn liveliness<'a>(&self, msg_type: impl Into<String>) -> LivelinessToken<'a> {
+	pub async fn liveliness<'a>(&self, msg_type: impl Into<String>+Send) -> LivelinessToken<'a> {
 		let session = self.session.clone();
 		let uuid = self.prefix.clone() + "/" + &msg_type.into() + "/" + &session.zid().to_string();
 		//dbg!(&uuid);
@@ -60,7 +61,7 @@ impl Communicator {
 			.declare_token(&uuid)
 			.res_async()
 			.await
-			.unwrap()
+			.expect("should never happen")
 	}
 
 	#[cfg(feature = "liveliness")]
@@ -75,7 +76,7 @@ impl Communicator {
 			.callback(callback)
 			.res_async()
 			.await
-			.unwrap();
+			.expect("should never happen");
 
 		// the initial liveliness query
 		let replies = self
@@ -85,7 +86,7 @@ impl Communicator {
 			.timeout(Duration::from_millis(500))
 			.res_async()
 			.await
-			.unwrap();
+			.expect("should never happen");
 
 		while let Ok(reply) = replies.recv_async().await {
 			//dbg!(&reply);
@@ -95,7 +96,7 @@ impl Communicator {
 				}
 				Err(err) => println!(
 					">> Received (ERROR: '{}')",
-					String::try_from(&err).unwrap_or("".to_string())
+					String::try_from(&err).expect("to be implemented")
 				),
 			}
 		}
@@ -103,12 +104,12 @@ impl Communicator {
 	}
 
 	#[cfg(feature = "publisher")]
-	pub async fn create_publisher<'a>(&self, key_expr: impl Into<String>) -> Publisher<'a> {
+	pub async fn create_publisher<'a>(&self, key_expr: impl Into<String>+Send) -> Publisher<'a> {
 		self.session
 			.declare_publisher(key_expr.into())
 			.res_async()
 			.await
-			.unwrap()
+			.expect("should never happen")
 	}
 
 	#[cfg(feature = "publisher")]
@@ -116,12 +117,12 @@ impl Communicator {
 	where
 		T: Serialize,
 	{
-		let value = serde_json::to_string(&message).unwrap();
+		let value = serde_json::to_string(&message).expect("should never happen");
 		let key_expr =
 			self.prefix.clone() + "/" + &msg_name.into() + "/" + &self.session.zid().to_string();
 		//dbg!(&key_expr);
 		match self.session().put(&key_expr, value).res_sync() {
-			Ok(_) => Ok(()),
+			Ok(()) => Ok(()),
 			Err(_) => Err("Context publish failed".into()),
 		}
 	}
@@ -134,14 +135,14 @@ impl Communicator {
 		query_name: impl Into<String>,
 		mode: ConsolidationMode,
 		callback: QueryCallback<P>,
-	) -> Result<()>
+	)
 	where
 		P: Send + Sync + Unpin + 'static,
 	{
 		let key_expr = self.prefix.clone() + "/" + &query_name.into();
 		//dbg!(&key_expr);
-		let ctx = ctx.clone();
-		let props = props.clone();
+		let ctx = ctx;
+		let props = props;
 		let session = self.session();
 
 		let replies = session
@@ -150,7 +151,7 @@ impl Communicator {
 			.consolidation(mode)
 			//.timeout(Duration::from_millis(1000))
 			.res_sync()
-			.unwrap();
+			.expect("should never happen");
 		//dbg!(&replies);
 
 		while let Ok(reply) = replies.recv() {
@@ -158,21 +159,20 @@ impl Communicator {
 			match reply.sample {
 				Ok(sample) => {
 					//dbg!(&sample);
-					callback(ctx.clone(), props.clone(), sample)
+					callback(ctx.clone(), props.clone(), sample);
 				}
 				Err(err) => println!(
 					">> No data (ERROR: '{}')",
-					String::try_from(&err).unwrap_or("".to_string())
+					String::try_from(&err).expect("to be implemented")
 				),
 			}
 		}
-		Ok(())
 	}
 }
 
 impl Default for Communicator {
 	fn default() -> Self {
-		Communicator::new(crate::config::Config::local(), "peer")
+		Self::new(crate::config::Config::local(), "peer")
 	}
 }
 // endregion:	--- Communicator
@@ -183,10 +183,10 @@ mod tests {
 	//use serial_test::serial;
 
 	// check, that the auto traits are available
-	fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
 
 	#[test]
-	fn normal_types() {
+	const fn normal_types() {
 		is_normal::<Communicator>();
 	}
 

@@ -1,26 +1,25 @@
 //! Copyright © 2023 Stephan Kunz
 
 // region:		--- modules
+use crate::com::communicator::Communicator;
 #[cfg(feature = "liveliness")]
 use crate::com::liveliness_subscriber::{LivelinessSubscriber, LivelinessSubscriberBuilder};
 #[cfg(feature = "publisher")]
 use crate::com::publisher::{Publisher, PublisherBuilder};
-#[cfg(feature = "subscriber")]
-use crate::com::subscriber::{Subscriber, SubscriberBuilder};
 #[cfg(feature = "query")]
 use crate::com::query::{Query, QueryBuilder};
 #[cfg(feature = "queryable")]
 use crate::com::queryable::{Queryable, QueryableBuilder};
+#[cfg(feature = "subscriber")]
+use crate::com::subscriber::{Subscriber, SubscriberBuilder};
 #[cfg(feature = "timer")]
 use crate::timer::{Timer, TimerBuilder};
-use crate::com::communicator::Communicator;
 use std::{
 	marker::PhantomData,
 	sync::{Arc, RwLock},
 	time::Duration,
 };
 use tokio::time::sleep;
-use zenoh::config::Config;
 #[cfg(feature = "liveliness")]
 use zenoh::liveliness::LivelinessToken;
 // endregion:	--- modules
@@ -95,7 +94,8 @@ where
 		}
 	}
 
-	fn uuid(&self) -> String {
+	/// get the agents uuid
+	pub fn uuid(&self) -> String {
 		self.com.uuid()
 	}
 
@@ -147,9 +147,12 @@ where
 	/// get a builder for a Publisher
 	#[cfg(feature = "publisher")]
 	pub fn publisher(&self) -> PublisherBuilder<'a> {
-		PublisherBuilder::default()
-			.collection(self.publishers.clone())
-			.communicator(self.com.clone())
+		PublisherBuilder {
+			collection: self.publishers.clone(),
+			communicator: self.com.clone(),
+			key_expr: None,
+			msg_type: None,
+		}
 	}
 
 	/// get a builder for a Query
@@ -171,39 +174,52 @@ where
 	where
 		P: Default,
 	{
-		TimerBuilder::default()
-			.collection(self.timers.clone())
-			.communicator(self.com.clone())
-			.properties(self.props.clone())
+		TimerBuilder {
+			collection: self.timers.clone(),
+			communicator: self.com.clone(),
+			delay: None,
+			interval: None,
+			callback: None,
+			props: self.props.clone(),
+		}
 	}
 
 	/// start the agent
+	/// # Panics
+	///
 	pub async fn start(&mut self) {
 		// start all registered queryables
 		#[cfg(feature = "queryable")]
-		for queryable in self.queryables.write().unwrap().iter_mut() {
-			let _res = queryable.start();
-		}
+		self.queryables
+			.write()
+			.expect("should never happen")
+			.iter_mut()
+			.for_each(|queryable| {
+				queryable.start();
+			});
 		// start all registered subscribers
 		#[cfg(feature = "subscriber")]
-		for subscriber in self.subscribers.write().unwrap().iter_mut() {
-			let _res = subscriber.start();
-		}
+		self.subscribers
+			.write()
+			.expect("should never happen")
+			.iter_mut()
+			.for_each(|subscriber| {
+				subscriber.start();
+			});
 		// start liveliness subscriber
 		#[cfg(feature = "liveliness")]
 		if self
 			.liveliness_subscriber
 			.read()
-			.unwrap()
+			.expect("should never happen")
 			.is_some()
 		{
-			let _res = self
+			self
 				.liveliness_subscriber
 				.write()
+				.expect("should never happen")
 				.as_mut()
-				.unwrap()
-				.as_mut()
-				.unwrap()
+				.expect("should never happen")
 				.start();
 		}
 
@@ -217,15 +233,19 @@ where
 			let token: LivelinessToken<'a> = self.com.liveliness(msg_type).await;
 			self.liveliness_token
 				.write()
-				.unwrap()
+				.expect("should never happen")
 				.replace(token);
 		}
 
 		// start all registered timers
 		#[cfg(feature = "timer")]
-		for timer in self.timers.write().unwrap().iter_mut() {
-			let _res = timer.start();
-		}
+		self.timers
+			.write()
+			.expect("should never happen")
+			.iter_mut()
+			.for_each(|timer| {
+				timer.start();
+			});
 
 		// main loop so that agent stays alive
 		loop {
@@ -234,18 +254,26 @@ where
 	}
 
 	/// stop the agent
-	pub async fn stop(&mut self) {
+	/// # Panics
+	pub fn stop(&mut self) {
 		// reverse order of start!
 		// stop all registered timers
 		#[cfg(feature = "timer")]
-		for timer in self.timers.write().unwrap().iter_mut() {
-			let _res = timer.stop();
-		}
+		self.timers
+			.write()
+			.expect("should never happen")
+			.iter_mut()
+			.for_each(|timer| {
+				timer.stop();
+			});
 
 		#[cfg(feature = "liveliness")]
 		{
 			// stop liveliness
-			self.liveliness_token.write().unwrap().take();
+			self.liveliness_token
+				.write()
+				.expect("should never happen")
+				.take();
 			self.liveliness = false;
 
 			// stop liveliness subscriber
@@ -253,29 +281,37 @@ where
 			if self
 				.liveliness_subscriber
 				.read()
-				.unwrap()
+				.expect("should never happen")
 				.is_some()
 			{
-				let _res = self
+				self
 					.liveliness_subscriber
 					.write()
-					.unwrap()
+					.expect("should never happen")
 					.as_mut()
-					.unwrap()
+					.expect("should never happen")
 					.stop();
 			}
 		}
 
 		// stop all registered subscribers
 		#[cfg(feature = "subscriber")]
-		for subscriber in self.subscribers.write().unwrap().iter_mut() {
-			let _res = subscriber.stop();
-		}
+		self.subscribers
+			.write()
+			.expect("should never happen")
+			.iter_mut()
+			.for_each(|subscriber| {
+				subscriber.stop();
+			});
 		// stop all registered queryables
 		#[cfg(feature = "queryable")]
-		for queryable in self.queryables.write().unwrap().iter_mut() {
-			let _res = queryable.stop();
-		}
+		self.queryables
+			.write()
+			.expect("should never happen")
+			.iter_mut()
+			.for_each(|queryable| {
+				queryable.stop();
+			});
 	}
 }
 // endregion:	--- Agent
@@ -285,13 +321,13 @@ mod tests {
 	use super::*;
 
 	// check, that the auto traits are available
-	fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
 
 	#[derive(Debug)]
 	struct Props {}
 
 	#[test]
-	fn normal_types() {
+	const fn normal_types() {
 		is_normal::<Agent<Props>>();
 	}
 

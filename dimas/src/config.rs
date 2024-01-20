@@ -1,6 +1,6 @@
 //! Copyright © 2024 Stephan Kunz
 
-use zenoh::config::{ConnectConfig, ValidatedMap};
+use zenoh::config::ValidatedMap;
 
 /// Manages the agents configuration
 #[repr(transparent)]
@@ -12,16 +12,18 @@ impl Default for Config {
 	fn default() -> Self {
 		let mut res = zenoh::config::peer();
 		// use every interface for connection
-		res.insert_json5("connect/endpoints", r#"["tcp/0.0.0.0/7447"]"#);
-		Config(res)
+		res.insert_json5("connect/endpoints", r#"["tcp/0.0.0.0/7447"]"#)
+			.expect("could not create default config");
+		Self(res)
 	}
 }
 
 impl Config {
-	/// create a configuration that only connectssto agents on same host
+	/// create a configuration that only connects to agents on same host
+	#[must_use]
 	pub fn local() -> Self {
 		let res = zenoh::config::peer();
-		Config(res)
+		Self(res)
 	}
 
 	pub(crate) fn zenoh_config(&self) -> zenoh::config::Config {
@@ -34,10 +36,10 @@ mod tests {
 	use super::*;
 
 	// check, that the auto traits are available
-	fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
 
 	#[test]
-	fn normal_types() {
+	const fn normal_types() {
 		is_normal::<Config>();
 	}
 }

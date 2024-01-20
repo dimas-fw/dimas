@@ -4,7 +4,7 @@
 #[cfg(feature = "query")]
 use crate::com::query::QueryCallback;
 use crate::{com::communicator::Communicator, prelude::*};
-use serde::*;
+use serde::Serialize;
 use std::sync::{Arc, RwLock};
 use zenoh::query::ConsolidationMode;
 // endregion:	--- modules
@@ -18,16 +18,20 @@ pub struct Context {
 
 impl Context {
 	/// get the agents uuid
+	#[must_use]
 	pub fn uuid(&self) -> String {
 		self.communicator.uuid()
 	}
 
 	/// get the agents prefix
+	#[must_use]
 	pub fn prefix(&self) -> String {
 		self.communicator.prefix()
 	}
 
 	/// method to do an ad hoc publishing
+	/// # Errors
+	///   Error is propagated from Communicator
 	#[cfg(feature = "publisher")]
 	pub fn publish<P>(&self, msg_name: impl Into<String>, message: P) -> Result<()>
 	where
@@ -37,20 +41,22 @@ impl Context {
 	}
 
 	/// method to do an ad hoc query
+	/// # Errors
+	///   Error is propagated from Communicator
 	#[cfg(feature = "query")]
 	pub fn query<P>(
 		&self,
-		ctx: Arc<Context>,
+		ctx: Arc<Self>,
 		props: Arc<RwLock<P>>,
 		query_name: impl Into<String>,
 		mode: ConsolidationMode,
 		callback: QueryCallback<P>,
-	) -> Result<()>
+	)
 	where
 		P: Send + Sync + Unpin + 'static,
 	{
 		self.communicator
-			.query(ctx, props, query_name, mode, callback)
+			.query(ctx, props, query_name, mode, callback);
 	}
 }
 // endregion:	--- Context
@@ -60,10 +66,10 @@ mod tests {
 	use super::*;
 
 	// check, that the auto traits are available
-	fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
 
 	#[test]
-	fn normal_types() {
+	const fn normal_types() {
 		is_normal::<Context>();
 	}
 }

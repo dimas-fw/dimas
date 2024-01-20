@@ -9,11 +9,13 @@ use zenoh::prelude::{r#async::AsyncResolve, Sample};
 // endregion:	--- modules
 
 // region:		--- types
+#[allow(clippy::module_name_repetitions)]
 pub type LivelinessSubscriberCallback<P> = fn(Arc<Context>, Arc<RwLock<P>>, sample: Sample);
 // msg: Box<dyn DimasMessage<Msg=dyn Any>>
 // endregion:	--- types
 
 // region:		--- LivelinessSubscriberBuilder
+#[allow(clippy::module_name_repetitions)]
 #[derive(Clone, Debug)]
 pub struct LivelinessSubscriberBuilder<P>
 where
@@ -46,18 +48,21 @@ where
 		self
 	}
 
-	pub async fn add(mut self) -> Result<()> {
-		//dbg!(&self);
+	pub fn add(mut self) -> Result<()> {
 		if self.key_expr.is_none() && self.msg_type.is_none() {
 			return Err("No key expression or msg type given".into());
 		}
-		if self.callback.is_none() {
+		let callback = if self.callback.is_none() {
 			return Err("No callback given".into());
-		}
-		let key_expr = if self.key_expr.is_some() {
-			self.key_expr.take().unwrap()
 		} else {
-			self.communicator.clone().prefix() + "/" + &self.msg_type.unwrap() + "/*"
+			self.callback.expect("should never happen")
+		};
+		let key_expr = if self.key_expr.is_some() {
+			self.key_expr.take().expect("should never happen")
+		} else {
+			self.communicator.clone().prefix()
+				+ "/" + &self.msg_type.expect("should never happen")
+				+ "/*"
 		};
 
 		let communicator = self.communicator;
@@ -65,13 +70,16 @@ where
 
 		let s = LivelinessSubscriber {
 			key_expr,
-			callback: self.callback.take().unwrap(),
+			callback,
 			handle: None,
 			context: ctx,
 			props: self.props,
 		};
 
-		self.subscriber.write().unwrap().replace(s);
+		self.subscriber
+			.write()
+			.expect("should never happen")
+			.replace(s);
 		Ok(())
 	}
 }
@@ -94,7 +102,7 @@ impl<P> LivelinessSubscriber<P>
 where
 	P: std::fmt::Debug + Send + Sync + Unpin + 'static,
 {
-	pub fn start(&mut self) -> Result<()> {
+	pub fn start(&mut self) {
 		let key_expr = self.key_expr.clone();
 		let cb = self.callback;
 		let ctx = self.context.clone();
@@ -107,9 +115,12 @@ where
 				.declare_subscriber(&key_expr)
 				.res_async()
 				.await
-				.unwrap();
+				.expect("should never happen");
 			loop {
-				let sample = subscriber.recv_async().await.unwrap();
+				let sample = subscriber
+					.recv_async()
+					.await
+					.expect("should never happen");
 				cb(ctx.clone(), props.clone(), sample);
 			}
 		}));
@@ -127,7 +138,7 @@ where
 				//.timeout(Duration::from_millis(500))
 				.res()
 				.await
-				.unwrap();
+				.expect("should never happen");
 
 			while let Ok(reply) = replies.recv_async().await {
 				match reply.sample {
@@ -137,18 +148,18 @@ where
 					}
 					Err(err) => println!(
 						">> Received (ERROR: '{}')",
-						String::try_from(&err).unwrap_or("".to_string())
+						String::try_from(&err).expect("to be implemented")
 					),
 				}
 			}
 		});
-
-		Ok(())
 	}
 
-	pub fn stop(&mut self) -> Result<()> {
-		self.handle.take().unwrap().abort();
-		Ok(())
+	pub fn stop(&mut self) {
+		self.handle
+			.take()
+			.expect("should never happen")
+			.abort();
 	}
 }
 // endregion:	--- Subscriber
@@ -161,10 +172,10 @@ mod tests {
 	struct Props {}
 
 	// check, that the auto traits are available
-	fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
 
 	#[test]
-	fn normal_types() {
+	const fn normal_types() {
 		is_normal::<LivelinessSubscriber<Props>>();
 		is_normal::<LivelinessSubscriberBuilder<Props>>();
 	}

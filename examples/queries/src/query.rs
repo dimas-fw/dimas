@@ -1,10 +1,9 @@
-//! DiMAS query example
+//! `DiMAS` query example
 //! Copyright © 2024 Stephan Kunz
 
 // region:		--- modules
 use clap::Parser;
 use dimas::prelude::*;
-use std::sync::{Arc, RwLock};
 // endregion:	--- modules
 
 // region:		--- Clap
