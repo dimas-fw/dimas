@@ -26,8 +26,8 @@ fn hello_subscription(ctx: Arc<Context>, props: Arc<RwLock<AgentProps>>, sample:
 	let _props = props;
 	let _ctx = ctx;
 	let sample = sample;
-	let message = serde_json::from_str::<String>(&sample.value.to_string())
-		.expect("could not deserialize");
+	let message =
+		serde_json::from_str::<String>(&sample.value.to_string()).expect("could not deserialize");
 	match sample.kind {
 		SampleKind::Put => {
 			println!("Received '{}'", &message);

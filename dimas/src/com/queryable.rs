@@ -76,7 +76,7 @@ where
 		let key_expr = if self.key_expr.is_some() {
 			self.key_expr.take().expect("should never happen")
 		} else {
-			communicator.prefix() + "/" + &self.msg_type.expect("should never happen") + "/*"
+			communicator.prefix() + "/" + &self.msg_type.expect("should never happen")
 		};
 		let props = if self.props.is_none() {
 			return Err("No callback given".into());

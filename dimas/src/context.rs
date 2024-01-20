@@ -51,8 +51,7 @@ impl Context {
 		query_name: impl Into<String>,
 		mode: ConsolidationMode,
 		callback: QueryCallback<P>,
-	)
-	where
+	) where
 		P: Send + Sync + Unpin + 'static,
 	{
 		self.communicator

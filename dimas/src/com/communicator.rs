@@ -52,7 +52,7 @@ impl Communicator {
 		self.session.clone()
 	}
 	#[cfg(feature = "liveliness")]
-	pub async fn liveliness<'a>(&self, msg_type: impl Into<String>+Send) -> LivelinessToken<'a> {
+	pub async fn liveliness<'a>(&self, msg_type: impl Into<String> + Send) -> LivelinessToken<'a> {
 		let session = self.session.clone();
 		let uuid = self.prefix.clone() + "/" + &msg_type.into() + "/" + &session.zid().to_string();
 		//dbg!(&uuid);
@@ -104,7 +104,7 @@ impl Communicator {
 	}
 
 	#[cfg(feature = "publisher")]
-	pub async fn create_publisher<'a>(&self, key_expr: impl Into<String>+Send) -> Publisher<'a> {
+	pub async fn create_publisher<'a>(&self, key_expr: impl Into<String> + Send) -> Publisher<'a> {
 		self.session
 			.declare_publisher(key_expr.into())
 			.res_async()
@@ -135,8 +135,7 @@ impl Communicator {
 		query_name: impl Into<String>,
 		mode: ConsolidationMode,
 		callback: QueryCallback<P>,
-	)
-	where
+	) where
 		P: Send + Sync + Unpin + 'static,
 	{
 		let key_expr = self.prefix.clone() + "/" + &query_name.into();

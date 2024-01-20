@@ -65,8 +65,11 @@ where
 
 		let communicator = self.communicator;
 		let _ctx = Arc::new(Context { communicator });
+		let _props = self.props.clone();
 
-		let s = Query { key_expr };
+		let s = Query {
+			_key_expr: key_expr,
+		};
 
 		self.collection
 			.write()
@@ -79,7 +82,7 @@ where
 
 // region:		--- Query
 pub struct Query {
-	key_expr: String,
+	_key_expr: String,
 }
 // endregion:	--- Query
 

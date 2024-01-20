@@ -21,7 +21,7 @@ struct Args {
 #[derive(Debug, Default)]
 pub struct AgentProps {}
 
-fn liveliness_subscription(ctx: Arc<Context>, 	props: Arc<RwLock<AgentProps>>, sample: Sample) {
+fn liveliness_subscription(ctx: Arc<Context>, props: Arc<RwLock<AgentProps>>, sample: Sample) {
 	// to avoid clippy message
 	let _props = props;
 	let ctx = ctx;

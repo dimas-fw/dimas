@@ -214,8 +214,7 @@ where
 			.expect("should never happen")
 			.is_some()
 		{
-			self
-				.liveliness_subscriber
+			self.liveliness_subscriber
 				.write()
 				.expect("should never happen")
 				.as_mut()
@@ -284,8 +283,7 @@ where
 				.expect("should never happen")
 				.is_some()
 			{
-				self
-					.liveliness_subscriber
+				self.liveliness_subscriber
 					.write()
 					.expect("should never happen")
 					.as_mut()

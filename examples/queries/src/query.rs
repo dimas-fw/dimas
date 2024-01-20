@@ -4,6 +4,11 @@
 // region:		--- modules
 use clap::Parser;
 use dimas::prelude::*;
+use std::{
+	sync::{Arc, RwLock},
+	time::Duration,
+};
+use zenoh::{prelude::SampleKind, query::ConsolidationMode, sample::Sample};
 // endregion:	--- modules
 
 // region:		--- Clap
@@ -19,6 +24,23 @@ struct Args {
 #[derive(Debug, Default)]
 pub struct AgentProps {}
 
+fn query_callback(ctx: Arc<Context>, props: Arc<RwLock<AgentProps>>, sample: Sample) {
+	// to avoid clippy message
+	let _props = props;
+	let _ctx = ctx;
+	let sample = sample;
+	let message =
+		serde_json::from_str::<String>(&sample.value.to_string()).expect("could not deserialize");
+	match sample.kind {
+		SampleKind::Put => {
+			println!("Received '{}'", &message);
+		}
+		SampleKind::Delete => {
+			println!("Delete '{}'", &message);
+		}
+	}
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
 	// parse arguments
@@ -29,6 +51,26 @@ async fn main() -> Result<()> {
 
 	// create an agent with the properties
 	let mut agent = Agent::new(Config::default(), &args.prefix, properties);
+
+	// timer for regular querying
+	let duration = Duration::from_secs(1);
+	let mut counter = 0i128;
+	agent
+		.timer()
+		.interval(duration)
+		.callback(move |ctx, props| {
+			println!("Querying [{counter}]");
+			// querying with ad-hoc query
+			ctx.query(
+				ctx.clone(),
+				props,
+				"query",
+				ConsolidationMode::None,
+				query_callback,
+			);
+			counter += 1;
+		})
+		.add()?;
 
 	agent.start().await;
 
