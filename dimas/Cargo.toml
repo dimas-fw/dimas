@@ -12,25 +12,19 @@ description = "DiMAS - A framework for Distributed Multi Agent Systems"
 workspace = true
 
 [dependencies]
-chrono = { workspace = true }
 clap = { workspace = true }
-derive_more = { workspace = true }
 serde = { workspace = true }
-#serde_derive = { workspace = true }
 serde_json = { workspace = true }
-#serial_test  = { workspace = true }
-#thiserror = { workspace = true }
 tokio = { workspace = true }
 zenoh = { workspace = true }
 
 [dev-dependencies]
-#anyhow  = { workspace = true }
 
 [features]
-all = ["liveliness", "publisher", "subscriber", "query", "queryable", "timer"]
+all = ["liveliness", "publisher", "query", "queryable", "subscriber", "timer"]
 liveliness = []
 publisher = []
-subscriber = []
 query = []
 queryable = []
+subscriber = []
 timer = []

@@ -1,4 +1,4 @@
-//! Copyright © 2024 Stephan Kunz
+// Copyright © 2024 Stephan Kunz
 
 use zenoh::config::ValidatedMap;
 

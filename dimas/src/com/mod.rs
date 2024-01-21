@@ -1,4 +1,4 @@
-//! Copyright © 2023 Stephan Kunz
+// Copyright © 2023 Stephan Kunz
 
 // region:    --- modules
 pub mod communicator;

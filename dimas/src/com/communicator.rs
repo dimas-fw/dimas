@@ -1,4 +1,4 @@
-//! Copyright © 2023 Stephan Kunz
+// Copyright © 2023 Stephan Kunz
 
 // region:		--- modules
 use std::sync::Arc;

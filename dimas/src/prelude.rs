@@ -1,4 +1,4 @@
-//! Copyright © 2023 Stephan Kunz
+// Copyright © 2023 Stephan Kunz
 
 // region:    --- modules
 pub use crate::agent::Agent;
@@ -9,7 +9,7 @@ pub use crate::error::{Error, Result};
 // endregeion:  --- modules
 
 // region:    --- types
-/// Generic wrapper tuple struct for newtype pattern
-#[repr(transparent)]
-pub struct Wrap<T>(pub T);
+// Generic wrapper tuple struct for newtype pattern
+//#[repr(transparent)]
+//pub(crate) struct Wrap<T>(pub T);
 // endregion: --- types

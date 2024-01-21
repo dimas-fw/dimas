@@ -23,26 +23,27 @@ unwrap_used = "deny"
 [workspace.package]
 rust-version = "1.75.0"
 edition = "2021"
-version = "0.0.1"
+version = "0.0.2"
 authors = [
 	"stepkun stephan.kunz@kabelbw.de",
 ]
+license = "NGMC"
 license-file = "LICENSE"
 
 [workspace.dependencies]
-chrono = { version = "^0.4", features = ["serde"] }
-clap = { version = "^4.0", features = ["derive"] }
+#chrono = { version = "^0.4", features = ["serde"] }
+clap = { version = "4.4", features = ["derive"] }
 #color-eyre = "0.6.2"
 #const_panic = "0.2"
 dimas = { path = "dimas" }
 #derive_more = { version = "^0.99", features = ["from", "display", "deref",] }
-derive_more = "^0.99"
+derive_more = "0.99"
 #rayon = "1.8"
 #rstest = "0.18.2"
-serde = { version = "^1.0", features = ["derive"] }
-serde_json = "^1.0"
-#tokio = { version = "^1.0", features = ["full"] }
-tokio = "^1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+#tokio = { version = "1.35", features = ["full"] }
+tokio = "1.35"
 #zenoh = { path = "../zenoh/zenoh", features = ["unstable"] }
 zenoh = { version = "0.10.1-rc", features = ["unstable"] }
 
