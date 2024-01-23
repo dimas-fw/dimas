@@ -10,12 +10,14 @@ use tokio::{sync::Mutex, task::JoinHandle};
 // endregion:	--- modules
 
 // region:		--- types
+/// type definition for the functions called by a timer
 #[allow(clippy::module_name_repetitions)]
 pub type TimerCallback<P> =
 	Arc<Mutex<dyn FnMut(Arc<Context>, Arc<RwLock<P>>) + Send + Sync + Unpin + 'static>>;
 // endregion:	--- types
 
 // region:		--- TimerBuilder
+/// A builder for a timer
 #[allow(clippy::module_name_repetitions)]
 #[derive(Default, Clone)]
 pub struct TimerBuilder<P>
@@ -34,16 +36,19 @@ impl<P> TimerBuilder<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// set timers delay
 	pub fn delay(mut self, delay: Duration) -> Self {
 		self.delay.replace(delay);
 		self
 	}
 
+	/// set timers interval
 	pub fn interval(mut self, interval: Duration) -> Self {
 		self.interval.replace(interval);
 		self
 	}
 
+	/// set timers callback function
 	pub fn callback<F>(mut self, callback: F) -> Self
 	where
 		F: FnMut(Arc<Context>, Arc<RwLock<P>>) + Send + Sync + Unpin + 'static,
@@ -86,6 +91,7 @@ where
 		}
 	}
 
+	/// add the timer to the agent
 	pub fn add(self) -> Result<()> {
 		let c = self.collection.clone();
 		let timer = self.build()?;
@@ -99,7 +105,7 @@ where
 
 // region:		--- Timer
 //#[derive(Debug, Clone)]
-pub enum Timer<P>
+pub(crate) enum Timer<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -124,7 +130,7 @@ impl<T> Timer<T>
 where
 	T: Send + Sync + Unpin + 'static,
 {
-	pub fn start(&mut self) {
+	pub(crate) fn start(&mut self) {
 		match self {
 			Self::Interval {
 				interval,
@@ -168,7 +174,7 @@ where
 		}
 	}
 
-	pub fn stop(&mut self) {
+	pub(crate) fn stop(&mut self) {
 		match self {
 			Self::Interval {
 				interval: _,

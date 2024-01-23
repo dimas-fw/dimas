@@ -9,9 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-### Fixed
-
 ### Changed
+
+### Fixed
 
 ### Removed
 
@@ -19,11 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.0.2]
 
 ### Added
-
 - README's & Documentation
 
-### Removed
+### Changed
+- internals of queryable
 
+### Removed
 - Some unnecessary dependencies.
 
 
@@ -44,5 +45,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.0.0] - 2023-09-19
 
 ### Added
-
 - Reservation of the crate name "dimas"

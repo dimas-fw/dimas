@@ -135,9 +135,9 @@ where
 	#[cfg(feature = "queryable")]
 	pub fn queryable(&self) -> QueryableBuilder<P> {
 		QueryableBuilder {
-			collection: Some(self.queryables.clone()),
-			communicator: Some(self.com.clone()),
-			props: Some(self.props.clone()),
+			collection: self.queryables.clone(),
+			communicator: self.com.clone(),
+			props: self.props.clone(),
 			key_expr: None,
 			msg_type: None,
 			callback: None,

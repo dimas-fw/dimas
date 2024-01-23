@@ -9,20 +9,22 @@ use zenoh::prelude::r#async::AsyncResolve;
 // endregion:	--- modules
 
 // region:		--- types
+/// type defnition for the queryables callback function.
 #[allow(clippy::module_name_repetitions)]
 pub type QueryableCallback<P> = fn(&Arc<Context>, &Arc<RwLock<P>>, query: zenoh::queryable::Query);
 // endregion:	--- types
 
 // region:		--- QueryableBuilder
+/// The builder fo a queryable.
 #[allow(clippy::module_name_repetitions)]
 #[derive(Default, Clone)]
 pub struct QueryableBuilder<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	pub(crate) collection: Option<Arc<RwLock<Vec<Queryable<P>>>>>,
-	pub(crate) communicator: Option<Arc<Communicator>>,
-	pub(crate) props: Option<Arc<RwLock<P>>>,
+	pub(crate) collection: Arc<RwLock<Vec<Queryable<P>>>>,
+	pub(crate) communicator: Arc<Communicator>,
+	pub(crate) props: Arc<RwLock<P>>,
 	pub(crate) key_expr: Option<String>,
 	pub(crate) msg_type: Option<String>,
 	pub(crate) callback: Option<QueryableCallback<P>>,
@@ -32,39 +34,27 @@ impl<P> QueryableBuilder<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	pub fn collection(mut self, collection: Arc<RwLock<Vec<Queryable<P>>>>) -> Self {
-		self.collection.replace(collection);
-		self
-	}
-
-	pub fn communicator(mut self, communicator: Arc<Communicator>) -> Self {
-		self.communicator.replace(communicator);
-		self
-	}
-
+	/// Set the full expression for the queryable.
 	pub fn key_expr(mut self, key_expr: impl Into<String>) -> Self {
 		self.key_expr.replace(key_expr.into());
 		self
 	}
 
+	/// Set the message qualifying part only.
+	/// Will be prefixed by the agents prefix.
 	pub fn msg_type(mut self, msg_type: impl Into<String>) -> Self {
 		self.msg_type.replace(msg_type.into());
 		self
 	}
 
+	/// Set the queryables callback function.
 	pub fn callback(mut self, callback: QueryableCallback<P>) -> Self {
 		self.callback.replace(callback);
 		self
 	}
 
+	/// Add the queryable to the agent
 	pub fn add(mut self) -> Result<()> {
-		let communicator = if self.communicator.is_none() {
-			return Err("No callback given".into());
-		} else {
-			self.communicator
-				.take()
-				.expect("should never happen")
-		};
 		if self.key_expr.is_none() && self.msg_type.is_none() {
 			return Err("No key expression or msg type given".into());
 		}
@@ -76,14 +66,10 @@ where
 		let key_expr = if self.key_expr.is_some() {
 			self.key_expr.take().expect("should never happen")
 		} else {
-			communicator.prefix() + "/" + &self.msg_type.expect("should never happen")
-		};
-		let props = if self.props.is_none() {
-			return Err("No callback given".into());
-		} else {
-			self.props.take().expect("should never happen")
+			self.communicator.prefix() + "/" + &self.msg_type.expect("should never happen")
 		};
 
+		let communicator = self.communicator;
 		let ctx = Arc::new(Context { communicator });
 		//dbg!(&key_expr);
 		let q = Queryable {
@@ -91,21 +77,20 @@ where
 			callback,
 			handle: None,
 			context: ctx,
-			props,
+			props: self.props,
 		};
 
-		let c = self
-			.collection
-			.take()
-			.expect("should never happen");
-		c.write().expect("should never happen").push(q);
+		self.collection
+			.write()
+			.expect("should never happen")
+			.push(q);
 		Ok(())
 	}
 }
 // endregion:	--- QueryableBuilder
 
 // region:		--- Queryable
-pub struct Queryable<P>
+pub(crate) struct Queryable<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -120,7 +105,7 @@ impl<P> Queryable<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	pub fn start(&mut self) {
+	pub(crate) fn start(&mut self) {
 		let key_expr = self.key_expr.clone();
 		//dbg!(&key_expr);
 		let cb = self.callback;
@@ -145,7 +130,7 @@ where
 		}));
 	}
 
-	pub fn stop(&mut self) {
+	pub(crate) fn stop(&mut self) {
 		self.handle
 			.take()
 			.expect("should never happen")

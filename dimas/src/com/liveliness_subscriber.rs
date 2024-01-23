@@ -9,12 +9,14 @@ use zenoh::prelude::{r#async::AsyncResolve, Sample};
 // endregion:	--- modules
 
 // region:		--- types
+/// Type definition for liveliness subscribers callback function
 #[allow(clippy::module_name_repetitions)]
 pub type LivelinessSubscriberCallback<P> = fn(Arc<Context>, Arc<RwLock<P>>, sample: Sample);
 // msg: Box<dyn DimasMessage<Msg=dyn Any>>
 // endregion:	--- types
 
 // region:		--- LivelinessSubscriberBuilder
+/// The builder for the liveliness subscriber
 #[allow(clippy::module_name_repetitions)]
 #[derive(Clone, Debug)]
 pub struct LivelinessSubscriberBuilder<P>
@@ -33,21 +35,26 @@ impl<P> LivelinessSubscriberBuilder<P>
 where
 	P: std::fmt::Debug + Send + Sync + Unpin + 'static,
 {
+	/// Set the full expression for the liveliness subscriber
 	pub fn key_expr(mut self, key_expr: impl Into<String>) -> Self {
 		self.key_expr.replace(key_expr.into());
 		self
 	}
 
+	/// Set only the message qualifing part of the liveliness subscriber.
+	/// Will be prefixed with agents prefix.
 	pub fn msg_type(mut self, msg_type: impl Into<String>) -> Self {
 		self.msg_type.replace(msg_type.into());
 		self
 	}
 
+	/// Set the liveliness subscribers callback
 	pub fn callback(mut self, callback: LivelinessSubscriberCallback<P>) -> Self {
 		self.callback.replace(callback);
 		self
 	}
 
+	/// Add the liveliness subscriber to the agent
 	pub fn add(mut self) -> Result<()> {
 		if self.key_expr.is_none() && self.msg_type.is_none() {
 			return Err("No key expression or msg type given".into());
@@ -87,7 +94,7 @@ where
 
 // region:		--- LivelinessSubscriber
 #[derive(Debug)]
-pub struct LivelinessSubscriber<P>
+pub(crate) struct LivelinessSubscriber<P>
 where
 	P: std::fmt::Debug + Send + Sync + Unpin + 'static,
 {

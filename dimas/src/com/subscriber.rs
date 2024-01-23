@@ -9,11 +9,13 @@ use zenoh::prelude::{r#async::AsyncResolve, Sample};
 // endregion:	--- modules
 
 // region:		--- types
+/// type definition for a subscriber callback function
 #[allow(clippy::module_name_repetitions)]
 pub type SubscriberCallback<P> = fn(&Arc<Context>, &Arc<RwLock<P>>, sample: Sample);
 // endregion:	--- types
 
 // region:		--- SubscriberBuilder
+/// A builder for a subscriber
 #[allow(clippy::module_name_repetitions)]
 #[derive(Clone)]
 pub struct SubscriberBuilder<P>
@@ -32,21 +34,26 @@ impl<P> SubscriberBuilder<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// Set the full expression to subscribe on.
 	pub fn key_expr(mut self, key_expr: impl Into<String>) -> Self {
 		self.key_expr.replace(key_expr.into());
 		self
 	}
 
+	/// Set only the message qualifying part of the expression to subscribe on.
+	/// Will be prefixed by the agents prefix.
 	pub fn msg_type(mut self, msg_type: impl Into<String>) -> Self {
 		self.msg_type.replace(msg_type.into());
 		self
 	}
 
+	/// Set subscribers callback
 	pub fn callback(mut self, callback: SubscriberCallback<P>) -> Self {
 		self.callback.replace(callback);
 		self
 	}
 
+	/// add the subscriber to the agent
 	pub fn add(mut self) -> Result<()> {
 		if self.key_expr.is_none() && self.msg_type.is_none() {
 			return Err("No key expression or msg type given".into());
@@ -85,7 +92,7 @@ where
 // endregion:	--- SubscriberBuilder
 
 // region:		--- Subscriber
-pub struct Subscriber<P>
+pub(crate) struct Subscriber<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -115,7 +122,7 @@ impl<P> Subscriber<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	pub fn start(&mut self) {
+	pub(crate) fn start(&mut self) {
 		let key_expr = self.key_expr.clone();
 		let cb = self.callback;
 		let ctx = self.context.clone();
@@ -138,7 +145,7 @@ where
 		}));
 	}
 
-	pub fn stop(&mut self) {
+	pub(crate) fn stop(&mut self) {
 		self.handle
 			.take()
 			.expect("should never happen")

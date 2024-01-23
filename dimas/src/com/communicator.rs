@@ -5,24 +5,24 @@ use std::sync::Arc;
 use zenoh::prelude::{r#async::*, sync::SyncResolve};
 
 #[cfg(feature = "query")]
-use crate::context::Context;
-#[cfg(feature = "query")]
 use super::query::QueryCallback;
 #[cfg(feature = "query")]
-use std::sync::RwLock;
-#[cfg(feature = "publisher")]
-use serde::Serialize;
-#[cfg(feature = "publisher")]
-use zenoh::publication::Publisher;
+use crate::context::Context;
 #[cfg(feature = "publisher")]
 use crate::prelude::*;
+#[cfg(feature = "publisher")]
+use serde::Serialize;
+#[cfg(feature = "query")]
+use std::sync::RwLock;
 #[cfg(feature = "liveliness")]
 use zenoh::liveliness::LivelinessToken;
+#[cfg(feature = "publisher")]
+use zenoh::publication::Publisher;
 // endregion:	--- modules
 
 // region:		--- Communicator
 #[derive(Debug)]
-pub struct Communicator {
+pub(crate) struct Communicator {
 	// prefix to separate agents communicaton
 	pub(crate) prefix: String,
 	// the zenoh session
@@ -30,7 +30,7 @@ pub struct Communicator {
 }
 
 impl Communicator {
-	pub fn new(config: crate::config::Config, prefix: impl Into<String>) -> Self {
+	pub(crate) fn new(config: crate::config::Config, prefix: impl Into<String>) -> Self {
 		let cfg = config;
 		let session = Arc::new(
 			zenoh::open(cfg.zenoh_config())
@@ -41,16 +41,19 @@ impl Communicator {
 		Self { prefix, session }
 	}
 
-	pub fn uuid(&self) -> String {
+	pub(crate) fn uuid(&self) -> String {
 		self.session.zid().to_string()
 	}
 
-	pub fn prefix(&self) -> String {
+	pub(crate) fn prefix(&self) -> String {
 		self.prefix.clone()
 	}
 
 	#[cfg(feature = "liveliness")]
-	pub async fn liveliness<'a>(&self, msg_type: impl Into<String> + Send) -> LivelinessToken<'a> {
+	pub(crate) async fn liveliness<'a>(
+		&self,
+		msg_type: impl Into<String> + Send,
+	) -> LivelinessToken<'a> {
 		let session = self.session.clone();
 		let uuid = self.prefix.clone() + "/" + &msg_type.into() + "/" + &session.zid().to_string();
 		//dbg!(&uuid);
@@ -63,7 +66,10 @@ impl Communicator {
 	}
 
 	#[cfg(feature = "publisher")]
-	pub async fn create_publisher<'a>(&self, key_expr: impl Into<String> + Send) -> Publisher<'a> {
+	pub(crate) async fn create_publisher<'a>(
+		&self,
+		key_expr: impl Into<String> + Send,
+	) -> Publisher<'a> {
 		self.session
 			.declare_publisher(key_expr.into())
 			.res_async()
@@ -72,7 +78,7 @@ impl Communicator {
 	}
 
 	#[cfg(feature = "publisher")]
-	pub fn publish<T>(&self, msg_name: impl Into<String>, message: T) -> Result<()>
+	pub(crate) fn publish<T>(&self, msg_name: impl Into<String>, message: T) -> Result<()>
 	where
 		T: Serialize,
 	{

@@ -1,4 +1,4 @@
-//! Copyright © 2023 Stephan Kunz
+// Copyright © 2023 Stephan Kunz
 
 // region:    --- types
 /// Enables simplified usage of Result with crates Error type

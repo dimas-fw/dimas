@@ -3,25 +3,30 @@
 #![crate_name = "dimas"]
 #![warn(missing_docs)]
 
-//!
-#[doc = include_str!("../README.md")]
-struct _Dummy;    // to get no warnings from clippy
+#![doc = include_str!("../README.md")]
 
-/// Public interface of dimas.
-/// Typically it is sufficient to include the prelude with:
-/// ```
-/// use dimas::prelude::*;
-/// ```
-pub mod prelude;
+#[cfg(feature = "nightly")]
+#[cfg(doctest)]
+doc_comment::doctest!("../README.md");
 
 // region:    --- modules
-mod agent;
-mod com;
-mod config;
-mod context;
-mod error;
+/// Primary module of DiMAS containing the Agent
+pub mod agent;
+/// Communication
+pub mod com;
+/// Configuration
+pub mod config;
+/// Context
+pub mod context;
+/// Error handling
+pub mod error;
+/// Public interface of dimas.
+/// Typically it is sufficient to include the prelude with
+/// `use dimas::prelude::*;`
+pub mod prelude;
+/// Timer
 #[cfg(feature = "timer")]
-mod timer;
+pub mod timer;
+/// Helper functions
 mod utils;
-
 // endregion: --- modules

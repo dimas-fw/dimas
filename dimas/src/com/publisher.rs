@@ -12,6 +12,7 @@ use std::sync::{Arc, RwLock};
 // endregion:	--- types
 
 // region:		--- PublisherBuilder
+/// The builder for a publisher
 #[allow(clippy::module_name_repetitions)]
 #[derive(Default, Clone)]
 pub struct PublisherBuilder<'a, P> {
@@ -22,15 +23,24 @@ pub struct PublisherBuilder<'a, P> {
 	pub(crate) msg_type: Option<String>,
 }
 
-impl<'a, P> PublisherBuilder<'a, P> 
+impl<'a, P> PublisherBuilder<'a, P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// Set the full expression for the publisher
 	pub fn key_expr(mut self, key_expr: impl Into<String>) -> Self {
 		self.key_expr.replace(key_expr.into());
 		self
 	}
 
+	/// Set only the message qualifing part of the query.
+	/// Will be prefixed with agents prefix.
+	pub fn msg_type(mut self, msg_type: impl Into<String>) -> Self {
+		self.msg_type.replace(msg_type.into());
+		self
+	}
+
+	/// Add the publisher to the agent
 	pub async fn add(mut self) -> Result<()> {
 		if self.key_expr.is_none() && self.msg_type.is_none() {
 			return Err("No key expression or msg type given".into());
@@ -39,9 +49,7 @@ where
 		let key_expr = if self.key_expr.is_some() {
 			self.key_expr.take().expect("should never happen")
 		} else {
-			self.communicator.clone().prefix()
-				+ "/" + &self.msg_type.expect("should never happen")
-				+ "/*"
+			self.communicator.clone().prefix() + "/" + &self.msg_type.expect("should never happen")
 		};
 
 		//dbg!(&key_expr);
@@ -58,7 +66,7 @@ where
 // endregion:	--- PublisherBuilder
 
 // region:		--- Publisher
-pub struct Publisher<'a> {
+pub(crate) struct Publisher<'a> {
 	_publisher: zenoh::publication::Publisher<'a>,
 }
 // endregion:	--- Publisher

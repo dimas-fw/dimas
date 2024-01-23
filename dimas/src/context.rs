@@ -2,15 +2,15 @@
 
 // region:		--- modules
 use crate::com::communicator::Communicator;
-use std::sync::Arc;
-#[cfg(feature = "query")]
-use std::sync::RwLock;
 #[cfg(feature = "query")]
 use crate::com::query::QueryCallback;
 #[cfg(feature = "publisher")]
 use crate::prelude::*;
 #[cfg(feature = "publisher")]
 use serde::Serialize;
+use std::sync::Arc;
+#[cfg(feature = "query")]
+use std::sync::RwLock;
 #[cfg(feature = "query")]
 use zenoh::query::ConsolidationMode;
 // endregion:	--- modules
