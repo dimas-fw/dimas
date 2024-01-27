@@ -5,14 +5,56 @@ use super::communicator::Communicator;
 use crate::{context::Context, prelude::*};
 use std::sync::{Arc, RwLock};
 use tokio::task::JoinHandle;
-use zenoh::prelude::r#async::AsyncResolve;
+use zenoh::{
+	prelude::{r#async::AsyncResolve, sync::SyncResolve},
+	queryable::Query,
+	sample::Sample,
+};
 // endregion:	--- modules
 
 // region:		--- types
 /// type defnition for the queryables callback function.
 #[allow(clippy::module_name_repetitions)]
-pub type QueryableCallback<P> = fn(&Arc<Context>, &Arc<RwLock<P>>, query: zenoh::queryable::Query);
+pub type QueryableCallback<P> = fn(&Arc<Context>, &Arc<RwLock<P>>, request: &Request);
 // endregion:	--- types
+
+// region:    --- Request
+/// Implementation of a request for handling within a `Queryable`
+#[derive(Debug)]
+pub struct Request {
+	/// internal reference to zenoh `Query`
+	query: Query,
+}
+
+impl Request {
+	/// Reply to the given request
+	/// # Panics
+	///
+	pub fn reply<T>(&self, value: T)
+	where
+		T: bincode::Encode,
+	{
+		let key = self.query.selector().key_expr.to_string();
+		let sample = Sample::try_from(
+			key,
+			bincode::encode_to_vec(&value, bincode::config::standard())
+				.expect("should never happen"),
+		)
+		.expect("should never happen");
+
+		self.query
+			.reply(Ok(sample))
+			.res_sync()
+			.expect("should never happen");
+	}
+
+	/// access the queries parameters
+	#[must_use]
+	pub fn parameters(&self) -> &str {
+		self.query.parameters()
+	}
+}
+// endregion: --- Request
 
 // region:		--- QueryableBuilder
 /// The builder fo a queryable.
@@ -26,7 +68,6 @@ where
 	pub(crate) communicator: Arc<Communicator>,
 	pub(crate) props: Arc<RwLock<P>>,
 	pub(crate) key_expr: Option<String>,
-	pub(crate) msg_type: Option<String>,
 	pub(crate) callback: Option<QueryableCallback<P>>,
 }
 
@@ -35,6 +76,7 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// Set the full expression for the queryable.
+	#[must_use]
 	pub fn key_expr(mut self, key_expr: impl Into<String>) -> Self {
 		self.key_expr.replace(key_expr.into());
 		self
@@ -42,20 +84,27 @@ where
 
 	/// Set the message qualifying part only.
 	/// Will be prefixed by the agents prefix.
+	#[must_use]
 	pub fn msg_type(mut self, msg_type: impl Into<String>) -> Self {
-		self.msg_type.replace(msg_type.into());
+		let key_expr = self.communicator.clone().prefix() + "/" + &msg_type.into();
+		self.key_expr.replace(key_expr);
 		self
 	}
 
 	/// Set the queryables callback function.
+	#[must_use]
 	pub fn callback(mut self, callback: QueryableCallback<P>) -> Self {
 		self.callback.replace(callback);
 		self
 	}
 
 	/// Add the queryable to the agent
+	/// # Errors
+	///
+	/// # Panics
+	///
 	pub fn add(mut self) -> Result<()> {
-		if self.key_expr.is_none() && self.msg_type.is_none() {
+		if self.key_expr.is_none() {
 			return Err("No key expression or msg type given".into());
 		}
 		let callback = if self.callback.is_none() {
@@ -66,7 +115,7 @@ where
 		let key_expr = if self.key_expr.is_some() {
 			self.key_expr.take().expect("should never happen")
 		} else {
-			self.communicator.prefix() + "/" + &self.msg_type.expect("should never happen")
+			String::new()
 		};
 
 		let communicator = self.communicator;
@@ -125,7 +174,8 @@ where
 					.await
 					.expect("should never happen");
 				//dbg!(&query);
-				cb(&ctx, &props, query);
+				let request = Request { query };
+				cb(&ctx, &props, &request);
 			}
 		}));
 	}

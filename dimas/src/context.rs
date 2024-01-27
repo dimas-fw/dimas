@@ -45,6 +45,14 @@ impl Context {
 		self.communicator.publish(msg_name, message)
 	}
 
+	/// method to do an ad hoc deleteion
+	/// # Errors
+	///   Error is propagated from Communicator
+	#[cfg(feature = "publisher")]
+	pub fn delete(&self, msg_name: impl Into<String>) -> Result<()> {
+		self.communicator.delete(msg_name)
+	}
+
 	/// method to do an ad hoc query
 	/// # Errors
 	///   Error is propagated from Communicator

@@ -9,7 +9,7 @@
 doc_comment::doctest!("../README.md");
 
 // region:    --- modules
-/// Primary module of DiMAS containing the Agent
+/// Primary module of `DiMAS` containing the Agent
 pub mod agent;
 /// Communication
 pub mod com;

@@ -113,7 +113,6 @@ where
 			communicator: self.com.clone(),
 			props: self.props.clone(),
 			key_expr: None,
-			msg_type: None,
 			callback: None,
 		}
 	}
@@ -126,8 +125,8 @@ where
 			communicator: self.com.clone(),
 			props: self.props.clone(),
 			key_expr: None,
-			msg_type: None,
-			callback: None,
+			put_callback: None,
+			delete_callback: None,
 		}
 	}
 
@@ -139,7 +138,6 @@ where
 			communicator: self.com.clone(),
 			props: self.props.clone(),
 			key_expr: None,
-			msg_type: None,
 			callback: None,
 		}
 	}
@@ -152,7 +150,6 @@ where
 			communicator: self.com.clone(),
 			props: self.props.clone(),
 			key_expr: None,
-			msg_type: None,
 		}
 	}
 
@@ -164,7 +161,6 @@ where
 			communicator: self.com.clone(),
 			props: self.props.clone(),
 			key_expr: None,
-			msg_type: None,
 			callback: None,
 		}
 	}

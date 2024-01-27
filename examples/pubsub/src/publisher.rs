@@ -47,6 +47,18 @@ async fn main() -> Result<()> {
 		})
 		.add()?;
 
+	// timer for regular deletion
+	let duration = Duration::from_secs(3);
+	agent
+		.timer()
+		.interval(duration)
+		.callback(move |ctx, _props| {
+			println!("Deleting");
+			// sending with ad-hoc delete
+			let _ = ctx.delete("hello");
+		})
+		.add()?;
+
 	agent.start().await;
 
 	Ok(())

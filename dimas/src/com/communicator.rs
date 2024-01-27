@@ -20,7 +20,7 @@ use zenoh::publication::Publisher;
 
 // region:		--- Communicator
 #[derive(Debug)]
-pub(crate) struct Communicator {
+pub struct Communicator {
 	// prefix to separate agents communicaton
 	pub(crate) prefix: String,
 	// the zenoh session
@@ -82,12 +82,21 @@ impl Communicator {
 	{
 		let value = bincode::encode_to_vec(message, bincode::config::standard())
 			.expect("should never happen");
-		let key_expr =
-			self.prefix.clone() + "/" + &msg_name.into() + "/" + &self.session.zid().to_string();
+		let key_expr = self.prefix.clone() + "/" + &msg_name.into();
 		//dbg!(&key_expr);
 		match self.session.put(&key_expr, value).res_sync() {
 			Ok(()) => Ok(()),
-			Err(_) => Err("Context publish failed".into()),
+			Err(_) => Err("Publish failed".into()),
+		}
+	}
+
+	#[cfg(feature = "publisher")]
+	pub(crate) fn delete(&self, msg_name: impl Into<String>) -> Result<()> {
+		let key_expr = self.prefix.clone() + "/" + &msg_name.into();
+		//dbg!(&key_expr);
+		match self.session.delete(&key_expr).res_sync() {
+			Ok(()) => Ok(()),
+			Err(_) => Err("Delete failed".into()),
 		}
 	}
 
@@ -122,7 +131,18 @@ impl Communicator {
 			match reply.sample {
 				Ok(sample) => {
 					//dbg!(&sample);
-					callback(&ctx, &props, sample);
+					let value: Vec<u8> = sample
+						.value
+						.try_into()
+						.expect("should not happen");
+					match sample.kind {
+						SampleKind::Put => {
+							callback(&ctx, &props, &value);
+						}
+						SampleKind::Delete => {
+							println!("Delete in Query");
+						}
+					}
 				}
 				Err(err) => println!(
 					">> No data (ERROR: '{}')",

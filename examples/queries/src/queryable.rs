@@ -3,9 +3,8 @@
 
 // region:		--- modules
 use clap::Parser;
-use dimas::prelude::*;
+use dimas::{com::queryable::Request, prelude::*};
 use std::sync::{Arc, RwLock};
-use zenoh::{prelude::sync::SyncResolve, queryable::Query, sample::Sample};
 // endregion:	--- modules
 
 // region:		--- Clap
@@ -23,28 +22,15 @@ pub struct AgentProps {
 	counter: i128,
 }
 
-fn queryable(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, query: Query) {
-	//dbg!(&query);
-	// to avoid clippy message
-	let query = query;
+fn queryable(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, request: &Request) {
 	let value = props
 		.read()
 		.expect("should never happen")
 		.counter
 		.to_string();
-	println!("Received query {}", &value);
+	println!("Received {}. query", &value);
 
-	let key = query.selector().key_expr.to_string();
-	let sample = Sample::try_from(
-		key,
-		bincode::encode_to_vec(&value, bincode::config::standard()).expect("should never happen"),
-	)
-	.expect("should never happen");
-
-	query
-		.reply(Ok(sample))
-		.res_sync()
-		.expect("should never happen");
+	request.reply(&value);
 
 	props
 		.write()
@@ -58,7 +44,7 @@ async fn main() -> Result<()> {
 	let args = Args::parse();
 
 	// create & initialize agents properties
-	let properties = AgentProps { counter: 0 };
+	let properties = AgentProps { counter: 1 };
 
 	// create an agent with the properties
 	let mut agent = Agent::new(Config::default(), &args.prefix, properties);

@@ -8,7 +8,7 @@ use std::{
 	sync::{Arc, RwLock},
 	time::Duration,
 };
-use zenoh::{prelude::SampleKind, query::ConsolidationMode, sample::Sample};
+use zenoh::query::ConsolidationMode;
 // endregion:	--- modules
 
 // region:		--- Clap
@@ -24,20 +24,11 @@ struct Args {
 #[derive(Debug, Default)]
 pub struct AgentProps {}
 
-fn query_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, sample: Sample) {
-	// to avoid clippy message
-	let sample = sample;
+fn query_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, answer: &[u8]) {
 	let config = bincode::config::standard();
 	let (message, _len): (String, usize) =
-		bincode::decode_from_slice(sample.value.to_string().as_bytes(), config).unwrap();
-	match sample.kind {
-		SampleKind::Put => {
-			println!("Received '{}'", &message);
-		}
-		SampleKind::Delete => {
-			println!("Delete '{}'", &message);
-		}
-	}
+		bincode::decode_from_slice(answer, config).expect("should not happen");
+	println!("Received '{}'", &message);
 }
 
 #[tokio::main]

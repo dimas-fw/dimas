@@ -5,7 +5,6 @@
 use clap::Parser;
 use dimas::prelude::*;
 use std::sync::{Arc, RwLock};
-use zenoh::{prelude::SampleKind, sample::Sample};
 // endregion:	--- modules
 
 // region:		--- Clap
@@ -21,20 +20,15 @@ struct Args {
 #[derive(Debug, Default)]
 pub struct AgentProps {}
 
-fn hello_subscription(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, sample: Sample) {
-	// to avoid clippy message
-	let sample = sample;
+fn hello_subscription(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let config = bincode::config::standard();
 	let (message, _len): (String, usize) =
-		bincode::decode_from_slice(sample.value.to_string().as_bytes(), config).unwrap();
-	match sample.kind {
-		SampleKind::Put => {
-			println!("Received '{}'", &message);
-		}
-		SampleKind::Delete => {
-			println!("Delete '{}'", &message);
-		}
-	}
+		bincode::decode_from_slice(message, config).expect("should not happen");
+	println!("Received '{}'", &message);
+}
+
+fn hello_deletion(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>) {
+	println!("Shall delete 'hello'");
 }
 
 #[tokio::main]
@@ -52,9 +46,9 @@ async fn main() -> Result<()> {
 	agent
 		.subscriber()
 		.msg_type("hello")
-		.callback(hello_subscription)
-		.add()
-		.expect("should never happen");
+		.put_callback(hello_subscription)
+		.delete_callback(hello_deletion)
+		.add()?;
 
 	agent.start().await;
 

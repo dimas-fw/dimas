@@ -37,18 +37,21 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// set timers delay
+	#[must_use]
 	pub fn delay(mut self, delay: Duration) -> Self {
 		self.delay.replace(delay);
 		self
 	}
 
 	/// set timers interval
+	#[must_use]
 	pub fn interval(mut self, interval: Duration) -> Self {
 		self.interval.replace(interval);
 		self
 	}
 
 	/// set timers callback function
+	#[must_use]
 	pub fn callback<F>(mut self, callback: F) -> Self
 	where
 		F: FnMut(Arc<Context>, Arc<RwLock<P>>) + Send + Sync + Unpin + 'static,
@@ -92,6 +95,10 @@ where
 	}
 
 	/// add the timer to the agent
+	/// # Errors
+	///
+	/// # Panics
+	///
 	pub fn add(self) -> Result<()> {
 		let c = self.collection.clone();
 		let timer = self.build()?;

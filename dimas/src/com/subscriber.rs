@@ -5,13 +5,15 @@ use super::communicator::Communicator;
 use crate::{context::Context, prelude::*};
 use std::sync::{Arc, RwLock};
 use tokio::task::JoinHandle;
-use zenoh::prelude::{r#async::AsyncResolve, Sample};
+use zenoh::prelude::{r#async::AsyncResolve, SampleKind};
 // endregion:	--- modules
 
 // region:		--- types
-/// type definition for a subscriber callback function
+/// type definition for a subscribers `publish` callback function
 #[allow(clippy::module_name_repetitions)]
-pub type SubscriberCallback<P> = fn(&Arc<Context>, &Arc<RwLock<P>>, sample: Sample);
+pub type SubscriberCallback<P> = fn(&Arc<Context>, &Arc<RwLock<P>>, messsage: &[u8]);
+/// type definition for a subscribers `delete` callback function
+pub type DeleteCallback<P> = fn(&Arc<Context>, &Arc<RwLock<P>>);
 // endregion:	--- types
 
 // region:		--- SubscriberBuilder
@@ -26,8 +28,8 @@ where
 	pub(crate) communicator: Arc<Communicator>,
 	pub(crate) props: Arc<RwLock<P>>,
 	pub(crate) key_expr: Option<String>,
-	pub(crate) msg_type: Option<String>,
-	pub(crate) callback: Option<SubscriberCallback<P>>,
+	pub(crate) put_callback: Option<SubscriberCallback<P>>,
+	pub(crate) delete_callback: Option<DeleteCallback<P>>,
 }
 
 impl<P> SubscriberBuilder<P>
@@ -35,6 +37,7 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// Set the full expression to subscribe on.
+	#[must_use]
 	pub fn key_expr(mut self, key_expr: impl Into<String>) -> Self {
 		self.key_expr.replace(key_expr.into());
 		self
@@ -42,33 +45,45 @@ where
 
 	/// Set only the message qualifying part of the expression to subscribe on.
 	/// Will be prefixed by the agents prefix.
+	#[must_use]
 	pub fn msg_type(mut self, msg_type: impl Into<String>) -> Self {
-		self.msg_type.replace(msg_type.into());
+		let key_expr = self.communicator.clone().prefix() + "/" + &msg_type.into();
+		self.key_expr.replace(key_expr);
 		self
 	}
 
-	/// Set subscribers callback
-	pub fn callback(mut self, callback: SubscriberCallback<P>) -> Self {
-		self.callback.replace(callback);
+	/// Set subscribers callback for `put` messages
+	#[must_use]
+	pub fn put_callback(mut self, callback: SubscriberCallback<P>) -> Self {
+		self.put_callback.replace(callback);
+		self
+	}
+
+	/// Set subscribers callback for `delete` messages
+	#[must_use]
+	pub fn delete_callback(mut self, callback: DeleteCallback<P>) -> Self {
+		self.delete_callback.replace(callback);
 		self
 	}
 
 	/// add the subscriber to the agent
+	/// # Errors
+	///
+	/// # Panics
+	///
 	pub fn add(mut self) -> Result<()> {
-		if self.key_expr.is_none() && self.msg_type.is_none() {
+		if self.key_expr.is_none() {
 			return Err("No key expression or msg type given".into());
 		}
-		let callback = if self.callback.is_none() {
+		let put_callback = if self.put_callback.is_none() {
 			return Err("No callback given".into());
 		} else {
-			self.callback.expect("should never happen")
+			self.put_callback.expect("should never happen")
 		};
 		let key_expr = if self.key_expr.is_some() {
 			self.key_expr.take().expect("should never happen")
 		} else {
-			self.communicator.clone().prefix()
-				+ "/" + &self.msg_type.expect("should never happen")
-				+ "/*"
+			String::new()
 		};
 
 		let communicator = self.communicator;
@@ -76,7 +91,8 @@ where
 
 		let s = Subscriber {
 			key_expr,
-			callback,
+			put_callback,
+			delete_callback: self.delete_callback,
 			handle: None,
 			context: ctx,
 			props: self.props,
@@ -97,7 +113,8 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	key_expr: String,
-	callback: SubscriberCallback<P>,
+	put_callback: SubscriberCallback<P>,
+	delete_callback: Option<DeleteCallback<P>>,
 	handle: Option<JoinHandle<()>>,
 	context: Arc<Context>,
 	props: Arc<RwLock<P>>,
@@ -110,7 +127,8 @@ where
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Subscriber")
 			.field("key_expr", &self.key_expr)
-			//.field("callback", &self.callback)
+			//.field("put_callback", &self.put_callback)
+			//.field("delete_callback", &self.put_callback)
 			//.field("handle", &self.handle)
 			//.field("context", &self.context)
 			//.field("props", &self.props)
@@ -124,7 +142,8 @@ where
 {
 	pub(crate) fn start(&mut self) {
 		let key_expr = self.key_expr.clone();
-		let cb = self.callback;
+		let cb = self.put_callback;
+		let d_cb = self.delete_callback;
 		let ctx = self.context.clone();
 		let props = self.props.clone();
 		self.handle.replace(tokio::spawn(async move {
@@ -140,7 +159,20 @@ where
 					.recv_async()
 					.await
 					.expect("should never happen");
-				cb(&ctx, &props, sample);
+				match sample.kind {
+					SampleKind::Put => {
+						let value: Vec<u8> = sample
+							.value
+							.try_into()
+							.expect("should not happen");
+						cb(&ctx, &props, &value);
+					}
+					SampleKind::Delete => {
+						if let Some(cb) = d_cb {
+							cb(&ctx, &props);
+						}
+					}
+				}
 			}
 		}));
 	}

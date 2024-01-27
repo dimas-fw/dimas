@@ -16,13 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 
-## [0.0.2]
+## [0.0.2] - 2024-??-?? <br>Has breaking changes!!
 
 ### Added
 - README's & Documentation
 
 ### Changed
-- internals of queryable
+- changed crate for data serialization from 'serde' to 'bincode' v2
+- reduce boilerplate code in callbacks
 
 ### Removed
 - Some unnecessary dependencies.
