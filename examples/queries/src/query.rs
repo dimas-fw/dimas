@@ -27,8 +27,9 @@ pub struct AgentProps {}
 fn query_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, sample: Sample) {
 	// to avoid clippy message
 	let sample = sample;
-	let message =
-		serde_json::from_str::<String>(&sample.value.to_string()).expect("could not deserialize");
+	let config = bincode::config::standard();
+	let (message, _len): (String, usize) =
+		bincode::decode_from_slice(sample.value.to_string().as_bytes(), config).unwrap();
 	match sample.kind {
 		SampleKind::Put => {
 			println!("Received '{}'", &message);

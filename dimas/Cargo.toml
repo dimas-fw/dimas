@@ -12,9 +12,10 @@ description = "DiMAS - A framework for Distributed Multi Agent Systems"
 workspace = true
 
 [dependencies]
+bincode = { workspace = true }
 clap = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
+#serde = { workspace = true }
+#serde_json = { workspace = true }
 tokio = { workspace = true }
 zenoh = { workspace = true }
 

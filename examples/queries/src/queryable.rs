@@ -37,7 +37,7 @@ fn queryable(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, query: Query)
 	let key = query.selector().key_expr.to_string();
 	let sample = Sample::try_from(
 		key,
-		serde_json::to_string(&value).expect("should never happen"),
+		bincode::encode_to_vec(&value, bincode::config::standard()).expect("should never happen"),
 	)
 	.expect("should never happen");
 

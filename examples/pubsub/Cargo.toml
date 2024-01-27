@@ -21,9 +21,10 @@ name = "subscriber"
 path = "src/subscriber.rs"
 
 [dependencies]
+bincode = { workspace = true }
 clap = { workspace = true }
 dimas = { workspace = true, features = ["publisher", "subscriber", "timer"] }
-serde_json = { workspace = true }
+#serde_json = { workspace = true }
 tokio = { workspace = true }
 zenoh = { workspace = true }
 

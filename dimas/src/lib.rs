@@ -2,7 +2,6 @@
 #![crate_type = "lib"]
 #![crate_name = "dimas"]
 #![warn(missing_docs)]
-
 #![doc = include_str!("../README.md")]
 
 #[cfg(feature = "nightly")]

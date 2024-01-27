@@ -10,8 +10,6 @@ use super::query::QueryCallback;
 use crate::context::Context;
 #[cfg(feature = "publisher")]
 use crate::prelude::*;
-#[cfg(feature = "publisher")]
-use serde::Serialize;
 #[cfg(feature = "query")]
 use std::sync::RwLock;
 #[cfg(feature = "liveliness")]
@@ -80,9 +78,10 @@ impl Communicator {
 	#[cfg(feature = "publisher")]
 	pub(crate) fn publish<T>(&self, msg_name: impl Into<String>, message: T) -> Result<()>
 	where
-		T: Serialize,
+		T: bincode::Encode,
 	{
-		let value = serde_json::to_string(&message).expect("should never happen");
+		let value = bincode::encode_to_vec(message, bincode::config::standard())
+			.expect("should never happen");
 		let key_expr =
 			self.prefix.clone() + "/" + &msg_name.into() + "/" + &self.session.zid().to_string();
 		//dbg!(&key_expr);
