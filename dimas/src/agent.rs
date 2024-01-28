@@ -167,10 +167,7 @@ where
 
 	/// get a builder for a Timer
 	#[cfg(feature = "timer")]
-	pub fn timer(&self) -> TimerBuilder<P>
-	where
-		P: Default,
-	{
+	pub fn timer(&self) -> TimerBuilder<P> {
 		TimerBuilder {
 			collection: self.timers.clone(),
 			communicator: self.com.clone(),
@@ -185,9 +182,6 @@ where
 	/// # Panics
 	///
 	pub async fn start(&mut self) {
-		// avoid warning
-		let _props = self.props.clone();
-
 		// start all registered queryables
 		#[cfg(feature = "queryable")]
 		self.queryables

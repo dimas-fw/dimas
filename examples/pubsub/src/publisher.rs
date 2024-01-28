@@ -17,8 +17,10 @@ struct Args {
 }
 // endregion:	--- Clap
 
-#[derive(Debug, Default)]
-pub struct AgentProps {}
+#[derive(Debug)]
+struct AgentProps {
+	counter: u128,
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -26,24 +28,30 @@ async fn main() -> Result<()> {
 	let args = Args::parse();
 
 	// create & initialize agents properties
-	let properties = AgentProps {};
+	let properties = AgentProps { counter: 0 };
 
-	// create an agent with the properties
+	// create an agent with the properties and the prefix given by `args`
 	let mut agent = Agent::new(Config::default(), &args.prefix, properties);
 
-	// timer for regular publishing
-	let duration = Duration::from_secs(1);
-	let message = "Hello World!".to_string();
-	let mut counter = 0i128;
+	// use timer for regular publishing
 	agent
 		.timer()
-		.interval(duration)
-		.callback(move |ctx, _props| {
-			let text = message.clone() + " [" + &counter.to_string() + "]";
+		.interval(Duration::from_secs(1))
+		.callback(|ctx, props| {
+			let counter = props
+				.read()
+				.expect("should never happen")
+				.counter
+				.to_string();
+
+			let text = "Hello World! [".to_string() + &counter + "]";
 			println!("Sending '{}'", &text);
 			// publishing with ad-hoc publisher
 			let _ = ctx.publish("hello", text);
-			counter += 1;
+			props
+				.write()
+				.expect("should never happen")
+				.counter += 1;
 		})
 		.add()?;
 

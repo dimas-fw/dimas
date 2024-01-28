@@ -25,6 +25,5 @@ bincode = { workspace = true }
 clap = { workspace = true }
 dimas = { workspace = true, features = ["publisher", "subscriber", "timer"] }
 tokio = { workspace = true }
-zenoh = { workspace = true }
 
 [dev-dependencies]

@@ -23,7 +23,7 @@ unwrap_used = "deny"
 [workspace.package]
 rust-version = "1.75.0"
 edition = "2021"
-version = "0.0.2"
+version = "0.0.3"
 authors = [
 	"stepkun <stephan.kunz@kabelbw.de>",
 ]

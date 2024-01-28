@@ -17,10 +17,10 @@ struct Args {
 }
 // endregion:	--- Clap
 
-#[derive(Debug, Default)]
-pub struct AgentProps {}
+#[derive(Debug)]
+struct AgentProps {}
 
-fn hello_subscription(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn hello_publishing(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let config = bincode::config::standard();
 	let (message, _len): (String, usize) =
 		bincode::decode_from_slice(message, config).expect("should not happen");
@@ -46,7 +46,7 @@ async fn main() -> Result<()> {
 	agent
 		.subscriber()
 		.msg_type("hello")
-		.put_callback(hello_subscription)
+		.put_callback(hello_publishing)
 		.delete_callback(hello_deletion)
 		.add()?;
 

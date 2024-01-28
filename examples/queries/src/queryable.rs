@@ -19,7 +19,7 @@ struct Args {
 
 #[derive(Debug, Default)]
 pub struct AgentProps {
-	counter: i128,
+	counter: u128,
 }
 
 fn queryable(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, request: &Request) {
