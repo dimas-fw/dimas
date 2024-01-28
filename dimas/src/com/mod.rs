@@ -2,7 +2,7 @@
 
 // region:    --- modules
 /// Communicator
-pub(crate) mod communicator;
+pub mod communicator;
 /// Liveliness
 #[cfg(feature = "liveliness")]
 pub mod liveliness_subscriber;

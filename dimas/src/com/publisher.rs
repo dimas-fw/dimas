@@ -72,7 +72,7 @@ where
 // endregion:	--- PublisherBuilder
 
 // region:		--- Publisher
-pub(crate) struct Publisher<'a> {
+pub struct Publisher<'a> {
 	_publisher: zenoh::publication::Publisher<'a>,
 }
 // endregion:	--- Publisher

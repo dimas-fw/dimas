@@ -7,6 +7,10 @@ edition = { workspace = true }
 authors = { workspace = true }
 license-file = { workspace = true }
 description = "DiMAS - A framework for Distributed Multi Agent Systems"
+homepage = "https://dimas-fw.github.io/"
+documentation = "https://docs.rs/dimas/latest/dimas/"
+repository = "https://github.com/dimas-fw/dimas/"
+readme = "README.md"
 
 [lints]
 workspace = true
@@ -14,8 +18,6 @@ workspace = true
 [dependencies]
 bincode = { workspace = true }
 clap = { workspace = true }
-#serde = { workspace = true }
-#serde_json = { workspace = true }
 tokio = { workspace = true }
 zenoh = { workspace = true }
 

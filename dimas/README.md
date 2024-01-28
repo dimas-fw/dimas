@@ -1,5 +1,5 @@
 # dimas
-[DiMAS](https://github.com/dimas-fw/dimas/dimas) - A framework for building a **Di**stributed **M**ulti **A**gent **S**ystem
+[DiMAS](https://github.com/dimas-fw/dimas/dimas) - A framework for building **Di**stributed **M**ulti **A**gent **S**ystems
 
 A Distributed Multi Agent Systems is a system of independant working programs interchanging information,
 that are running on several somehow connected computers (e.g. an ethernet network).
@@ -35,6 +35,7 @@ async fn main() {
 }
 ```
 
-You can find basic examples in [dimas/examples](https://github.com/dimas-fw/dimas/blob/main/examples/README.md)
+
+You can find some more examples in [dimas/examples](https://github.com/dimas-fw/dimas/blob/main/examples/README.md)
 
 Copyright © 2024 Stephan Kunz

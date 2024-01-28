@@ -92,7 +92,7 @@ where
 // endregion:	--- QueryBuilder
 
 // region:		--- Query
-pub(crate) struct Query {
+pub struct Query {
 	_key_expr: String,
 }
 // endregion:	--- Query

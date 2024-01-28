@@ -139,7 +139,7 @@ where
 // endregion:	--- QueryableBuilder
 
 // region:		--- Queryable
-pub(crate) struct Queryable<P>
+pub struct Queryable<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {

@@ -108,7 +108,7 @@ where
 // endregion:	--- SubscriberBuilder
 
 // region:		--- Subscriber
-pub(crate) struct Subscriber<P>
+pub struct Subscriber<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {

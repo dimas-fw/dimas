@@ -5,7 +5,8 @@ pub use crate::agent::Agent;
 pub use crate::config::Config;
 pub use crate::context::Context;
 pub use crate::error::{Error, Result};
-//pub use crate::message::Message;
+#[cfg(feature = "queryable")]
+pub use crate::com::queryable::Request;
 // endregeion:  --- modules
 
 // region:    --- types

@@ -112,7 +112,7 @@ where
 
 // region:		--- Timer
 //#[derive(Debug, Clone)]
-pub(crate) enum Timer<P>
+pub enum Timer<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {

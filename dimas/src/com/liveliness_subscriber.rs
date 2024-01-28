@@ -99,7 +99,7 @@ where
 
 // region:		--- LivelinessSubscriber
 #[derive(Debug)]
-pub(crate) struct LivelinessSubscriber<P>
+pub struct LivelinessSubscriber<P>
 where
 	P: std::fmt::Debug + Send + Sync + Unpin + 'static,
 {

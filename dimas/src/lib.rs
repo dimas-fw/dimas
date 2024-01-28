@@ -12,7 +12,7 @@ doc_comment::doctest!("../README.md");
 /// Primary module of `DiMAS` containing the Agent
 pub mod agent;
 /// Communication
-pub mod com;
+pub(crate) mod com;
 /// Configuration
 pub mod config;
 /// Context
@@ -25,7 +25,7 @@ pub mod error;
 pub mod prelude;
 /// Timer
 #[cfg(feature = "timer")]
-pub mod timer;
+pub(crate) mod timer;
 /// Helper functions
 mod utils;
 // endregion: --- modules
