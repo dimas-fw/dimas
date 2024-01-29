@@ -15,26 +15,29 @@ each new version may include breaking changes, which will be noticed in the chan
 
 # Usage
 
-DiMAS currently also needs to include the crates `tokio`, `bincode` and sometimes `zenoh`.
+DiMAS currently also needs to include the crates `bincode` and `tokio`.
 So include `dimas` together with these crates in your dependencies section in your `Cargo.toml`.
 
 DiMAS uses features to have some control over compile time and the size of the binary. 
-The feature `all` including all available features is a good point to start with.
+The feature `all`, including all available features, is a good point to start with.
 
 ```toml
 [dependencies]
 dimas = { version = "0.0.3", features = ["all"] }
 bincode = "2.0.0-rc.3"
 tokio = "1.35"
-zenoh = "10.0.1-rc"
 ```
 
-DiMAS needs an `async` runtime. So you have to define your `main` function as an `async` function:
+DiMAS needs an `async` runtime. So you have to define your `main` function as an `async` function.
+It also makes sense to return a `Result` as some functions return one. DiMAS prelude provides a simplified `Result` type for that.
 
 ```rust
-#[tokio::main]
-async fn main() {
+use dimas::prelude::*;
 
+#[tokio::main]
+async fn main() -> Result<()> {
+
+	Ok(())
 }
 ```
 
@@ -167,4 +170,4 @@ It is necessary to enable all those features you want to use with your `Agent`.
 - `query`: Enables querying the queryables.
 - `queryable`: Enables listening for queries and answering them.
 - `subscriber`: Enables listening for publisher messages.
-- `timer`: Enables a timer feature, typically used with queries and/or publishers.
+- `timer`: Enables a timer feature, typically used with publishers and/or queries.

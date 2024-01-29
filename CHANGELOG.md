@@ -16,11 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 
-## [0.0.3]
+## [0.0.3] - 2024-??-?? <br>Has breaking changes!!
 
 ### Added
 - More documentation
 
+### Changed
+- removed zenoh as external dependency
+- removed parameter `mode` in ad-hoc query through `Context`
 
 ## [0.0.2] - 2024-01-28 <br>Has breaking changes!!
 
