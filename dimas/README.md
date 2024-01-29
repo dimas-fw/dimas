@@ -127,7 +127,7 @@ pub struct AgentProps {}
 fn callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let config = bincode::config::standard();
 	let (message, _len): (String, usize) =
-		bincode::decode_from_slice(message, config).expect("should not happen");
+		bincode::decode_from_slice(message, config).unwrap();
 	println!("Received '{}'", &message);
 }
 
