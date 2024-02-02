@@ -9,10 +9,10 @@ use zenoh::prelude::{r#async::AsyncResolve, SampleKind};
 // endregion:	--- modules
 
 // region:		--- types
-/// type definition for a subscribers `publish` callback function
+/// Type definition for a subscribers `publish` callback function
 #[allow(clippy::module_name_repetitions)]
 pub type SubscriberCallback<P> = fn(&Arc<Context>, &Arc<RwLock<P>>, messsage: &[u8]);
-/// type definition for a subscribers `delete` callback function
+/// Type definition for a subscribers `delete` callback function
 pub type DeleteCallback<P> = fn(&Arc<Context>, &Arc<RwLock<P>>);
 // endregion:	--- types
 

@@ -8,7 +8,6 @@ use std::{
 	sync::{Arc, RwLock},
 	time::Duration,
 };
-use zenoh::query::ConsolidationMode;
 // endregion:	--- modules
 
 // region:		--- Clap
@@ -51,13 +50,7 @@ async fn main() -> Result<()> {
 		.callback(move |ctx, props| {
 			println!("Querying [{counter}]");
 			// querying with ad-hoc query
-			ctx.query(
-				ctx.clone(),
-				props,
-				"query",
-				ConsolidationMode::None,
-				query_callback,
-			);
+			ctx.query(ctx.clone(), props, "query", query_callback);
 			counter += 1;
 		})
 		.add()?;

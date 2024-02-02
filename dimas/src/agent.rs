@@ -113,7 +113,8 @@ where
 			communicator: self.com.clone(),
 			props: self.props.clone(),
 			key_expr: None,
-			callback: None,
+			put_callback: None,
+			delete_callback: None,
 		}
 	}
 

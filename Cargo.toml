@@ -29,6 +29,11 @@ authors = [
 ]
 #license = "NGMC"
 license-file = "LICENSE"
+categories = [
+	"science::robotics",
+	"development-tools",
+	"simulation"
+]
 
 [workspace.dependencies]
 bincode = "2.0.0-rc.3"
