@@ -24,20 +24,18 @@ use tokio::time::sleep;
 use zenoh::liveliness::LivelinessToken;
 // endregion:	--- modules
 
-// region:		--- types
-//type AgentProps<P> = std::fmt::Debug + Send + Sync + Unpin + 'static;
-// endregion:	--- types
-
 // region:		--- Agent
 /// implementation of an agent
 pub struct Agent<'a, P>
 where
 	P: std::fmt::Debug + Send + Sync + Unpin + 'static,
 {
+	com: Arc<Communicator>,
 	pd: PhantomData<&'a P>,
+	// The agents propertie structure
+	props: Arc<RwLock<P>>,
 	#[cfg(feature = "liveliness")]
 	liveliness: bool,
-	com: Arc<Communicator>,
 	// an optional liveliness token
 	#[cfg(feature = "liveliness")]
 	liveliness_token: RwLock<Option<LivelinessToken<'a>>>,
@@ -59,8 +57,6 @@ where
 	// registered timer
 	#[cfg(feature = "timer")]
 	timers: Arc<RwLock<Vec<Timer<P>>>>,
-	// The agents propertie structure
-	props: Arc<RwLock<P>>,
 }
 
 impl<'a, P> Agent<'a, P>
@@ -99,12 +95,14 @@ where
 		self.com.uuid()
 	}
 
+	//#[cfg_attr(doc, doc(cfg(feature = "liveliness")))]
 	/// activate sending liveliness information
 	#[cfg(feature = "liveliness")]
 	pub fn liveliness(&mut self, activate: bool) {
 		self.liveliness = activate;
 	}
 
+	//#[cfg_attr(doc, doc(cfg(feature = "liveliness")))]
 	/// get a builder for a subscriber for the liveliness information
 	#[cfg(feature = "liveliness")]
 	pub fn liveliness_subscriber(&self) -> LivelinessSubscriberBuilder<P> {
@@ -118,6 +116,7 @@ where
 		}
 	}
 
+	//#[cfg_attr(doc, doc(cfg(feature = "subscriber")))]
 	/// get a builder for a Subscriber
 	#[cfg(feature = "subscriber")]
 	pub fn subscriber(&self) -> SubscriberBuilder<P> {
@@ -131,6 +130,7 @@ where
 		}
 	}
 
+	//#[cfg_attr(doc, doc(cfg(feature = "queryable")))]
 	/// get a builder for a Queryable
 	#[cfg(feature = "queryable")]
 	pub fn queryable(&self) -> QueryableBuilder<P> {
@@ -143,6 +143,7 @@ where
 		}
 	}
 
+	//#[cfg_attr(doc, doc(cfg(feature = "publisher")))]
 	/// get a builder for a Publisher
 	#[cfg(feature = "publisher")]
 	pub fn publisher(&self) -> PublisherBuilder<'a, P> {
@@ -154,6 +155,7 @@ where
 		}
 	}
 
+	//#[cfg_attr(doc, doc(cfg(feature = "query")))]
 	/// get a builder for a Query
 	#[cfg(feature = "query")]
 	pub fn query(&self) -> QueryBuilder<P> {
@@ -166,6 +168,7 @@ where
 		}
 	}
 
+	//#[cfg_attr(doc, doc(cfg(feature = "timer")))]
 	/// get a builder for a Timer
 	#[cfg(feature = "timer")]
 	pub fn timer(&self) -> TimerBuilder<P> {

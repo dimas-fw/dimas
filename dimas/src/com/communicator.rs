@@ -47,6 +47,7 @@ impl Communicator {
 		self.prefix.clone()
 	}
 
+	//#[cfg_attr(doc, doc(cfg(feature = "liveliness")))]
 	#[cfg(feature = "liveliness")]
 	pub(crate) async fn liveliness<'a>(
 		&self,
@@ -63,6 +64,7 @@ impl Communicator {
 			.expect("should never happen")
 	}
 
+	//#[cfg_attr(doc, doc(cfg(feature = "publisher")))]
 	#[cfg(feature = "publisher")]
 	pub(crate) async fn create_publisher<'a>(
 		&self,
@@ -75,6 +77,7 @@ impl Communicator {
 			.expect("should never happen")
 	}
 
+	//#[cfg_attr(doc, doc(cfg(feature = "publisher")))]
 	#[cfg(feature = "publisher")]
 	pub(crate) fn publish<T>(&self, msg_name: impl Into<String>, message: T) -> Result<()>
 	where
@@ -90,6 +93,7 @@ impl Communicator {
 		}
 	}
 
+	//#[cfg_attr(doc, doc(cfg(feature = "publisher")))]
 	#[cfg(feature = "publisher")]
 	pub(crate) fn delete(&self, msg_name: impl Into<String>) -> Result<()> {
 		let key_expr = self.prefix.clone() + "/" + &msg_name.into();
@@ -100,6 +104,7 @@ impl Communicator {
 		}
 	}
 
+	//#[cfg_attr(doc, doc(cfg(feature = "query")))]
 	#[cfg(feature = "query")]
 	pub fn query<P>(
 		&self,

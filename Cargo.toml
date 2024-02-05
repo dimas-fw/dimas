@@ -6,6 +6,7 @@ resolver="2"
 members = [
 	"dimas",
 	"examples/liveliness",
+	"examples/pingpong",
 	"examples/pubsub",
 	"examples/queries",
 ]

@@ -157,7 +157,7 @@ async fn main() -> Result<()> {
 }
 ```
 
-You can find more examples in [dimas/examples](https://github.com/dimas-fw/dimas/blob/main/examples/README.md)
+You can find more examples in [dimas-fw/examples](https://github.com/dimas-fw/dimas/blob/main/examples/README.md)
 
 ## Feature flags
 

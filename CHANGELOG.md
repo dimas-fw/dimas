@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - README's & Documentation
+- pingpong example for roundtrip measurement
 
 ### Changed
 - changed crate for data serialization from 'serde' to 'bincode' v2
