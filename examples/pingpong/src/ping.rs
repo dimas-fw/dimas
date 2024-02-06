@@ -36,11 +36,19 @@ fn pong_received(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message:
 	let message: PingPongMessage = bitcode::decode(message).expect("should not happen");
 
 	// get current timestamp
-	let received = Local::now().naive_utc().timestamp_nanos_opt().unwrap();
+	let received = Local::now()
+		.naive_utc()
+		.timestamp_nanos_opt()
+		.unwrap_or(0);
 	// calculate traveltimes
-	let oneway = received - message.received.unwrap();
+	let oneway = received - message.received.unwrap_or(0);
 	let roundtrip = received - message.sent;
-	println!("Trip {}, oneway {:.2}ms, roundtrip {:.2}ms", &message.counter, oneway as f64 / 1000000.0, roundtrip as f64 / 1000000.0);
+	println!(
+		"Trip {}, oneway {:.2}ms, roundtrip {:.2}ms",
+		&message.counter,
+		oneway as f64 / 1_000_000.0,
+		roundtrip as f64 / 1_000_000.0
+	);
 }
 
 #[tokio::main]
@@ -59,14 +67,14 @@ async fn main() -> Result<()> {
 		.timer()
 		.interval(Duration::from_secs(1))
 		.callback(|ctx, props| {
-			let counter = props
-				.read()
-				.expect("should never happen")
-				.counter;
+			let counter = props.read().expect("should never happen").counter;
 
 			let message = PingPongMessage {
-				counter: counter,
-				sent: Local::now().naive_utc().timestamp_nanos_opt().unwrap(),
+				counter,
+				sent: Local::now()
+					.naive_utc()
+					.timestamp_nanos_opt()
+					.unwrap_or(0),
 				received: None,
 			};
 

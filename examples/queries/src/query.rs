@@ -24,7 +24,7 @@ struct Args {
 pub struct AgentProps {}
 
 fn query_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, answer: &[u8]) {
-	let message: String =	bitcode::decode(answer).expect("should not happen");
+	let message: String = bitcode::decode(answer).expect("should not happen");
 	println!("Received '{}'", &message);
 }
 
