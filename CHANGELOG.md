@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - More documentation
 
 ### Changed
+- changed crate for data serialization from 'bincode' to 'bitcode'
 - removed zenoh as external dependency
 - removed parameter `mode` in ad-hoc query through `Context`
 

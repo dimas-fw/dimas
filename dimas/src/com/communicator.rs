@@ -81,10 +81,9 @@ impl Communicator {
 	#[cfg(feature = "publisher")]
 	pub(crate) fn publish<T>(&self, msg_name: impl Into<String>, message: T) -> Result<()>
 	where
-		T: bincode::Encode,
+		T: bitcode::Encode,
 	{
-		let value = bincode::encode_to_vec(message, bincode::config::standard())
-			.expect("should never happen");
+		let value: Vec<u8> = bitcode::encode(&message).expect("should never happen");
 		let key_expr = self.prefix.clone() + "/" + &msg_name.into();
 		//dbg!(&key_expr);
 		match self.session.put(&key_expr, value).res_sync() {

@@ -32,13 +32,13 @@ impl Request {
 	///
 	pub fn reply<T>(&self, value: T)
 	where
-		T: bincode::Encode,
+		T: bitcode::Encode,
 	{
 		let key = self.query.selector().key_expr.to_string();
+		let encoded: Vec<u8> = bitcode::encode(&value).expect("should never happen");
 		let sample = Sample::try_from(
 			key,
-			bincode::encode_to_vec(&value, bincode::config::standard())
-				.expect("should never happen"),
+			encoded,
 		)
 		.expect("should never happen");
 

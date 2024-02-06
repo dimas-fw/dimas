@@ -2,7 +2,7 @@
 //! Copyright © 2024 Stephan Kunz
 
 // region:		--- modules
-use bincode::{Decode, Encode};
+use bitcode::{Decode, Encode};
 use chrono::Local;
 use clap::Parser;
 use dimas::prelude::*;
@@ -33,9 +33,7 @@ struct PingPongMessage {
 }
 
 fn pong_received(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
-	let config = bincode::config::standard();
-	let (message, _len): (PingPongMessage, usize) =
-		bincode::decode_from_slice(message, config).expect("should not happen");
+	let message: PingPongMessage = bitcode::decode(message).expect("should not happen");
 
 	// get current timestamp
 	let received = Local::now().naive_utc().timestamp_nanos_opt().unwrap();

@@ -41,7 +41,7 @@ impl Context {
 	#[cfg(feature = "publisher")]
 	pub fn publish<P>(&self, msg_name: impl Into<String>, message: P) -> Result<()>
 	where
-		P: bincode::Encode,
+		P: bitcode::Encode,
 	{
 		self.communicator.publish(msg_name, message)
 	}

@@ -21,9 +21,7 @@ struct Args {
 struct AgentProps {}
 
 fn hello_publishing(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
-	let config = bincode::config::standard();
-	let (message, _len): (String, usize) =
-		bincode::decode_from_slice(message, config).expect("should not happen");
+	let message: String =	bitcode::decode(message).expect("should not happen");
 	println!("Received '{}'", &message);
 }
 

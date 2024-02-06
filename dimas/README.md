@@ -15,7 +15,7 @@ each new version may include breaking changes, which will be noticed in the chan
 
 # Usage
 
-DiMAS currently also needs to include the crates `bincode` and `tokio`.
+DiMAS currently also needs to include the crates `bitcode` and `tokio`.
 So include `dimas` together with these crates in your dependencies section in your `Cargo.toml`.
 
 DiMAS uses features to have some control over compile time and the size of the binary. 
@@ -24,7 +24,7 @@ The feature `all`, including all available features, is a good point to start wi
 ```toml
 [dependencies]
 dimas = { version = "0.0.3", features = ["all"] }
-bincode = "2.0.0-rc.3"
+bitcode = "0.5.0"
 tokio = "1.35"
 ```
 
@@ -51,7 +51,7 @@ Your `Cargo.toml` should include
 ```toml
 [dependencies]
 dimas = { version = "0.0.3", features = ["timer", "publisher", "subscriber"] }
-bincode = "2.0.0-rc.3"
+bitcode = "0.5.0"
 tokio = "1.35"
 ```
 
@@ -125,9 +125,7 @@ use std::sync::{Arc, RwLock};
 pub struct AgentProps {}
 
 fn callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
-	let config = bincode::config::standard();
-	let (message, _len): (String, usize) =
-		bincode::decode_from_slice(message, config).unwrap();
+	let message: String =	bitcode::decode(message).unwrap();
 	println!("Received '{}'", &message);
 }
 

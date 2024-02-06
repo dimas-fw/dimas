@@ -17,7 +17,7 @@ readme = "README.md"
 workspace = true
 
 [dependencies]
-bincode = { workspace = true }
+bitcode = { workspace = true }
 clap = { workspace = true }
 tokio = { workspace = true }
 zenoh = { workspace = true }
