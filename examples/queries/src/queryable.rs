@@ -18,8 +18,8 @@ struct Args {
 // endregion:	--- Clap
 
 #[derive(Debug, Default)]
-pub struct AgentProps {
-	counter: i128,
+struct AgentProps {
+	counter: u128,
 }
 
 fn queryable(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, request: &Request) {

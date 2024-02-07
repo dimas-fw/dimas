@@ -32,15 +32,11 @@ impl Request {
 	///
 	pub fn reply<T>(&self, value: T)
 	where
-		T: bincode::Encode,
+		T: bitcode::Encode,
 	{
 		let key = self.query.selector().key_expr.to_string();
-		let sample = Sample::try_from(
-			key,
-			bincode::encode_to_vec(&value, bincode::config::standard())
-				.expect("should never happen"),
-		)
-		.expect("should never happen");
+		let encoded: Vec<u8> = bitcode::encode(&value).expect("should never happen");
+		let sample = Sample::try_from(key, encoded).expect("should never happen");
 
 		self.query
 			.reply(Ok(sample))
@@ -98,12 +94,12 @@ where
 		self
 	}
 
-	/// Add the queryable to the agent
+	/// Build the queryable
 	/// # Errors
 	///
 	/// # Panics
 	///
-	pub fn add(mut self) -> Result<()> {
+	pub fn build(mut self) -> Result<Queryable<P>> {
 		if self.key_expr.is_none() {
 			return Err("No key expression or msg type given".into());
 		}
@@ -129,7 +125,19 @@ where
 			props: self.props,
 		};
 
-		self.collection
+		Ok(q)
+	}
+
+	/// Build and add the queryable to the agent
+	/// # Errors
+	///
+	/// # Panics
+	///
+	pub fn add(self) -> Result<()> {
+		let collection = self.collection.clone();
+		let q = self.build()?;
+
+		collection
 			.write()
 			.expect("should never happen")
 			.push(q);

@@ -16,10 +16,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 
-## [0.0.2] - 2024-??-?? <br>Has breaking changes!!
+## [0.0.3] - 2024-??-?? <br>Has breaking changes!!
+
+### Added
+- More documentation
+- Add Builder for Publisher, Query, Queryable, Subscriber, Timer to public interface/prelude
+
+### Changed
+- changed crate for data serialization from 'bincode' to 'bitcode'
+- removed zenoh as external dependency
+- removed parameter `mode` in ad-hoc query through `Context`
+
+## [0.0.2] - 2024-01-28 <br>Has breaking changes!!
 
 ### Added
 - README's & Documentation
+- pingpong example for roundtrip measurement
 
 ### Changed
 - changed crate for data serialization from 'serde' to 'bincode' v2
