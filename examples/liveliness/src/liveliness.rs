@@ -18,7 +18,7 @@ struct Args {
 // endregion:	--- Clap
 
 #[derive(Debug, Default)]
-pub struct AgentProps {}
+struct AgentProps {}
 
 fn liveliness_subscription(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, agent_id: &str) {
 	println!("{agent_id} is alive");

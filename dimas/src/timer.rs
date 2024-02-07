@@ -1,5 +1,8 @@
 // Copyright © 2023 Stephan Kunz
 
+//! Module Timer provides a set of timer which can be creating using the TimerBuilder.
+//! When fired, the Timer calls his assigned TimerCallback
+
 // region:		--- modules
 use crate::{com::communicator::Communicator, context::Context, prelude::*};
 use std::{

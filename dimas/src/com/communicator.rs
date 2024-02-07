@@ -1,19 +1,15 @@
 // Copyright © 2023 Stephan Kunz
 
 // region:		--- modules
+use super::query::QueryCallback;
+use crate::context::Context;
 use crate::error::Result;
 use std::sync::Arc;
-use zenoh::prelude::{r#async::*, sync::SyncResolve};
-use zenoh::publication::Publisher;
-
-#[cfg(feature = "query")]
-use super::query::QueryCallback;
-#[cfg(feature = "query")]
-use crate::context::Context;
-#[cfg(feature = "query")]
 use std::sync::RwLock;
 #[cfg(feature = "liveliness")]
 use zenoh::liveliness::LivelinessToken;
+use zenoh::prelude::{r#async::*, sync::SyncResolve};
+use zenoh::publication::Publisher;
 // endregion:	--- modules
 
 // region:		--- Communicator
@@ -73,8 +69,6 @@ impl Communicator {
 			.expect("should never happen")
 	}
 
-	//#[cfg_attr(doc, doc(cfg(feature = "publisher")))]
-	#[cfg(feature = "publisher")]
 	pub(crate) fn publish<T>(&self, msg_name: impl Into<String>, message: T) -> Result<()>
 	where
 		T: bitcode::Encode,
@@ -88,8 +82,6 @@ impl Communicator {
 		}
 	}
 
-	//#[cfg_attr(doc, doc(cfg(feature = "publisher")))]
-	#[cfg(feature = "publisher")]
 	pub(crate) fn delete(&self, msg_name: impl Into<String>) -> Result<()> {
 		let key_expr = self.prefix.clone() + "/" + &msg_name.into();
 		//dbg!(&key_expr);
@@ -99,9 +91,7 @@ impl Communicator {
 		}
 	}
 
-	//#[cfg_attr(doc, doc(cfg(feature = "query")))]
-	#[cfg(feature = "query")]
-	pub fn query<P>(
+	pub(crate) fn query<P>(
 		&self,
 		ctx: Arc<Context>,
 		props: Arc<RwLock<P>>,

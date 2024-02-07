@@ -21,7 +21,7 @@ struct Args {
 // endregion:	--- Clap
 
 #[derive(Debug, Default)]
-pub struct AgentProps {}
+struct AgentProps {}
 
 fn query_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, answer: &[u8]) {
 	let message: String = bitcode::decode(answer).expect("should not happen");

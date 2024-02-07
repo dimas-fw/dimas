@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - More documentation
+- Add Builder for Publisher, Query, Queryable, Subscriber, Timer to public interface/prelude
 
 ### Changed
 - changed crate for data serialization from 'bincode' to 'bitcode'

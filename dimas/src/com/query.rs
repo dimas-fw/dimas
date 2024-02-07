@@ -90,7 +90,7 @@ where
 	///
 	/// # Panics
 	///
-	pub fn add(mut self) -> Result<()> {
+	pub fn add(self) -> Result<()> {
 		let collection = self.collection.clone();
 		let q = self.build()?;
 

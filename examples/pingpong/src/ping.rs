@@ -32,6 +32,7 @@ struct PingPongMessage {
 	received: Option<i64>,
 }
 
+#[allow(clippy::cast_precision_loss)]
 fn pong_received(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let message: PingPongMessage = bitcode::decode(message).expect("should not happen");
 

@@ -2,15 +2,10 @@
 
 // region:		--- modules
 use crate::com::communicator::Communicator;
-use std::sync::Arc;
-
-#[cfg(feature = "query")]
 use crate::com::query::QueryCallback;
-#[cfg(feature = "publisher")]
-use crate::prelude::*;
-#[cfg(feature = "query")]
+use crate::error::Result;
+use std::sync::Arc;
 use std::sync::RwLock;
-#[cfg(feature = "query")]
 use zenoh::query::ConsolidationMode;
 // endregion:	--- modules
 
@@ -34,11 +29,9 @@ impl Context {
 		self.communicator.prefix()
 	}
 
-	//#[cfg_attr(doc, doc(cfg(feature = "publisher")))]
 	/// Method to do an ad hoc publishing
 	/// # Errors
 	///   Error is propagated from Communicator
-	#[cfg(feature = "publisher")]
 	pub fn publish<P>(&self, msg_name: impl Into<String>, message: P) -> Result<()>
 	where
 		P: bitcode::Encode,
@@ -46,19 +39,15 @@ impl Context {
 		self.communicator.publish(msg_name, message)
 	}
 
-	//#[cfg_attr(doc, doc(cfg(feature = "publisher")))]
 	/// Method to do an ad hoc deletion
 	/// # Errors
 	///   Error is propagated from Communicator
-	#[cfg(feature = "publisher")]
 	pub fn delete(&self, msg_name: impl Into<String>) -> Result<()> {
 		self.communicator.delete(msg_name)
 	}
 
-	//#[cfg_attr(doc, doc(cfg(feature = "query")))]
 	/// Method to do an ad hoc query without any consolodation of answers.
 	/// Multiple answers may be received for the same timestamp.
-	#[cfg(feature = "query")]
 	pub fn query<P>(
 		&self,
 		ctx: Arc<Self>,

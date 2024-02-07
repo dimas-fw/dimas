@@ -12,7 +12,8 @@ members = [
 ]
 
 [workspace.lints.rust]
-unsafe_code="forbid"
+unsafe_code = "forbid"
+missing_docs = "warn"
 #unused="allow" # for dev only
 
 [workspace.lints.clippy]

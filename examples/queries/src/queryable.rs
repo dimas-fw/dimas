@@ -18,7 +18,7 @@ struct Args {
 // endregion:	--- Clap
 
 #[derive(Debug, Default)]
-pub struct AgentProps {
+struct AgentProps {
 	counter: u128,
 }
 

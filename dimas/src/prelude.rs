@@ -5,6 +5,7 @@ pub use crate::agent::Agent;
 pub use crate::com::publisher::PublisherBuilder;
 pub use crate::com::query::QueryBuilder;
 pub use crate::com::queryable::{QueryableBuilder, Request};
+pub use crate::com::subscriber::SubscriberBuilder;
 pub use crate::config::Config;
 pub use crate::context::Context;
 pub use crate::error::{Error, Result};
