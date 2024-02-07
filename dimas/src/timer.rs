@@ -61,7 +61,12 @@ where
 		self
 	}
 
-	pub(crate) fn build(self) -> Result<Timer<P>> {
+	/// Build a timer
+	/// # Errors
+	///
+	/// # Panics
+	///
+	pub fn build(self) -> Result<Timer<P>> {
 		let interval = if self.interval.is_none() {
 			return Err("No interval given".into());
 		} else {

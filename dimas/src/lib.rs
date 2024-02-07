@@ -24,8 +24,7 @@ pub mod error;
 /// `use dimas::prelude::*;`
 pub mod prelude;
 /// Timer
-#[cfg(feature = "timer")]
-pub(crate) mod timer;
+pub mod timer;
 // Helper functions
 //mod utils;
 // endregion: --- modules

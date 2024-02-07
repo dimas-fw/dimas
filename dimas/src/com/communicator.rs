@@ -1,21 +1,19 @@
 // Copyright © 2023 Stephan Kunz
 
 // region:		--- modules
+use crate::error::Result;
 use std::sync::Arc;
 use zenoh::prelude::{r#async::*, sync::SyncResolve};
+use zenoh::publication::Publisher;
 
 #[cfg(feature = "query")]
 use super::query::QueryCallback;
 #[cfg(feature = "query")]
 use crate::context::Context;
-#[cfg(feature = "publisher")]
-use crate::prelude::*;
 #[cfg(feature = "query")]
 use std::sync::RwLock;
 #[cfg(feature = "liveliness")]
 use zenoh::liveliness::LivelinessToken;
-#[cfg(feature = "publisher")]
-use zenoh::publication::Publisher;
 // endregion:	--- modules
 
 // region:		--- Communicator
@@ -64,8 +62,6 @@ impl Communicator {
 			.expect("should never happen")
 	}
 
-	//#[cfg_attr(doc, doc(cfg(feature = "publisher")))]
-	#[cfg(feature = "publisher")]
 	pub(crate) async fn create_publisher<'a>(
 		&self,
 		key_expr: impl Into<String> + Send,

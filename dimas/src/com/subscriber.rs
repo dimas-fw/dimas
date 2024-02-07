@@ -66,12 +66,12 @@ where
 		self
 	}
 
-	/// add the subscriber to the agent
+	/// Build the subscriber
 	/// # Errors
 	///
 	/// # Panics
 	///
-	pub fn add(mut self) -> Result<()> {
+	pub fn build(mut self) -> Result<Subscriber<P>> {
 		if self.key_expr.is_none() {
 			return Err("No key expression or msg type given".into());
 		}
@@ -98,7 +98,19 @@ where
 			props: self.props,
 		};
 
-		self.collection
+		Ok(s)
+	}
+
+	/// Build and add the subscriber to the agent
+	/// # Errors
+	///
+	/// # Panics
+	///
+	pub fn add(mut self) -> Result<()> {
+		let collection = self.collection.clone();
+		let s = self.build()?;
+
+		collection
 			.write()
 			.expect("should never happen")
 			.push(s);

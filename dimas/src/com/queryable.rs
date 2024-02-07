@@ -94,12 +94,12 @@ where
 		self
 	}
 
-	/// Add the queryable to the agent
+	/// Build the queryable
 	/// # Errors
 	///
 	/// # Panics
 	///
-	pub fn add(mut self) -> Result<()> {
+	pub fn build(mut self) -> Result<Queryable<P>> {
 		if self.key_expr.is_none() {
 			return Err("No key expression or msg type given".into());
 		}
@@ -125,7 +125,19 @@ where
 			props: self.props,
 		};
 
-		self.collection
+		Ok(q)
+	}
+
+	/// Build and add the queryable to the agent
+	/// # Errors
+	///
+	/// # Panics
+	///
+	pub fn add(mut self) -> Result<()> {
+		let collection = self.collection.clone();
+		let q = self.build()?;
+
+		collection
 			.write()
 			.expect("should never happen")
 			.push(q);
