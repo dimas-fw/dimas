@@ -47,6 +47,7 @@ impl Communicator {
 		self.prefix.clone()
 	}
 
+	//#[cfg_attr(doc, doc(cfg(feature = "liveliness")))]
 	#[cfg(feature = "liveliness")]
 	pub(crate) async fn liveliness<'a>(
 		&self,
@@ -63,6 +64,7 @@ impl Communicator {
 			.expect("should never happen")
 	}
 
+	//#[cfg_attr(doc, doc(cfg(feature = "publisher")))]
 	#[cfg(feature = "publisher")]
 	pub(crate) async fn create_publisher<'a>(
 		&self,
@@ -75,13 +77,13 @@ impl Communicator {
 			.expect("should never happen")
 	}
 
+	//#[cfg_attr(doc, doc(cfg(feature = "publisher")))]
 	#[cfg(feature = "publisher")]
 	pub(crate) fn publish<T>(&self, msg_name: impl Into<String>, message: T) -> Result<()>
 	where
-		T: bincode::Encode,
+		T: bitcode::Encode,
 	{
-		let value = bincode::encode_to_vec(message, bincode::config::standard())
-			.expect("should never happen");
+		let value: Vec<u8> = bitcode::encode(&message).expect("should never happen");
 		let key_expr = self.prefix.clone() + "/" + &msg_name.into();
 		//dbg!(&key_expr);
 		match self.session.put(&key_expr, value).res_sync() {
@@ -90,6 +92,7 @@ impl Communicator {
 		}
 	}
 
+	//#[cfg_attr(doc, doc(cfg(feature = "publisher")))]
 	#[cfg(feature = "publisher")]
 	pub(crate) fn delete(&self, msg_name: impl Into<String>) -> Result<()> {
 		let key_expr = self.prefix.clone() + "/" + &msg_name.into();
@@ -100,6 +103,7 @@ impl Communicator {
 		}
 	}
 
+	//#[cfg_attr(doc, doc(cfg(feature = "query")))]
 	#[cfg(feature = "query")]
 	pub fn query<P>(
 		&self,

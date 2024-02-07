@@ -34,18 +34,20 @@ impl Context {
 		self.communicator.prefix()
 	}
 
+	//#[cfg_attr(doc, doc(cfg(feature = "publisher")))]
 	/// Method to do an ad hoc publishing
 	/// # Errors
 	///   Error is propagated from Communicator
 	#[cfg(feature = "publisher")]
 	pub fn publish<P>(&self, msg_name: impl Into<String>, message: P) -> Result<()>
 	where
-		P: bincode::Encode,
+		P: bitcode::Encode,
 	{
 		self.communicator.publish(msg_name, message)
 	}
 
-	/// Method to do an ad hoc deleteion
+	//#[cfg_attr(doc, doc(cfg(feature = "publisher")))]
+	/// Method to do an ad hoc deletion
 	/// # Errors
 	///   Error is propagated from Communicator
 	#[cfg(feature = "publisher")]
@@ -53,6 +55,7 @@ impl Context {
 		self.communicator.delete(msg_name)
 	}
 
+	//#[cfg_attr(doc, doc(cfg(feature = "query")))]
 	/// Method to do an ad hoc query without any consolodation of answers.
 	/// Multiple answers may be received for the same timestamp.
 	#[cfg(feature = "query")]

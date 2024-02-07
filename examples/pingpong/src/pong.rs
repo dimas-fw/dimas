@@ -2,6 +2,8 @@
 //! Copyright © 2024 Stephan Kunz
 
 // region:		--- modules
+use bitcode::{Decode, Encode};
+use chrono::Local;
 use clap::Parser;
 use dimas::prelude::*;
 use std::sync::{Arc, RwLock};
@@ -20,13 +22,24 @@ struct Args {
 #[derive(Debug)]
 struct AgentProps {}
 
-fn hello_publishing(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
-	let message: String = bitcode::decode(message).expect("should not happen");
-	println!("Received '{}'", &message);
+#[derive(Debug, Encode, Decode, Clone)]
+struct PingPongMessage {
+	counter: u128,
+	sent: i64,
+	received: Option<i64>,
 }
 
-fn hello_deletion(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>) {
-	println!("Shall delete 'hello'");
+fn ping_received(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+	let mut message: PingPongMessage = bitcode::decode(message).expect("should not happen");
+
+	// set receive-timestamp
+	message.received = Local::now().naive_utc().timestamp_nanos_opt();
+
+	// publishing with ad-hoc publisher
+	let _ = ctx.publish("pong", message);
+
+	let text = "pong!".to_string();
+	println!("Sent '{}'", &text);
 }
 
 #[tokio::main]
@@ -40,12 +53,11 @@ async fn main() -> Result<()> {
 	// create an agent with the properties
 	let mut agent = Agent::new(Config::default(), &args.prefix, properties);
 
-	// listen for 'hello' messages
+	// listen for 'ping' messages
 	agent
 		.subscriber()
-		.msg_type("hello")
-		.put_callback(hello_publishing)
-		.delete_callback(hello_deletion)
+		.msg_type("ping")
+		.put_callback(ping_received)
 		.add()?;
 
 	agent.start().await;

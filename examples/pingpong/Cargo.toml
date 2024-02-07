@@ -1,6 +1,6 @@
 # Copyright © 2024 Stephan Kunz
 [package]
-name = "pubsub"
+name = "pingpong"
 rust-version = { workspace = true }
 version = { workspace = true }
 edition = { workspace = true }
@@ -8,21 +8,22 @@ authors = { workspace = true }
 publish = false
 license-file = { workspace = true }
 categories = { workspace = true }
-description = "Publisher/Subscriber example"
+description = "Ping/Pong example measuring the roundtrip time"
 
 [lints]
 workspace = true
 
 [[bin]]
-name = "publisher"
-path = "src/publisher.rs"
+name = "ping"
+path = "src/ping.rs"
 
 [[bin]]
-name = "subscriber"
-path = "src/subscriber.rs"
+name = "pong"
+path = "src/pong.rs"
 
 [dependencies]
 bitcode = { workspace = true }
+chrono = "0.4"
 clap = { workspace = true }
 dimas = { workspace = true, features = ["publisher", "subscriber", "timer"] }
 tokio = { workspace = true }

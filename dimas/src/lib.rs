@@ -2,8 +2,8 @@
 #![crate_type = "lib"]
 #![crate_name = "dimas"]
 #![warn(missing_docs)]
-#![doc = include_str!("../README.md")]
 
+#[doc = include_str!("../README.md")]
 #[cfg(feature = "nightly")]
 #[cfg(doctest)]
 doc_comment::doctest!("../README.md");
@@ -26,6 +26,6 @@ pub mod prelude;
 /// Timer
 #[cfg(feature = "timer")]
 pub(crate) mod timer;
-/// Helper functions
-mod utils;
+// Helper functions
+//mod utils;
 // endregion: --- modules
