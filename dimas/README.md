@@ -21,7 +21,7 @@ The feature `all`, including all available features, is a good point to start wi
 
 ```toml
 [dependencies]
-dimas = { version = "0.0.3", features = ["all"] }
+dimas = { version = "0.0.4", features = ["all"] }
 bitcode = "0.5.0"
 tokio = "1.35"
 ```
@@ -48,7 +48,7 @@ Your `Cargo.toml` should include
 
 ```toml
 [dependencies]
-dimas = { version = "0.0.3", features = ["timer", "publisher", "subscriber"] }
+dimas = { version = "0.0.4", features = ["timer", "subscriber"] }
 bitcode = "0.5.0"
 tokio = "1.35"
 ```
