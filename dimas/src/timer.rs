@@ -1,5 +1,8 @@
 // Copyright © 2023 Stephan Kunz
 
+//! Module Timer provides a set of timer which can be creating using the TimerBuilder.
+//! When fired, the Timer calls his assigned TimerCallback
+
 // region:		--- modules
 use crate::{com::communicator::Communicator, context::Context, prelude::*};
 use std::{
@@ -61,7 +64,12 @@ where
 		self
 	}
 
-	pub(crate) fn build(self) -> Result<Timer<P>> {
+	/// Build a timer
+	/// # Errors
+	///
+	/// # Panics
+	///
+	pub fn build(self) -> Result<Timer<P>> {
 		let interval = if self.interval.is_none() {
 			return Err("No interval given".into());
 		} else {
@@ -112,32 +120,49 @@ where
 
 // region:		--- Timer
 //#[derive(Debug, Clone)]
-pub(crate) enum Timer<P>
+/// Timer
+pub enum Timer<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// A Timer with an Interval
 	Interval {
+		/// The interval in which the Timer is fired
 		interval: Duration,
+		/// Timers Callback function called, when Timer is fired
 		callback: TimerCallback<P>,
+		/// The handle to stop the Timer
 		handle: Option<JoinHandle<()>>,
+		/// The Context available within the callback function
 		context: Arc<Context>,
+		/// The Agents properties, available in the callback function
 		props: Arc<RwLock<P>>,
 	},
+	/// A delayed Timer with an Interval
 	DelayedInterval {
+		/// The delay after which the first firing of the Timer happenes
 		delay: Duration,
+		/// The interval in which the Timer is fired
 		interval: Duration,
+		/// Timers Callback function called, when Timer is fired
 		callback: TimerCallback<P>,
+		/// The handle to stop the Timer
 		handle: Option<JoinHandle<()>>,
+		/// The Context available within the callback function
 		context: Arc<Context>,
+		/// The Agents properties, available in the callback function
 		props: Arc<RwLock<P>>,
 	},
 }
 
-impl<T> Timer<T>
+impl<P> Timer<P>
 where
-	T: Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
-	pub(crate) fn start(&mut self) {
+	/// Start Timer
+	/// # Panics
+	///
+	pub fn start(&mut self) {
 		match self {
 			Self::Interval {
 				interval,
@@ -181,7 +206,10 @@ where
 		}
 	}
 
-	pub(crate) fn stop(&mut self) {
+	/// Stop Timer
+	/// # Panics
+	///
+	pub fn stop(&mut self) {
 		match self {
 			Self::Interval {
 				interval: _,

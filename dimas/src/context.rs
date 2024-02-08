@@ -2,15 +2,10 @@
 
 // region:		--- modules
 use crate::com::communicator::Communicator;
-use std::sync::Arc;
-
-#[cfg(feature = "query")]
 use crate::com::query::QueryCallback;
-#[cfg(feature = "publisher")]
-use crate::prelude::*;
-#[cfg(feature = "query")]
+use crate::error::Result;
+use std::sync::Arc;
 use std::sync::RwLock;
-#[cfg(feature = "query")]
 use zenoh::query::ConsolidationMode;
 // endregion:	--- modules
 
@@ -22,53 +17,48 @@ pub struct Context {
 }
 
 impl Context {
-	/// get the agents uuid
+	/// Get the agents uuid
 	#[must_use]
 	pub fn uuid(&self) -> String {
 		self.communicator.uuid()
 	}
 
-	/// get the agents prefix
+	/// Get the agents prefix
 	#[must_use]
 	pub fn prefix(&self) -> String {
 		self.communicator.prefix()
 	}
 
-	/// method to do an ad hoc publishing
+	/// Method to do an ad hoc publishing
 	/// # Errors
 	///   Error is propagated from Communicator
-	#[cfg(feature = "publisher")]
 	pub fn publish<P>(&self, msg_name: impl Into<String>, message: P) -> Result<()>
 	where
-		P: bincode::Encode,
+		P: bitcode::Encode,
 	{
 		self.communicator.publish(msg_name, message)
 	}
 
-	/// method to do an ad hoc deleteion
+	/// Method to do an ad hoc deletion
 	/// # Errors
 	///   Error is propagated from Communicator
-	#[cfg(feature = "publisher")]
 	pub fn delete(&self, msg_name: impl Into<String>) -> Result<()> {
 		self.communicator.delete(msg_name)
 	}
 
-	/// method to do an ad hoc query
-	/// # Errors
-	///   Error is propagated from Communicator
-	#[cfg(feature = "query")]
+	/// Method to do an ad hoc query without any consolodation of answers.
+	/// Multiple answers may be received for the same timestamp.
 	pub fn query<P>(
 		&self,
 		ctx: Arc<Self>,
 		props: Arc<RwLock<P>>,
 		query_name: impl Into<String>,
-		mode: ConsolidationMode,
 		callback: QueryCallback<P>,
 	) where
 		P: Send + Sync + Unpin + 'static,
 	{
 		self.communicator
-			.query(ctx, props, query_name, mode, callback);
+			.query(ctx, props, query_name, ConsolidationMode::None, callback);
 	}
 }
 // endregion:	--- Context

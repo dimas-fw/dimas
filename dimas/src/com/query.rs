@@ -54,12 +54,12 @@ where
 		self
 	}
 
-	/// add the query to the agent
+	/// Build the query
 	/// # Errors
 	///
 	/// # Panics
 	///
-	pub fn add(mut self) -> Result<()> {
+	pub fn build(mut self) -> Result<Query> {
 		if self.key_expr.is_none() {
 			return Err("No key expression or msg type given".into());
 		}
@@ -82,17 +82,30 @@ where
 			_key_expr: key_expr,
 		};
 
-		self.collection
+		Ok(s)
+	}
+
+	/// Build and add the query to the agent
+	/// # Errors
+	///
+	/// # Panics
+	///
+	pub fn add(self) -> Result<()> {
+		let collection = self.collection.clone();
+		let q = self.build()?;
+
+		collection
 			.write()
 			.expect("should never happen")
-			.push(s);
+			.push(q);
 		Ok(())
 	}
 }
 // endregion:	--- QueryBuilder
 
 // region:		--- Query
-pub(crate) struct Query {
+/// Query
+pub struct Query {
 	_key_expr: String,
 }
 // endregion:	--- Query

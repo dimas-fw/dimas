@@ -8,7 +8,6 @@ use std::{
 	sync::{Arc, RwLock},
 	time::Duration,
 };
-use zenoh::query::ConsolidationMode;
 // endregion:	--- modules
 
 // region:		--- Clap
@@ -22,12 +21,10 @@ struct Args {
 // endregion:	--- Clap
 
 #[derive(Debug, Default)]
-pub struct AgentProps {}
+struct AgentProps {}
 
 fn query_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, answer: &[u8]) {
-	let config = bincode::config::standard();
-	let (message, _len): (String, usize) =
-		bincode::decode_from_slice(answer, config).expect("should not happen");
+	let message: String = bitcode::decode(answer).expect("should not happen");
 	println!("Received '{}'", &message);
 }
 
@@ -51,13 +48,7 @@ async fn main() -> Result<()> {
 		.callback(move |ctx, props| {
 			println!("Querying [{counter}]");
 			// querying with ad-hoc query
-			ctx.query(
-				ctx.clone(),
-				props,
-				"query",
-				ConsolidationMode::None,
-				query_callback,
-			);
+			ctx.query(ctx.clone(), props, "query", query_callback);
 			counter += 1;
 		})
 		.add()?;

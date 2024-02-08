@@ -1,6 +1,7 @@
 // Copyright © 2023 Stephan Kunz
 #![crate_type = "lib"]
 #![crate_name = "dimas"]
+//#![no_panic]
 #![warn(missing_docs)]
 #![doc = include_str!("../README.md")]
 
@@ -10,22 +11,23 @@ doc_comment::doctest!("../README.md");
 
 // region:    --- modules
 /// Primary module of `DiMAS` containing the Agent
-pub mod agent;
+mod agent;
 /// Communication
-pub mod com;
+mod com;
 /// Configuration
-pub mod config;
+mod config;
 /// Context
-pub mod context;
+mod context;
 /// Error handling
-pub mod error;
+mod error;
+/// Timer
+mod timer;
+// Helper functions
+//mod utils;
+
 /// Public interface of dimas.
 /// Typically it is sufficient to include the prelude with
 /// `use dimas::prelude::*;`
 pub mod prelude;
-/// Timer
-#[cfg(feature = "timer")]
-pub mod timer;
-/// Helper functions
-mod utils;
+
 // endregion: --- modules

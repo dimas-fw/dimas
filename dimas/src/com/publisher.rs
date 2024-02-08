@@ -42,12 +42,12 @@ where
 		self
 	}
 
-	/// Add the publisher to the agent
+	/// Build the publisher
 	/// # Errors
 	///
 	/// # Panics
 	///
-	pub async fn add(mut self) -> Result<()> {
+	pub async fn build(mut self) -> Result<Publisher<'a>> {
 		if self.key_expr.is_none() {
 			return Err("No key expression or msg type given".into());
 		}
@@ -62,7 +62,19 @@ where
 		let _props = self.props.clone();
 		let publ = self.communicator.create_publisher(key_expr).await;
 		let p = Publisher { _publisher: publ };
-		self.collection
+
+		Ok(p)
+	}
+
+	/// Build and add the publisher to the agent
+	/// # Errors
+	///
+	/// # Panics
+	///
+	pub async fn add(self) -> Result<()> {
+		let collection = self.collection.clone();
+		let p = self.build().await?;
+		collection
 			.write()
 			.expect("should never happen")
 			.push(p);
@@ -72,7 +84,8 @@ where
 // endregion:	--- PublisherBuilder
 
 // region:		--- Publisher
-pub(crate) struct Publisher<'a> {
+/// Publisher
+pub struct Publisher<'a> {
 	_publisher: zenoh::publication::Publisher<'a>,
 }
 // endregion:	--- Publisher

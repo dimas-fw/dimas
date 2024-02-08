@@ -5,14 +5,15 @@ use super::communicator::Communicator;
 use crate::{context::Context, prelude::*};
 use std::sync::{Arc, RwLock};
 use tokio::task::JoinHandle;
-use zenoh::prelude::{r#async::AsyncResolve, Sample};
+use zenoh::prelude::{r#async::AsyncResolve, SampleKind};
 // endregion:	--- modules
 
 // region:		--- types
-/// Type definition for liveliness subscribers callback function
+/// Type definition for liveliness subscribers 'publish' callback function
 #[allow(clippy::module_name_repetitions)]
-pub type LivelinessSubscriberCallback<P> = fn(Arc<Context>, Arc<RwLock<P>>, sample: Sample);
-// msg: Box<dyn DimasMessage<Msg=dyn Any>>
+pub type LivelinessSubscriberCallback<P> = fn(&Arc<Context>, &Arc<RwLock<P>>, agent_id: &str);
+/// Type definition for a liveliness subscribers `delete` callback function
+pub type LivelinessDeleteCallback<P> = fn(&Arc<Context>, &Arc<RwLock<P>>, agent_id: &str);
 // endregion:	--- types
 
 // region:		--- LivelinessSubscriberBuilder
@@ -27,7 +28,8 @@ where
 	pub(crate) communicator: Arc<Communicator>,
 	pub(crate) props: Arc<RwLock<P>>,
 	pub(crate) key_expr: Option<String>,
-	pub(crate) callback: Option<LivelinessSubscriberCallback<P>>,
+	pub(crate) put_callback: Option<LivelinessSubscriberCallback<P>>,
+	pub(crate) delete_callback: Option<LivelinessDeleteCallback<P>>,
 }
 
 impl<P> LivelinessSubscriberBuilder<P>
@@ -50,10 +52,17 @@ where
 		self
 	}
 
-	/// Set the liveliness subscribers callback
+	/// Set liveliness subscribers callback for `put` messages
 	#[must_use]
-	pub fn callback(mut self, callback: LivelinessSubscriberCallback<P>) -> Self {
-		self.callback.replace(callback);
+	pub fn put_callback(mut self, callback: LivelinessSubscriberCallback<P>) -> Self {
+		self.put_callback.replace(callback);
+		self
+	}
+
+	/// Set liveliness subscribers callback for `delete` messages
+	#[must_use]
+	pub fn delete_callback(mut self, callback: LivelinessDeleteCallback<P>) -> Self {
+		self.delete_callback.replace(callback);
 		self
 	}
 
@@ -66,10 +75,10 @@ where
 		if self.key_expr.is_none() {
 			return Err("No key expression or msg type given".into());
 		}
-		let callback = if self.callback.is_none() {
+		let put_callback = if self.put_callback.is_none() {
 			return Err("No callback given".into());
 		} else {
-			self.callback.expect("should never happen")
+			self.put_callback.expect("should never happen")
 		};
 		let key_expr = if self.key_expr.is_some() {
 			self.key_expr.take().expect("should never happen")
@@ -82,7 +91,8 @@ where
 
 		let s = LivelinessSubscriber {
 			key_expr,
-			callback,
+			put_callback,
+			delete_callback: self.delete_callback,
 			handle: None,
 			context: ctx,
 			props: self.props,
@@ -98,25 +108,42 @@ where
 // endregion:	--- LivelinessSubscriberBuilder
 
 // region:		--- LivelinessSubscriber
-#[derive(Debug)]
-pub(crate) struct LivelinessSubscriber<P>
+pub struct LivelinessSubscriber<P>
 where
-	P: std::fmt::Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	key_expr: String,
-	callback: LivelinessSubscriberCallback<P>,
+	put_callback: LivelinessSubscriberCallback<P>,
+	delete_callback: Option<LivelinessDeleteCallback<P>>,
 	handle: Option<JoinHandle<()>>,
 	context: Arc<Context>,
 	props: Arc<RwLock<P>>,
 }
 
+impl<P> std::fmt::Debug for LivelinessSubscriber<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("LivelinessSubscriber")
+			.field("key_expr", &self.key_expr)
+			//.field("put_callback", &self.put_callback)
+			//.field("delete_callback", &self.put_callback)
+			//.field("handle", &self.handle)
+			//.field("context", &self.context)
+			//.field("props", &self.props)
+			.finish_non_exhaustive()
+	}
+}
+
 impl<P> LivelinessSubscriber<P>
 where
-	P: std::fmt::Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	pub fn start(&mut self) {
 		let key_expr = self.key_expr.clone();
-		let cb = self.callback;
+		let cb = self.put_callback;
+		let d_cb = self.delete_callback;
 		let ctx = self.context.clone();
 		let props = self.props.clone();
 		//dbg!(&key_expr);
@@ -128,18 +155,30 @@ where
 				.res_async()
 				.await
 				.expect("should never happen");
+
+			let repl = key_expr + "/";
 			loop {
 				let sample = subscriber
 					.recv_async()
 					.await
 					.expect("should never happen");
-				cb(ctx.clone(), props.clone(), sample);
+				let agent_id = sample.key_expr.to_string().replace(&repl, "");
+				match sample.kind {
+					SampleKind::Put => {
+						cb(&ctx, &props, &agent_id);
+					}
+					SampleKind::Delete => {
+						if let Some(cb) = d_cb {
+							cb(&ctx, &props, &agent_id);
+						}
+					}
+				}
 			}
 		}));
 
 		// the initial liveliness query
 		let key_expr = self.key_expr.clone();
-		let cb = self.callback;
+		let cb = self.put_callback;
 		let ctx = self.context.clone();
 		let props = self.props.clone();
 		tokio::spawn(async move {
@@ -152,11 +191,13 @@ where
 				.await
 				.expect("should never happen");
 
+			let repl = key_expr + "/";
 			while let Ok(reply) = replies.recv_async().await {
 				match reply.sample {
 					Ok(sample) => {
 						//dbg!(&sample);
-						cb(ctx.clone(), props.clone(), sample);
+						let agent_id = sample.key_expr.to_string().replace(&repl, "");
+						cb(&ctx, &props, &agent_id);
 					}
 					Err(err) => println!(
 						">> Received (ERROR: '{}')",

@@ -5,7 +5,6 @@
 use clap::Parser;
 use dimas::prelude::*;
 use std::sync::{Arc, RwLock};
-use zenoh::{prelude::SampleKind, sample::Sample};
 // endregion:	--- modules
 
 // region:		--- Clap
@@ -19,25 +18,14 @@ struct Args {
 // endregion:	--- Clap
 
 #[derive(Debug, Default)]
-pub struct AgentProps {}
+struct AgentProps {}
 
-fn liveliness_subscription(ctx: Arc<Context>, props: Arc<RwLock<AgentProps>>, sample: Sample) {
-	// to avoid clippy message
-	let _props = props;
-	let ctx = ctx;
-	let sample = sample;
-	let repl = ctx.prefix() + "/alive/";
-	let agent_id = sample.key_expr.to_string().replace(&repl, "");
-	match sample.kind {
-		SampleKind::Put => {
-			// born / started
-			println!("{agent_id} is alive");
-		}
-		SampleKind::Delete => {
-			// died / ended
-			println!("{agent_id} is dead");
-		}
-	}
+fn liveliness_subscription(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, agent_id: &str) {
+	println!("{agent_id} is alive");
+}
+
+fn delete_subscription(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, agent_id: &str) {
+	println!("{agent_id} died");
 }
 
 #[tokio::main]
@@ -58,7 +46,8 @@ async fn main() -> Result<()> {
 	// the subscriber will also get its own liveliness signal
 	agent
 		.liveliness_subscriber()
-		.callback(liveliness_subscription)
+		.put_callback(liveliness_subscription)
+		.delete_callback(delete_subscription)
 		.msg_type("alive")
 		.add()?;
 
