@@ -1,0 +1,31 @@
+# Copyright © 2024 Stephan Kunz
+[package]
+name = "queries"
+rust-version = { workspace = true }
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+publish = false
+license-file = { workspace = true }
+categories = { workspace = true }
+description = "Queryable/Query example"
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "queryable"
+path = "src/queryable.rs"
+
+[[bin]]
+name = "query"
+path = "src/query.rs"
+
+[dependencies]
+bitcode = { workspace = true }
+clap = { workspace = true }
+dimas = { workspace = true, features = ["timer", "query", "queryable"] }
+tokio = { workspace = true }
+zenoh = { workspace = true }
+
+[dev-dependencies]

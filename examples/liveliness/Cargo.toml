@@ -1,0 +1,26 @@
+# Copyright © 2024 Stephan Kunz
+[package]
+name = "liveliness"
+rust-version = { workspace = true }
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+publish = false
+license-file = { workspace = true }
+categories = { workspace = true }
+description = "Liveliness example"
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "liveliness"
+path = "src/liveliness.rs"
+
+[dependencies]
+clap = { workspace = true }
+dimas = { workspace = true, features = ["liveliness"] }
+tokio = { workspace = true }
+
+[dev-dependencies]
+

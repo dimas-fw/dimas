@@ -1,0 +1,52 @@
+# Copyright © 2023 Stephan Kunz
+# See https://doc.rust-lang.org/cargo/reference/manifest.html
+[workspace]
+resolver="2"
+
+members = [
+	"dimas",
+	"examples/liveliness",
+	"examples/pingpong",
+	"examples/pubsub",
+	"examples/queries",
+]
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+#unused="allow" # for dev only
+
+[workspace.lints.clippy]
+enum_glob_use = "deny"
+pedantic = "deny"
+nursery = "deny"
+unwrap_used = "deny"
+
+[workspace.package]
+rust-version = "1.75.0"
+edition = "2021"
+version = "0.0.3"
+authors = [
+	"stepkun <stephan.kunz@kabelbw.de>",
+]
+#license = "NGMC"
+license-file = "LICENSE"
+categories = [
+	"science::robotics",
+	"development-tools",
+	"simulation"
+]
+
+[workspace.dependencies]
+bitcode = "0.5.0"
+clap = { version = "4.4", features = ["derive"] }
+dimas = { path = "dimas" }
+tokio = "1.35"
+zenoh = { version = "0.10.1-rc", features = ["unstable"] }
+
+[profile.release]
+opt-level = 'z'   # Optimize for size.
+lto = true        # Enable Link Time Optimisation
+codegen-units = 1 # Reduced to increase optimisations.
+panic = 'abort'   # Abort on panic
+strip = "symbols" # Strip symbols from binary

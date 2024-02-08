@@ -1,0 +1,9 @@
+# Copyright © 2023 Stephan Kunz
+# rustfmt doc: https://rust-lang.github.io/rustfmt/
+
+hard_tabs = true
+edition = "2021"
+
+max_width = 100
+chain_width = 50
+array_width = 50

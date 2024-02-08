@@ -1,0 +1,30 @@
+# Copyright © 2024 Stephan Kunz
+[package]
+name = "pubsub"
+rust-version = { workspace = true }
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+publish = false
+license-file = { workspace = true }
+categories = { workspace = true }
+description = "Publisher/Subscriber example"
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "publisher"
+path = "src/publisher.rs"
+
+[[bin]]
+name = "subscriber"
+path = "src/subscriber.rs"
+
+[dependencies]
+bitcode = { workspace = true }
+clap = { workspace = true }
+dimas = { workspace = true, features = ["publisher", "subscriber", "timer"] }
+tokio = { workspace = true }
+
+[dev-dependencies]

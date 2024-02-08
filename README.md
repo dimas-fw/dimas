@@ -1,2 +1,4 @@
-# dimas
-DiMAS - Distributed Multi Agent System
+# DiMAS Workspace
+Workspace for developping DiMAS, the **Di**stributed **M**ulti **A**gent **S**ystem framework.
+
+
