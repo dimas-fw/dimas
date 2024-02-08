@@ -120,6 +120,7 @@ where
 // endregion:	--- SubscriberBuilder
 
 // region:		--- Subscriber
+/// Subscriber
 pub struct Subscriber<P>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -152,7 +153,10 @@ impl<P> Subscriber<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	pub(crate) fn start(&mut self) {
+	/// Start Subscriber
+	/// # Panics
+	///
+	pub fn start(&mut self) {
 		let key_expr = self.key_expr.clone();
 		let cb = self.put_callback;
 		let d_cb = self.delete_callback;
@@ -189,7 +193,10 @@ where
 		}));
 	}
 
-	pub(crate) fn stop(&mut self) {
+	/// Stop Subscriber
+	/// # Panics
+	///
+	pub fn stop(&mut self) {
 		self.handle
 			.take()
 			.expect("should never happen")

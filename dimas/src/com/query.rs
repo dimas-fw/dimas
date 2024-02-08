@@ -104,6 +104,7 @@ where
 // endregion:	--- QueryBuilder
 
 // region:		--- Query
+/// Query
 pub struct Query {
 	_key_expr: String,
 }

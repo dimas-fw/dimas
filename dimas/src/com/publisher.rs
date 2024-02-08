@@ -84,6 +84,7 @@ where
 // endregion:	--- PublisherBuilder
 
 // region:		--- Publisher
+/// Publisher
 pub struct Publisher<'a> {
 	_publisher: zenoh::publication::Publisher<'a>,
 }

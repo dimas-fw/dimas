@@ -147,6 +147,7 @@ where
 // endregion:	--- QueryableBuilder
 
 // region:		--- Queryable
+/// Queryable
 pub struct Queryable<P>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -162,7 +163,10 @@ impl<P> Queryable<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	pub(crate) fn start(&mut self) {
+	/// Start Queryable
+	/// # Panics
+	///
+	pub fn start(&mut self) {
 		let key_expr = self.key_expr.clone();
 		//dbg!(&key_expr);
 		let cb = self.callback;
@@ -188,7 +192,10 @@ where
 		}));
 	}
 
-	pub(crate) fn stop(&mut self) {
+	/// Stop Queryable
+	/// # Panics
+	///
+	pub fn stop(&mut self) {
 		self.handle
 			.take()
 			.expect("should never happen")

@@ -16,6 +16,7 @@ use crate::com::subscriber::{Subscriber, SubscriberBuilder};
 use crate::timer::{Timer, TimerBuilder};
 use std::{
 	marker::PhantomData,
+	ops::Deref,
 	sync::{Arc, RwLock},
 	time::Duration,
 };
@@ -25,14 +26,14 @@ use zenoh::liveliness::LivelinessToken;
 // endregion:	--- modules
 
 // region:		--- Agent
-/// implementation of an agent
+/// Agent
 pub struct Agent<'a, P>
 where
 	P: std::fmt::Debug + Send + Sync + Unpin + 'static,
 {
 	com: Arc<Communicator>,
 	pd: PhantomData<&'a P>,
-	// The agents propertie structure
+	// The agents property structure
 	props: Arc<RwLock<P>>,
 	#[cfg(feature = "liveliness")]
 	liveliness: bool,
@@ -59,6 +60,17 @@ where
 	timers: Arc<RwLock<Vec<Timer<P>>>>,
 }
 
+impl<'a, P> Deref for Agent<'a, P>
+where
+	P: std::fmt::Debug + Send + Sync + Unpin + 'static,
+{
+	type Target = Arc<RwLock<P>>;
+
+	fn deref(&self) -> &Self::Target {
+		&self.props
+	}
+}
+
 impl<'a, P> Agent<'a, P>
 where
 	P: std::fmt::Debug + Send + Sync + Unpin + 'static,
@@ -69,9 +81,10 @@ where
 		let pd = PhantomData {};
 		Self {
 			pd,
+			com,
+			props: Arc::new(RwLock::new(properties)),
 			#[cfg(feature = "liveliness")]
 			liveliness: false,
-			com,
 			#[cfg(feature = "liveliness")]
 			liveliness_token: RwLock::new(None),
 			#[cfg(feature = "liveliness")]
@@ -86,13 +99,19 @@ where
 			queries: Arc::new(RwLock::new(Vec::new())),
 			#[cfg(feature = "timer")]
 			timers: Arc::new(RwLock::new(Vec::new())),
-			props: Arc::new(RwLock::new(properties)),
 		}
 	}
 
 	/// get the agents uuid
+	#[must_use]
 	pub fn uuid(&self) -> String {
 		self.com.uuid()
+	}
+
+	/// get the agents properties
+	#[must_use]
+	pub fn props(&self) -> Arc<RwLock<P>> {
+		self.props.clone()
 	}
 
 	//#[cfg_attr(doc, doc(cfg(feature = "liveliness")))]
@@ -105,6 +124,7 @@ where
 	//#[cfg_attr(doc, doc(cfg(feature = "liveliness")))]
 	/// get a builder for a subscriber for the liveliness information
 	#[cfg(feature = "liveliness")]
+	#[must_use]
 	pub fn liveliness_subscriber(&self) -> LivelinessSubscriberBuilder<P> {
 		LivelinessSubscriberBuilder {
 			subscriber: self.liveliness_subscriber.clone(),
@@ -119,6 +139,7 @@ where
 	//#[cfg_attr(doc, doc(cfg(feature = "subscriber")))]
 	/// get a builder for a Subscriber
 	#[cfg(feature = "subscriber")]
+	#[must_use]
 	pub fn subscriber(&self) -> SubscriberBuilder<P> {
 		SubscriberBuilder {
 			collection: self.subscribers.clone(),
@@ -133,6 +154,7 @@ where
 	//#[cfg_attr(doc, doc(cfg(feature = "queryable")))]
 	/// get a builder for a Queryable
 	#[cfg(feature = "queryable")]
+	#[must_use]
 	pub fn queryable(&self) -> QueryableBuilder<P> {
 		QueryableBuilder {
 			collection: self.queryables.clone(),
@@ -146,6 +168,7 @@ where
 	//#[cfg_attr(doc, doc(cfg(feature = "publisher")))]
 	/// get a builder for a Publisher
 	#[cfg(feature = "publisher")]
+	#[must_use]
 	pub fn publisher(&self) -> PublisherBuilder<'a, P> {
 		PublisherBuilder {
 			collection: self.publishers.clone(),
@@ -158,6 +181,7 @@ where
 	//#[cfg_attr(doc, doc(cfg(feature = "query")))]
 	/// get a builder for a Query
 	#[cfg(feature = "query")]
+	#[must_use]
 	pub fn query(&self) -> QueryBuilder<P> {
 		QueryBuilder {
 			collection: self.queries.clone(),
@@ -171,6 +195,7 @@ where
 	//#[cfg_attr(doc, doc(cfg(feature = "timer")))]
 	/// get a builder for a Timer
 	#[cfg(feature = "timer")]
+	#[must_use]
 	pub fn timer(&self) -> TimerBuilder<P> {
 		TimerBuilder {
 			collection: self.timers.clone(),

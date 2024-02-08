@@ -15,6 +15,8 @@ Running `target/debug/liveliness`
 The subscriber can see its own token.
 
 ## [Publisher/Subscriber](https://github.com/dimas-fw/dimas/tree/main/examples/pubsub)
+Implements a simple "Hello World!" Publisher/Subscriber pair
+
 Run the publisher in one terminal window with
 ```shell
 cargo run --bin publisher
@@ -24,7 +26,21 @@ and the subscriber in another terminal window with
 cargo run --bin subscriber
 ```
 
+## [Ping/Pong](https://github.com/dimas-fw/dimas/tree/main/examples/pingpong)
+Implements a Ping/Pong pair that measures the roundtrip time. The Ping does not wait for a started Pong, but continues pinging.
+
+Run the ping'er in one terminal window with
+```shell
+cargo run --bin ping
+```
+and the pong'er in another terminal window with
+```shell
+cargo run --bin pong
+```
+
 ## [Queryable/Query](https://github.com/dimas-fw/dimas/tree/main/examples/queries)
+Implements a simple Qeryale/Query pair, where the Query does not wait for a started Queryable, but continues querying.
+
 Run the query in one terminal window with
 ```shell
 cargo run --bin query

@@ -20,11 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - More documentation
-- Add Builder for Publisher, Query, Queryable, Subscriber, Timer to public interface/prelude
+- Add Publisher, Query, Queryable, Subscriber, Timer and their Builders to public interface/prelude
 
 ### Changed
 - changed crate for data serialization from 'bincode' to 'bitcode'
-- removed zenoh as external dependency
+- moved zenoh into an internal dependency
 - removed parameter `mode` in ad-hoc query through `Context`
 
 ## [0.0.2] - 2024-01-28 <br>Has breaking changes!!
