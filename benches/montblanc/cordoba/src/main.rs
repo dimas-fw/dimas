@@ -23,7 +23,7 @@ async fn main() -> Result<()> {
 			let mut rng = rand::thread_rng();
 			let value = rng.gen_range(-999.99999f32..999.99999f32);
 			let _ = ctx.publish("amazon", value);
-			// just to see what value has be sent
+			// just to see what value has been sent
 			println!("cordoba sent: {value:>11.6}");
 		})
 		.add()?;

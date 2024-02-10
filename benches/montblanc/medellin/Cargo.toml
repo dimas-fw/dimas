@@ -10,6 +10,9 @@ categories.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+dimas = { workspace = true, features = ["timer"] }
+tokio = { workspace = true }
+rand = "0.8.5"
 
 [lints]
 workspace = true
