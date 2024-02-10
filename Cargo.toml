@@ -5,7 +5,7 @@ resolver="2"
 
 members = [
 	"benches/montblanc/arequipa",
-	"benches/montblanc/barceloan",
+	"benches/montblanc/barcelona",
 	"benches/montblanc/cordoba",
 	"benches/montblanc/delhi",
 	"benches/montblanc/freeport",
