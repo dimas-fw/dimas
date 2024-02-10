@@ -17,8 +17,10 @@ async fn main() -> Result<()> {
 
 	let values = [
 		"Another one bites the dust",
+		"Once in a while, there happens a miracle",
+		"Sometimes you win, sometimes you loose",
 		"The quick brown fox jumps over the fence",
-		"To be or not to be"
+		"To be or not to be",
 	];
 	let mut index = 0;
 
@@ -29,8 +31,8 @@ async fn main() -> Result<()> {
 			let value = values[index].to_string();
 			let _ = ctx.publish("danube", &value);
 			// just to see what value has been sent
-			println!("freeport sent: {value}");
-			index = (index + 1) % 3;
+			println!("portsmouth sent: {value}");
+			index = (index + 1) % 5;
 		})
 		.add()?;
 

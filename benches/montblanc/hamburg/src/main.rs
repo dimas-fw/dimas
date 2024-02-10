@@ -13,33 +13,42 @@ use std::sync::{Arc, RwLock};
 
 use dimas::prelude::*;
 
-#[derive(Debug)]
-struct AgentProps {}
-
-fn tigris_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
-	let value: f32 = bitcode::decode(message).expect("should not happen");
-	println!("hamburg received: {value:>11.6}");
+#[derive(Debug, Default)]
+struct AgentProps {
+	ganges: i64,
+	nile: i32,
+	tigris: f32,
+	danube: String,
 }
 
-fn ganges_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn tigris_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+	let value: f32 = bitcode::decode(message).expect("should not happen");
+	props.write().expect("shoould not happen").tigris = value;
+	println!("hamburg received: {value:>14.6}");
+}
+
+fn ganges_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: i64 = bitcode::decode(message).expect("should not happen");
+	props.write().expect("shoould not happen").ganges = value;
 	println!("hamburg received: {value:>20}");
 }
 
-fn nile_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn nile_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: i32 = bitcode::decode(message).expect("should not happen");
-	println!("hamburg received: {value:>14}");
+	props.write().expect("shoould not happen").nile = value;
+	println!("hamburg received: {value:>12}");
 }
 
-fn danube_callback(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn danube_callback(ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: String = bitcode::decode(message).expect("should not happen");
 	let _ = ctx.publish("parana", &value);
-	println!("hamburg propagates: {value}");
+	println!("hamburg propagates: {}", &value);
+	props.write().expect("shoould not happen").danube = value;
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
-	let properties = AgentProps {};
+	let properties = AgentProps::default();
 	let mut agent = Agent::new(Config::default(), properties);
 
 	agent

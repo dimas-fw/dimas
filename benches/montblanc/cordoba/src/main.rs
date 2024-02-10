@@ -6,7 +6,7 @@
 
 use dimas::prelude::*;
 use std::time::Duration;
-use rand::Rng;
+use rand::random;
 
 #[derive(Debug)]
 struct AgentProps {}
@@ -20,11 +20,10 @@ async fn main() -> Result<()> {
 		.timer()
 		.interval(Duration::from_millis(100))
 		.callback(|ctx, _props| {
-			let mut rng = rand::thread_rng();
-			let value = rng.gen_range(-999.99999f32..999.99999f32);
+			let value: f32 = random::<f32>() * 1_000_000.0;
 			let _ = ctx.publish("amazon", value);
 			// just to see what value has been sent
-			println!("cordoba sent: {value:>11.6}");
+			println!("cordoba sent: {value:>14.6}");
 		})
 		.add()?;
 
