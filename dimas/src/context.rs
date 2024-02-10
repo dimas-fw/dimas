@@ -25,7 +25,7 @@ impl Context {
 
 	/// Get the agents prefix
 	#[must_use]
-	pub fn prefix(&self) -> String {
+	pub fn prefix(&self) -> Option<String> {
 		self.communicator.prefix()
 	}
 

@@ -37,7 +37,7 @@ async fn main() -> Result<()> {
 	let properties = AgentProps {};
 
 	// create an agent with the properties
-	let mut agent = Agent::new(Config::default(), &args.prefix, properties);
+	let mut agent = Agent::new_with_prefix(Config::default(), properties, &args.prefix);
 
 	// timer for regular querying
 	let duration = Duration::from_secs(1);

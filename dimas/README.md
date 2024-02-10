@@ -71,8 +71,8 @@ async fn main() -> Result<()> {
 	// create & initialize agents properties
 	let properties = AgentProps { counter: 0 };
 
-	// create an agent with the properties and the prefix "example"
-	let mut agent = Agent::new(Config::default(), "example", properties);
+	// create an agent with the properties
+	let mut agent = Agent::new(Config::default(), properties);
 
 	// use a timer for regular publishing of "hello" topic
 	agent
@@ -132,8 +132,8 @@ async fn main() -> Result<()> {
 	// create & initialize agents properties
 	let properties = AgentProps {};
 
-	// create an agent with the properties and the prefix "example"
-	let mut agent = Agent::new(Config::default(), "example", properties);
+	// create an agent with the properties
+	let mut agent = Agent::new(Config::default(), properties);
 
 	// subscribe to "hello" messages
 	agent
