@@ -1,6 +1,6 @@
 // Copyright © 2024 Stephan Kunz
 
-//! The node 'freeport' publishes an int64 value every 50 ms on the topic /ganges
+//! The node 'freeport' publishes an Int64 value every 50 ms on the topic /ganges
 //!
 //! This source is part of `DiMAS` implementation of Montblanc benchmark for distributed systems
 

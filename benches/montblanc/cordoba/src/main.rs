@@ -1,6 +1,6 @@
 // Copyright © 2024 Stephan Kunz
 
-//! The node 'cordoba' publishes a float32 value every 100 ms on the topic /amazon
+//! The node 'cordoba' publishes a Float32 value every 100 ms on the topic /amazon
 //!
 //! This source is part of `DiMAS` implementation of Montblanc benchmark for distributed systems
 

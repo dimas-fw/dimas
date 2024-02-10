@@ -1,6 +1,6 @@
 // Copyright © 2024 Stephan Kunz
 
-//! The node 'medellin' publishes an int32 value every 10 ms on the topic /nilnilee
+//! The node 'medellin' publishes an Int32 value every 10 ms on the topic /nilnilee
 //!
 //! This source is part of `DiMAS` implementation of Montblanc benchmark for distributed systems
 
