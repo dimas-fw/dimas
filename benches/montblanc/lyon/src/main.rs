@@ -1,6 +1,6 @@
 // Copyright © 2024 Stephan Kunz
 
-//! The node 'lyon' subscribes to a float32 on the topic /amazon and publishes the rcieved value on topic /tigris
+//! The node 'lyon' subscribes to a float32 on the topic /amazon and publishes the received value on topic /tigris
 //!
 //! This source is part of `DiMAS` implementation of Montblanc benchmark for distributed systems
 
