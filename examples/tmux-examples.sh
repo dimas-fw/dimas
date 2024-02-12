@@ -29,16 +29,16 @@ tmux split-pane -h -p 70
 tmux split-pane -h -p 50
 
 tmux select-pane -t 0
-tmux split-pane -v -p 70
+tmux split-pane -v -p 66
 tmux split-pane -v -p 50
 
 tmux select-pane -t 3
-tmux split-pane -v -p 56
-tmux split-pane -v -p 30
-tmux split-pane -v
+tmux split-pane -v -p 50
+tmux split-pane -v -p 50
+tmux split-pane -v -p 50
 
 tmux select-pane -t 7
-tmux split-pane -v -p 70
+tmux split-pane -v -p 66
 tmux split-pane -v -p 50
 
 # start an example in each pane but pane 9
