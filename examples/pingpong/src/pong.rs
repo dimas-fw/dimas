@@ -35,10 +35,11 @@ fn ping_received(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: 
 	// set receive-timestamp
 	message.received = Local::now().naive_utc().timestamp_nanos_opt();
 
+	let text = "pong! [".to_string() + &message.counter.to_string() + "]";
+
 	// publishing with ad-hoc publisher
 	let _ = ctx.publish("pong", message);
 
-	let text = "pong!".to_string();
 	println!("Sent '{}'", &text);
 }
 

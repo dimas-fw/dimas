@@ -9,7 +9,7 @@ use std::{
 	sync::{Arc, RwLock},
 	time::Duration,
 };
-use tokio::{sync::Mutex, task::JoinHandle};
+use tokio::{sync::Mutex, task::JoinHandle, time};
 // endregion:	--- modules
 
 // region:		--- types
@@ -176,9 +176,10 @@ where
 				let ctx = context.clone();
 				let props = props.clone();
 				handle.replace(tokio::spawn(async move {
+					let mut interval = time::interval(interval);
 					loop {
+						interval.tick().await;
 						cb.lock().await(ctx.clone(), props.clone());
-						tokio::time::sleep(interval).await;
 					}
 				}));
 			}
@@ -197,9 +198,10 @@ where
 				let props = props.clone();
 				handle.replace(tokio::spawn(async move {
 					tokio::time::sleep(delay).await;
+					let mut interval = time::interval(interval);
 					loop {
+						interval.tick().await;
 						cb.lock().await(ctx.clone(), props.clone());
-						tokio::time::sleep(interval).await;
 					}
 				}));
 			}

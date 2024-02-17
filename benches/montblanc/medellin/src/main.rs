@@ -21,7 +21,7 @@ async fn main() -> Result<()> {
 		.interval(Duration::from_millis(50))
 		.callback(|ctx, _props| {
 			let value: i32 = random::<i32>();
-			let _ = ctx.publish("ganges", value);
+			let _ = ctx.publish("nile", value);
 			// just to see what value has been sent
 			println!("medellin sent: {value:>12}");
 		})

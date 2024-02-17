@@ -23,7 +23,7 @@ The feature `all`, including all available features, is a good point to start wi
 [dependencies]
 dimas = { version = "0.0.4", features = ["all"] }
 bitcode = "0.5.0"
-tokio = "1.35"
+tokio = { version = "1",features = ["macros"] }
 ```
 
 DiMAS needs an `async` runtime. So you have to define your `main` function as an `async` function.
@@ -50,7 +50,7 @@ Your `Cargo.toml` should include
 [dependencies]
 dimas = { version = "0.0.4", features = ["timer", "subscriber"] }
 bitcode = "0.5.0"
-tokio = "1.35"
+tokio = { version = "1",features = ["macros"] }
 ```
 
 #### Publisher

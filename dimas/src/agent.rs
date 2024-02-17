@@ -20,7 +20,7 @@ use std::{
 	sync::{Arc, RwLock},
 	time::Duration,
 };
-use tokio::time::sleep;
+use tokio::signal;
 #[cfg(feature = "liveliness")]
 use zenoh::liveliness::LivelinessToken;
 // endregion:	--- modules
@@ -296,9 +296,16 @@ where
 				timer.start();
 			});
 
-		// main loop so that agent stays alive
-		loop {
-			sleep(Duration::from_secs(1)).await;
+		// wait for a shutdown signal
+		match signal::ctrl_c().await {
+			Ok(()) => {
+				self.stop();
+			},
+			Err(err) => {
+				eprintln!("Unable to listen for shutdown signal: {err}");
+				// we also shut down in case of error
+				self.stop();
+			},
 		}
 	}
 

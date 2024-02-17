@@ -24,8 +24,7 @@ path = "src/query.rs"
 [dependencies]
 bitcode = { workspace = true }
 clap = { workspace = true }
-dimas = { workspace = true, features = ["timer", "query", "queryable"] }
-tokio = { workspace = true }
-zenoh = { workspace = true }
+dimas = { workspace = true, features = ["timer", "queryable"] }
+tokio = { workspace = true, features = ["macros"] }
 
 [dev-dependencies]
