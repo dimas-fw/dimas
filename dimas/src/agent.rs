@@ -103,7 +103,11 @@ where
 	}
 
 	/// Create an instance of an agent.
-	pub fn new_with_prefix(config: crate::config::Config, properties: P, prefix: impl Into<String>) -> Self {
+	pub fn new_with_prefix(
+		config: crate::config::Config,
+		properties: P,
+		prefix: impl Into<String>,
+	) -> Self {
 		let com = Arc::new(Communicator::new_with_prefix(config, prefix));
 		let pd = PhantomData {};
 		Self {
@@ -300,12 +304,12 @@ where
 		match signal::ctrl_c().await {
 			Ok(()) => {
 				self.stop();
-			},
+			}
 			Err(err) => {
 				eprintln!("Unable to listen for shutdown signal: {err}");
 				// we also shut down in case of error
 				self.stop();
-			},
+			}
 		}
 	}
 
@@ -390,27 +394,31 @@ mod tests {
 	//#[serial]
 	async fn agent_create_default() {
 		let _agent1: Agent<Props> = Agent::new(crate::config::Config::local(), Props {});
-		let _agent2: Agent<Props> = Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
+		let _agent2: Agent<Props> =
+			Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
 	}
 
 	#[tokio::test(flavor = "current_thread")]
 	//#[serial]
 	async fn agent_create_current() {
 		let _agent1: Agent<Props> = Agent::new(crate::config::Config::local(), Props {});
-		let _agent2: Agent<Props> = Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
+		let _agent2: Agent<Props> =
+			Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
 	}
 
 	#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 	//#[serial]
 	async fn agent_create_restricted() {
 		let _agent1: Agent<Props> = Agent::new(crate::config::Config::local(), Props {});
-		let _agent2: Agent<Props> = Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
+		let _agent2: Agent<Props> =
+			Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
 	}
 
 	#[tokio::test(flavor = "multi_thread")]
 	//#[serial]
 	async fn agent_create_multi() {
 		let _agent1: Agent<Props> = Agent::new(crate::config::Config::local(), Props {});
-		let _agent2: Agent<Props> = Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
+		let _agent2: Agent<Props> =
+			Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
 	}
 }

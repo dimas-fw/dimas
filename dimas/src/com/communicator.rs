@@ -29,10 +29,16 @@ impl Communicator {
 				.res_sync()
 				.expect("could not create zenoh session"),
 		);
-		Self { session,  prefix: None }
+		Self {
+			session,
+			prefix: None,
+		}
 	}
 
-	pub(crate) fn new_with_prefix(config: crate::config::Config, prefix: impl Into<String>) -> Self {
+	pub(crate) fn new_with_prefix(
+		config: crate::config::Config,
+		prefix: impl Into<String>,
+	) -> Self {
 		let cfg = config;
 		let session = Arc::new(
 			zenoh::open(cfg.zenoh_config())
@@ -40,7 +46,7 @@ impl Communicator {
 				.expect("could not create zenoh session"),
 		);
 		let prefix = Some(prefix.into());
-		Self { session,  prefix }
+		Self { session, prefix }
 	}
 
 	pub(crate) fn uuid(&self) -> String {
@@ -53,8 +59,8 @@ impl Communicator {
 
 	pub(crate) fn key_expr(&self, msg_name: impl Into<String>) -> String {
 		match self.prefix.clone() {
-			Some(prefix) => { prefix + "/" + &msg_name.into() }
-			None => { msg_name.into() }
+			Some(prefix) => prefix + "/" + &msg_name.into(),
+			None => msg_name.into(),
 		}
 	}
 

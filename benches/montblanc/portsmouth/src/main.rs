@@ -29,7 +29,10 @@ async fn main() -> Result<()> {
 		.interval(Duration::from_millis(200))
 		.callback(move |ctx, _props| {
 			let value = values[index].to_string();
-			let _ = ctx.publish("danube", &value);
+			let message = messages::StringMsg {
+				data: value.clone(),
+			};
+			let _ = ctx.publish("danube", message);
 			// just to see what value has been sent
 			println!("portsmouth sent: {value}");
 			index = (index + 1) % 5;

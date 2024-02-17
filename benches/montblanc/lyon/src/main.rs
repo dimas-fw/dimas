@@ -12,9 +12,10 @@ use dimas::prelude::*;
 struct AgentProps {}
 
 fn amazon_callback(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
-	let value: f32 = bitcode::decode(message).expect("should not happen");
+	let value: messages::Float32 = bitcode::decode(message).expect("should not happen");
+	let msg = value.data;
 	let _ = ctx.publish("tigris", value);
-	println!("lyon propagates: {value:>14.6}");
+	println!("lyon propagates: {msg:>14.6}");
 }
 
 #[tokio::main]

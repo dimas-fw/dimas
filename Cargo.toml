@@ -17,6 +17,7 @@ members = [
 	"benches/montblanc/lyon",
 	"benches/montblanc/mandalay",
 	"benches/montblanc/medellin",
+	"benches/montblanc/messages",
 	"benches/montblanc/monaco",
 	"benches/montblanc/osaka",
 	"benches/montblanc/ponce",
@@ -52,13 +53,13 @@ authors = [
 #license = "NGMC"
 license-file = "LICENSE"
 categories = [
-	"science::robotics",
 	"development-tools",
+	"science::robotics",
 	"simulation"
 ]
 
 [workspace.dependencies]
-bitcode = "0.5.0"
+bitcode = "0.5"
 clap = { version = "4", features = ["derive"] }
 dimas = { path = "dimas" }
 tokio = "1"

@@ -5,8 +5,8 @@
 //! This source is part of `DiMAS` implementation of Montblanc benchmark for distributed systems
 
 use dimas::prelude::*;
-use std::time::Duration;
 use rand::random;
+use std::time::Duration;
 
 #[derive(Debug)]
 struct AgentProps {}
@@ -21,7 +21,8 @@ async fn main() -> Result<()> {
 		.interval(Duration::from_millis(100))
 		.callback(|ctx, _props| {
 			let value: f32 = random::<f32>() * 1_000_000.0;
-			let _ = ctx.publish("amazon", value);
+			let message = messages::Float32 { data: value };
+			let _ = ctx.publish("amazon", message);
 			// just to see what value has been sent
 			println!("cordoba sent: {value:>14.6}");
 		})

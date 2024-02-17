@@ -1,5 +1,5 @@
 [package]
-name = "freeport"
+name = "messages"
 rust-version.workspace = true
 edition.workspace = true
 version.workspace = true
@@ -10,10 +10,7 @@ categories.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-dimas = { workspace = true, features = ["timer"] }
-messages = { path = "../messages" }
-tokio = { workspace = true }
-rand = "0.8.5"
+bitcode = { workspace = true }
 
 [lints]
 workspace = true
