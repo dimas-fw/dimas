@@ -13,7 +13,7 @@ categories.workspace = true
 dimas = { workspace = true, features = ["timer"] }
 messages = { path = "../messages" }
 tokio = { workspace = true }
-rand = "0.8.5"
+rand = "0.8"
 
 [lints]
 workspace = true

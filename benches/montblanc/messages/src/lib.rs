@@ -7,6 +7,8 @@
 //! should be modernized and moved into a separate crate
 
 use bitcode::{Decode, Encode};
+use chrono::prelude::*;
+use rand::random;
 
 /// Float64 message
 #[derive(Encode, Decode)]
@@ -45,10 +47,10 @@ pub struct StringMsg {
 
 /// Timestamp message
 /// Representing the time since 1.1.1970
-#[derive(Encode, Decode)]
+#[derive(Debug, Default, Encode, Decode)]
 pub struct Timestamp {
-	/// seconds, valid over all int32 values
-	pub sec: i32,
+	/// seconds, valid over all int64 values
+	pub sec: i64,
 	/// The nanoseconds component if available, valid in the range [0, 1e9)
 	pub nanosec: u32,
 }
@@ -57,7 +59,7 @@ pub struct Timestamp {
 /// Standard metadata for higher-level stamped data types.
 /// This is generally used to communicate timestamped data
 /// in a particular coordinate frame.
-#[derive(Encode, Decode)]
+#[derive(Debug, Default, Encode, Decode)]
 pub struct Header {
 	/// Timestamp of message creation
 	pub timestamp: Timestamp,
@@ -183,7 +185,7 @@ pub struct WrenchStamped {
 /// +x should point to the right in the image
 /// +y should point down in the image
 /// +z should point into to plane of the image
-#[derive(Encode, Decode)]
+#[derive(Debug, Default, Encode, Decode)]
 pub struct Image {
 	/// Header timestamp should be acquisition time of image
 	/// Header frame_id should be optical frame of camera
@@ -195,15 +197,47 @@ pub struct Image {
 	pub height: u32,
 	/// Image width, that is, number of columns
 	pub width: u32,
-	/// Encoding of pixels -- channel meaning, ordering, size 
+	/// Encoding of pixels -- channel meaning, ordering, size
 	/// see: https://github.com/ros2/common_interfaces/blob/rolling/sensor_msgs/include/sensor_msgs/image_encodings.hpp
 	pub encodings: String,
 	/// Is this data bigendian?
 	pub is_bigendian: bool,
 	/// Full row length in bytes
 	pub step: u32,
-	/// Actual matrix data, size is (step * rows) width is only giving num of pixels not the bytes/pixel step = width * bytes/pixel
+	/// Actual matrix data, size is (step * height). Width is only giving num of pixels not the bytes/pixel step = width * bytes/pixel
 	pub data: Vec<u8>,
+}
+
+impl Image {
+	/// provides some random `Image` data
+	#[must_use]
+	pub fn random() -> Self {
+		let now = Utc::now();
+		let timestamp = Timestamp {
+			sec: now.timestamp(),
+			nanosec: now.nanosecond(),
+		};
+		let number: u32 = random();
+		let header = Header {
+			timestamp,
+			frame_id: "Test Image ".to_string() + &number.to_string(),
+		};
+		let height = 10;
+		let width = 10;
+		let encodings = "Test".to_string();
+		let is_bigendian = true;
+		let step = 2 * width;
+		let data = Vec::with_capacity((step * height) as usize);
+		Self {
+			header,
+			height,
+			width,
+			encodings,
+			is_bigendian,
+			step,
+			data,
+		}
+	}
 }
 
 /// Laser Scan message
@@ -211,7 +245,7 @@ pub struct Image {
 /// If you have another ranging device with different behavior (e.g. a sonar
 /// array), please find or create a different message, since applications
 /// will make fairly laser-specific assumptions about this data
-#[derive(Encode, Decode)]
+#[derive(Debug, Default, Encode, Decode)]
 pub struct LaserScan {
 	/// timestamp in the header is the acquisition time of
 	/// the first ray in the scan.
@@ -242,9 +276,38 @@ pub struct LaserScan {
 	pub intensities: Vec<f32>,
 }
 
+impl LaserScan {
+	/// provides some random `LaserScan` data
+	#[must_use]
+	pub fn random() -> Self {
+		let now = Utc::now();
+		let timestamp = Timestamp {
+			sec: now.timestamp(),
+			nanosec: now.nanosecond(),
+		};
+		let number: u32 = random();
+		let header = Header {
+			timestamp,
+			frame_id: "Test Image ".to_string() + &number.to_string(),
+		};
+		Self {
+			header,
+			angle_min: 0.0,
+			angle_max: 0.0,
+			angle_increment: 0.0,
+			time_increment: 0.0,
+			scan_time: 0.0,
+			range_min: 0.0,
+			range_max: 0.0,
+			ranges: Vec::with_capacity(360),
+			intensities: Vec::with_capacity(360),
+		}
+	}
+}
+
 /// Data Type message
 /// Definitions for the type of data used in `PointField`
-#[derive(Encode, Decode)]
+#[derive(Debug, Default, Encode, Decode)]
 pub enum DataType {
 	/// Int8 type
 	Int8,
@@ -259,6 +322,7 @@ pub enum DataType {
 	/// Unsigned Int32 type
 	UInt32,
 	/// Float32 type
+	#[default]
 	Float32,
 	/// Float64 type
 	Float64,
@@ -267,7 +331,7 @@ pub enum DataType {
 /// Point Field message
 /// Holds the description of one point entry in the `PointCloud2` message format
 /// Common Point Field names are x, y, z, intensity, rgb, rgba
-#[derive(Encode, Decode)]
+#[derive(Debug, Default, Encode, Decode)]
 pub struct PointField {
 	/// Name of field
 	pub name: String,
@@ -287,7 +351,7 @@ pub struct PointField {
 /// The point cloud data may be organized 2d (image-like) or 1d (unordered).
 /// Point clouds organized as 2d images may be produced by camera depth sensors
 /// such as stereo or time-of-flight.
-#[derive(Encode, Decode)]
+#[derive(Debug, Default, Encode, Decode)]
 pub struct PointCloud2 {
 	/// Time of sensor data acquisition, and the coordinate frame ID (for 3d points)
 	pub header: Header,
@@ -307,4 +371,12 @@ pub struct PointCloud2 {
 	pub data: Vec<u8>,
 	/// True if there are no invalid points
 	pub is_dense: bool,
+}
+
+impl PointCloud2 {
+	/// provides some random `PointCloud2` data
+	#[must_use]
+	pub fn random() -> Self {
+		Self::default()
+	}
 }

@@ -1,6 +1,6 @@
 // Copyright © 2024 Stephan Kunz
 
-//! The node 'hanmurg' subscribes to
+//! The node 'hamburg' subscribes to
 //!   - a Float32 on the topic /tigris
 //!   - an Int64 on the topic /ganges
 //!   - an Int32 on the topic /nile
@@ -23,19 +23,19 @@ struct AgentProps {
 
 fn tigris_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::Float32 = bitcode::decode(message).expect("should not happen");
-	props.write().expect("shoould not happen").tigris = value.data;
+	props.write().expect("should not happen").tigris = value.data;
 	println!("hamburg received: {:>14.6}", value.data);
 }
 
 fn ganges_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::Int64 = bitcode::decode(message).expect("should not happen");
-	props.write().expect("shoould not happen").ganges = value.data;
+	props.write().expect("should not happen").ganges = value.data;
 	println!("hamburg received: {:>20}", value.data);
 }
 
 fn nile_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::Int32 = bitcode::decode(message).expect("should not happen");
-	props.write().expect("shoould not happen").nile = value.data;
+	props.write().expect("should not happen").nile = value.data;
 	println!("hamburg received: {:>12}", value.data);
 }
 
@@ -43,7 +43,7 @@ fn danube_callback(ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message:
 	let value: messages::StringMsg = bitcode::decode(message).expect("should not happen");
 	let _ = ctx.publish("parana", &value);
 	println!("hamburg propagates: {}", &value.data);
-	props.write().expect("shoould not happen").danube = value.data;
+	props.write().expect("should not happen").danube = value.data;
 }
 
 #[tokio::main]

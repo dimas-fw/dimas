@@ -11,6 +11,8 @@ categories.workspace = true
 
 [dependencies]
 bitcode = { workspace = true }
+chrono = "0.4"
+rand = "0.8"
 
 [lints]
 workspace = true
