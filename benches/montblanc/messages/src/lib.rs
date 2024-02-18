@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+//#![allow(dead_code)]
 
 //! all the messages needed for montblanc benchmark
 //! based on ros2 messages, see
@@ -17,11 +17,31 @@ pub struct Float64 {
 	pub data: f64,
 }
 
+impl Float64 {
+	/// provides some random `Float64` data
+	#[must_use]
+	pub fn random() -> Self {
+		Self {
+			data: 1_000_000_000.0 * random::<f64>(),
+		}
+	}
+}
+
 /// Float32 message
 #[derive(Encode, Decode)]
 pub struct Float32 {
 	/// data
 	pub data: f32,
+}
+
+impl Float32 {
+	/// provides some random `Float32` data
+	#[must_use]
+	pub fn random() -> Self {
+		Self {
+			data: 1_000_000.0 * random::<f32>(),
+		}
+	}
 }
 
 /// Int64 message
@@ -31,11 +51,27 @@ pub struct Int64 {
 	pub data: i64,
 }
 
+impl Int64 {
+	/// provides some random `Int64` data
+	#[must_use]
+	pub fn random() -> Self {
+		Self { data: random() }
+	}
+}
+
 /// Int32 message
 #[derive(Encode, Decode)]
 pub struct Int32 {
 	/// data
 	pub data: i32,
+}
+
+impl Int32 {
+	/// provides some random `Int32` data
+	#[must_use]
+	pub fn random() -> Self {
+		Self { data: random() }
+	}
 }
 
 /// String message
@@ -46,20 +82,32 @@ pub struct StringMsg {
 }
 
 /// Timestamp message
-/// Representing the time since 1.1.1970
-#[derive(Debug, Default, Encode, Decode)]
+/// Representing the elapsed seconds since 1.1.1970 00:00:00.000. Negative values are before that date.
+#[derive(Debug, Encode, Decode)]
 pub struct Timestamp {
-	/// seconds, valid over all int64 values
+	/// seconds, valid over all i64 values
 	pub sec: i64,
 	/// The nanoseconds component if available, valid in the range [0, 1e9)
 	pub nanosec: u32,
+}
+
+impl Timestamp {
+	/// Creates a `Timestamp` of now
+	#[must_use]
+	pub fn now() -> Self {
+		let now = Utc::now();
+		Self {
+			sec: now.timestamp(),
+			nanosec: now.nanosecond(),
+		}
+	}
 }
 
 /// Header message
 /// Standard metadata for higher-level stamped data types.
 /// This is generally used to communicate timestamped data
 /// in a particular coordinate frame.
-#[derive(Debug, Default, Encode, Decode)]
+#[derive(Debug, Encode, Decode)]
 pub struct Header {
 	/// Timestamp of message creation
 	pub timestamp: Timestamp,
@@ -67,9 +115,30 @@ pub struct Header {
 	pub frame_id: String,
 }
 
+impl Header {
+	/// provides a new `Header`
+	#[must_use]
+	pub fn new() -> Self {
+		Self {
+			timestamp: Timestamp::now(),
+			frame_id: "Test".into(),
+		}
+	}
+}
+
+impl Default for Header {
+	#[must_use]
+	fn default() -> Self {
+		Self {
+			timestamp: Timestamp::now(),
+			frame_id: "Default".into(),
+		}
+	}
+}
+
 /// Point message
 /// Contains the position of a point in free space
-#[derive(Encode, Decode)]
+#[derive(Debug, Encode, Decode)]
 pub struct Point {
 	/// x value
 	pub x: f64,
@@ -79,9 +148,21 @@ pub struct Point {
 	pub z: f64,
 }
 
+impl Point {
+	/// provides some random `Point` data
+	#[must_use]
+	pub fn random() -> Self {
+		Self {
+			x: random(),
+			y: random(),
+			z: random(),
+		}
+	}
+}
+
 /// Quaternion message
 /// Represents an orientation in free space in quaternion form
-#[derive(Encode, Decode)]
+#[derive(Debug, Encode, Decode)]
 pub struct Quaternion {
 	/// x value
 	pub x: f64,
@@ -93,12 +174,25 @@ pub struct Quaternion {
 	pub w: f64,
 }
 
-/// 3-Dimenional Vector message
+impl Quaternion {
+	/// provides some random `Quaternion` data
+	#[must_use]
+	pub fn random() -> Self {
+		Self {
+			x: random(),
+			y: random(),
+			z: random(),
+			w: random(),
+		}
+	}
+}
+
+/// 3-Dimensional Vector message
 /// Represents a vector in free space
 /// This is semantically different than a point.
 /// A vector is always anchored at the origin.
 /// When a transform is applied to a vector, only the rotational component is applied.
-#[derive(Encode, Decode)]
+#[derive(Debug, Encode, Decode)]
 pub struct Vector3 {
 	/// x value
 	pub x: f64,
@@ -108,11 +202,23 @@ pub struct Vector3 {
 	pub z: f64,
 }
 
+impl Vector3 {
+	/// provides some random `Vector3` data
+	#[must_use]
+	pub fn random() -> Self {
+		Self {
+			x: random(),
+			y: random(),
+			z: random(),
+		}
+	}
+}
+
 /// 3D-Vector with Header
 /// Represents a Vector3 with reference coordinate frame and timestamp
 /// Note that this follows vector semantics with it always anchored at the origin,
 /// so the rotational elements of a transform are the only parts applied when transforming.
-#[derive(Encode, Decode)]
+#[derive(Debug, Encode, Decode)]
 pub struct Vector3Stamped {
 	/// Timestamp and frame id
 	pub header: Header,
@@ -120,9 +226,20 @@ pub struct Vector3Stamped {
 	pub vector: Vector3,
 }
 
+impl Vector3Stamped {
+	/// provides some random `Vector3Stamped` data
+	#[must_use]
+	pub fn random() -> Self {
+		Self {
+			header: Header::new(),
+			vector: Vector3::random(),
+		}
+	}
+}
+
 /// Pose message
 /// Representation of pose in free space, composed of position and orientation
-#[derive(Encode, Decode)]
+#[derive(Debug, Encode, Decode)]
 pub struct Pose {
 	/// Position is a Point in free space
 	pub position: Point,
@@ -130,9 +247,20 @@ pub struct Pose {
 	pub orientation: Quaternion,
 }
 
+impl Pose {
+	/// provides some random `Pose` data
+	#[must_use]
+	pub fn random() -> Self {
+		Self {
+			position: Point::random(),
+			orientation: Quaternion::random(),
+		}
+	}
+}
+
 /// Twist message
 /// Expresses velocity in free space broken into its linear and angular parts
-#[derive(Encode, Decode)]
+#[derive(Debug, Encode, Decode)]
 pub struct Twist {
 	/// Linear velocity
 	pub linear: Vector3,
@@ -140,8 +268,19 @@ pub struct Twist {
 	pub angular: Vector3,
 }
 
+impl Twist {
+	/// provides some random `Twist` data
+	#[must_use]
+	pub fn random() -> Self {
+		Self {
+			linear: Vector3::random(),
+			angular: Vector3::random(),
+		}
+	}
+}
+
 /// Twist with Covariance message
-#[derive(Encode, Decode)]
+#[derive(Debug, Encode, Decode)]
 pub struct TwistWithCovariance {
 	/// Twist
 	pub twist: Twist,
@@ -152,8 +291,19 @@ pub struct TwistWithCovariance {
 	pub covariance: [f64; 36],
 }
 
+impl TwistWithCovariance {
+	/// provides some random `TwistWithCovariance` data
+	#[must_use]
+	pub fn random() -> Self {
+		Self {
+			twist: Twist::random(),
+			covariance: [0.0f64; 36],
+		}
+	}
+}
+
 /// Twist with Covariance and Header message
-#[derive(Encode, Decode)]
+#[derive(Debug, Encode, Decode)]
 pub struct TwistWithCovarianceStamped {
 	/// Timestamp and frame id
 	pub header: Header,
@@ -161,8 +311,19 @@ pub struct TwistWithCovarianceStamped {
 	pub twist: TwistWithCovariance,
 }
 
+impl TwistWithCovarianceStamped {
+	/// provides some random `TwistWithCovarianceStamped` data
+	#[must_use]
+	pub fn random() -> Self {
+		Self {
+			header: Header::new(),
+			twist: TwistWithCovariance::random(),
+		}
+	}
+}
+
 /// Wrench message - represents force in free space, separated into its linear and angular parts
-#[derive(Encode, Decode)]
+#[derive(Debug, Encode, Decode)]
 pub struct Wrench {
 	/// Linear part is force
 	pub force: Vector3,
@@ -170,13 +331,35 @@ pub struct Wrench {
 	pub torque: Vector3,
 }
 
+impl Wrench {
+	/// provides some random `Wrench` data
+	#[must_use]
+	pub fn random() -> Self {
+		Self {
+			force: Vector3::random(),
+			torque: Vector3::random(),
+		}
+	}
+}
+
 /// Wrench with Header message
-#[derive(Encode, Decode)]
+#[derive(Debug, Encode, Decode)]
 pub struct WrenchStamped {
 	/// Timestamp and frame id
 	pub header: Header,
 	/// Wrench
 	pub wrench: Wrench,
+}
+
+impl WrenchStamped {
+	/// provides some random `WrenchStamped` data
+	#[must_use]
+	pub fn random() -> Self {
+		Self {
+			header: Header::new(),
+			wrench: Wrench::random(),
+		}
+	}
 }
 
 /// Image message
@@ -185,7 +368,7 @@ pub struct WrenchStamped {
 /// +x should point to the right in the image
 /// +y should point down in the image
 /// +z should point into to plane of the image
-#[derive(Debug, Default, Encode, Decode)]
+#[derive(Debug, Encode, Decode)]
 pub struct Image {
 	/// Header timestamp should be acquisition time of image
 	/// Header frame_id should be optical frame of camera
@@ -212,14 +395,9 @@ impl Image {
 	/// provides some random `Image` data
 	#[must_use]
 	pub fn random() -> Self {
-		let now = Utc::now();
-		let timestamp = Timestamp {
-			sec: now.timestamp(),
-			nanosec: now.nanosecond(),
-		};
 		let number: u32 = random();
 		let header = Header {
-			timestamp,
+			timestamp: Timestamp::now(),
 			frame_id: "Test Image ".to_string() + &number.to_string(),
 		};
 		let height = 10;
@@ -245,7 +423,7 @@ impl Image {
 /// If you have another ranging device with different behavior (e.g. a sonar
 /// array), please find or create a different message, since applications
 /// will make fairly laser-specific assumptions about this data
-#[derive(Debug, Default, Encode, Decode)]
+#[derive(Debug, Encode, Decode)]
 pub struct LaserScan {
 	/// timestamp in the header is the acquisition time of
 	/// the first ray in the scan.
@@ -280,14 +458,9 @@ impl LaserScan {
 	/// provides some random `LaserScan` data
 	#[must_use]
 	pub fn random() -> Self {
-		let now = Utc::now();
-		let timestamp = Timestamp {
-			sec: now.timestamp(),
-			nanosec: now.nanosecond(),
-		};
 		let number: u32 = random();
 		let header = Header {
-			timestamp,
+			timestamp: Timestamp::now(),
 			frame_id: "Test Image ".to_string() + &number.to_string(),
 		};
 		Self {
@@ -307,7 +480,7 @@ impl LaserScan {
 
 /// Data Type message
 /// Definitions for the type of data used in `PointField`
-#[derive(Debug, Default, Encode, Decode)]
+#[derive(Debug, Encode, Decode)]
 pub enum DataType {
 	/// Int8 type
 	Int8,
@@ -322,7 +495,6 @@ pub enum DataType {
 	/// Unsigned Int32 type
 	UInt32,
 	/// Float32 type
-	#[default]
 	Float32,
 	/// Float64 type
 	Float64,
@@ -331,7 +503,7 @@ pub enum DataType {
 /// Point Field message
 /// Holds the description of one point entry in the `PointCloud2` message format
 /// Common Point Field names are x, y, z, intensity, rgb, rgba
-#[derive(Debug, Default, Encode, Decode)]
+#[derive(Debug, Encode, Decode)]
 pub struct PointField {
 	/// Name of field
 	pub name: String,
@@ -351,7 +523,7 @@ pub struct PointField {
 /// The point cloud data may be organized 2d (image-like) or 1d (unordered).
 /// Point clouds organized as 2d images may be produced by camera depth sensors
 /// such as stereo or time-of-flight.
-#[derive(Debug, Default, Encode, Decode)]
+#[derive(Debug, Encode, Decode)]
 pub struct PointCloud2 {
 	/// Time of sensor data acquisition, and the coordinate frame ID (for 3d points)
 	pub header: Header,
@@ -377,6 +549,16 @@ impl PointCloud2 {
 	/// provides some random `PointCloud2` data
 	#[must_use]
 	pub fn random() -> Self {
-		Self::default()
+		Self {
+			header: Header::new(),
+			height: 0,
+			width: 0,
+			fields: Vec::new(),
+			is_bigendian: true,
+			point_step: 4,
+			row_step: 4,
+			data: Vec::new(),
+			is_dense: true,
+		}
 	}
 }

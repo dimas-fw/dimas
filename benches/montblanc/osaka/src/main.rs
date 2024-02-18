@@ -2,8 +2,8 @@
 
 //! The node 'osaka' subscribes to
 //!   - a `String` on the topic /parana
-//!   - an `Image` on the topic /columbia 
-//!   - an `Image` on the topic /colorado 
+//!   - an `Image` on the topic /columbia
+//!   - an `Image` on the topic /colorado
 //! and publishes on  receive of /colorado
 //!   - a `PointCloud2` on the topic /salween
 //!   - a `LaserScan` on the topic /godavari
@@ -16,14 +16,14 @@ use dimas::prelude::*;
 
 #[derive(Debug, Default)]
 struct AgentProps {
-	parana: String,
-	columbia: messages::Image,
-	colorado: messages::Image,
+	parana: Option<String>,
+	columbia: Option<messages::Image>,
+	colorado: Option<messages::Image>,
 }
 
 fn parana_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::StringMsg = bitcode::decode(message).expect("should not happen");
-	props.write().expect("should not happen").parana = value.data.clone();
+	props.write().expect("should not happen").parana = Some(value.data.clone());
 	println!("osaka received: {}", value.data);
 }
 
@@ -32,7 +32,7 @@ fn columbia_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, messa
 	let height = value.height;
 	let width = value.width;
 	let id = value.header.frame_id.clone();
-	props.write().expect("should not happen").columbia = value;
+	props.write().expect("should not happen").columbia = Some(value);
 	println!("osaka received on /columbia: {height:>4} x {width:>4} -> {id}");
 }
 
@@ -41,7 +41,7 @@ fn colorado_callback(ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, messag
 	let height = value.height;
 	let width = value.width;
 	let id = value.header.frame_id.clone();
-	props.write().expect("should not happen").colorado = value;
+	props.write().expect("should not happen").colorado = Some(value);
 	println!("osaka received on /colorado: {height:>4} x {width:>4} -> {id}");
 
 	let message = messages::PointCloud2::random();

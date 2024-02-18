@@ -18,7 +18,7 @@ struct AgentProps {
 	ganges: i64,
 	nile: i32,
 	tigris: f32,
-	danube: String,
+	danube: Option<String>,
 }
 
 fn tigris_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
@@ -43,7 +43,7 @@ fn danube_callback(ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message:
 	let value: messages::StringMsg = bitcode::decode(message).expect("should not happen");
 	let _ = ctx.publish("parana", &value);
 	println!("hamburg propagates: {}", &value.data);
-	props.write().expect("should not happen").danube = value.data;
+	props.write().expect("should not happen").danube = Some(value.data);
 }
 
 #[tokio::main]
