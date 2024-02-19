@@ -7,14 +7,17 @@
 //!   - a `LaserScan` on the topic /godavari
 //!   - a `Vector3` on the topic /yamuna
 //!   - a `PointCloud2` on the topic /loire
-//! and publishes every 100ms 
+//! and publishes every 100ms
 //!   - a `Pose` on the topic /tagus
 //!   - an `Image` on the topic /missouri
 //!   - a `PointCloud2` on the topic /brazos
 //!
 //! This source is part of `DiMAS` implementation of Montblanc benchmark for distributed systems
 
-use std::{sync::{Arc, RwLock}, time::Duration};
+use std::{
+	sync::{Arc, RwLock},
+	time::Duration,
+};
 
 use dimas::prelude::*;
 
@@ -80,19 +83,19 @@ async fn main() -> Result<()> {
 		.msg_type("godavari")
 		.add()?;
 
-		agent
+	agent
 		.subscriber()
 		.put_callback(yamuna_callback)
 		.msg_type("yamuna")
 		.add()?;
 
-		agent
+	agent
 		.subscriber()
 		.put_callback(loire_callback)
 		.msg_type("loire")
 		.add()?;
 
-		agent
+	agent
 		.timer()
 		.interval(Duration::from_millis(100))
 		.callback(|ctx, _props| {
@@ -102,7 +105,7 @@ async fn main() -> Result<()> {
 		})
 		.add()?;
 
-		agent
+	agent
 		.timer()
 		.interval(Duration::from_millis(100))
 		.callback(|ctx, _props| {
@@ -112,7 +115,7 @@ async fn main() -> Result<()> {
 		})
 		.add()?;
 
-		agent
+	agent
 		.timer()
 		.interval(Duration::from_millis(100))
 		.callback(|ctx, _props| {

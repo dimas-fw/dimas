@@ -10,7 +10,7 @@
 //!   - a `PointCloud2` on the topic /loire
 //!   - a `Float32` on the topic /ohio
 //!   - a `Float64` on the topic /volga
-//! and publishes on receive of tpoic /brazos 
+//! and publishes on receive of tpoic /brazos
 //!   - a `Twist` on the topic /congo
 //!   - a `TwistWithCovarianceStampe` on the topic /mekong
 //!
@@ -105,31 +105,31 @@ async fn main() -> Result<()> {
 		.msg_type("brazos")
 		.add()?;
 
-		agent
+	agent
 		.subscriber()
 		.put_callback(yamuna_callback)
 		.msg_type("yamuna")
 		.add()?;
 
-		agent
+	agent
 		.subscriber()
 		.put_callback(godavari_callback)
 		.msg_type("godavari")
 		.add()?;
 
-		agent
+	agent
 		.subscriber()
 		.put_callback(loire_callback)
 		.msg_type("loire")
 		.add()?;
 
-		agent
+	agent
 		.subscriber()
 		.put_callback(ohio_callback)
 		.msg_type("ohio")
 		.add()?;
 
-		agent
+	agent
 		.subscriber()
 		.put_callback(volga_callback)
 		.msg_type("volga")
