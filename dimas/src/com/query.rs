@@ -42,7 +42,7 @@ where
 	/// Will be prefixed with agents prefix.
 	#[must_use]
 	pub fn msg_type(mut self, msg_type: impl Into<String>) -> Self {
-		let key_expr = self.communicator.clone().prefix() + "/" + &msg_type.into();
+		let key_expr = self.communicator.clone().key_expr(msg_type);
 		self.key_expr.replace(key_expr);
 		self
 	}

@@ -1,5 +1,5 @@
 [package]
-name = "osaka"
+name = "messages"
 rust-version.workspace = true
 edition.workspace = true
 version.workspace = true
@@ -11,9 +11,8 @@ categories.workspace = true
 
 [dependencies]
 bitcode = { workspace = true }
-dimas = { workspace = true, features = ["subscriber"] }
-messages = { path = "../messages" }
-tokio = { workspace = true }
+chrono = "0.4"
+rand = "0.8"
 
 [lints]
 workspace = true

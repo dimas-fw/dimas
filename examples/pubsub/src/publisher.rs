@@ -31,7 +31,7 @@ async fn main() -> Result<()> {
 	let properties = AgentProps { counter: 0 };
 
 	// create an agent with the properties and the prefix given by `args`
-	let mut agent = Agent::new(Config::default(), &args.prefix, properties);
+	let mut agent = Agent::new_with_prefix(Config::default(), properties, &args.prefix);
 
 	// use timer for regular publishing
 	agent

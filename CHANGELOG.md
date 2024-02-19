@@ -16,13 +16,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 
-## [0.0.4] - 2024-??-??
+## [0.0.4] - 2024-??-?? <br>Has breaking changes!!
 
 ### Added
+- Agent::new_with_prefix() - as replacement for the old agent::new()
+- benchmarks
+  - benches/montblanc - an implementation of the Montblanc benchmark for robots
+  - benches/montblanc/tmux-robot.sh - a tmux script to run all of the robots nodes
+  - benches/montblanc/tmux-workstation.sh - a tmux script to run all of the workstations nodes
+- examples
+  - examples/tmux-exampes.sh - a tmux script to run all the examples
 
 ### Changed
+- signature of Agent::new() now without 'prefix'
 
 ### Fixed
+- cleanup dependencies
 
 ### Removed
 

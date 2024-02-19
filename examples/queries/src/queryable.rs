@@ -47,7 +47,7 @@ async fn main() -> Result<()> {
 	let properties = AgentProps { counter: 1 };
 
 	// create an agent with the properties
-	let mut agent = Agent::new(Config::default(), &args.prefix, properties);
+	let mut agent = Agent::new_with_prefix(Config::default(), properties, &args.prefix);
 
 	// add a queryable
 	agent

@@ -20,7 +20,7 @@ use std::{
 	sync::{Arc, RwLock},
 	time::Duration,
 };
-use tokio::time::sleep;
+use tokio::signal;
 #[cfg(feature = "liveliness")]
 use zenoh::liveliness::LivelinessToken;
 // endregion:	--- modules
@@ -76,8 +76,39 @@ where
 	P: std::fmt::Debug + Send + Sync + Unpin + 'static,
 {
 	/// Create an instance of an agent.
-	pub fn new(config: crate::config::Config, prefix: impl Into<String>, properties: P) -> Self {
-		let com = Arc::new(Communicator::new(config, prefix));
+	pub fn new(config: crate::config::Config, properties: P) -> Self {
+		let com = Arc::new(Communicator::new(config));
+		let pd = PhantomData {};
+		Self {
+			pd,
+			com,
+			props: Arc::new(RwLock::new(properties)),
+			#[cfg(feature = "liveliness")]
+			liveliness: false,
+			#[cfg(feature = "liveliness")]
+			liveliness_token: RwLock::new(None),
+			#[cfg(feature = "liveliness")]
+			liveliness_subscriber: Arc::new(RwLock::new(None)),
+			#[cfg(feature = "subscriber")]
+			subscribers: Arc::new(RwLock::new(Vec::new())),
+			#[cfg(feature = "queryable")]
+			queryables: Arc::new(RwLock::new(Vec::new())),
+			#[cfg(feature = "publisher")]
+			publishers: Arc::new(RwLock::new(Vec::new())),
+			#[cfg(feature = "query")]
+			queries: Arc::new(RwLock::new(Vec::new())),
+			#[cfg(feature = "timer")]
+			timers: Arc::new(RwLock::new(Vec::new())),
+		}
+	}
+
+	/// Create an instance of an agent.
+	pub fn new_with_prefix(
+		config: crate::config::Config,
+		properties: P,
+		prefix: impl Into<String>,
+	) -> Self {
+		let com = Arc::new(Communicator::new_with_prefix(config, prefix));
 		let pd = PhantomData {};
 		Self {
 			pd,
@@ -269,9 +300,16 @@ where
 				timer.start();
 			});
 
-		// main loop so that agent stays alive
-		loop {
-			sleep(Duration::from_secs(1)).await;
+		// wait for a shutdown signal
+		match signal::ctrl_c().await {
+			Ok(()) => {
+				self.stop();
+			}
+			Err(err) => {
+				eprintln!("Unable to listen for shutdown signal: {err}");
+				// we also shut down in case of error
+				self.stop();
+			}
 		}
 	}
 
@@ -355,28 +393,32 @@ mod tests {
 	#[tokio::test]
 	//#[serial]
 	async fn agent_create_default() {
-		let _agent1: Agent<Props> = Agent::new(crate::config::Config::local(), "agent1", Props {});
-		let _agent2: Agent<Props> = Agent::new(crate::config::Config::local(), "agent2", Props {});
+		let _agent1: Agent<Props> = Agent::new(crate::config::Config::local(), Props {});
+		let _agent2: Agent<Props> =
+			Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
 	}
 
 	#[tokio::test(flavor = "current_thread")]
 	//#[serial]
 	async fn agent_create_current() {
-		let _agent1: Agent<Props> = Agent::new(crate::config::Config::local(), "agent1", Props {});
-		let _agent2: Agent<Props> = Agent::new(crate::config::Config::local(), "agent2", Props {});
+		let _agent1: Agent<Props> = Agent::new(crate::config::Config::local(), Props {});
+		let _agent2: Agent<Props> =
+			Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
 	}
 
 	#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 	//#[serial]
 	async fn agent_create_restricted() {
-		let _agent1: Agent<Props> = Agent::new(crate::config::Config::local(), "agent1", Props {});
-		let _agent2: Agent<Props> = Agent::new(crate::config::Config::local(), "agent2", Props {});
+		let _agent1: Agent<Props> = Agent::new(crate::config::Config::local(), Props {});
+		let _agent2: Agent<Props> =
+			Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
 	}
 
 	#[tokio::test(flavor = "multi_thread")]
 	//#[serial]
 	async fn agent_create_multi() {
-		let _agent1: Agent<Props> = Agent::new(crate::config::Config::local(), "agent1", Props {});
-		let _agent2: Agent<Props> = Agent::new(crate::config::Config::local(), "agent2", Props {});
+		let _agent1: Agent<Props> = Agent::new(crate::config::Config::local(), Props {});
+		let _agent2: Agent<Props> =
+			Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
 	}
 }
