@@ -4,7 +4,7 @@
 //! When fired, the Timer calls his assigned TimerCallback
 
 // region:		--- modules
-use crate::{com::communicator::Communicator, context::Context, prelude::*};
+use crate::{com::communicator::Communicator, context::Context, error::Result};
 use std::{
 	sync::{Arc, RwLock},
 	time::Duration,

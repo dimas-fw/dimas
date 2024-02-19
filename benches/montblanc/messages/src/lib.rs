@@ -1,4 +1,4 @@
-//#![allow(dead_code)]
+// Copyright © 2024 Stephan Kunz
 
 //! all the messages needed for montblanc benchmark
 //! based on ros2 messages, see

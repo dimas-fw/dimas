@@ -2,7 +2,7 @@
 
 // region:		--- modules
 use super::communicator::Communicator;
-use crate::{context::Context, prelude::*};
+use crate::{context::Context, error::Result};
 use std::sync::{Arc, RwLock};
 use tokio::task::JoinHandle;
 use zenoh::prelude::{r#async::AsyncResolve, SampleKind};
