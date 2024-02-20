@@ -21,6 +21,8 @@ path = "src/liveliness.rs"
 clap = { workspace = true }
 dimas = { workspace = true, features = ["liveliness"] }
 tokio = { workspace = true, features = ["macros"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 
 [dev-dependencies]
 

@@ -8,28 +8,32 @@
 //!
 //! This source is part of `DiMAS` implementation of Montblanc benchmark for distributed systems
 
+use dimas::prelude::*;
 use std::{
 	sync::{Arc, RwLock},
 	time::Duration,
 };
-
-use dimas::prelude::*;
+use tracing::info;
 
 #[derive(Debug, Default)]
 struct AgentProps {}
 
 fn lena_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let _value: messages::WrenchStamped = bitcode::decode(message).expect("should not happen");
-	println!("georgetown received WrenchStamped");
+	info!("georgetown received WrenchStamped");
 }
 
 fn murray_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let _value: messages::Vector3Stamped = bitcode::decode(message).expect("should not happen");
-	println!("georgetown received Vector3Stamped");
+	info!("georgetown received Vector3Stamped");
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
+	tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        .init();
+
 	let properties = AgentProps::default();
 	let mut agent = Agent::new(Config::default(), properties);
 
@@ -53,7 +57,7 @@ async fn main() -> Result<()> {
 			let value = message.data;
 			let _ = ctx.publish("volga", message);
 			// just to see what value has been sent
-			println!("georgetown sent: {value:>17.6}");
+			info!("georgetown sent: {value:>17.6}");
 		})
 		.add()?;
 

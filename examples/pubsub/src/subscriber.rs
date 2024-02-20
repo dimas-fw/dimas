@@ -5,6 +5,7 @@
 use clap::Parser;
 use dimas::prelude::*;
 use std::sync::{Arc, RwLock};
+use tracing::info;
 // endregion:	--- modules
 
 // region:		--- Clap
@@ -22,15 +23,20 @@ struct AgentProps {}
 
 fn hello_publishing(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let message: String = bitcode::decode(message).expect("should not happen");
-	println!("Received '{}'", &message);
+	info!("Received '{}'", &message);
 }
 
 fn hello_deletion(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>) {
-	println!("Shall delete 'hello'");
+	info!("Shall delete 'hello'");
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
+	// a tracing subscriber writing logs
+	tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        .init();
+
 	// parse arguments
 	let args = Args::parse();
 

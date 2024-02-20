@@ -5,6 +5,7 @@
 use clap::Parser;
 use dimas::prelude::*;
 use std::sync::{Arc, RwLock};
+use tracing::info;
 // endregion:	--- modules
 
 // region:		--- Clap
@@ -21,15 +22,20 @@ struct Args {
 struct AgentProps {}
 
 fn liveliness_subscription(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, agent_id: &str) {
-	println!("{agent_id} is alive");
+	info!("{agent_id} is alive");
 }
 
 fn delete_subscription(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, agent_id: &str) {
-	println!("{agent_id} died");
+	info!("{agent_id} died");
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
+	// a tracing subscriber writing logs
+	tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        .init();
+
 	// parse arguments
 	let args = Args::parse();
 

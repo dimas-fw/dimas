@@ -9,9 +9,9 @@
 //!
 //! This source is part of `DiMAS` implementation of Montblanc benchmark for distributed systems
 
-use std::sync::{Arc, RwLock};
-
 use dimas::prelude::*;
+use std::sync::{Arc, RwLock};
+use tracing::info;
 
 #[derive(Debug, Default)]
 struct AgentProps {
@@ -24,30 +24,34 @@ struct AgentProps {
 fn tigris_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::Float32 = bitcode::decode(message).expect("should not happen");
 	props.write().expect("should not happen").tigris = value.data;
-	println!("hamburg received: {:>14.6}", value.data);
+	info!("hamburg received: {:>14.6}", value.data);
 }
 
 fn ganges_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::Int64 = bitcode::decode(message).expect("should not happen");
 	props.write().expect("should not happen").ganges = value.data;
-	println!("hamburg received: {:>20}", value.data);
+	info!("hamburg received: {:>20}", value.data);
 }
 
 fn nile_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::Int32 = bitcode::decode(message).expect("should not happen");
 	props.write().expect("should not happen").nile = value.data;
-	println!("hamburg received: {:>12}", value.data);
+	info!("hamburg received: {:>12}", value.data);
 }
 
 fn danube_callback(ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::StringMsg = bitcode::decode(message).expect("should not happen");
 	let _ = ctx.publish("parana", &value);
-	println!("hamburg propagates: {}", &value.data);
+	info!("hamburg propagates: {}", &value.data);
 	props.write().expect("should not happen").danube = Some(value.data);
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
+	tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        .init();
+
 	let properties = AgentProps::default();
 	let mut agent = Agent::new(Config::default(), properties);
 

@@ -63,6 +63,8 @@ bitcode = "0.5"
 clap = { version = "4", features = ["derive"] }
 dimas = { path = "dimas" }
 tokio = "1"
+tracing = { version = "0.1", features = ["log"] }
+tracing-subscriber = "0.3"
 zenoh = { version = "0.10.1-rc", features = ["unstable"] }
 
 [profile.release]

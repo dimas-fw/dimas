@@ -8,6 +8,7 @@ use clap::Parser;
 use dimas::prelude::*;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
+use tracing::info;
 // endregion:	--- modules
 
 // region:		--- Clap
@@ -44,7 +45,7 @@ fn pong_received(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message:
 	// calculate traveltimes
 	let oneway = received - message.received.unwrap_or(0);
 	let roundtrip = received - message.sent;
-	println!(
+	info!(
 		"Trip {}, oneway {:.2}ms, roundtrip {:.2}ms",
 		&message.counter,
 		oneway as f64 / 1_000_000.0,
@@ -54,6 +55,11 @@ fn pong_received(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message:
 
 #[tokio::main]
 async fn main() -> Result<()> {
+	// a tracing subscriber writing logs
+	tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        .init();
+
 	// parse arguments
 	let args = Args::parse();
 
@@ -83,7 +89,7 @@ async fn main() -> Result<()> {
 			let _ = ctx.publish("ping", message);
 
 			let text = "ping! [".to_string() + &counter.to_string() + "]";
-			print!("Sent {} ", &text);
+			info!("Sent {} ", &text);
 
 			// increase counter
 			props

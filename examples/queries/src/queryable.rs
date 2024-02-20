@@ -5,6 +5,7 @@
 use clap::Parser;
 use dimas::prelude::*;
 use std::sync::{Arc, RwLock};
+use tracing::info;
 // endregion:	--- modules
 
 // region:		--- Clap
@@ -28,7 +29,7 @@ fn queryable(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, request: &Req
 		.expect("should never happen")
 		.counter
 		.to_string();
-	println!("Received {}. query", &value);
+	info!("Received {}. query", &value);
 
 	request.reply(&value);
 
@@ -40,6 +41,11 @@ fn queryable(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, request: &Req
 
 #[tokio::main]
 async fn main() -> Result<()> {
+	// a tracing subscriber writing logs
+	tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        .init();
+
 	// parse arguments
 	let args = Args::parse();
 

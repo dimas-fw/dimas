@@ -6,12 +6,17 @@
 
 use dimas::prelude::*;
 use std::time::Duration;
+use tracing::info;
 
 #[derive(Debug)]
 struct AgentProps {}
 
 #[tokio::main]
 async fn main() -> Result<()> {
+	tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        .init();
+
 	let properties = AgentProps {};
 	let mut agent = Agent::new(Config::default(), properties);
 
@@ -23,7 +28,7 @@ async fn main() -> Result<()> {
 			let value = message.data;
 			let _ = ctx.publish("nile", message);
 			// just to see what value has been sent
-			println!("medellin sent: {value:>12}");
+			info!("medellin sent: {value:>12}");
 		})
 		.add()?;
 

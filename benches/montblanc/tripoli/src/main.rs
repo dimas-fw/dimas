@@ -7,9 +7,9 @@
 //!
 //! This source is part of `DiMAS` implementation of Montblanc benchmark for distributed systems
 
-use std::sync::{Arc, RwLock};
-
 use dimas::prelude::*;
+use std::sync::{Arc, RwLock};
+use tracing::info;
 
 #[derive(Debug)]
 struct AgentProps {}
@@ -17,7 +17,7 @@ struct AgentProps {}
 fn columbia_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::Image = bitcode::decode(message).expect("should not happen");
 	// just to see what has been sent
-	println!(
+	info!(
 		"tripoli received: {:>4} x {:>4} -> {}",
 		value.height, value.width, value.header.frame_id
 	);
@@ -27,12 +27,16 @@ fn godavari_callback(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, messa
 	let _value: messages::LaserScan = bitcode::decode(message).expect("should not happen");
 	let msg = messages::PointCloud2::random();
 	let _ = ctx.publish("loire", msg);
-	println!("tripoli received LaserScan");
-	println!("tripoli sent PointCloud2");
+	info!("tripoli received LaserScan");
+	info!("tripoli sent PointCloud2");
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
+	tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        .init();
+
 	let properties = AgentProps {};
 	let mut agent = Agent::new(Config::default(), properties);
 

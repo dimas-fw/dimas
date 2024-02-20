@@ -22,7 +22,7 @@ The feature `all`, including all available features, is a good point to start wi
 ```toml
 [dependencies]
 dimas = { version = "0.0.4", features = ["all"] }
-bitcode = "0.5.0"
+bitcode = "0.5"
 tokio = { version = "1",features = ["macros"] }
 ```
 
@@ -49,7 +49,7 @@ Your `Cargo.toml` should include
 ```toml
 [dependencies]
 dimas = { version = "0.0.4", features = ["timer", "subscriber"] }
-bitcode = "0.5.0"
+bitcode = "0.5"
 tokio = { version = "1",features = ["macros"] }
 ```
 
@@ -155,6 +155,9 @@ async fn main() -> Result<()> {
 
 #### More examples
 You can find more examples in [dimas-fw/examples](https://github.com/dimas-fw/dimas/blob/main/examples/README.md)
+
+#### Benchmarks
+You can find benchmarks in [dimas-fw/benches](https://github.com/dimas-fw/dimas/blob/main/benches/README.md)
 
 ## Feature flags
 

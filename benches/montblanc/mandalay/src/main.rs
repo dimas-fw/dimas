@@ -14,48 +14,52 @@
 //!
 //! This source is part of `DiMAS` implementation of Montblanc benchmark for distributed systems
 
+use dimas::prelude::*;
 use std::{
 	sync::{Arc, RwLock},
 	time::Duration,
 };
-
-use dimas::prelude::*;
+use tracing::info;
 
 #[derive(Debug, Default)]
 struct AgentProps {}
 
 fn danube_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::StringMsg = bitcode::decode(message).expect("should not happen");
-	println!("mandalay received: {}", value.data);
+	info!("mandalay received: {}", value.data);
 }
 
 fn chenab_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let _value: messages::Quaternion = bitcode::decode(message).expect("should not happen");
-	println!("mandalay received Quaternion");
+	info!("mandalay received Quaternion");
 }
 
 fn salween_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let _value: messages::PointCloud2 = bitcode::decode(message).expect("should not happen");
-	println!("mandalay received PointCloud2");
+	info!("mandalay received PointCloud2");
 }
 
 fn godavari_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let _value: messages::LaserScan = bitcode::decode(message).expect("should not happen");
-	println!("mandalay received LaserScan");
+	info!("mandalay received LaserScan");
 }
 
 fn yamuna_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let _value: messages::Vector3 = bitcode::decode(message).expect("should not happen");
-	println!("mandalay received Vector3");
+	info!("mandalay received Vector3");
 }
 
 fn loire_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let _value: messages::PointCloud2 = bitcode::decode(message).expect("should not happen");
-	println!("mandalay received PointCloud2");
+	info!("mandalay received PointCloud2");
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
+	tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        .init();
+
 	let properties = AgentProps::default();
 	let mut agent = Agent::new(Config::default(), properties);
 
@@ -101,7 +105,7 @@ async fn main() -> Result<()> {
 		.callback(|ctx, _props| {
 			let message = messages::Pose::random();
 			let _ = ctx.publish("tagus", message);
-			println!("mandalay sent Pose");
+			info!("mandalay sent Pose");
 		})
 		.add()?;
 
@@ -111,7 +115,7 @@ async fn main() -> Result<()> {
 		.callback(|ctx, _props| {
 			let message = messages::Image::random();
 			let _ = ctx.publish("missouri", message);
-			println!("mandalay sent Image");
+			info!("mandalay sent Image");
 		})
 		.add()?;
 
@@ -121,7 +125,7 @@ async fn main() -> Result<()> {
 		.callback(|ctx, _props| {
 			let message = messages::PointCloud2::random();
 			let _ = ctx.publish("brazos", message);
-			println!("mandalay sent PointCloud2");
+			info!("mandalay sent PointCloud2");
 		})
 		.add()?;
 

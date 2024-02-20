@@ -18,7 +18,8 @@ workspace = true
 
 [dependencies]
 bitcode = { workspace = true }
-tokio = { workspace = true, features = ["rt-multi-thread", "signal", "time"]}
+tokio = { workspace = true, features = ["rt-multi-thread", "signal", "time", "tracing"]}
+tracing = { workspace = true }
 zenoh = { workspace = true }
 
 [dev-dependencies]

@@ -10,9 +10,9 @@
 //!
 //! This source is part of `DiMAS` implementation of Montblanc benchmark for distributed systems
 
-use std::sync::{Arc, RwLock};
-
 use dimas::prelude::*;
+use std::sync::{Arc, RwLock};
+use tracing::info;
 
 #[derive(Debug, Default)]
 struct AgentProps {
@@ -24,7 +24,7 @@ struct AgentProps {
 fn parana_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::StringMsg = bitcode::decode(message).expect("should not happen");
 	props.write().expect("should not happen").parana = Some(value.data.clone());
-	println!("osaka received: {}", value.data);
+	info!("osaka received: {}", value.data);
 }
 
 fn columbia_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
@@ -33,7 +33,7 @@ fn columbia_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, messa
 	let width = value.width;
 	let id = value.header.frame_id.clone();
 	props.write().expect("should not happen").columbia = Some(value);
-	println!("osaka received on /columbia: {height:>4} x {width:>4} -> {id}");
+	info!("osaka received on /columbia: {height:>4} x {width:>4} -> {id}");
 }
 
 fn colorado_callback(ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
@@ -42,19 +42,23 @@ fn colorado_callback(ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, messag
 	let width = value.width;
 	let id = value.header.frame_id.clone();
 	props.write().expect("should not happen").colorado = Some(value);
-	println!("osaka received on /colorado: {height:>4} x {width:>4} -> {id}");
+	info!("osaka received on /colorado: {height:>4} x {width:>4} -> {id}");
 
 	let message = messages::PointCloud2::random();
 	let _ = ctx.publish("salween", &message);
-	println!("osaka sentPointCloud2");
+	info!("osaka sentPointCloud2");
 
 	let message = messages::LaserScan::random();
 	let _ = ctx.publish("godavari", &message);
-	println!("osaka sent LaserScan");
+	info!("osaka sent LaserScan");
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
+	tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        .init();
+
 	let properties = AgentProps::default();
 	let mut agent = Agent::new(Config::default(), properties);
 

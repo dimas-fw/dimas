@@ -10,37 +10,41 @@
 //!
 //! This source is part of `DiMAS` implementation of Montblanc benchmark for distributed systems
 
-use std::sync::{Arc, RwLock};
-
 use dimas::prelude::*;
+use std::sync::{Arc, RwLock};
+use tracing::info;
 
 #[derive(Debug, Default)]
 struct AgentProps {}
 
 fn parana_callback(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::StringMsg = bitcode::decode(message).expect("should not happen");
-	println!("geneva received: {}", &value.data);
+	info!("geneva received: {}", &value.data);
 	let _ = ctx.publish("arkansas", &value);
-	println!("geneva sent: {}", value.data);
+	info!("geneva sent: {}", value.data);
 }
 
 fn danube_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::StringMsg = bitcode::decode(message).expect("should not happen");
-	println!("geneva received: {}", value.data);
+	info!("geneva received: {}", value.data);
 }
 
 fn tagus_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let _value: messages::Pose = bitcode::decode(message).expect("should not happen");
-	println!("geneva received Pose");
+	info!("geneva received Pose");
 }
 
 fn congo_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let _value: messages::Twist = bitcode::decode(message).expect("should not happen");
-	println!("geneva received Twist");
+	info!("geneva received Twist");
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
+	tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        .init();
+
 	let properties = AgentProps::default();
 	let mut agent = Agent::new(Config::default(), properties);
 

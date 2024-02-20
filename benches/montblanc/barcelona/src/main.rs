@@ -7,9 +7,9 @@
 //!
 //! This source is part of `DiMAS` implementation of Montblanc benchmark for distributed systems
 
-use std::sync::{Arc, RwLock};
-
 use dimas::prelude::*;
+use std::sync::{Arc, RwLock};
+use tracing::info;
 
 #[derive(Debug, Default)]
 struct AgentProps {}
@@ -17,14 +17,18 @@ struct AgentProps {}
 fn mekong_callback(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let _value: messages::TwistWithCovarianceStamped =
 		bitcode::decode(message).expect("should not happen");
-	println!("barcelona received Twist");
+	info!("barcelona received Twist");
 	let msg = messages::WrenchStamped::random();
 	let _ = ctx.publish("lena", msg);
-	println!("barcelona sent WrenchStamped");
+	info!("barcelona sent WrenchStamped");
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
+	tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        .init();
+
 	let properties = AgentProps::default();
 	let mut agent = Agent::new(Config::default(), properties);
 

@@ -8,6 +8,7 @@ use std::{
 	sync::{Arc, RwLock},
 	time::Duration,
 };
+use tracing::info;
 // endregion:	--- modules
 
 // region:		--- Clap
@@ -25,11 +26,16 @@ struct AgentProps {}
 
 fn query_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, answer: &[u8]) {
 	let message: String = bitcode::decode(answer).expect("should not happen");
-	println!("Received '{}'", &message);
+	info!("Received '{}'", &message);
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
+	// a tracing subscriber writing logs
+	tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        .init();
+
 	// parse arguments
 	let args = Args::parse();
 
@@ -46,7 +52,7 @@ async fn main() -> Result<()> {
 		.timer()
 		.interval(duration)
 		.callback(move |ctx, props| {
-			println!("Querying [{counter}]");
+			info!("Querying [{counter}]");
 			// querying with ad-hoc query
 			ctx.query(ctx.clone(), props, "query", query_callback);
 			counter += 1;

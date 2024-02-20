@@ -5,6 +5,7 @@
 use clap::Parser;
 use dimas::prelude::*;
 use std::time::Duration;
+use tracing::info;
 // endregion:	--- modules
 
 // region:		--- Clap
@@ -24,6 +25,11 @@ struct AgentProps {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+	// a tracing subscriber writing logs
+	tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        .init();
+
 	// parse arguments
 	let args = Args::parse();
 
@@ -45,7 +51,7 @@ async fn main() -> Result<()> {
 				.to_string();
 
 			let text = "Hello World! [".to_string() + &counter + "]";
-			println!("Sending '{}'", &text);
+			info!("Sending '{}'", &text);
 			// publishing with ad-hoc publisher
 			let _ = ctx.publish("hello", text);
 			props
@@ -61,7 +67,7 @@ async fn main() -> Result<()> {
 		.timer()
 		.interval(duration)
 		.callback(move |ctx, _props| {
-			println!("Deleting");
+			info!("Deleting");
 			// sending with ad-hoc delete
 			let _ = ctx.delete("hello");
 		})

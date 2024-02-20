@@ -7,6 +7,7 @@ use chrono::Local;
 use clap::Parser;
 use dimas::prelude::*;
 use std::sync::{Arc, RwLock};
+use tracing::info;
 // endregion:	--- modules
 
 // region:		--- Clap
@@ -40,11 +41,16 @@ fn ping_received(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: 
 	// publishing with ad-hoc publisher
 	let _ = ctx.publish("pong", message);
 
-	println!("Sent '{}'", &text);
+	info!("Sent '{}'", &text);
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
+	// a tracing subscriber writing logs
+	tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        .init();
+
 	// parse arguments
 	let args = Args::parse();
 

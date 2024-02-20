@@ -19,9 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.0.4] - 2024-??-?? <br>Has breaking changes!!
 
 ### Added
+- introduce `tracing` support
 - Agent::new_with_prefix() - as replacement for the old agent::new()
 - benchmarks
-  - benches/montblanc - an implementation of the Montblanc benchmark for robots
+  - benches/montblanc/* - an implementation of the Montblanc benchmark for robots
   - benches/montblanc/tmux-robot.sh - a tmux script to run all of the robots nodes
   - benches/montblanc/tmux-workstation.sh - a tmux script to run all of the workstations nodes
 - examples

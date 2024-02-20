@@ -7,23 +7,27 @@
 //!
 //! This source is part of `DiMAS` implementation of Montblanc benchmark for distributed systems
 
-use std::sync::{Arc, RwLock};
-
 use dimas::prelude::*;
+use std::sync::{Arc, RwLock};
+use tracing::info;
 
 #[derive(Debug, Default)]
 struct AgentProps {}
 
 fn congo_callback(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let _value: messages::Twist = bitcode::decode(message).expect("should not happen");
-	println!("monaco received Twist");
+	info!("monaco received Twist");
 	let msg = messages::Float32::random();
 	let _ = ctx.publish("ohio", &msg);
-	println!("monaco sent: {:>14.6}", msg.data);
+	info!("monaco sent: {:>14.6}", msg.data);
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
+	tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        .init();
+
 	let properties = AgentProps::default();
 	let mut agent = Agent::new(Config::default(), properties);
 
