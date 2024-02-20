@@ -34,8 +34,8 @@ fn godavari_callback(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, messa
 #[tokio::main]
 async fn main() -> Result<()> {
 	tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::INFO)
-        .init();
+		.with_max_level(tracing::Level::INFO)
+		.init();
 
 	let properties = AgentProps {};
 	let mut agent = Agent::new(Config::default(), properties);

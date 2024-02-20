@@ -57,8 +57,8 @@ fn pong_received(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message:
 async fn main() -> Result<()> {
 	// a tracing subscriber writing logs
 	tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::INFO)
-        .init();
+		.with_max_level(tracing::Level::INFO)
+		.init();
 
 	// parse arguments
 	let args = Args::parse();
