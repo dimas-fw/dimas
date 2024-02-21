@@ -15,11 +15,11 @@ use tracing::info;
 struct AgentProps {}
 
 fn congo_callback(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
-	let _value: messages::Twist = bitcode::decode(message).expect("should not happen");
-	info!("monaco received Twist");
+	let value: messages::Twist = bitcode::decode(message).expect("should not happen");
+	info!("received: '{}'", &value);
 	let msg = messages::Float32::random();
 	let _ = ctx.publish("ohio", &msg);
-	info!("monaco sent: {:>14.6}", msg.data);
+	info!("sent: '{msg}'");
 }
 
 #[tokio::main]

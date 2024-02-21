@@ -13,14 +13,10 @@ struct AgentProps {}
 
 fn columbia_callback(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let mut value: messages::Image = bitcode::decode(message).expect("should not happen");
-	let height = value.height;
-	let width = value.width;
-	let id_old = value.header.frame_id.clone();
+	info!("received: '{}'", &value);
 	value.header.frame_id = value.header.frame_id.replace("Test", "Modified");
-	let id_new = value.header.frame_id.clone();
-	let _ = ctx.publish("colorado", value);
-	info!("taipei received: {height:>4} x {width:>4} -> {id_old}");
-	info!("taipei sent: {height:>4} x {width:>4} -> {id_new}");
+	let _ = ctx.publish("colorado", &value);
+	info!("received: '{}'", value);
 }
 
 #[tokio::main]
@@ -30,7 +26,7 @@ async fn main() -> Result<()> {
 		.init();
 
 	let properties = AgentProps {};
-	let mut agent = Agent::new(Config::default(), properties);
+	let mut agent = Agent::new(Config::local(), properties);
 
 	agent
 		.subscriber()

@@ -2,7 +2,7 @@
 
 //! The node 'barcelona' subscribes to
 //!   - a `TwistWithCovarianceStamed` on the topic /mekong
-//! and publishes on receive
+//! and publishes on receive the Twist data as
 //!   - a `WrenchStamped` on the topic /lena
 //!
 //! This source is part of `DiMAS` implementation of Montblanc benchmark for distributed systems
@@ -15,12 +15,19 @@ use tracing::info;
 struct AgentProps {}
 
 fn mekong_callback(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
-	let _value: messages::TwistWithCovarianceStamped =
+	let value: messages::TwistWithCovarianceStamped =
 		bitcode::decode(message).expect("should not happen");
-	info!("barcelona received Twist");
-	let msg = messages::WrenchStamped::random();
-	let _ = ctx.publish("lena", msg);
-	info!("barcelona sent WrenchStamped");
+	info!("received: '{}'", &value);
+	let wrench = messages::Wrench {
+		force: value.twist.twist.linear,
+		torque: value.twist.twist.angular,
+	};
+	let msg = messages::WrenchStamped {
+		header: value.header,
+		wrench,
+	};
+	let _ = ctx.publish("lena", &msg);
+	info!("sent: '{msg}'");
 }
 
 #[tokio::main]

@@ -16,41 +16,35 @@ use tracing::info;
 
 #[derive(Debug, Default)]
 struct AgentProps {
-	parana: Option<String>,
+	parana: Option<messages::StringMsg>,
 	columbia: Option<messages::Image>,
 	colorado: Option<messages::Image>,
 }
 
 fn parana_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::StringMsg = bitcode::decode(message).expect("should not happen");
-	props.write().expect("should not happen").parana = Some(value.data.clone());
-	info!("osaka received: {}", value.data);
+	info!("received: '{}'", &value);
+	props.write().expect("should not happen").parana = Some(value);
 }
 
 fn columbia_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::Image = bitcode::decode(message).expect("should not happen");
-	let height = value.height;
-	let width = value.width;
-	let id = value.header.frame_id.clone();
+	info!("received: '{}'", &value);
 	props.write().expect("should not happen").columbia = Some(value);
-	info!("osaka received on /columbia: {height:>4} x {width:>4} -> {id}");
 }
 
 fn colorado_callback(ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::Image = bitcode::decode(message).expect("should not happen");
-	let height = value.height;
-	let width = value.width;
-	let id = value.header.frame_id.clone();
+	info!("received: '{}'", &value);
 	props.write().expect("should not happen").colorado = Some(value);
-	info!("osaka received on /colorado: {height:>4} x {width:>4} -> {id}");
 
 	let message = messages::PointCloud2::random();
 	let _ = ctx.publish("salween", &message);
-	info!("osaka sentPointCloud2");
+	info!("sent: '{}'", message);
 
 	let message = messages::LaserScan::random();
 	let _ = ctx.publish("godavari", &message);
-	info!("osaka sent LaserScan");
+	info!("sent: '{}'", message);
 }
 
 #[tokio::main]
@@ -60,7 +54,7 @@ async fn main() -> Result<()> {
 		.init();
 
 	let properties = AgentProps::default();
-	let mut agent = Agent::new(Config::default(), properties);
+	let mut agent = Agent::new(Config::local(), properties);
 
 	agent
 		.subscriber()

@@ -6,12 +6,24 @@
 //! - <https://github.com/ros2/common_interfaces>
 //! should be modernized and moved into a separate crate
 
+use std::fmt::Display;
+
 use bitcode::{Decode, Encode};
 use chrono::prelude::*;
-use rand::random;
+use rand::distributions::Alphanumeric;
+use rand::{random, Rng};
+
+/// function creates a random String of given length
+pub fn random_string(length: usize) -> String {
+	rand::thread_rng()
+		.sample_iter(Alphanumeric)
+		.take(length)
+		.map(char::from)
+		.collect()
+}
 
 /// Float64 message
-#[derive(Encode, Decode)]
+#[derive(Debug, Encode, Decode)]
 pub struct Float64 {
 	/// data
 	pub data: f64,
@@ -27,8 +39,14 @@ impl Float64 {
 	}
 }
 
+impl Display for Float64 {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", self.data)
+	}
+}
+
 /// Float32 message
-#[derive(Encode, Decode)]
+#[derive(Debug, Encode, Decode)]
 pub struct Float32 {
 	/// data
 	pub data: f32,
@@ -44,8 +62,14 @@ impl Float32 {
 	}
 }
 
+impl Display for Float32 {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", self.data)
+	}
+}
+
 /// Int64 message
-#[derive(Encode, Decode)]
+#[derive(Debug, Encode, Decode)]
 pub struct Int64 {
 	/// data
 	pub data: i64,
@@ -59,8 +83,14 @@ impl Int64 {
 	}
 }
 
+impl Display for Int64 {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", self.data)
+	}
+}
+
 /// Int32 message
-#[derive(Encode, Decode)]
+#[derive(Debug, Encode, Decode)]
 pub struct Int32 {
 	/// data
 	pub data: i32,
@@ -74,11 +104,33 @@ impl Int32 {
 	}
 }
 
+impl Display for Int32 {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", self.data)
+	}
+}
+
 /// String message
-#[derive(Encode, Decode)]
+#[derive(Debug, Encode, Decode)]
 pub struct StringMsg {
 	/// data
 	pub data: String,
+}
+
+impl StringMsg {
+	/// provides some random `StringMsg` data
+	#[must_use]
+	pub fn random() -> Self {
+		Self {
+			data: random_string(64),
+		}
+	}
+}
+
+impl Display for StringMsg {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", self.data)
+	}
 }
 
 /// Timestamp message
@@ -100,6 +152,12 @@ impl Timestamp {
 			sec: now.timestamp(),
 			nanosec: now.nanosecond(),
 		}
+	}
+}
+
+impl Display for Timestamp {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "timestamp: {}.{}", self.sec, self.nanosec)
 	}
 }
 
@@ -136,6 +194,12 @@ impl Default for Header {
 	}
 }
 
+impl Display for Header {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}, id: {}", self.timestamp, self.frame_id)
+	}
+}
+
 /// Point message
 /// Contains the position of a point in free space
 #[derive(Debug, Encode, Decode)]
@@ -157,6 +221,12 @@ impl Point {
 			y: random(),
 			z: random(),
 		}
+	}
+}
+
+impl Display for Point {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "[{}, {}, {}]", self.x, self.y, self.z)
 	}
 }
 
@@ -187,6 +257,12 @@ impl Quaternion {
 	}
 }
 
+impl Display for Quaternion {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "[{}, {}, {}, {}]", self.x, self.y, self.z, self.w)
+	}
+}
+
 /// 3-Dimensional Vector message
 /// Represents a vector in free space
 /// This is semantically different than a point.
@@ -214,6 +290,12 @@ impl Vector3 {
 	}
 }
 
+impl Display for Vector3 {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "[{}, {}, {}]", self.x, self.y, self.z)
+	}
+}
+
 /// 3D-Vector with Header
 /// Represents a Vector3 with reference coordinate frame and timestamp
 /// Note that this follows vector semantics with it always anchored at the origin,
@@ -234,6 +316,12 @@ impl Vector3Stamped {
 			header: Header::new(),
 			vector: Vector3::random(),
 		}
+	}
+}
+
+impl Display for Vector3Stamped {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}, {}", self.header, self.vector)
 	}
 }
 
@@ -258,6 +346,16 @@ impl Pose {
 	}
 }
 
+impl Display for Pose {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(
+			f,
+			"position: {} orientation: {}",
+			self.position, self.orientation
+		)
+	}
+}
+
 /// Twist message
 /// Expresses velocity in free space broken into its linear and angular parts
 #[derive(Debug, Encode, Decode)]
@@ -276,6 +374,12 @@ impl Twist {
 			linear: Vector3::random(),
 			angular: Vector3::random(),
 		}
+	}
+}
+
+impl Display for Twist {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "linear: {}, angular: {}", self.linear, self.angular)
 	}
 }
 
@@ -302,6 +406,16 @@ impl TwistWithCovariance {
 	}
 }
 
+impl Display for TwistWithCovariance {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(
+			f,
+			"{}, covariance: {:?}",
+			self.twist, self.covariance
+		)
+	}
+}
+
 /// Twist with Covariance and Header message
 #[derive(Debug, Encode, Decode)]
 pub struct TwistWithCovarianceStamped {
@@ -319,6 +433,12 @@ impl TwistWithCovarianceStamped {
 			header: Header::new(),
 			twist: TwistWithCovariance::random(),
 		}
+	}
+}
+
+impl Display for TwistWithCovarianceStamped {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}, {}", self.header, self.twist)
 	}
 }
 
@@ -342,6 +462,12 @@ impl Wrench {
 	}
 }
 
+impl Display for Wrench {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "force: {}, torque: {}", self.force, self.torque)
+	}
+}
+
 /// Wrench with Header message
 #[derive(Debug, Encode, Decode)]
 pub struct WrenchStamped {
@@ -359,6 +485,12 @@ impl WrenchStamped {
 			header: Header::new(),
 			wrench: Wrench::random(),
 		}
+	}
+}
+
+impl Display for WrenchStamped {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}, {}", self.header, self.wrench)
 	}
 }
 
@@ -381,7 +513,7 @@ pub struct Image {
 	/// Image width, that is, number of columns
 	pub width: u32,
 	/// Encoding of pixels -- channel meaning, ordering, size
-	/// see: https://github.com/ros2/common_interfaces/blob/rolling/sensor_msgs/include/sensor_msgs/image_encodings.hpp
+	/// see: <https://github.com/ros2/common_interfaces/blob/rolling/sensor_msgs/include/sensor_msgs/image_encodings.hpp>
 	pub encodings: String,
 	/// Is this data bigendian?
 	pub is_bigendian: bool,
@@ -398,12 +530,12 @@ impl Image {
 		let number: u32 = random();
 		let header = Header {
 			timestamp: Timestamp::now(),
-			frame_id: "Test Image ".to_string() + &number.to_string(),
+			frame_id: "Image ".to_string() + &number.to_string(),
 		};
-		let height = 10;
-		let width = 10;
-		let encodings = "Test".to_string();
-		let is_bigendian = true;
+		let height = random();
+		let width = random();
+		let encodings = random_string(32);
+		let is_bigendian = random();
 		let step = 2 * width;
 		let data = Vec::with_capacity((step * height) as usize);
 		Self {
@@ -415,6 +547,16 @@ impl Image {
 			step,
 			data,
 		}
+	}
+}
+
+impl Display for Image {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(
+			f,
+			"{}, size: {}x{}",
+			self.header, self.width, self.height
+		)
 	}
 }
 
@@ -431,25 +573,25 @@ pub struct LaserScan {
 	/// the positive Z axis (counterclockwise, if Z is up)
 	/// with zero angle being forward along the x axis
 	pub header: Header,
-	/// Start angle of the scan [rad]
+	/// Start angle of the scan in rad
 	pub angle_min: f32,
-	/// End angle of the scan [rad]
+	/// End angle of the scan in rad
 	pub angle_max: f32,
-	/// Angular distance between measurements [rad]
+	/// Angular distance between measurements in rad
 	pub angle_increment: f32,
-	/// Time between measurements [seconds] - if your scanner
+	/// Time between measurements in seconds - if your scanner
 	/// is moving, this will be used in interpolating position
 	/// of 3d points
 	pub time_increment: f32,
-	/// Time between scans [seconds]
+	/// Time between scans in seconds
 	pub scan_time: f32,
-	/// Minimum range value [m]
+	/// Minimum range value in m
 	pub range_min: f32,
-	/// Maximum range value [m]
+	/// Maximum range value in m
 	pub range_max: f32,
-	/// Range data [m] (Note: values < range_min or > range_max should be discarded)
+	/// Range data in m (Note: values < range_min or > range_max should be discarded)
 	pub ranges: Vec<f32>,
-	/// Intensity data [device-specific units].
+	/// Intensity data in device-specific units.
 	/// If your device does not provide intensities, please leave the array empty.
 	pub intensities: Vec<f32>,
 }
@@ -461,7 +603,7 @@ impl LaserScan {
 		let number: u32 = random();
 		let header = Header {
 			timestamp: Timestamp::now(),
-			frame_id: "Test Image ".to_string() + &number.to_string(),
+			frame_id: "Scan ".to_string() + &number.to_string(),
 		};
 		Self {
 			header,
@@ -475,6 +617,12 @@ impl LaserScan {
 			ranges: Vec::with_capacity(360),
 			intensities: Vec::with_capacity(360),
 		}
+	}
+}
+
+impl Display for LaserScan {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", self.header)
 	}
 }
 
@@ -560,5 +708,15 @@ impl PointCloud2 {
 			data: Vec::new(),
 			is_dense: true,
 		}
+	}
+}
+
+impl Display for PointCloud2 {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(
+			f,
+			"{}, size: {}x{}",
+			self.header, self.width, self.height
+		)
 	}
 }

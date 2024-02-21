@@ -15,12 +15,15 @@ use tracing::info;
 struct AgentProps {}
 
 fn mekong_callback(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
-	let _value: messages::TwistWithCovarianceStamped =
+	let value: messages::TwistWithCovarianceStamped =
 		bitcode::decode(message).expect("should not happen");
-	info!("rotterdam received TwistWithCovarianceStamped");
-	let msg = messages::Vector3Stamped::random();
-	let _ = ctx.publish("murray", msg);
-	info!("rotterdam sent Vector3Stamped");
+	info!("received: '{}'", &value);
+	let msg = messages::Vector3Stamped {
+		header: value.header,
+		vector: value.twist.twist.linear,
+	};
+	let _ = ctx.publish("murray", &msg);
+	info!("sent: '{}'", msg);
 }
 
 #[tokio::main]

@@ -15,28 +15,38 @@ use std::sync::{Arc, RwLock};
 use tracing::info;
 
 #[derive(Debug, Default)]
-struct AgentProps {}
+struct AgentProps {
+	danube: Option<messages::StringMsg>,
+	tagus: Option<messages::Pose>,
+	congo: Option<messages::Twist>,
+}
 
 fn parana_callback(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::StringMsg = bitcode::decode(message).expect("should not happen");
-	info!("geneva received: {}", &value.data);
-	let _ = ctx.publish("arkansas", &value);
-	info!("geneva sent: {}", value.data);
+	info!("received: '{}'", &value);
+	let msg = messages::StringMsg {
+		data: format!("geneva/arkansas: {}", &value),
+	};
+	let _ = ctx.publish("arkansas", &msg);
+	info!("sent: '{msg}'");
 }
 
-fn danube_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn danube_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::StringMsg = bitcode::decode(message).expect("should not happen");
-	info!("geneva received: {}", value.data);
+	info!("received: '{}'", &value);
+	props.write().expect("should not happen").danube = Some(value);
 }
 
-fn tagus_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
-	let _value: messages::Pose = bitcode::decode(message).expect("should not happen");
-	info!("geneva received Pose");
+fn tagus_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+	let value: messages::Pose = bitcode::decode(message).expect("should not happen");
+	info!("received: '{}'", &value);
+	props.write().expect("should not happen").tagus = Some(value);
 }
 
-fn congo_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
-	let _value: messages::Twist = bitcode::decode(message).expect("should not happen");
-	info!("geneva received Twist");
+fn congo_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+	let value: messages::Twist = bitcode::decode(message).expect("should not happen");
+	info!("received: '{}'", &value);
+	props.write().expect("should not happen").congo = Some(value);
 }
 
 #[tokio::main]

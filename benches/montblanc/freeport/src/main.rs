@@ -18,17 +18,16 @@ async fn main() -> Result<()> {
 		.init();
 
 	let properties = AgentProps {};
-	let mut agent = Agent::new(Config::default(), properties);
+	let mut agent = Agent::new(Config::local(), properties);
 
 	agent
 		.timer()
 		.interval(Duration::from_millis(50))
 		.callback(|ctx, _props| {
 			let message = messages::Int64::random();
-			let value = message.data;
-			let _ = ctx.publish("ganges", message);
+			let _ = ctx.publish("ganges", &message);
 			// just to see what value has been sent
-			info!("freeport sent: {value:>20}");
+			info!("sent: '{message}'");
 		})
 		.add()?;
 

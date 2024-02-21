@@ -20,27 +20,15 @@ async fn main() -> Result<()> {
 	let properties = AgentProps {};
 	let mut agent = Agent::new(Config::default(), properties);
 
-	let values = [
-		"Another one bites the dust",
-		"Once in a while, there happens a miracle",
-		"Sometimes you win, sometimes you loose",
-		"The quick brown fox jumps over the fence",
-		"To be or not to be",
-	];
-	let mut index = 0;
-
 	agent
 		.timer()
 		.interval(Duration::from_millis(200))
 		.callback(move |ctx, _props| {
-			let value = values[index].to_string();
-			let message = messages::StringMsg {
-				data: value.clone(),
-			};
-			let _ = ctx.publish("danube", message);
+			let value = "portsmouth/danube: ".to_string() + &messages::random_string(55);
+			let message = messages::StringMsg { data: value };
+			let _ = ctx.publish("danube", &message);
 			// just to see what value has been sent
-			info!("portsmouth sent: {value}");
-			index = (index + 1) % 5;
+			info!("sent: '{message}'");
 		})
 		.add()?;
 

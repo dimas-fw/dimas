@@ -161,13 +161,13 @@ You can find benchmarks in [dimas-fw/benches](https://github.com/dimas-fw/dimas/
 
 ## Feature flags
 
-DiMAS uses a set of feature flags to reduce the amount of compiled code. 
-It is necessary to enable all those features you want to use with your `Agent`.
+DiMAS uses a set of feature flags to minimize the size of an agent. 
+It is necessary to enable all those features you want to use within your `Agent`.
 
 - `all`: Enables all the features listed below. It's a good point to start with.
 - `liveliness`: Enables liveliness features sending tokens and listening for them.
-- `publisher`: Enables adding Pulishers to the Agent's Context.
-- `query`: Enables adding Queries to the Agent's Context.
-- `queryable`: Enables adding Queryables to the Agent's Context.
-- `subscriber`: Enables adding Subscibers to the Agent's Context.
-- `timer`: Enables adding Timer to the Agent's Context.
+- `publisher`: Enables to store Pulishers within the Agent's Context.
+- `query`: Enables to store Queries within the Agent's Context.
+- `queryable`: Enables to store Queryables within the Agent's Context.
+- `subscriber`: Enables to store Subscibers within the Agent's Context.
+- `timer`: Enables to store Timer within the Agent's Context.

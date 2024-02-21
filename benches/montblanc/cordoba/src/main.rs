@@ -18,17 +18,16 @@ async fn main() -> Result<()> {
 		.init();
 
 	let properties = AgentProps {};
-	let mut agent = Agent::new(Config::default(), properties);
+	let mut agent = Agent::new(Config::local(), properties);
 
 	agent
 		.timer()
 		.interval(Duration::from_millis(100))
 		.callback(|ctx, _props| {
 			let message = messages::Float32::random();
-			let value = message.data;
-			let _ = ctx.publish("amazon", message);
+			let _ = ctx.publish("amazon", &message);
 			// just to see what value has been sent
-			info!("cordoba sent: {value:>14.6}");
+			info!("sent: '{message}'");
 		})
 		.add()?;
 

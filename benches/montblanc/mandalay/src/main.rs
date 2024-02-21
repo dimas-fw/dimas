@@ -22,36 +22,49 @@ use std::{
 use tracing::info;
 
 #[derive(Debug, Default)]
-struct AgentProps {}
+struct AgentProps {
+	danube: Option<messages::StringMsg>,
+	chenab: Option<messages::Quaternion>,
+	salween: Option<messages::PointCloud2>,
+	godavari: Option<messages::LaserScan>,
+	loire: Option<messages::PointCloud2>,
+	yamuna: Option<messages::Vector3>,
+}
 
-fn danube_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn danube_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::StringMsg = bitcode::decode(message).expect("should not happen");
-	info!("mandalay received: {}", value.data);
+	info!("received: '{}'", &value);
+	props.write().expect("should not happen").danube = Some(value);
 }
 
-fn chenab_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
-	let _value: messages::Quaternion = bitcode::decode(message).expect("should not happen");
-	info!("mandalay received Quaternion");
+fn chenab_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+	let value: messages::Quaternion = bitcode::decode(message).expect("should not happen");
+	info!("received: '{}'", &value);
+	props.write().expect("should not happen").chenab = Some(value);
 }
 
-fn salween_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
-	let _value: messages::PointCloud2 = bitcode::decode(message).expect("should not happen");
-	info!("mandalay received PointCloud2");
+fn salween_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+	let value: messages::PointCloud2 = bitcode::decode(message).expect("should not happen");
+	info!("received: '{}'", &value);
+	props.write().expect("should not happen").salween = Some(value);
 }
 
-fn godavari_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
-	let _value: messages::LaserScan = bitcode::decode(message).expect("should not happen");
-	info!("mandalay received LaserScan");
+fn godavari_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+	let value: messages::LaserScan = bitcode::decode(message).expect("should not happen");
+	info!("received: '{}'", &value);
+	props.write().expect("should not happen").godavari = Some(value);
 }
 
-fn yamuna_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
-	let _value: messages::Vector3 = bitcode::decode(message).expect("should not happen");
-	info!("mandalay received Vector3");
+fn yamuna_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+	let value: messages::Vector3 = bitcode::decode(message).expect("should not happen");
+	info!("received: '{}'", &value);
+	props.write().expect("should not happen").yamuna = Some(value);
 }
 
-fn loire_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
-	let _value: messages::PointCloud2 = bitcode::decode(message).expect("should not happen");
-	info!("mandalay received PointCloud2");
+fn loire_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+	let value: messages::PointCloud2 = bitcode::decode(message).expect("should not happen");
+	info!("received: '{}'", &value);
+	props.write().expect("should not happen").loire = Some(value);
 }
 
 #[tokio::main]
@@ -104,8 +117,8 @@ async fn main() -> Result<()> {
 		.interval(Duration::from_millis(100))
 		.callback(|ctx, _props| {
 			let message = messages::Pose::random();
-			let _ = ctx.publish("tagus", message);
-			info!("mandalay sent Pose");
+			let _ = ctx.publish("tagus", &message);
+			info!("sent: '{}'", message);
 		})
 		.add()?;
 

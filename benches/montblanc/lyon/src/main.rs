@@ -13,9 +13,8 @@ struct AgentProps {}
 
 fn amazon_callback(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::Float32 = bitcode::decode(message).expect("should not happen");
-	let msg = value.data;
-	let _ = ctx.publish("tigris", value);
-	info!("lyon propagates: {msg:>14.6}");
+	let _ = ctx.publish("tigris", &value);
+	info!("sent: '{value}'");
 }
 
 #[tokio::main]
@@ -25,7 +24,7 @@ async fn main() -> Result<()> {
 		.init();
 
 	let properties = AgentProps {};
-	let mut agent = Agent::new(Config::default(), properties);
+	let mut agent = Agent::new(Config::local(), properties);
 
 	agent
 		.subscriber()

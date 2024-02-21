@@ -54,6 +54,8 @@ tmux select-pane -t 6
 tmux send-keys "cargo run --bin barcelona $1" C-m
 tmux select-pane -t 7
 tmux send-keys "cargo run --bin georgetown $1" C-m
+tmux select-pane -t 8
+tmux send-keys "tail -f /tmp/montblanc.out" C-m
 
 tmux select-pane -t 4
 

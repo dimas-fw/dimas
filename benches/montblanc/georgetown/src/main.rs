@@ -16,16 +16,22 @@ use std::{
 use tracing::info;
 
 #[derive(Debug, Default)]
-struct AgentProps {}
-
-fn lena_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
-	let _value: messages::WrenchStamped = bitcode::decode(message).expect("should not happen");
-	info!("georgetown received WrenchStamped");
+struct AgentProps {
+	murray: Option<messages::Vector3Stamped>,
+	lena: Option<messages::WrenchStamped>,
+	volga: Option<messages::Float64>,
 }
 
-fn murray_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
-	let _value: messages::Vector3Stamped = bitcode::decode(message).expect("should not happen");
-	info!("georgetown received Vector3Stamped");
+fn lena_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+	let value: messages::WrenchStamped = bitcode::decode(message).expect("should not happen");
+	info!("received: '{}'", &value);
+	props.write().expect("should not happen").lena = Some(value);
+}
+
+fn murray_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+	let value: messages::Vector3Stamped = bitcode::decode(message).expect("should not happen");
+	info!("received: '{}'", &value);
+	props.write().expect("should not happen").murray = Some(value);
 }
 
 #[tokio::main]
@@ -35,7 +41,7 @@ async fn main() -> Result<()> {
 		.init();
 
 	let properties = AgentProps::default();
-	let mut agent = Agent::new(Config::default(), properties);
+	let mut agent = Agent::new(Config::local(), properties);
 
 	agent
 		.subscriber()
@@ -52,12 +58,13 @@ async fn main() -> Result<()> {
 	agent
 		.timer()
 		.interval(Duration::from_millis(50))
-		.callback(|ctx, _props| {
+		.callback(|ctx, props| {
 			let message = messages::Float64::random();
 			let value = message.data;
-			let _ = ctx.publish("volga", message);
+			let _ = ctx.publish("volga", &message);
+			props.write().expect("should not happen").volga = Some(message);
 			// just to see what value has been sent
-			info!("georgetown sent: {value:>17.6}");
+			info!("sent: '{value}'");
 		})
 		.add()?;
 

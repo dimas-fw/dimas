@@ -18,32 +18,33 @@ struct AgentProps {
 	ganges: i64,
 	nile: i32,
 	tigris: f32,
-	danube: Option<String>,
 }
 
 fn tigris_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::Float32 = bitcode::decode(message).expect("should not happen");
 	props.write().expect("should not happen").tigris = value.data;
-	info!("hamburg received: {:>14.6}", value.data);
+	info!("received: '{}'", &value);
 }
 
 fn ganges_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::Int64 = bitcode::decode(message).expect("should not happen");
 	props.write().expect("should not happen").ganges = value.data;
-	info!("hamburg received: {:>20}", value.data);
+	info!("received: '{}'", &value);
 }
 
 fn nile_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::Int32 = bitcode::decode(message).expect("should not happen");
 	props.write().expect("should not happen").nile = value.data;
-	info!("hamburg received: {:>12}", value.data);
+	info!("received: '{}'", &value);
 }
 
-fn danube_callback(ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn danube_callback(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::StringMsg = bitcode::decode(message).expect("should not happen");
-	let _ = ctx.publish("parana", &value);
-	info!("hamburg propagates: {}", &value.data);
-	props.write().expect("should not happen").danube = Some(value.data);
+	let msg = messages::StringMsg {
+		data: format!("hamburg/parana: {}", &value.data),
+	};
+	let _ = ctx.publish("parana", &msg);
+	info!("sent: '{msg}'");
 }
 
 #[tokio::main]

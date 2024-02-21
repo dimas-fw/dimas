@@ -15,6 +15,7 @@ use crate::com::subscriber::{Subscriber, SubscriberBuilder};
 #[cfg(feature = "timer")]
 use crate::timer::{Timer, TimerBuilder};
 use std::{
+	fmt::Debug,
 	marker::PhantomData,
 	ops::Deref,
 	sync::{Arc, RwLock},
@@ -29,7 +30,7 @@ use zenoh::liveliness::LivelinessToken;
 /// Agent
 pub struct Agent<'a, P>
 where
-	P: std::fmt::Debug + Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	com: Arc<Communicator>,
 	pd: PhantomData<&'a P>,
@@ -60,9 +61,32 @@ where
 	timers: Arc<RwLock<Vec<Timer<P>>>>,
 }
 
+impl<'a, P> Debug for Agent<'a, P>
+where
+	P: Debug + Send + Sync + Unpin + 'static,
+{
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("Agent")
+			.field("id", &self.uuid())
+			.field("prefix", &self.com.prefix)
+			//.field("com", &self.com)
+			//.field("pd", &self.pd)
+			//.field("props", &self.props)
+			//.field("liveliness", &self.liveliness)
+			//.field("liveliness_token", &self.liveliness_token)
+			//.field("liveliness_subscriber", &self.liveliness_subscriber)
+			//.field("subscribers", &self.subscribers)
+			//.field("queryables", &self.queryables)
+			//.field("publishers", &self.publishers)
+			//.field("queries", &self.queries)
+			//.field("timers", &self.timers)
+			.finish_non_exhaustive()
+	}
+}
+
 impl<'a, P> Deref for Agent<'a, P>
 where
-	P: std::fmt::Debug + Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	type Target = Arc<RwLock<P>>;
 
@@ -73,7 +97,7 @@ where
 
 impl<'a, P> Agent<'a, P>
 where
-	P: std::fmt::Debug + Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// Create an instance of an agent.
 	pub fn new(config: crate::config::Config, properties: P) -> Self {
@@ -102,7 +126,7 @@ where
 		}
 	}
 
-	/// Create an instance of an agent.
+	/// Create an instance of an agent with a standard prefix for the topics.
 	pub fn new_with_prefix(
 		config: crate::config::Config,
 		properties: P,
@@ -241,6 +265,7 @@ where
 	/// start the agent
 	/// # Panics
 	///
+	#[tracing::instrument]
 	pub async fn start(&mut self) {
 		// start all registered queryables
 		#[cfg(feature = "queryable")]
@@ -315,6 +340,7 @@ where
 
 	/// stop the agent
 	/// # Panics
+	#[tracing::instrument]
 	pub fn stop(&mut self) {
 		// reverse order of start!
 		// stop all registered timers

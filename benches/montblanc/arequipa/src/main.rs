@@ -1,19 +1,34 @@
 // Copyright © 2024 Stephan Kunz
 
-//! The node 'arequipa' subscribes to a `StringMsg` on the topic /arkansas
+//! The node 'arequipa' subscribes to a `StringMsg` on the topic /arkansas and writes the data to a file
 //!
 //! This source is part of `DiMAS` implementation of Montblanc benchmark for distributed systems
 
 use dimas::prelude::*;
-use std::sync::{Arc, RwLock};
-use tracing::info;
+use std::fs::File;
+use std::{
+	io::Write,
+	sync::{Arc, RwLock},
+};
+use tracing::{error, info};
 
-#[derive(Debug, Default)]
-struct AgentProps {}
+static OUT_FILE: &str = "/tmp/montblanc.out";
 
-fn arkansas_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+#[derive(Debug)]
+struct AgentProps {
+	file: File,
+}
+
+fn arkansas_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::StringMsg = bitcode::decode(message).expect("should not happen");
-	info!("arequipa received: {}", &value.data);
+	info!("received: '{}'", &value.data);
+	let final_data = format!("{}\n", value.data);
+	props
+		.write()
+		.expect("should not happen")
+		.file
+		.write_all(final_data.as_bytes())
+		.expect("should not happen");
 }
 
 #[tokio::main]
@@ -22,8 +37,12 @@ async fn main() -> Result<()> {
 		.with_max_level(tracing::Level::INFO)
 		.init();
 
-	let properties = AgentProps::default();
-	let mut agent = Agent::new(Config::default(), properties);
+	let file = File::create(OUT_FILE).unwrap_or_else(|_| {
+		error!("Could not create {OUT_FILE}");
+		panic!("Could not create {OUT_FILE}");
+	});
+	let properties = AgentProps { file };
+	let mut agent = Agent::new(Config::local(), properties);
 
 	agent
 		.subscriber()

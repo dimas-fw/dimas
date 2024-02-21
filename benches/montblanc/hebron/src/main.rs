@@ -18,16 +18,16 @@ async fn main() -> Result<()> {
 		.init();
 
 	let properties = AgentProps {};
-	let mut agent = Agent::new(Config::default(), properties);
+	let mut agent = Agent::new(Config::local(), properties);
 
 	agent
 		.timer()
 		.interval(Duration::from_millis(100))
 		.callback(|ctx, _props| {
 			let message = messages::Quaternion::random();
-			let _ = ctx.publish("chenab", message);
+			let _ = ctx.publish("chenab", &message);
 			// just to see what value has been sent
-			info!("hebron sent quaternion");
+			info!("sent: '{message}'");
 		})
 		.add()?;
 
