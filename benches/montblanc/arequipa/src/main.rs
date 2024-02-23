@@ -33,9 +33,7 @@ fn arkansas_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, messa
 
 #[tokio::main]
 async fn main() -> Result<()> {
-	tracing_subscriber::fmt()
-		.with_max_level(tracing::Level::INFO)
-		.init();
+	tracing_subscriber::fmt().init();
 
 	let file = File::create(OUT_FILE).unwrap_or_else(|_| {
 		error!("Could not create {OUT_FILE}");

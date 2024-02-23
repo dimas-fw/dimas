@@ -49,9 +49,7 @@ fn colorado_callback(ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, messag
 
 #[tokio::main]
 async fn main() -> Result<()> {
-	tracing_subscriber::fmt()
-		.with_max_level(tracing::Level::INFO)
-		.init();
+	tracing_subscriber::fmt().init();
 
 	let properties = AgentProps::default();
 	let mut agent = Agent::new(Config::local(), properties);

@@ -33,9 +33,7 @@ fn hello_deletion(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>) {
 #[tokio::main]
 async fn main() -> Result<()> {
 	// a tracing subscriber writing logs
-	tracing_subscriber::fmt()
-		.with_max_level(tracing::Level::INFO)
-		.init();
+	tracing_subscriber::fmt().init();
 
 	// parse arguments
 	let args = Args::parse();

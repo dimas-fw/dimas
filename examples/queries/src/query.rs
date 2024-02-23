@@ -32,9 +32,7 @@ fn query_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, answer:
 #[tokio::main]
 async fn main() -> Result<()> {
 	// a tracing subscriber writing logs
-	tracing_subscriber::fmt()
-		.with_max_level(tracing::Level::INFO)
-		.init();
+	tracing_subscriber::fmt().init();
 
 	// parse arguments
 	let args = Args::parse();

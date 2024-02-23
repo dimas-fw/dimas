@@ -21,9 +21,7 @@ fn columbia_callback(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, messa
 
 #[tokio::main]
 async fn main() -> Result<()> {
-	tracing_subscriber::fmt()
-		.with_max_level(tracing::Level::INFO)
-		.init();
+	tracing_subscriber::fmt().init();
 
 	let properties = AgentProps {};
 	let mut agent = Agent::new(Config::local(), properties);
