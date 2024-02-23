@@ -4,10 +4,13 @@
 use crate::com::communicator::Communicator;
 use crate::com::query::QueryCallback;
 use crate::error::Result;
+#[cfg(any(
+	feature = "publisher",
+	feature = "query"
+))]
+use std::collections::HashMap;
 use std::{
-	collections::HashMap,
-	fmt::Debug,
-	sync::{Arc, RwLock},
+	fmt::Debug, marker::PhantomData, sync::{Arc, RwLock}
 };
 use zenoh::publication::Publisher;
 use zenoh::query::ConsolidationMode;
@@ -25,6 +28,7 @@ where
 	pub(crate) publishers: Arc<RwLock<HashMap<String, crate::com::publisher::Publisher>>>,
 	#[cfg(feature = "query")]
 	pub(crate) queries: Arc<RwLock<HashMap<String, crate::com::query::Query<P>>>>,
+	pub(crate) pd: PhantomData<P>,
 }
 
 impl<P> Context<P>

@@ -41,7 +41,6 @@ where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
 	com: Arc<Communicator>,
-	pd: PhantomData<&'a P>,
 	// The agents property structure
 	props: Arc<RwLock<P>>,
 	#[cfg(feature = "liveliness")]
@@ -67,6 +66,7 @@ where
 	// registered timer
 	#[cfg(feature = "timer")]
 	timers: Arc<RwLock<HashMap<String, Timer<P>>>>,
+	pd: PhantomData<&'a P>,
 }
 
 impl<'a, P> Debug for Agent<'a, P>
@@ -112,7 +112,6 @@ where
 		let com = Arc::new(Communicator::new(config));
 		let pd = PhantomData {};
 		Self {
-			pd,
 			com,
 			props: Arc::new(RwLock::new(properties)),
 			#[cfg(feature = "liveliness")]
@@ -131,6 +130,7 @@ where
 			queries: Arc::new(RwLock::new(HashMap::new())),
 			#[cfg(feature = "timer")]
 			timers: Arc::new(RwLock::new(HashMap::new())),
+			pd,
 		}
 	}
 
@@ -143,7 +143,6 @@ where
 		let com = Arc::new(Communicator::new_with_prefix(config, prefix));
 		let pd = PhantomData {};
 		Self {
-			pd,
 			com,
 			props: Arc::new(RwLock::new(properties)),
 			#[cfg(feature = "liveliness")]
@@ -162,6 +161,7 @@ where
 			queries: Arc::new(RwLock::new(HashMap::new())),
 			#[cfg(feature = "timer")]
 			timers: Arc::new(RwLock::new(HashMap::new())),
+			pd,
 		}
 	}
 
@@ -184,13 +184,16 @@ where
 		self.liveliness = activate;
 	}
 
-	fn get_context(&self) -> Arc<Context<P>> {
+	/// get a `Context` of the `Agent`
+	pub fn get_context(&self) -> Arc<Context<P>> {
+		let pd = PhantomData {};
 		Arc::new(Context {
 			communicator: self.com.clone(),
 			#[cfg(feature = "publisher")]
 			publishers: self.publishers.clone(),
 			#[cfg(feature = "query")]
 			queries: self.queries.clone(),
+			pd,
 		})
 	}
 
