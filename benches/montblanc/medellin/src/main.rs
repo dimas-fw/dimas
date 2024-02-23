@@ -25,7 +25,7 @@ async fn main() -> Result<()> {
 		.interval(Duration::from_millis(50))
 		.callback(|ctx, _props| {
 			let message = messages::Int32::random();
-			let _ = ctx.publish("nile", &message);
+			let _ = ctx.put("nile", &message);
 			// just to see what value has been sent
 			info!("sent: '{}'", message);
 		})

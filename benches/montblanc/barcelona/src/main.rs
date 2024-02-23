@@ -26,7 +26,7 @@ fn mekong_callback(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message
 		header: value.header,
 		wrench,
 	};
-	let _ = ctx.publish("lena", &msg);
+	let _ = ctx.put("lena", &msg);
 	info!("sent: '{msg}'");
 }
 

@@ -43,7 +43,7 @@ fn danube_callback(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message
 	let msg = messages::StringMsg {
 		data: format!("hamburg/parana: {}", &value.data),
 	};
-	let _ = ctx.publish("parana", &msg);
+	let _ = ctx.put("parana", &msg);
 	info!("sent: '{msg}'");
 }
 

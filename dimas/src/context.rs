@@ -32,11 +32,11 @@ impl Context {
 	/// Method to do an ad hoc publishing
 	/// # Errors
 	///   Error is propagated from Communicator
-	pub fn publish<P>(&self, msg_name: impl Into<String>, message: P) -> Result<()>
+	pub fn put<P>(&self, msg_name: impl Into<String>, message: P) -> Result<()>
 	where
 		P: bitcode::Encode,
 	{
-		self.communicator.publish(msg_name, message)
+		self.communicator.put(msg_name, message)
 	}
 
 	/// Method to do an ad hoc deletion
@@ -48,7 +48,7 @@ impl Context {
 
 	/// Method to do an ad hoc query without any consolodation of answers.
 	/// Multiple answers may be received for the same timestamp.
-	pub fn query<P>(
+	pub fn get<P>(
 		&self,
 		ctx: Arc<Self>,
 		props: Arc<RwLock<P>>,
@@ -58,7 +58,7 @@ impl Context {
 		P: Send + Sync + Unpin + 'static,
 	{
 		self.communicator
-			.query(ctx, props, query_name, ConsolidationMode::None, callback);
+			.get(ctx, props, query_name, ConsolidationMode::None, callback);
 	}
 }
 // endregion:	--- Context

@@ -27,7 +27,7 @@ fn parana_callback(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message
 	let msg = messages::StringMsg {
 		data: format!("geneva/arkansas: {}", &value),
 	};
-	let _ = ctx.publish("arkansas", &msg);
+	let _ = ctx.put("arkansas", &msg);
 	info!("sent: '{msg}'");
 }
 

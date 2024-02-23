@@ -54,7 +54,7 @@ async fn main() -> Result<()> {
 		.callback(move |ctx, props| {
 			info!("Querying [{counter}]");
 			// querying with ad-hoc query
-			ctx.query(ctx.clone(), props, "query", query_callback);
+			ctx.get(ctx.clone(), props, "query", query_callback);
 			counter += 1;
 		})
 		.add()?;

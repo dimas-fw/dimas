@@ -53,7 +53,7 @@ async fn main() -> Result<()> {
 			let text = "Hello World! [".to_string() + &counter + "]";
 			info!("Sending '{}'", &text);
 			// publishing with ad-hoc publisher
-			let _ = ctx.publish("hello", text);
+			let _ = ctx.put("hello", text);
 			props
 				.write()
 				.expect("should never happen")

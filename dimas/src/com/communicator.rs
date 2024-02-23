@@ -92,7 +92,7 @@ impl Communicator {
 			.expect("should never happen")
 	}
 
-	pub(crate) fn publish<T>(&self, msg_name: impl Into<String>, message: T) -> Result<()>
+	pub(crate) fn put<T>(&self, msg_name: impl Into<String>, message: T) -> Result<()>
 	where
 		T: bitcode::Encode,
 	{
@@ -114,7 +114,7 @@ impl Communicator {
 		}
 	}
 
-	pub(crate) fn query<P>(
+	pub(crate) fn get<P>(
 		&self,
 		ctx: Arc<Context>,
 		props: Arc<RwLock<P>>,
@@ -132,7 +132,6 @@ impl Communicator {
 
 		let replies = session
 			.get(&key_expr)
-			// ensure to get more than one interface from a host
 			.consolidation(mode)
 			//.timeout(Duration::from_millis(1000))
 			.res_sync()

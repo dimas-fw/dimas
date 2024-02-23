@@ -18,7 +18,7 @@ fn congo_callback(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message:
 	let value: messages::Twist = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 	let msg = messages::Float32::random();
-	let _ = ctx.publish("ohio", &msg);
+	let _ = ctx.put("ohio", &msg);
 	info!("sent: '{msg}'");
 }
 

@@ -86,7 +86,7 @@ async fn main() -> Result<()> {
 			};
 
 			// publishing with ad-hoc publisher
-			let _ = ctx.publish("ping", message);
+			let _ = ctx.put("ping", message);
 
 			let text = "ping! [".to_string() + &counter.to_string() + "]";
 			info!("Sent {} ", &text);

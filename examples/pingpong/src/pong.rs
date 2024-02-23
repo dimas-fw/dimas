@@ -39,7 +39,7 @@ fn ping_received(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: 
 	let text = "pong! [".to_string() + &message.counter.to_string() + "]";
 
 	// publishing with ad-hoc publisher
-	let _ = ctx.publish("pong", message);
+	let _ = ctx.put("pong", message);
 
 	info!("Sent '{}'", &text);
 }

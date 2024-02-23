@@ -117,7 +117,7 @@ async fn main() -> Result<()> {
 		.interval(Duration::from_millis(100))
 		.callback(|ctx, _props| {
 			let message = messages::Pose::random();
-			let _ = ctx.publish("tagus", &message);
+			let _ = ctx.put("tagus", &message);
 			info!("sent: '{}'", message);
 		})
 		.add()?;
@@ -127,7 +127,7 @@ async fn main() -> Result<()> {
 		.interval(Duration::from_millis(100))
 		.callback(|ctx, _props| {
 			let message = messages::Image::random();
-			let _ = ctx.publish("missouri", message);
+			let _ = ctx.put("missouri", message);
 			info!("mandalay sent Image");
 		})
 		.add()?;
@@ -137,7 +137,7 @@ async fn main() -> Result<()> {
 		.interval(Duration::from_millis(100))
 		.callback(|ctx, _props| {
 			let message = messages::PointCloud2::random();
-			let _ = ctx.publish("brazos", message);
+			let _ = ctx.put("brazos", message);
 			info!("mandalay sent PointCloud2");
 		})
 		.add()?;

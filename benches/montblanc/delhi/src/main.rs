@@ -25,7 +25,7 @@ async fn main() -> Result<()> {
 		.interval(Duration::from_secs(1))
 		.callback(|ctx, _props| {
 			let message = messages::Image::random();
-			let _ = ctx.publish("columbia", &message);
+			let _ = ctx.put("columbia", &message);
 			// just to see what has been sent
 			info!("sent: '{message}'");
 		})

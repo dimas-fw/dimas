@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 
-## [0.0.4] - 2024-??-?? <br>Has breaking changes!!
+## [0.0.4] - 2024-??-?? <br>_Has breaking changes!!_
 
 ### Added
 - introduce `tracing` support
@@ -29,7 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - examples/tmux-exampes.sh - a tmux script to run all the examples
 
 ### Changed
-- signature of Agent::new() now without 'prefix'
+- _signature of Agent::new() now without 'prefix'_
+- _rename ad hoc methods in Context & Communicator_
 
 ### Fixed
 - cleanup dependencies
@@ -37,16 +38,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 
-## [0.0.3] - 2024-02-08 <br>Has breaking changes!!
+## [0.0.3] - 2024-02-08 <br>_Has breaking changes!!_
 
 ### Added
 - More documentation
 - Add Publisher, Query, Queryable, Subscriber, Timer and their Builders to public interface/prelude
 
 ### Changed
-- changed crate for data serialization from 'bincode' to 'bitcode'
+- _changed crate for data serialization from 'bincode' to 'bitcode'_
 - moved zenoh into an internal dependency
-- removed parameter `mode` in ad-hoc query through `Context`
+- _removed parameter `mode` in ad-hoc query through `Context`_
 
 ## [0.0.2] - 2024-01-28 <br>Has breaking changes!!
 

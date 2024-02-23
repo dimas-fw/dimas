@@ -15,7 +15,7 @@ fn columbia_callback(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, messa
 	let mut value: messages::Image = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 	value.header.frame_id = value.header.frame_id.replace("Test", "Modified");
-	let _ = ctx.publish("colorado", &value);
+	let _ = ctx.put("colorado", &value);
 	info!("received: '{}'", value);
 }
 

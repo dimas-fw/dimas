@@ -408,11 +408,7 @@ impl TwistWithCovariance {
 
 impl Display for TwistWithCovariance {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(
-			f,
-			"{}, covariance: {:?}",
-			self.twist, self.covariance
-		)
+		write!(f, "{}, covariance: {:?}", self.twist, self.covariance)
 	}
 }
 
@@ -552,11 +548,7 @@ impl Image {
 
 impl Display for Image {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(
-			f,
-			"{}, size: {}x{}",
-			self.header, self.width, self.height
-		)
+		write!(f, "{}, size: {}x{}", self.header, self.width, self.height)
 	}
 }
 
@@ -713,10 +705,6 @@ impl PointCloud2 {
 
 impl Display for PointCloud2 {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(
-			f,
-			"{}, size: {}x{}",
-			self.header, self.width, self.height
-		)
+		write!(f, "{}, size: {}x{}", self.header, self.width, self.height)
 	}
 }

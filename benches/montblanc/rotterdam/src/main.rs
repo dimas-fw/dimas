@@ -22,7 +22,7 @@ fn mekong_callback(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message
 		header: value.header,
 		vector: value.twist.twist.linear,
 	};
-	let _ = ctx.publish("murray", &msg);
+	let _ = ctx.put("murray", &msg);
 	info!("sent: '{}'", msg);
 }
 

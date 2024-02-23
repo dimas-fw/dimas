@@ -26,7 +26,7 @@ async fn main() -> Result<()> {
 		.callback(move |ctx, _props| {
 			let value = "portsmouth/danube: ".to_string() + &messages::random_string(55);
 			let message = messages::StringMsg { data: value };
-			let _ = ctx.publish("danube", &message);
+			let _ = ctx.put("danube", &message);
 			// just to see what value has been sent
 			info!("sent: '{message}'");
 		})

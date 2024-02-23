@@ -13,7 +13,7 @@ struct AgentProps {}
 
 fn amazon_callback(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::Float32 = bitcode::decode(message).expect("should not happen");
-	let _ = ctx.publish("tigris", &value);
+	let _ = ctx.put("tigris", &value);
 	info!("sent: '{value}'");
 }
 

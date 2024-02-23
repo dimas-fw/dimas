@@ -55,11 +55,11 @@ fn brazos_callback(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message
 	info!("received: '{}'", &value);
 
 	let message = messages::Twist::random();
-	let _ = ctx.publish("congo", &message);
+	let _ = ctx.put("congo", &message);
 	info!("sent: '{}'", message);
 
 	let message = messages::TwistWithCovarianceStamped::random();
-	let _ = ctx.publish("mekong", &message);
+	let _ = ctx.put("mekong", &message);
 	info!("sent: '{}'", message);
 }
 

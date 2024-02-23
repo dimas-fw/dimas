@@ -61,7 +61,7 @@ async fn main() -> Result<()> {
 		.callback(|ctx, props| {
 			let message = messages::Float64::random();
 			let value = message.data;
-			let _ = ctx.publish("volga", &message);
+			let _ = ctx.put("volga", &message);
 			props.write().expect("should not happen").volga = Some(message);
 			// just to see what value has been sent
 			info!("sent: '{value}'");

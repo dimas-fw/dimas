@@ -39,11 +39,11 @@ fn colorado_callback(ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, messag
 	props.write().expect("should not happen").colorado = Some(value);
 
 	let message = messages::PointCloud2::random();
-	let _ = ctx.publish("salween", &message);
+	let _ = ctx.put("salween", &message);
 	info!("sent: '{}'", message);
 
 	let message = messages::LaserScan::random();
-	let _ = ctx.publish("godavari", &message);
+	let _ = ctx.put("godavari", &message);
 	info!("sent: '{}'", message);
 }
 

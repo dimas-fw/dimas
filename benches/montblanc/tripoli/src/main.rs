@@ -27,7 +27,7 @@ fn godavari_callback(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, messa
 	let value: messages::LaserScan = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 	let msg = messages::PointCloud2::random();
-	let _ = ctx.publish("loire", &msg);
+	let _ = ctx.put("loire", &msg);
 	info!("received: '{}'", msg);
 }
 

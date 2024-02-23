@@ -25,7 +25,7 @@ async fn main() -> Result<()> {
 		.interval(Duration::from_millis(100))
 		.callback(|ctx, _props| {
 			let message = messages::Vector3::random();
-			let _ = ctx.publish("yamuna", &message);
+			let _ = ctx.put("yamuna", &message);
 			// just to see what value has been sent
 			info!("sent: '{message}'");
 		})
