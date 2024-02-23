@@ -25,7 +25,8 @@ path = "src/query.rs"
 bitcode = { workspace = true }
 clap = { workspace = true }
 dimas = { workspace = true, features = ["timer", "query", "queryable"] }
-tokio = { workspace = true }
-zenoh = { workspace = true }
+tokio = { workspace = true, features = ["macros"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 
 [dev-dependencies]

@@ -5,6 +5,7 @@
 use clap::Parser;
 use dimas::prelude::*;
 use std::time::Duration;
+use tracing::info;
 // endregion:	--- modules
 
 // region:		--- Clap
@@ -24,6 +25,9 @@ struct AgentProps {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+	// a tracing subscriber writing logs
+	tracing_subscriber::fmt().init();
+
 	// parse arguments
 	let args = Args::parse();
 
@@ -31,11 +35,15 @@ async fn main() -> Result<()> {
 	let properties = AgentProps { counter: 0 };
 
 	// create an agent with the properties and the prefix given by `args`
-	let mut agent = Agent::new(Config::default(), &args.prefix, properties);
+	let mut agent = Agent::new_with_prefix(Config::default(), properties, &args.prefix);
+
+	// create publisher for topic "hello"
+	agent.publisher().msg_type("hello").add()?;
 
 	// use timer for regular publishing
 	agent
 		.timer()
+		.name("timer1")
 		.interval(Duration::from_secs(1))
 		.callback(|ctx, props| {
 			let counter = props
@@ -45,9 +53,9 @@ async fn main() -> Result<()> {
 				.to_string();
 
 			let text = "Hello World! [".to_string() + &counter + "]";
-			println!("Sending '{}'", &text);
-			// publishing with ad-hoc publisher
-			let _ = ctx.publish("hello", text);
+			info!("Sending '{}'", &text);
+			// publishing with stored publisher
+			let _ = ctx.put_with("hello", text);
 			props
 				.write()
 				.expect("should never happen")
@@ -59,10 +67,11 @@ async fn main() -> Result<()> {
 	let duration = Duration::from_secs(3);
 	agent
 		.timer()
+		.name("timer2")
 		.interval(duration)
 		.callback(move |ctx, _props| {
-			println!("Deleting");
-			// sending with ad-hoc delete
+			info!("Deleting");
+			// delete with ad-hoc publisher
 			let _ = ctx.delete("hello");
 		})
 		.add()?;

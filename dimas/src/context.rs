@@ -4,19 +4,33 @@
 use crate::com::communicator::Communicator;
 use crate::com::query::QueryCallback;
 use crate::error::Result;
-use std::sync::Arc;
-use std::sync::RwLock;
+use std::{
+	collections::HashMap,
+	fmt::Debug,
+	sync::{Arc, RwLock},
+};
+use zenoh::publication::Publisher;
 use zenoh::query::ConsolidationMode;
 // endregion:	--- modules
 
 // region:		--- Context
 /// Context makes all relevant data of the agent accessible via accessor methods.
 #[derive(Debug, Clone, Default)]
-pub struct Context {
+pub struct Context<P>
+where
+	P: Debug + Send + Sync + Unpin + 'static,
+{
 	pub(crate) communicator: Arc<Communicator>,
+	#[cfg(feature = "publisher")]
+	pub(crate) publishers: Arc<RwLock<HashMap<String, crate::com::publisher::Publisher>>>,
+	#[cfg(feature = "query")]
+	pub(crate) queries: Arc<RwLock<HashMap<String, crate::com::query::Query<P>>>>,
 }
 
-impl Context {
+impl<P> Context<P>
+where
+	P: Debug + Send + Sync + Unpin + 'static,
+{
 	/// Get the agents uuid
 	#[must_use]
 	pub fn uuid(&self) -> String {
@@ -25,18 +39,60 @@ impl Context {
 
 	/// Get the agents prefix
 	#[must_use]
-	pub fn prefix(&self) -> String {
+	pub fn prefix(&self) -> Option<String> {
 		self.communicator.prefix()
+	}
+
+	pub(crate) fn key_expr(&self, msg_name: impl Into<String>) -> String {
+		match self.prefix() {
+			Some(prefix) => prefix + "/" + &msg_name.into(),
+			None => msg_name.into(),
+		}
+	}
+
+	pub(crate) fn create_publisher<'publisher>(
+		&self,
+		key_expr: impl Into<String> + Send,
+	) -> Publisher<'publisher> {
+		self.communicator.create_publisher(key_expr)
 	}
 
 	/// Method to do an ad hoc publishing
 	/// # Errors
 	///   Error is propagated from Communicator
-	pub fn publish<P>(&self, msg_name: impl Into<String>, message: P) -> Result<()>
+	pub fn put<M>(&self, msg_name: impl Into<String>, message: M) -> Result<()>
 	where
-		P: bitcode::Encode,
+		M: bitcode::Encode,
 	{
-		self.communicator.publish(msg_name, message)
+		self.communicator.put(msg_name, message)
+	}
+
+	/// Method to pubish data with a stored Publisher
+	/// # Errors
+	///
+	/// # Panics
+	///
+	#[cfg(feature = "publisher")]
+	pub fn put_with<M>(&self, msg_name: &str, message: M) -> Result<()>
+	where
+		M: bitcode::Encode,
+	{
+		let key_expr = self.key_expr(msg_name);
+		if self
+			.publishers
+			.read()
+			.expect("should not happen")
+			.get(&key_expr)
+			.is_some()
+		{
+			self.publishers
+				.read()
+				.expect("should not happen")
+				.get(&key_expr)
+				.expect("should not happen")
+				.put(message)?;
+		};
+		Ok(())
 	}
 
 	/// Method to do an ad hoc deletion
@@ -46,19 +102,66 @@ impl Context {
 		self.communicator.delete(msg_name)
 	}
 
+	/// Method to delete data with a stored Publisher
+	/// # Errors
+	///
+	/// # Panics
+	///
+	#[cfg(feature = "publisher")]
+	pub fn delete_with(&self, msg_name: &str) -> Result<()> {
+		let key_expr = self.key_expr(msg_name);
+		if self
+			.publishers
+			.read()
+			.expect("should not happen")
+			.get(&key_expr)
+			.is_some()
+		{
+			self.publishers
+				.read()
+				.expect("should not happen")
+				.get(&key_expr)
+				.expect("should not happen")
+				.delete()?;
+		}
+		Ok(())
+	}
+
 	/// Method to do an ad hoc query without any consolodation of answers.
 	/// Multiple answers may be received for the same timestamp.
-	pub fn query<P>(
+	pub fn get(
 		&self,
 		ctx: Arc<Self>,
 		props: Arc<RwLock<P>>,
 		query_name: impl Into<String>,
 		callback: QueryCallback<P>,
-	) where
-		P: Send + Sync + Unpin + 'static,
-	{
+	) {
 		self.communicator
-			.query(ctx, props, query_name, ConsolidationMode::None, callback);
+			.get(ctx, props, query_name, ConsolidationMode::None, callback);
+	}
+
+	/// Method to query data with a stored Query
+	/// # Errors
+	///
+	/// # Panics
+	///
+	#[cfg(feature = "query")]
+	pub fn get_with(&self, msg_name: &str) {
+		let key_expr = self.key_expr(msg_name);
+		if self
+			.queries
+			.read()
+			.expect("should not happen")
+			.get(&key_expr)
+			.is_some()
+		{
+			self.queries
+				.read()
+				.expect("should not happen")
+				.get(&key_expr)
+				.expect("should not happen")
+				.get();
+		};
 	}
 }
 // endregion:	--- Context
@@ -70,8 +173,12 @@ mod tests {
 	// check, that the auto traits are available
 	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
 
+	#[derive(Debug)]
+	struct Props {}
+
+
 	#[test]
 	const fn normal_types() {
-		is_normal::<Context>();
+		is_normal::<Context<Props>>();
 	}
 }

@@ -1,15 +1,23 @@
 // Copyright © 2023 Stephan Kunz
 
 // region:		--- modules
-use super::communicator::Communicator;
-use crate::prelude::*;
-use std::sync::{Arc, RwLock};
+use crate::{context::Context, error::Result};
+use std::{
+	collections::HashMap,
+	fmt::Debug,
+	sync::{Arc, RwLock},
+};
+use zenoh::{
+	prelude::{sync::SyncResolve, SampleKind},
+	query::ConsolidationMode,
+};
+
 // endregion:	--- modules
 
 // region:		--- types
 /// type definition for the queries callback function
 #[allow(clippy::module_name_repetitions)]
-pub type QueryCallback<P> = fn(&Arc<Context>, &Arc<RwLock<P>>, answer: &[u8]);
+pub type QueryCallback<P> = fn(&Arc<Context<P>>, &Arc<RwLock<P>>, answer: &[u8]);
 // endregion:	--- types
 
 // region:		--- QueryBuilder
@@ -18,18 +26,19 @@ pub type QueryCallback<P> = fn(&Arc<Context>, &Arc<RwLock<P>>, answer: &[u8]);
 #[derive(Clone)]
 pub struct QueryBuilder<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
-	pub(crate) collection: Arc<RwLock<Vec<Query>>>,
-	pub(crate) communicator: Arc<Communicator>,
+	pub(crate) collection: Arc<RwLock<HashMap<String, Query<P>>>>,
+	pub(crate) context: Arc<Context<P>>,
 	pub(crate) props: Arc<RwLock<P>>,
 	pub(crate) key_expr: Option<String>,
+	pub(crate) mode: Option<ConsolidationMode>,
 	pub(crate) callback: Option<QueryCallback<P>>,
 }
 
 impl<P> QueryBuilder<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// Set the full expression for the query
 	#[must_use]
@@ -42,8 +51,15 @@ where
 	/// Will be prefixed with agents prefix.
 	#[must_use]
 	pub fn msg_type(mut self, msg_type: impl Into<String>) -> Self {
-		let key_expr = self.communicator.clone().prefix() + "/" + &msg_type.into();
+		let key_expr = self.context.key_expr(msg_type);
 		self.key_expr.replace(key_expr);
+		self
+	}
+
+	/// Set the consolidation mode
+	#[must_use]
+	pub fn mode(mut self, mode: ConsolidationMode) -> Self {
+		self.mode.replace(mode);
 		self
 	}
 
@@ -59,11 +75,11 @@ where
 	///
 	/// # Panics
 	///
-	pub fn build(mut self) -> Result<Query> {
+	pub fn build(mut self) -> Result<Query<P>> {
 		if self.key_expr.is_none() {
 			return Err("No key expression or msg type given".into());
 		}
-		let _callback = if self.callback.is_none() {
+		let callback = if self.callback.is_none() {
 			return Err("No callback given".into());
 		} else {
 			self.callback.expect("should never happen")
@@ -73,16 +89,21 @@ where
 		} else {
 			String::new()
 		};
-
-		let communicator = self.communicator;
-		let _ctx = Arc::new(Context { communicator });
-		let _props = self.props.clone();
-
-		let s = Query {
-			_key_expr: key_expr,
+		let mode = if self.key_expr.is_some() {
+			self.mode.take().expect("should never happen")
+		} else {
+			ConsolidationMode::None
 		};
 
-		Ok(s)
+		let q = Query {
+			key_expr,
+			mode,
+			ctx: self.context,
+			props: self.props,
+			callback,
+		};
+
+		Ok(q)
 	}
 
 	/// Build and add the query to the agent
@@ -97,7 +118,7 @@ where
 		collection
 			.write()
 			.expect("should never happen")
-			.push(q);
+			.insert(q.key_expr.clone(), q);
 		Ok(())
 	}
 }
@@ -105,14 +126,71 @@ where
 
 // region:		--- Query
 /// Query
-pub struct Query {
-	_key_expr: String,
+#[derive(Debug)]
+pub struct Query<P>
+where
+	P: Debug + Send + Sync + Unpin + 'static,
+{
+	key_expr: String,
+	mode: ConsolidationMode,
+	ctx: Arc<Context<P>>,
+	props: Arc<RwLock<P>>,
+	callback: QueryCallback<P>,
+}
+
+impl<P> Query<P>
+where
+	P: Debug + Send + Sync + Unpin + 'static,
+{
+	/// run a query
+	/// # Panics
+	///
+	pub fn get(&self) {
+		let cb = self.callback;
+		let replies = self
+			.ctx
+			.communicator
+			.session
+			.get(&self.key_expr)
+			.consolidation(self.mode)
+			//.timeout(Duration::from_millis(1000))
+			.res_sync()
+			.expect("should never happen");
+		//dbg!(&replies);
+
+		while let Ok(reply) = replies.recv() {
+			//dbg!(&reply);
+			match reply.sample {
+				Ok(sample) => {
+					//dbg!(&sample);
+					let value: Vec<u8> = sample
+						.value
+						.try_into()
+						.expect("should not happen");
+					match sample.kind {
+						SampleKind::Put => {
+							cb(&self.ctx, &self.props, &value);
+						}
+						SampleKind::Delete => {
+							println!("Delete in Query");
+						}
+					}
+				}
+				Err(err) => println!(
+					">> No data (ERROR: '{}')",
+					String::try_from(&err).expect("to be implemented")
+				),
+			}
+		}
+	}
 }
 // endregion:	--- Query
 
 #[cfg(test)]
 mod tests {
 	use super::*;
+
+	#[derive(Debug)]
 	struct Props {}
 
 	// check, that the auto traits are available
@@ -120,7 +198,7 @@ mod tests {
 
 	#[test]
 	const fn normal_types() {
-		is_normal::<Query>();
+		is_normal::<Query<Props>>();
 		is_normal::<QueryBuilder<Props>>();
 	}
 }

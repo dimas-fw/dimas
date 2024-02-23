@@ -7,6 +7,7 @@ use chrono::Local;
 use clap::Parser;
 use dimas::prelude::*;
 use std::sync::{Arc, RwLock};
+use tracing::info;
 // endregion:	--- modules
 
 // region:		--- Clap
@@ -29,21 +30,25 @@ struct PingPongMessage {
 	received: Option<i64>,
 }
 
-fn ping_received(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn ping_received(ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let mut message: PingPongMessage = bitcode::decode(message).expect("should not happen");
 
 	// set receive-timestamp
 	message.received = Local::now().naive_utc().timestamp_nanos_opt();
 
-	// publishing with ad-hoc publisher
-	let _ = ctx.publish("pong", message);
+	let text = "pong! [".to_string() + &message.counter.to_string() + "]";
 
-	let text = "pong!".to_string();
-	println!("Sent '{}'", &text);
+	// publishing with ad-hoc publisher
+	let _ = ctx.put_with("pong", message);
+
+	info!("Sent '{}'", &text);
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
+	// a tracing subscriber writing logs
+	tracing_subscriber::fmt().init();
+
 	// parse arguments
 	let args = Args::parse();
 
@@ -51,7 +56,10 @@ async fn main() -> Result<()> {
 	let properties = AgentProps {};
 
 	// create an agent with the properties
-	let mut agent = Agent::new(Config::default(), &args.prefix, properties);
+	let mut agent = Agent::new_with_prefix(Config::default(), properties, &args.prefix);
+
+	// create publisher for topic "ping"
+	agent.publisher().msg_type("pong").add()?;
 
 	// listen for 'ping' messages
 	agent

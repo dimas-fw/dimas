@@ -1,9 +1,11 @@
 // Copyright © 2023 Stephan Kunz
 
 // region:		--- modules
-use super::communicator::Communicator;
-use crate::{context::Context, prelude::*};
-use std::sync::{Arc, RwLock};
+use crate::{context::Context, error::Result};
+use std::{
+	fmt::Debug,
+	sync::{Arc, RwLock},
+};
 use tokio::task::JoinHandle;
 use zenoh::prelude::{r#async::AsyncResolve, SampleKind};
 // endregion:	--- modules
@@ -11,9 +13,9 @@ use zenoh::prelude::{r#async::AsyncResolve, SampleKind};
 // region:		--- types
 /// Type definition for liveliness subscribers 'publish' callback function
 #[allow(clippy::module_name_repetitions)]
-pub type LivelinessSubscriberCallback<P> = fn(&Arc<Context>, &Arc<RwLock<P>>, agent_id: &str);
+pub type LivelinessSubscriberCallback<P> = fn(&Arc<Context<P>>, &Arc<RwLock<P>>, agent_id: &str);
 /// Type definition for a liveliness subscribers `delete` callback function
-pub type LivelinessDeleteCallback<P> = fn(&Arc<Context>, &Arc<RwLock<P>>, agent_id: &str);
+pub type LivelinessDeleteCallback<P> = fn(&Arc<Context<P>>, &Arc<RwLock<P>>, agent_id: &str);
 // endregion:	--- types
 
 // region:		--- LivelinessSubscriberBuilder
@@ -25,8 +27,8 @@ where
 	P: std::fmt::Debug + Send + Sync + Unpin + 'static,
 {
 	pub(crate) subscriber: Arc<RwLock<Option<LivelinessSubscriber<P>>>>,
-	pub(crate) communicator: Arc<Communicator>,
 	pub(crate) props: Arc<RwLock<P>>,
+	pub(crate) context: Arc<Context<P>>,
 	pub(crate) key_expr: Option<String>,
 	pub(crate) put_callback: Option<LivelinessSubscriberCallback<P>>,
 	pub(crate) delete_callback: Option<LivelinessDeleteCallback<P>>,
@@ -47,7 +49,12 @@ where
 	/// Will be prefixed with agents prefix.
 	#[must_use]
 	pub fn msg_type(mut self, msg_type: impl Into<String>) -> Self {
-		let key_expr = self.communicator.clone().prefix() + "/" + &msg_type.into() + "/*";
+		let key_expr = self
+			.context
+			.communicator
+			.clone()
+			.key_expr(msg_type)
+			+ "/*";
 		self.key_expr.replace(key_expr);
 		self
 	}
@@ -86,15 +93,12 @@ where
 			String::new()
 		};
 
-		let communicator = self.communicator;
-		let ctx = Arc::new(Context { communicator });
-
 		let s = LivelinessSubscriber {
 			key_expr,
 			put_callback,
 			delete_callback: self.delete_callback,
 			handle: None,
-			context: ctx,
+			context: self.context,
 			props: self.props,
 		};
 
@@ -110,19 +114,19 @@ where
 // region:		--- LivelinessSubscriber
 pub struct LivelinessSubscriber<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	key_expr: String,
 	put_callback: LivelinessSubscriberCallback<P>,
 	delete_callback: Option<LivelinessDeleteCallback<P>>,
 	handle: Option<JoinHandle<()>>,
-	context: Arc<Context>,
+	context: Arc<Context<P>>,
 	props: Arc<RwLock<P>>,
 }
 
 impl<P> std::fmt::Debug for LivelinessSubscriber<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("LivelinessSubscriber")
@@ -138,11 +142,11 @@ where
 
 impl<P> LivelinessSubscriber<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	pub fn start(&mut self) {
 		let key_expr = self.key_expr.clone();
-		let cb = self.put_callback;
+		let p_cb = self.put_callback;
 		let d_cb = self.delete_callback;
 		let ctx = self.context.clone();
 		let props = self.props.clone();
@@ -165,7 +169,7 @@ where
 				let agent_id = sample.key_expr.to_string().replace(&repl, "");
 				match sample.kind {
 					SampleKind::Put => {
-						cb(&ctx, &props, &agent_id);
+						p_cb(&ctx, &props, &agent_id);
 					}
 					SampleKind::Delete => {
 						if let Some(cb) = d_cb {

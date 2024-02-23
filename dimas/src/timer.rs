@@ -4,19 +4,21 @@
 //! When fired, the Timer calls his assigned TimerCallback
 
 // region:		--- modules
-use crate::{com::communicator::Communicator, context::Context, prelude::*};
+use crate::{context::Context, error::Result};
 use std::{
+	collections::HashMap,
+	fmt::Debug,
 	sync::{Arc, RwLock},
 	time::Duration,
 };
-use tokio::{sync::Mutex, task::JoinHandle};
+use tokio::{sync::Mutex, task::JoinHandle, time};
 // endregion:	--- modules
 
 // region:		--- types
 /// type definition for the functions called by a timer
 #[allow(clippy::module_name_repetitions)]
 pub type TimerCallback<P> =
-	Arc<Mutex<dyn FnMut(Arc<Context>, Arc<RwLock<P>>) + Send + Sync + Unpin + 'static>>;
+	Arc<Mutex<dyn FnMut(Arc<Context<P>>, Arc<RwLock<P>>) + Send + Sync + Unpin + 'static>>;
 // endregion:	--- types
 
 // region:		--- TimerBuilder
@@ -25,20 +27,28 @@ pub type TimerCallback<P> =
 #[derive(Default, Clone)]
 pub struct TimerBuilder<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
-	pub(crate) collection: Arc<RwLock<Vec<Timer<P>>>>,
-	pub(crate) communicator: Arc<Communicator>,
+	pub(crate) collection: Arc<RwLock<HashMap<String, Timer<P>>>>,
+	pub(crate) props: Arc<RwLock<P>>,
+	pub(crate) context: Arc<Context<P>>,
+	pub(crate) name: Option<String>,
 	pub(crate) delay: Option<Duration>,
 	pub(crate) interval: Option<Duration>,
 	pub(crate) callback: Option<TimerCallback<P>>,
-	pub(crate) props: Arc<RwLock<P>>,
 }
 
 impl<P> TimerBuilder<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
+	/// set timers name
+	#[must_use]
+	pub fn name(mut self, name: impl Into<String>) -> Self {
+		self.name.replace(name.into());
+		self
+	}
+
 	/// set timers delay
 	#[must_use]
 	pub fn delay(mut self, delay: Duration) -> Self {
@@ -57,7 +67,7 @@ where
 	#[must_use]
 	pub fn callback<F>(mut self, callback: F) -> Self
 	where
-		F: FnMut(Arc<Context>, Arc<RwLock<P>>) + Send + Sync + Unpin + 'static,
+		F: FnMut(Arc<Context<P>>, Arc<RwLock<P>>) + Send + Sync + Unpin + 'static,
 	{
 		self.callback
 			.replace(Arc::new(Mutex::new(callback)));
@@ -80,24 +90,22 @@ where
 		} else {
 			self.callback.expect("should never happen")
 		};
-		let props = self.props;
-		let communicator = self.communicator;
-		let ctx = Arc::new(Context { communicator });
+
 		match self.delay {
 			Some(delay) => Ok(Timer::DelayedInterval {
 				delay,
 				interval,
 				callback,
 				handle: None,
-				context: ctx,
-				props,
+				context: self.context,
+				props: self.props,
 			}),
 			None => Ok(Timer::Interval {
 				interval,
 				callback,
 				handle: None,
-				context: ctx,
-				props,
+				context: self.context,
+				props: self.props,
 			}),
 		}
 	}
@@ -108,11 +116,16 @@ where
 	/// # Panics
 	///
 	pub fn add(self) -> Result<()> {
+		let name = if self.name.is_none() {
+			return Err("No name given".into());
+		} else {
+			self.name.clone().expect("should never happen")
+		};
 		let c = self.collection.clone();
 		let timer = self.build()?;
 		c.write()
 			.expect("should never happen")
-			.push(timer);
+			.insert(name, timer);
 		Ok(())
 	}
 }
@@ -123,7 +136,7 @@ where
 /// Timer
 pub enum Timer<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// A Timer with an Interval
 	Interval {
@@ -134,7 +147,7 @@ where
 		/// The handle to stop the Timer
 		handle: Option<JoinHandle<()>>,
 		/// The Context available within the callback function
-		context: Arc<Context>,
+		context: Arc<Context<P>>,
 		/// The Agents properties, available in the callback function
 		props: Arc<RwLock<P>>,
 	},
@@ -149,7 +162,7 @@ where
 		/// The handle to stop the Timer
 		handle: Option<JoinHandle<()>>,
 		/// The Context available within the callback function
-		context: Arc<Context>,
+		context: Arc<Context<P>>,
 		/// The Agents properties, available in the callback function
 		props: Arc<RwLock<P>>,
 	},
@@ -157,7 +170,7 @@ where
 
 impl<P> Timer<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// Start Timer
 	/// # Panics
@@ -176,9 +189,10 @@ where
 				let ctx = context.clone();
 				let props = props.clone();
 				handle.replace(tokio::spawn(async move {
+					let mut interval = time::interval(interval);
 					loop {
+						interval.tick().await;
 						cb.lock().await(ctx.clone(), props.clone());
-						tokio::time::sleep(interval).await;
 					}
 				}));
 			}
@@ -197,9 +211,10 @@ where
 				let props = props.clone();
 				handle.replace(tokio::spawn(async move {
 					tokio::time::sleep(delay).await;
+					let mut interval = time::interval(interval);
 					loop {
+						interval.tick().await;
 						cb.lock().await(ctx.clone(), props.clone());
-						tokio::time::sleep(interval).await;
 					}
 				}));
 			}
@@ -240,7 +255,7 @@ where
 mod tests {
 	use super::*;
 
-	#[derive(Default)]
+	#[derive(Debug)]
 	struct Props {}
 
 	// check, that the auto traits are available

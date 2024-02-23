@@ -21,9 +21,9 @@ The feature `all`, including all available features, is a good point to start wi
 
 ```toml
 [dependencies]
-dimas = { version = "0.0.3", features = ["all"] }
-bitcode = "0.5.0"
-tokio = "1.35"
+dimas = { version = "0.0.4", features = ["all"] }
+bitcode = "0.5"
+tokio = { version = "1",features = ["macros"] }
 ```
 
 DiMAS needs an `async` runtime. So you have to define your `main` function as an `async` function.
@@ -48,9 +48,9 @@ Your `Cargo.toml` should include
 
 ```toml
 [dependencies]
-dimas = { version = "0.0.3", features = ["timer", "publisher", "subscriber"] }
-bitcode = "0.5.0"
-tokio = "1.35"
+dimas = { version = "0.0.4", features = ["timer", "subscriber"] }
+bitcode = "0.5"
+tokio = { version = "1",features = ["macros"] }
 ```
 
 #### Publisher
@@ -71,13 +71,21 @@ async fn main() -> Result<()> {
 	// create & initialize agents properties
 	let properties = AgentProps { counter: 0 };
 
-	// create an agent with the properties and the prefix "example"
-	let mut agent = Agent::new(Config::default(), "example", properties);
+	// create an agent with the properties
+	let mut agent = Agent::new(Config::default(), properties);
+
+	// create publisher for topic "hello"
+	agent
+		.publisher()
+		.msg_type("hello")
+		.add()?;
 
 	// use a timer for regular publishing of "hello" topic
 	agent
 		// get the TimerBuilder from the agent
 		.timer()
+		// set a name for the timer
+		.name("timer")
 		// every second
 		.interval(Duration::from_secs(1))
 		// the timers callback function as a closure
@@ -92,8 +100,8 @@ async fn main() -> Result<()> {
 				let text = "Hello World! [".to_string() + &counter + "]";
 				// just to see what will be sent
 				println!("Sending '{}'", &text);
-				// publishing with ad-hoc publisher as topic "hello"
-				let _ = ctx.publish("hello", text);
+				// publishing with stored publisher for topic "hello"
+				let _ = ctx.put_with("hello", text);
 				// modify counter in properties
 				props
 					.write()
@@ -122,7 +130,7 @@ use std::sync::{Arc, RwLock};
 #[derive(Debug)]
 pub struct AgentProps {}
 
-fn callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn callback(_ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let message: String =	bitcode::decode(message).unwrap();
 	println!("Received '{}'", &message);
 }
@@ -132,8 +140,8 @@ async fn main() -> Result<()> {
 	// create & initialize agents properties
 	let properties = AgentProps {};
 
-	// create an agent with the properties and the prefix "example"
-	let mut agent = Agent::new(Config::default(), "example", properties);
+	// create an agent with the properties
+	let mut agent = Agent::new(Config::default(), properties);
 
 	// subscribe to "hello" messages
 	agent
@@ -156,15 +164,18 @@ async fn main() -> Result<()> {
 #### More examples
 You can find more examples in [dimas-fw/examples](https://github.com/dimas-fw/dimas/blob/main/examples/README.md)
 
+#### Benchmarks
+You can find benchmarks in [dimas-fw/benches](https://github.com/dimas-fw/dimas/blob/main/benches/README.md)
+
 ## Feature flags
 
-DiMAS uses a set of feature flags to reduce the amount of compiled code. 
-It is necessary to enable all those features you want to use with your `Agent`.
+DiMAS uses a set of feature flags to minimize the size of an agent. 
+It is necessary to enable all those features you want to use within your `Agent`.
 
 - `all`: Enables all the features listed below. It's a good point to start with.
 - `liveliness`: Enables liveliness features sending tokens and listening for them.
-- `publisher`: Enables adding Pulishers to the Agent's Context.
-- `query`: Enables adding Queries to the Agent's Context.
-- `queryable`: Enables adding Queryables to the Agent's Context.
-- `subscriber`: Enables adding Subscibers to the Agent's Context.
-- `timer`: Enables adding Timer to the Agent's Context.
+- `publisher`: Enables to store Pulishers within the Agent's Context.
+- `query`: Enables to store Queries within the Agent's Context.
+- `queryable`: Enables to store Queryables within the Agent's Context.
+- `subscriber`: Enables to store Subscibers within the Agent's Context.
+- `timer`: Enables to store Timer within the Agent's Context.

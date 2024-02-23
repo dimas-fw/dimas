@@ -1,9 +1,12 @@
 // Copyright © 2023 Stephan Kunz
 
 // region:		--- modules
-use super::communicator::Communicator;
-use crate::{context::Context, prelude::*};
-use std::sync::{Arc, RwLock};
+use crate::{context::Context, error::Result};
+use std::{
+	collections::HashMap,
+	fmt::Debug,
+	sync::{Arc, RwLock},
+};
 use tokio::task::JoinHandle;
 use zenoh::prelude::{r#async::AsyncResolve, SampleKind};
 // endregion:	--- modules
@@ -11,9 +14,10 @@ use zenoh::prelude::{r#async::AsyncResolve, SampleKind};
 // region:		--- types
 /// Type definition for a subscribers `publish` callback function
 #[allow(clippy::module_name_repetitions)]
-pub type SubscriberCallback<P> = fn(&Arc<Context>, &Arc<RwLock<P>>, messsage: &[u8]);
+pub type SubscriberPutCallback<P> = fn(&Arc<Context<P>>, &Arc<RwLock<P>>, messsage: &[u8]);
 /// Type definition for a subscribers `delete` callback function
-pub type DeleteCallback<P> = fn(&Arc<Context>, &Arc<RwLock<P>>);
+#[allow(clippy::module_name_repetitions)]
+pub type SubscriberDeleteCallback<P> = fn(&Arc<Context<P>>, &Arc<RwLock<P>>);
 // endregion:	--- types
 
 // region:		--- SubscriberBuilder
@@ -22,19 +26,19 @@ pub type DeleteCallback<P> = fn(&Arc<Context>, &Arc<RwLock<P>>);
 #[derive(Clone)]
 pub struct SubscriberBuilder<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
-	pub(crate) collection: Arc<RwLock<Vec<Subscriber<P>>>>,
-	pub(crate) communicator: Arc<Communicator>,
+	pub(crate) collection: Arc<RwLock<HashMap<String, Subscriber<P>>>>,
+	pub(crate) context: Arc<Context<P>>,
 	pub(crate) props: Arc<RwLock<P>>,
 	pub(crate) key_expr: Option<String>,
-	pub(crate) put_callback: Option<SubscriberCallback<P>>,
-	pub(crate) delete_callback: Option<DeleteCallback<P>>,
+	pub(crate) put_callback: Option<SubscriberPutCallback<P>>,
+	pub(crate) delete_callback: Option<SubscriberDeleteCallback<P>>,
 }
 
 impl<P> SubscriberBuilder<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// Set the full expression to subscribe on.
 	#[must_use]
@@ -47,21 +51,21 @@ where
 	/// Will be prefixed by the agents prefix.
 	#[must_use]
 	pub fn msg_type(mut self, msg_type: impl Into<String>) -> Self {
-		let key_expr = self.communicator.clone().prefix() + "/" + &msg_type.into();
+		let key_expr = self.context.key_expr(msg_type);
 		self.key_expr.replace(key_expr);
 		self
 	}
 
 	/// Set subscribers callback for `put` messages
 	#[must_use]
-	pub fn put_callback(mut self, callback: SubscriberCallback<P>) -> Self {
+	pub fn put_callback(mut self, callback: SubscriberPutCallback<P>) -> Self {
 		self.put_callback.replace(callback);
 		self
 	}
 
 	/// Set subscribers callback for `delete` messages
 	#[must_use]
-	pub fn delete_callback(mut self, callback: DeleteCallback<P>) -> Self {
+	pub fn delete_callback(mut self, callback: SubscriberDeleteCallback<P>) -> Self {
 		self.delete_callback.replace(callback);
 		self
 	}
@@ -86,15 +90,12 @@ where
 			String::new()
 		};
 
-		let communicator = self.communicator;
-		let ctx = Arc::new(Context { communicator });
-
 		let s = Subscriber {
 			key_expr,
 			put_callback,
 			delete_callback: self.delete_callback,
 			handle: None,
-			context: ctx,
+			context: self.context,
 			props: self.props,
 		};
 
@@ -113,7 +114,7 @@ where
 		collection
 			.write()
 			.expect("should never happen")
-			.push(s);
+			.insert(s.key_expr.clone(), s);
 		Ok(())
 	}
 }
@@ -123,19 +124,19 @@ where
 /// Subscriber
 pub struct Subscriber<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	key_expr: String,
-	put_callback: SubscriberCallback<P>,
-	delete_callback: Option<DeleteCallback<P>>,
+	put_callback: SubscriberPutCallback<P>,
+	delete_callback: Option<SubscriberDeleteCallback<P>>,
 	handle: Option<JoinHandle<()>>,
-	context: Arc<Context>,
+	context: Arc<Context<P>>,
 	props: Arc<RwLock<P>>,
 }
 
 impl<P> std::fmt::Debug for Subscriber<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Subscriber")
@@ -151,7 +152,7 @@ where
 
 impl<P> Subscriber<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// Start Subscriber
 	/// # Panics
@@ -175,6 +176,7 @@ where
 					.recv_async()
 					.await
 					.expect("should never happen");
+				//tracing::info!("{}: {}", sample.kind, sample.value);
 				match sample.kind {
 					SampleKind::Put => {
 						let value: Vec<u8> = sample
@@ -209,6 +211,7 @@ where
 mod tests {
 	use super::*;
 
+	#[derive(Debug)]
 	struct Props {}
 
 	// check, that the auto traits are available

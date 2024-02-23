@@ -5,6 +5,7 @@
 use clap::Parser;
 use dimas::prelude::*;
 use std::sync::{Arc, RwLock};
+use tracing::info;
 // endregion:	--- modules
 
 // region:		--- Clap
@@ -20,16 +21,19 @@ struct Args {
 #[derive(Debug, Default)]
 struct AgentProps {}
 
-fn liveliness_subscription(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, agent_id: &str) {
-	println!("{agent_id} is alive");
+fn liveliness_subscription(_ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps>>, agent_id: &str) {
+	info!("{agent_id} is alive");
 }
 
-fn delete_subscription(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, agent_id: &str) {
-	println!("{agent_id} died");
+fn delete_subscription(_ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps>>, agent_id: &str) {
+	info!("{agent_id} died");
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
+	// a tracing subscriber writing logs
+	tracing_subscriber::fmt().init();
+
 	// parse arguments
 	let args = Args::parse();
 
@@ -37,7 +41,7 @@ async fn main() -> Result<()> {
 	let properties = AgentProps {};
 
 	// create an agent with the properties
-	let mut agent = Agent::new(Config::default(), &args.prefix, properties);
+	let mut agent = Agent::new_with_prefix(Config::default(), properties, &args.prefix);
 
 	// activate sending liveliness signal
 	agent.liveliness(true);

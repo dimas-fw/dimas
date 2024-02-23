@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Schema]
+## [Schema] - 202?-??-??
 
 ### Added
 
@@ -16,26 +16,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 
-## [0.0.3] - 2024-02-08 <br>Has breaking changes!!
+## [0.0.4] - 2024-??-?? <br>_Has breaking changes!!_
+
+### Added
+- introduce `tracing` support
+- Agent::new_with_prefix() - as replacement for the old agent::new()
+- benchmarks
+  - benches/montblanc/* - an implementation of the Montblanc benchmark for robots
+  - benches/montblanc/tmux-robot.sh - a tmux script to run all of the robots nodes
+  - benches/montblanc/tmux-workstation.sh - a tmux script to run all of the workstations nodes
+- examples
+  - examples/tmux-exampes.sh - a tmux script to run all the examples
+
+### Changed
+- _signature of Agent::new() now without 'prefix'_
+- _rename ad hoc methods in `Context` & `Communicator`_
+- _a now timer needs a unique name_
+
+### Fixed
+- cleanup dependencies
+
+### Removed
+
+
+## [0.0.3] - 2024-02-08 <br>_Has breaking changes!!_
 
 ### Added
 - More documentation
 - Add Publisher, Query, Queryable, Subscriber, Timer and their Builders to public interface/prelude
 
 ### Changed
-- changed crate for data serialization from 'bincode' to 'bitcode'
+- _changed crate for data serialization from 'bincode' to 'bitcode'_
 - moved zenoh into an internal dependency
-- removed parameter `mode` in ad-hoc query through `Context`
+- _removed parameter `mode` in ad-hoc query through `Context`_
 
-## [0.0.2] - 2024-01-28 <br>Has breaking changes!!
+## [0.0.2] - 2024-01-28 <br>_Has breaking changes!!_
 
 ### Added
 - README's & Documentation
 - pingpong example for roundtrip measurement
 
 ### Changed
-- changed crate for data serialization from 'serde' to 'bincode' v2
-- reduce boilerplate code in callbacks
+- _changed crate for data serialization from 'serde' to 'bincode' v2_
+- _reduce boilerplate code in callbacks_
 
 ### Removed
 - Some unnecessary dependencies.
@@ -51,8 +74,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - basic query/queryable functionality
 - Examples: 
   - Liveliness
-  - Timer / Publisher / Subscriber
-  - Timer / Query / Queryable
+  - Publisher using Timer / Subscriber
+  - Query using Timer / Queryable
 
 
 ## [0.0.0] - 2023-09-19

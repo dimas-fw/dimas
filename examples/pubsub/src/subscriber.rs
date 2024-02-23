@@ -5,6 +5,7 @@
 use clap::Parser;
 use dimas::prelude::*;
 use std::sync::{Arc, RwLock};
+use tracing::info;
 // endregion:	--- modules
 
 // region:		--- Clap
@@ -20,17 +21,20 @@ struct Args {
 #[derive(Debug)]
 struct AgentProps {}
 
-fn hello_publishing(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn hello_publishing(_ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let message: String = bitcode::decode(message).expect("should not happen");
-	println!("Received '{}'", &message);
+	info!("Received '{message}'");
 }
 
-fn hello_deletion(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>) {
-	println!("Shall delete 'hello'");
+fn hello_deletion(_ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps>>) {
+	info!("Shall delete 'hello' message");
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
+	// a tracing subscriber writing logs
+	tracing_subscriber::fmt().init();
+
 	// parse arguments
 	let args = Args::parse();
 
@@ -38,7 +42,7 @@ async fn main() -> Result<()> {
 	let properties = AgentProps {};
 
 	// create an agent with the properties
-	let mut agent = Agent::new(Config::default(), &args.prefix, properties);
+	let mut agent = Agent::new_with_prefix(Config::default(), properties, &args.prefix);
 
 	// listen for 'hello' messages
 	agent

@@ -8,6 +8,7 @@ use std::{
 	sync::{Arc, RwLock},
 	time::Duration,
 };
+use tracing::info;
 // endregion:	--- modules
 
 // region:		--- Clap
@@ -20,16 +21,19 @@ struct Args {
 }
 // endregion:	--- Clap
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct AgentProps {}
 
-fn query_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, answer: &[u8]) {
+fn query_callback(_ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps>>, answer: &[u8]) {
 	let message: String = bitcode::decode(answer).expect("should not happen");
-	println!("Received '{}'", &message);
+	info!("Received '{}'", &message);
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
+	// a tracing subscriber writing logs
+	tracing_subscriber::fmt().init();
+
 	// parse arguments
 	let args = Args::parse();
 
@@ -37,18 +41,22 @@ async fn main() -> Result<()> {
 	let properties = AgentProps {};
 
 	// create an agent with the properties
-	let mut agent = Agent::new(Config::default(), &args.prefix, properties);
+	let mut agent = Agent::new_with_prefix(Config::default(), properties, &args.prefix);
+
+	// create publisher for topic "ping"
+	agent.query().msg_type("query").callback(query_callback).add()?;
 
 	// timer for regular querying
 	let duration = Duration::from_secs(1);
 	let mut counter = 0i128;
 	agent
 		.timer()
+		.name("timer")
 		.interval(duration)
-		.callback(move |ctx, props| {
-			println!("Querying [{counter}]");
-			// querying with ad-hoc query
-			ctx.query(ctx.clone(), props, "query", query_callback);
+		.callback(move |ctx, _props| {
+			info!("Querying [{counter}]");
+			// querying with stored query
+			ctx.get_with("query");
 			counter += 1;
 		})
 		.add()?;

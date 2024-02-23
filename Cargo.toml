@@ -4,6 +4,27 @@
 resolver="2"
 
 members = [
+	"benches/montblanc/arequipa",
+	"benches/montblanc/barcelona",
+	"benches/montblanc/cordoba",
+	"benches/montblanc/delhi",
+	"benches/montblanc/freeport",
+	"benches/montblanc/geneva",
+	"benches/montblanc/georgetown",
+	"benches/montblanc/hamburg",
+	"benches/montblanc/hebron",
+	"benches/montblanc/kingston",
+	"benches/montblanc/lyon",
+	"benches/montblanc/mandalay",
+	"benches/montblanc/medellin",
+	"benches/montblanc/messages",
+	"benches/montblanc/monaco",
+	"benches/montblanc/osaka",
+	"benches/montblanc/ponce",
+	"benches/montblanc/portsmouth",
+	"benches/montblanc/rotterdam",
+	"benches/montblanc/taipei",
+	"benches/montblanc/tripoli",
 	"dimas",
 	"examples/liveliness",
 	"examples/pingpong",
@@ -25,23 +46,25 @@ unwrap_used = "deny"
 [workspace.package]
 rust-version = "1.75.0"
 edition = "2021"
-version = "0.0.3"
+version = "0.0.4"
 authors = [
 	"stepkun <stephan.kunz@kabelbw.de>",
 ]
 #license = "NGMC"
 license-file = "LICENSE"
 categories = [
-	"science::robotics",
 	"development-tools",
+	"science::robotics",
 	"simulation"
 ]
 
 [workspace.dependencies]
-bitcode = "0.5.0"
-clap = { version = "4.4", features = ["derive"] }
+bitcode = "0.5"
+clap = { version = "4", features = ["derive"] }
 dimas = { path = "dimas" }
-tokio = "1.35"
+tokio = "1"
+tracing = { version = "0.1", features = ["log"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "smallvec"] }
 zenoh = { version = "0.10.1-rc", features = ["unstable"] }
 
 [profile.release]

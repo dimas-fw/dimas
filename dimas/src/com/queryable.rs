@@ -1,9 +1,12 @@
 // Copyright © 2023 Stephan Kunz
 
 // region:		--- modules
-use super::communicator::Communicator;
-use crate::{context::Context, prelude::*};
-use std::sync::{Arc, RwLock};
+use crate::{context::Context, error::Result};
+use std::{
+	collections::HashMap,
+	fmt::Debug,
+	sync::{Arc, RwLock},
+};
 use tokio::task::JoinHandle;
 use zenoh::{
 	prelude::{r#async::AsyncResolve, sync::SyncResolve},
@@ -15,7 +18,7 @@ use zenoh::{
 // region:		--- types
 /// type defnition for the queryables callback function.
 #[allow(clippy::module_name_repetitions)]
-pub type QueryableCallback<P> = fn(&Arc<Context>, &Arc<RwLock<P>>, request: &Request);
+pub type QueryableCallback<P> = fn(&Arc<Context<P>>, &Arc<RwLock<P>>, request: &Request);
 // endregion:	--- types
 
 // region:    --- Request
@@ -58,10 +61,10 @@ impl Request {
 #[derive(Default, Clone)]
 pub struct QueryableBuilder<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
-	pub(crate) collection: Arc<RwLock<Vec<Queryable<P>>>>,
-	pub(crate) communicator: Arc<Communicator>,
+	pub(crate) collection: Arc<RwLock<HashMap<String, Queryable<P>>>>,
+	pub(crate) context: Arc<Context<P>>,
 	pub(crate) props: Arc<RwLock<P>>,
 	pub(crate) key_expr: Option<String>,
 	pub(crate) callback: Option<QueryableCallback<P>>,
@@ -69,7 +72,7 @@ where
 
 impl<P> QueryableBuilder<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// Set the full expression for the queryable.
 	#[must_use]
@@ -82,7 +85,7 @@ where
 	/// Will be prefixed by the agents prefix.
 	#[must_use]
 	pub fn msg_type(mut self, msg_type: impl Into<String>) -> Self {
-		let key_expr = self.communicator.clone().prefix() + "/" + &msg_type.into();
+		let key_expr = self.context.key_expr(msg_type);
 		self.key_expr.replace(key_expr);
 		self
 	}
@@ -114,14 +117,12 @@ where
 			String::new()
 		};
 
-		let communicator = self.communicator;
-		let ctx = Arc::new(Context { communicator });
 		//dbg!(&key_expr);
 		let q = Queryable {
 			key_expr,
 			callback,
 			handle: None,
-			context: ctx,
+			context: self.context,
 			props: self.props,
 		};
 
@@ -140,7 +141,7 @@ where
 		collection
 			.write()
 			.expect("should never happen")
-			.push(q);
+			.insert(q.key_expr.clone(), q);
 		Ok(())
 	}
 }
@@ -150,18 +151,18 @@ where
 /// Queryable
 pub struct Queryable<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	key_expr: String,
 	callback: QueryableCallback<P>,
 	handle: Option<JoinHandle<()>>,
-	context: Arc<Context>,
+	context: Arc<Context<P>>,
 	props: Arc<RwLock<P>>,
 }
 
 impl<P> Queryable<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// Start Queryable
 	/// # Panics
@@ -208,6 +209,7 @@ where
 mod tests {
 	use super::*;
 
+	#[derive(Debug)]
 	struct Props {}
 
 	// check, that the auto traits are available

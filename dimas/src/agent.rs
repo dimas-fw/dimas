@@ -1,7 +1,6 @@
 // Copyright © 2023 Stephan Kunz
 
 // region:		--- modules
-use crate::com::communicator::Communicator;
 #[cfg(feature = "liveliness")]
 use crate::com::liveliness_subscriber::{LivelinessSubscriber, LivelinessSubscriberBuilder};
 #[cfg(feature = "publisher")]
@@ -14,13 +13,23 @@ use crate::com::queryable::{Queryable, QueryableBuilder};
 use crate::com::subscriber::{Subscriber, SubscriberBuilder};
 #[cfg(feature = "timer")]
 use crate::timer::{Timer, TimerBuilder};
+use crate::{com::communicator::Communicator, context::Context};
+#[cfg(any(
+	feature = "publisher",
+	feature = "query",
+	feature = "queryable",
+	feature = "subscriber",
+	feature = "timer"
+))]
+use std::collections::HashMap;
 use std::{
+	fmt::Debug,
 	marker::PhantomData,
 	ops::Deref,
 	sync::{Arc, RwLock},
 	time::Duration,
 };
-use tokio::time::sleep;
+use tokio::signal;
 #[cfg(feature = "liveliness")]
 use zenoh::liveliness::LivelinessToken;
 // endregion:	--- modules
@@ -29,7 +38,7 @@ use zenoh::liveliness::LivelinessToken;
 /// Agent
 pub struct Agent<'a, P>
 where
-	P: std::fmt::Debug + Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	com: Arc<Communicator>,
 	pd: PhantomData<&'a P>,
@@ -45,24 +54,47 @@ where
 	liveliness_subscriber: Arc<RwLock<Option<LivelinessSubscriber<P>>>>,
 	// registered subscribers
 	#[cfg(feature = "subscriber")]
-	subscribers: Arc<RwLock<Vec<Subscriber<P>>>>,
+	subscribers: Arc<RwLock<HashMap<String, Subscriber<P>>>>,
 	// registered queryables
 	#[cfg(feature = "queryable")]
-	queryables: Arc<RwLock<Vec<Queryable<P>>>>,
+	queryables: Arc<RwLock<HashMap<String, Queryable<P>>>>,
 	// registered publisher
 	#[cfg(feature = "publisher")]
-	publishers: Arc<RwLock<Vec<Publisher<'a>>>>,
+	publishers: Arc<RwLock<HashMap<String, Publisher>>>,
 	// registered queries
 	#[cfg(feature = "query")]
-	queries: Arc<RwLock<Vec<Query>>>,
+	queries: Arc<RwLock<HashMap<String, Query<P>>>>,
 	// registered timer
 	#[cfg(feature = "timer")]
-	timers: Arc<RwLock<Vec<Timer<P>>>>,
+	timers: Arc<RwLock<HashMap<String, Timer<P>>>>,
+}
+
+impl<'a, P> Debug for Agent<'a, P>
+where
+	P: Debug + Send + Sync + Unpin + 'static,
+{
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("Agent")
+			.field("id", &self.uuid())
+			.field("prefix", &self.com.prefix)
+			//.field("com", &self.com)
+			//.field("pd", &self.pd)
+			//.field("props", &self.props)
+			//.field("liveliness", &self.liveliness)
+			//.field("liveliness_token", &self.liveliness_token)
+			//.field("liveliness_subscriber", &self.liveliness_subscriber)
+			//.field("subscribers", &self.subscribers)
+			//.field("queryables", &self.queryables)
+			//.field("publishers", &self.publishers)
+			//.field("queries", &self.queries)
+			//.field("timers", &self.timers)
+			.finish_non_exhaustive()
+	}
 }
 
 impl<'a, P> Deref for Agent<'a, P>
 where
-	P: std::fmt::Debug + Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	type Target = Arc<RwLock<P>>;
 
@@ -73,11 +105,11 @@ where
 
 impl<'a, P> Agent<'a, P>
 where
-	P: std::fmt::Debug + Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// Create an instance of an agent.
-	pub fn new(config: crate::config::Config, prefix: impl Into<String>, properties: P) -> Self {
-		let com = Arc::new(Communicator::new(config, prefix));
+	pub fn new(config: crate::config::Config, properties: P) -> Self {
+		let com = Arc::new(Communicator::new(config));
 		let pd = PhantomData {};
 		Self {
 			pd,
@@ -90,15 +122,46 @@ where
 			#[cfg(feature = "liveliness")]
 			liveliness_subscriber: Arc::new(RwLock::new(None)),
 			#[cfg(feature = "subscriber")]
-			subscribers: Arc::new(RwLock::new(Vec::new())),
+			subscribers: Arc::new(RwLock::new(HashMap::new())),
 			#[cfg(feature = "queryable")]
-			queryables: Arc::new(RwLock::new(Vec::new())),
+			queryables: Arc::new(RwLock::new(HashMap::new())),
 			#[cfg(feature = "publisher")]
-			publishers: Arc::new(RwLock::new(Vec::new())),
+			publishers: Arc::new(RwLock::new(HashMap::new())),
 			#[cfg(feature = "query")]
-			queries: Arc::new(RwLock::new(Vec::new())),
+			queries: Arc::new(RwLock::new(HashMap::new())),
 			#[cfg(feature = "timer")]
-			timers: Arc::new(RwLock::new(Vec::new())),
+			timers: Arc::new(RwLock::new(HashMap::new())),
+		}
+	}
+
+	/// Create an instance of an agent with a standard prefix for the topics.
+	pub fn new_with_prefix(
+		config: crate::config::Config,
+		properties: P,
+		prefix: impl Into<String>,
+	) -> Self {
+		let com = Arc::new(Communicator::new_with_prefix(config, prefix));
+		let pd = PhantomData {};
+		Self {
+			pd,
+			com,
+			props: Arc::new(RwLock::new(properties)),
+			#[cfg(feature = "liveliness")]
+			liveliness: false,
+			#[cfg(feature = "liveliness")]
+			liveliness_token: RwLock::new(None),
+			#[cfg(feature = "liveliness")]
+			liveliness_subscriber: Arc::new(RwLock::new(None)),
+			#[cfg(feature = "subscriber")]
+			subscribers: Arc::new(RwLock::new(HashMap::new())),
+			#[cfg(feature = "queryable")]
+			queryables: Arc::new(RwLock::new(HashMap::new())),
+			#[cfg(feature = "publisher")]
+			publishers: Arc::new(RwLock::new(HashMap::new())),
+			#[cfg(feature = "query")]
+			queries: Arc::new(RwLock::new(HashMap::new())),
+			#[cfg(feature = "timer")]
+			timers: Arc::new(RwLock::new(HashMap::new())),
 		}
 	}
 
@@ -121,6 +184,16 @@ where
 		self.liveliness = activate;
 	}
 
+	fn get_context(&self) -> Arc<Context<P>> {
+		Arc::new(Context {
+			communicator: self.com.clone(),
+			#[cfg(feature = "publisher")]
+			publishers: self.publishers.clone(),
+			#[cfg(feature = "query")]
+			queries: self.queries.clone(),
+		})
+	}
+
 	//#[cfg_attr(doc, doc(cfg(feature = "liveliness")))]
 	/// get a builder for a subscriber for the liveliness information
 	#[cfg(feature = "liveliness")]
@@ -128,7 +201,7 @@ where
 	pub fn liveliness_subscriber(&self) -> LivelinessSubscriberBuilder<P> {
 		LivelinessSubscriberBuilder {
 			subscriber: self.liveliness_subscriber.clone(),
-			communicator: self.com.clone(),
+			context: self.get_context(),
 			props: self.props.clone(),
 			key_expr: None,
 			put_callback: None,
@@ -143,7 +216,7 @@ where
 	pub fn subscriber(&self) -> SubscriberBuilder<P> {
 		SubscriberBuilder {
 			collection: self.subscribers.clone(),
-			communicator: self.com.clone(),
+			context: self.get_context(),
 			props: self.props.clone(),
 			key_expr: None,
 			put_callback: None,
@@ -158,7 +231,7 @@ where
 	pub fn queryable(&self) -> QueryableBuilder<P> {
 		QueryableBuilder {
 			collection: self.queryables.clone(),
-			communicator: self.com.clone(),
+			context: self.get_context(),
 			props: self.props.clone(),
 			key_expr: None,
 			callback: None,
@@ -169,10 +242,10 @@ where
 	/// get a builder for a Publisher
 	#[cfg(feature = "publisher")]
 	#[must_use]
-	pub fn publisher(&self) -> PublisherBuilder<'a, P> {
+	pub fn publisher(&self) -> PublisherBuilder<P> {
 		PublisherBuilder {
 			collection: self.publishers.clone(),
-			communicator: self.com.clone(),
+			context: self.get_context(),
 			props: self.props.clone(),
 			key_expr: None,
 		}
@@ -185,9 +258,10 @@ where
 	pub fn query(&self) -> QueryBuilder<P> {
 		QueryBuilder {
 			collection: self.queries.clone(),
-			communicator: self.com.clone(),
+			context: self.get_context(),
 			props: self.props.clone(),
 			key_expr: None,
+			mode: None,
 			callback: None,
 		}
 	}
@@ -199,17 +273,19 @@ where
 	pub fn timer(&self) -> TimerBuilder<P> {
 		TimerBuilder {
 			collection: self.timers.clone(),
-			communicator: self.com.clone(),
+			props: self.props.clone(),
+			context: self.get_context(),
+			name: None,
 			delay: None,
 			interval: None,
 			callback: None,
-			props: self.props.clone(),
 		}
 	}
 
 	/// start the agent
 	/// # Panics
 	///
+	#[tracing::instrument]
 	pub async fn start(&mut self) {
 		// start all registered queryables
 		#[cfg(feature = "queryable")]
@@ -218,7 +294,7 @@ where
 			.expect("should never happen")
 			.iter_mut()
 			.for_each(|queryable| {
-				queryable.start();
+				queryable.1.start();
 			});
 		// start all registered subscribers
 		#[cfg(feature = "subscriber")]
@@ -227,7 +303,7 @@ where
 			.expect("should never happen")
 			.iter_mut()
 			.for_each(|subscriber| {
-				subscriber.start();
+				subscriber.1.start();
 			});
 		// start liveliness subscriber
 		#[cfg(feature = "liveliness")]
@@ -266,17 +342,25 @@ where
 			.expect("should never happen")
 			.iter_mut()
 			.for_each(|timer| {
-				timer.start();
+				timer.1.start();
 			});
 
-		// main loop so that agent stays alive
-		loop {
-			sleep(Duration::from_secs(1)).await;
+		// wait for a shutdown signal
+		match signal::ctrl_c().await {
+			Ok(()) => {
+				self.stop();
+			}
+			Err(err) => {
+				eprintln!("Unable to listen for shutdown signal: {err}");
+				// we also shut down in case of error
+				self.stop();
+			}
 		}
 	}
 
 	/// stop the agent
 	/// # Panics
+	#[tracing::instrument]
 	pub fn stop(&mut self) {
 		// reverse order of start!
 		// stop all registered timers
@@ -286,7 +370,7 @@ where
 			.expect("should never happen")
 			.iter_mut()
 			.for_each(|timer| {
-				timer.stop();
+				timer.1.stop();
 			});
 
 		#[cfg(feature = "liveliness")]
@@ -322,7 +406,7 @@ where
 			.expect("should never happen")
 			.iter_mut()
 			.for_each(|subscriber| {
-				subscriber.stop();
+				subscriber.1.stop();
 			});
 		// stop all registered queryables
 		#[cfg(feature = "queryable")]
@@ -331,7 +415,7 @@ where
 			.expect("should never happen")
 			.iter_mut()
 			.for_each(|queryable| {
-				queryable.stop();
+				queryable.1.stop();
 			});
 	}
 }
@@ -355,28 +439,32 @@ mod tests {
 	#[tokio::test]
 	//#[serial]
 	async fn agent_create_default() {
-		let _agent1: Agent<Props> = Agent::new(crate::config::Config::local(), "agent1", Props {});
-		let _agent2: Agent<Props> = Agent::new(crate::config::Config::local(), "agent2", Props {});
+		let _agent1: Agent<Props> = Agent::new(crate::config::Config::local(), Props {});
+		let _agent2: Agent<Props> =
+			Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
 	}
 
 	#[tokio::test(flavor = "current_thread")]
 	//#[serial]
 	async fn agent_create_current() {
-		let _agent1: Agent<Props> = Agent::new(crate::config::Config::local(), "agent1", Props {});
-		let _agent2: Agent<Props> = Agent::new(crate::config::Config::local(), "agent2", Props {});
+		let _agent1: Agent<Props> = Agent::new(crate::config::Config::local(), Props {});
+		let _agent2: Agent<Props> =
+			Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
 	}
 
 	#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 	//#[serial]
 	async fn agent_create_restricted() {
-		let _agent1: Agent<Props> = Agent::new(crate::config::Config::local(), "agent1", Props {});
-		let _agent2: Agent<Props> = Agent::new(crate::config::Config::local(), "agent2", Props {});
+		let _agent1: Agent<Props> = Agent::new(crate::config::Config::local(), Props {});
+		let _agent2: Agent<Props> =
+			Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
 	}
 
 	#[tokio::test(flavor = "multi_thread")]
 	//#[serial]
 	async fn agent_create_multi() {
-		let _agent1: Agent<Props> = Agent::new(crate::config::Config::local(), "agent1", Props {});
-		let _agent2: Agent<Props> = Agent::new(crate::config::Config::local(), "agent2", Props {});
+		let _agent1: Agent<Props> = Agent::new(crate::config::Config::local(), Props {});
+		let _agent2: Agent<Props> =
+			Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
 	}
 }
