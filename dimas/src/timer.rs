@@ -6,6 +6,7 @@
 // region:		--- modules
 use crate::{com::communicator::Communicator, context::Context, error::Result};
 use std::{
+	collections::HashMap,
 	sync::{Arc, RwLock},
 	time::Duration,
 };
@@ -27,18 +28,26 @@ pub struct TimerBuilder<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	pub(crate) collection: Arc<RwLock<Vec<Timer<P>>>>,
+	pub(crate) collection: Arc<RwLock<HashMap<String, Timer<P>>>>,
 	pub(crate) communicator: Arc<Communicator>,
+	pub(crate) props: Arc<RwLock<P>>,
+	pub(crate) name: Option<String>,
 	pub(crate) delay: Option<Duration>,
 	pub(crate) interval: Option<Duration>,
 	pub(crate) callback: Option<TimerCallback<P>>,
-	pub(crate) props: Arc<RwLock<P>>,
 }
 
 impl<P> TimerBuilder<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// set timers name
+	#[must_use]
+	pub fn name(mut self, name: impl Into<String>) -> Self {
+		self.name.replace(name.into());
+		self
+	}
+
 	/// set timers delay
 	#[must_use]
 	pub fn delay(mut self, delay: Duration) -> Self {
@@ -108,11 +117,16 @@ where
 	/// # Panics
 	///
 	pub fn add(self) -> Result<()> {
+		let name = if self.name.is_none() {
+			return Err("No name given".into());
+		} else {
+			self.name.clone().expect("should never happen")
+		};
 		let c = self.collection.clone();
 		let timer = self.build()?;
 		c.write()
 			.expect("should never happen")
-			.push(timer);
+			.insert(name, timer);
 		Ok(())
 	}
 }

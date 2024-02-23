@@ -14,6 +14,14 @@ use crate::com::queryable::{Queryable, QueryableBuilder};
 use crate::com::subscriber::{Subscriber, SubscriberBuilder};
 #[cfg(feature = "timer")]
 use crate::timer::{Timer, TimerBuilder};
+#[cfg(any(
+	feature = "publisher",
+	feature = "query",
+	feature = "queryable",
+	feature = "subscriber",
+	feature = "timer"
+))]
+use std::collections::HashMap;
 use std::{
 	fmt::Debug,
 	marker::PhantomData,
@@ -46,19 +54,19 @@ where
 	liveliness_subscriber: Arc<RwLock<Option<LivelinessSubscriber<P>>>>,
 	// registered subscribers
 	#[cfg(feature = "subscriber")]
-	subscribers: Arc<RwLock<Vec<Subscriber<P>>>>,
+	subscribers: Arc<RwLock<HashMap<String, Subscriber<P>>>>,
 	// registered queryables
 	#[cfg(feature = "queryable")]
-	queryables: Arc<RwLock<Vec<Queryable<P>>>>,
+	queryables: Arc<RwLock<HashMap<String, Queryable<P>>>>,
 	// registered publisher
 	#[cfg(feature = "publisher")]
-	publishers: Arc<RwLock<Vec<Publisher<'a>>>>,
+	publishers: Arc<RwLock<HashMap<String, Publisher<'a>>>>,
 	// registered queries
 	#[cfg(feature = "query")]
-	queries: Arc<RwLock<Vec<Query>>>,
+	queries: Arc<RwLock<HashMap<String, Query<P>>>>,
 	// registered timer
 	#[cfg(feature = "timer")]
-	timers: Arc<RwLock<Vec<Timer<P>>>>,
+	timers: Arc<RwLock<HashMap<String, Timer<P>>>>,
 }
 
 impl<'a, P> Debug for Agent<'a, P>
@@ -114,15 +122,15 @@ where
 			#[cfg(feature = "liveliness")]
 			liveliness_subscriber: Arc::new(RwLock::new(None)),
 			#[cfg(feature = "subscriber")]
-			subscribers: Arc::new(RwLock::new(Vec::new())),
+			subscribers: Arc::new(RwLock::new(HashMap::new())),
 			#[cfg(feature = "queryable")]
-			queryables: Arc::new(RwLock::new(Vec::new())),
+			queryables: Arc::new(RwLock::new(HashMap::new())),
 			#[cfg(feature = "publisher")]
-			publishers: Arc::new(RwLock::new(Vec::new())),
+			publishers: Arc::new(RwLock::new(HashMap::new())),
 			#[cfg(feature = "query")]
-			queries: Arc::new(RwLock::new(Vec::new())),
+			queries: Arc::new(RwLock::new(HashMap::new())),
 			#[cfg(feature = "timer")]
-			timers: Arc::new(RwLock::new(Vec::new())),
+			timers: Arc::new(RwLock::new(HashMap::new())),
 		}
 	}
 
@@ -145,15 +153,15 @@ where
 			#[cfg(feature = "liveliness")]
 			liveliness_subscriber: Arc::new(RwLock::new(None)),
 			#[cfg(feature = "subscriber")]
-			subscribers: Arc::new(RwLock::new(Vec::new())),
+			subscribers: Arc::new(RwLock::new(HashMap::new())),
 			#[cfg(feature = "queryable")]
-			queryables: Arc::new(RwLock::new(Vec::new())),
+			queryables: Arc::new(RwLock::new(HashMap::new())),
 			#[cfg(feature = "publisher")]
-			publishers: Arc::new(RwLock::new(Vec::new())),
+			publishers: Arc::new(RwLock::new(HashMap::new())),
 			#[cfg(feature = "query")]
-			queries: Arc::new(RwLock::new(Vec::new())),
+			queries: Arc::new(RwLock::new(HashMap::new())),
 			#[cfg(feature = "timer")]
-			timers: Arc::new(RwLock::new(Vec::new())),
+			timers: Arc::new(RwLock::new(HashMap::new())),
 		}
 	}
 
@@ -243,6 +251,7 @@ where
 			communicator: self.com.clone(),
 			props: self.props.clone(),
 			key_expr: None,
+			mode: None,
 			callback: None,
 		}
 	}
@@ -255,10 +264,11 @@ where
 		TimerBuilder {
 			collection: self.timers.clone(),
 			communicator: self.com.clone(),
+			props: self.props.clone(),
+			name: None,
 			delay: None,
 			interval: None,
 			callback: None,
-			props: self.props.clone(),
 		}
 	}
 
@@ -274,7 +284,7 @@ where
 			.expect("should never happen")
 			.iter_mut()
 			.for_each(|queryable| {
-				queryable.start();
+				queryable.1.start();
 			});
 		// start all registered subscribers
 		#[cfg(feature = "subscriber")]
@@ -283,7 +293,7 @@ where
 			.expect("should never happen")
 			.iter_mut()
 			.for_each(|subscriber| {
-				subscriber.start();
+				subscriber.1.start();
 			});
 		// start liveliness subscriber
 		#[cfg(feature = "liveliness")]
@@ -322,7 +332,7 @@ where
 			.expect("should never happen")
 			.iter_mut()
 			.for_each(|timer| {
-				timer.start();
+				timer.1.start();
 			});
 
 		// wait for a shutdown signal
@@ -350,7 +360,7 @@ where
 			.expect("should never happen")
 			.iter_mut()
 			.for_each(|timer| {
-				timer.stop();
+				timer.1.stop();
 			});
 
 		#[cfg(feature = "liveliness")]
@@ -386,7 +396,7 @@ where
 			.expect("should never happen")
 			.iter_mut()
 			.for_each(|subscriber| {
-				subscriber.stop();
+				subscriber.1.stop();
 			});
 		// stop all registered queryables
 		#[cfg(feature = "queryable")]
@@ -395,7 +405,7 @@ where
 			.expect("should never happen")
 			.iter_mut()
 			.for_each(|queryable| {
-				queryable.stop();
+				queryable.1.stop();
 			});
 	}
 }

@@ -78,6 +78,8 @@ async fn main() -> Result<()> {
 	agent
 		// get the TimerBuilder from the agent
 		.timer()
+		// set a name for the timer
+		.name("timer")
 		// every second
 		.interval(Duration::from_secs(1))
 		// the timers callback function as a closure

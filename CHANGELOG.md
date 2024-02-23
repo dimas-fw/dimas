@@ -30,7 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - _signature of Agent::new() now without 'prefix'_
-- _rename ad hoc methods in Context & Communicator_
+- _rename ad hoc methods in `Context` & `Communicator`_
+- _a now timer needs a unique name_
 
 ### Fixed
 - cleanup dependencies
@@ -49,15 +50,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - moved zenoh into an internal dependency
 - _removed parameter `mode` in ad-hoc query through `Context`_
 
-## [0.0.2] - 2024-01-28 <br>Has breaking changes!!
+## [0.0.2] - 2024-01-28 <br>_Has breaking changes!!_
 
 ### Added
 - README's & Documentation
 - pingpong example for roundtrip measurement
 
 ### Changed
-- changed crate for data serialization from 'serde' to 'bincode' v2
-- reduce boilerplate code in callbacks
+- _changed crate for data serialization from 'serde' to 'bincode' v2_
+- _reduce boilerplate code in callbacks_
 
 ### Removed
 - Some unnecessary dependencies.
@@ -73,8 +74,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - basic query/queryable functionality
 - Examples: 
   - Liveliness
-  - Timer / Publisher / Subscriber
-  - Timer / Query / Queryable
+  - Publisher using Timer / Subscriber
+  - Query using Timer / Queryable
 
 
 ## [0.0.0] - 2023-09-19

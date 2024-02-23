@@ -20,6 +20,7 @@ async fn main() -> Result<()> {
 
 	agent
 		.timer()
+		.name("timer")
 		.interval(Duration::from_millis(100))
 		.callback(|ctx, _props| {
 			let message = messages::Quaternion::random();

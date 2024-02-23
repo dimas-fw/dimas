@@ -20,6 +20,7 @@ async fn main() -> Result<()> {
 
 	agent
 		.timer()
+		.name("timer")
 		.interval(Duration::from_millis(200))
 		.callback(move |ctx, _props| {
 			let value = "portsmouth/danube: ".to_string() + &messages::random_string(55);

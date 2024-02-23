@@ -20,6 +20,7 @@ async fn main() -> Result<()> {
 
 	agent
 		.timer()
+		.name("timer")
 		.interval(Duration::from_millis(50))
 		.callback(|ctx, _props| {
 			let message = messages::Int32::random();

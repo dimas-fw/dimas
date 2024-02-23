@@ -55,6 +55,7 @@ async fn main() -> Result<()> {
 
 	agent
 		.timer()
+		.name("timer")
 		.interval(Duration::from_millis(50))
 		.callback(|ctx, props| {
 			let message = messages::Float64::random();

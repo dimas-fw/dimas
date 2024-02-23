@@ -1,9 +1,17 @@
 // Copyright © 2023 Stephan Kunz
 
+use zenoh::{
+	prelude::{sync::SyncResolve, SampleKind},
+	query::ConsolidationMode,
+};
+
 // region:		--- modules
 use super::communicator::Communicator;
 use crate::prelude::*;
-use std::sync::{Arc, RwLock};
+use std::{
+	collections::HashMap,
+	sync::{Arc, RwLock},
+};
 // endregion:	--- modules
 
 // region:		--- types
@@ -20,10 +28,11 @@ pub struct QueryBuilder<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	pub(crate) collection: Arc<RwLock<Vec<Query>>>,
+	pub(crate) collection: Arc<RwLock<HashMap<String, Query<P>>>>,
 	pub(crate) communicator: Arc<Communicator>,
 	pub(crate) props: Arc<RwLock<P>>,
 	pub(crate) key_expr: Option<String>,
+	pub(crate) mode: Option<ConsolidationMode>,
 	pub(crate) callback: Option<QueryCallback<P>>,
 }
 
@@ -47,6 +56,13 @@ where
 		self
 	}
 
+	/// Set the consolidation mode
+	#[must_use]
+	pub fn mode(mut self, mode: ConsolidationMode) -> Self {
+		self.mode.replace(mode);
+		self
+	}
+
 	/// Set the queries callback function
 	#[must_use]
 	pub fn callback(mut self, callback: QueryCallback<P>) -> Self {
@@ -59,11 +75,11 @@ where
 	///
 	/// # Panics
 	///
-	pub fn build(mut self) -> Result<Query> {
+	pub fn build(mut self) -> Result<Query<P>> {
 		if self.key_expr.is_none() {
 			return Err("No key expression or msg type given".into());
 		}
-		let _callback = if self.callback.is_none() {
+		let callback = if self.callback.is_none() {
 			return Err("No callback given".into());
 		} else {
 			self.callback.expect("should never happen")
@@ -73,16 +89,25 @@ where
 		} else {
 			String::new()
 		};
-
-		let communicator = self.communicator;
-		let _ctx = Arc::new(Context { communicator });
-		let _props = self.props.clone();
-
-		let s = Query {
-			_key_expr: key_expr,
+		let mode = if self.key_expr.is_some() {
+			self.mode.take().expect("should never happen")
+		} else {
+			ConsolidationMode::None
 		};
 
-		Ok(s)
+		let communicator = self.communicator;
+		let ctx = Arc::new(Context { communicator });
+		let props = self.props.clone();
+
+		let q = Query {
+			key_expr,
+			mode,
+			ctx,
+			props,
+			callback,
+		};
+
+		Ok(q)
 	}
 
 	/// Build and add the query to the agent
@@ -97,7 +122,7 @@ where
 		collection
 			.write()
 			.expect("should never happen")
-			.push(q);
+			.insert(q.key_expr.clone(), q);
 		Ok(())
 	}
 }
@@ -105,8 +130,62 @@ where
 
 // region:		--- Query
 /// Query
-pub struct Query {
-	_key_expr: String,
+pub struct Query<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	key_expr: String,
+	mode: ConsolidationMode,
+	ctx: Arc<Context>,
+	props: Arc<RwLock<P>>,
+	callback: QueryCallback<P>,
+}
+
+impl<P> Query<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	/// run a query
+	/// # Panics
+	///
+	pub fn get(&self) {
+		let cb = self.callback;
+		let replies = self
+			.ctx
+			.communicator
+			.session
+			.get(&self.key_expr)
+			.consolidation(self.mode)
+			//.timeout(Duration::from_millis(1000))
+			.res_sync()
+			.expect("should never happen");
+		//dbg!(&replies);
+
+		while let Ok(reply) = replies.recv() {
+			//dbg!(&reply);
+			match reply.sample {
+				Ok(sample) => {
+					//dbg!(&sample);
+					let value: Vec<u8> = sample
+						.value
+						.try_into()
+						.expect("should not happen");
+					match sample.kind {
+						SampleKind::Put => {
+							cb(&self.ctx, &self.props, &value);
+						}
+						SampleKind::Delete => {
+							println!("Delete in Query");
+						}
+					}
+				}
+				Err(err) => println!(
+					">> No data (ERROR: '{}')",
+					String::try_from(&err).expect("to be implemented")
+				),
+			}
+		}
+	}
 }
 // endregion:	--- Query
 
@@ -120,7 +199,7 @@ mod tests {
 
 	#[test]
 	const fn normal_types() {
-		is_normal::<Query>();
+		is_normal::<Query<Props>>();
 		is_normal::<QueryBuilder<Props>>();
 	}
 }

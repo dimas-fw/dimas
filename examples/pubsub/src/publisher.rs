@@ -40,6 +40,7 @@ async fn main() -> Result<()> {
 	// use timer for regular publishing
 	agent
 		.timer()
+		.name("timer1")
 		.interval(Duration::from_secs(1))
 		.callback(|ctx, props| {
 			let counter = props
@@ -63,6 +64,7 @@ async fn main() -> Result<()> {
 	let duration = Duration::from_secs(3);
 	agent
 		.timer()
+		.name("timer2")
 		.interval(duration)
 		.callback(move |ctx, _props| {
 			info!("Deleting");

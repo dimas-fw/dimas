@@ -3,7 +3,10 @@
 // region:		--- modules
 use super::communicator::Communicator;
 use crate::{context::Context, error::Result};
-use std::sync::{Arc, RwLock};
+use std::{
+	collections::HashMap,
+	sync::{Arc, RwLock},
+};
 use tokio::task::JoinHandle;
 use zenoh::prelude::{r#async::AsyncResolve, SampleKind};
 // endregion:	--- modules
@@ -24,7 +27,7 @@ pub struct SubscriberBuilder<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	pub(crate) collection: Arc<RwLock<Vec<Subscriber<P>>>>,
+	pub(crate) collection: Arc<RwLock<HashMap<String, Subscriber<P>>>>,
 	pub(crate) communicator: Arc<Communicator>,
 	pub(crate) props: Arc<RwLock<P>>,
 	pub(crate) key_expr: Option<String>,
@@ -113,7 +116,7 @@ where
 		collection
 			.write()
 			.expect("should never happen")
-			.push(s);
+			.insert(s.key_expr.clone(), s);
 		Ok(())
 	}
 }

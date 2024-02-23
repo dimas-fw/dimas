@@ -1,9 +1,14 @@
 // Copyright © 2023 Stephan Kunz
 
+use zenoh::prelude::sync::SyncResolve;
+
 // region:		--- modules
 use super::communicator::Communicator;
 use crate::prelude::*;
-use std::sync::{Arc, RwLock};
+use std::{
+	collections::HashMap,
+	sync::{Arc, RwLock},
+};
 // endregion:	--- modules
 
 // region:		--- types
@@ -16,7 +21,7 @@ use std::sync::{Arc, RwLock};
 #[allow(clippy::module_name_repetitions)]
 #[derive(Default, Clone)]
 pub struct PublisherBuilder<'a, P> {
-	pub(crate) collection: Arc<RwLock<Vec<Publisher<'a>>>>,
+	pub(crate) collection: Arc<RwLock<HashMap<String, Publisher<'a>>>>,
 	pub(crate) communicator: Arc<Communicator>,
 	pub(crate) props: Arc<RwLock<P>>,
 	pub(crate) key_expr: Option<String>,
@@ -61,7 +66,7 @@ where
 		//dbg!(&key_expr);
 		let _props = self.props.clone();
 		let publ = self.communicator.create_publisher(key_expr).await;
-		let p = Publisher { _publisher: publ };
+		let p = Publisher { publisher: publ };
 
 		Ok(p)
 	}
@@ -77,7 +82,7 @@ where
 		collection
 			.write()
 			.expect("should never happen")
-			.push(p);
+			.insert(p.publisher.key_expr().to_string(), p);
 		Ok(())
 	}
 }
@@ -86,7 +91,25 @@ where
 // region:		--- Publisher
 /// Publisher
 pub struct Publisher<'a> {
-	_publisher: zenoh::publication::Publisher<'a>,
+	publisher: zenoh::publication::Publisher<'a>,
+}
+
+impl<'a> Publisher<'a> {
+	/// Send a "put" message
+	/// # Panics
+	///
+	pub fn put<T>(&self, message: T)
+	where
+		T: bitcode::Encode,
+	{
+		let value: Vec<u8> = bitcode::encode(&message).expect("should never happen");
+		let _ = self.publisher.put(value).res_sync();
+	}
+
+	/// Send a "delete" message
+	pub fn delete(&self) {
+		let _ = self.publisher.delete().res_sync();
+	}
 }
 // endregion:	--- Publisher
 

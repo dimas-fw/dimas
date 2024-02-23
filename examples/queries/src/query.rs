@@ -48,6 +48,7 @@ async fn main() -> Result<()> {
 	let mut counter = 0i128;
 	agent
 		.timer()
+		.name("timer")
 		.interval(duration)
 		.callback(move |ctx, props| {
 			info!("Querying [{counter}]");

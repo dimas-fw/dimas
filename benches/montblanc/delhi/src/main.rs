@@ -20,6 +20,7 @@ async fn main() -> Result<()> {
 
 	agent
 		.timer()
+		.name("timer")
 		.interval(Duration::from_secs(1))
 		.callback(|ctx, _props| {
 			let message = messages::Image::random();

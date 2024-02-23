@@ -3,7 +3,10 @@
 // region:		--- modules
 use super::communicator::Communicator;
 use crate::{context::Context, error::Result};
-use std::sync::{Arc, RwLock};
+use std::{
+	collections::HashMap,
+	sync::{Arc, RwLock},
+};
 use tokio::task::JoinHandle;
 use zenoh::{
 	prelude::{r#async::AsyncResolve, sync::SyncResolve},
@@ -60,7 +63,7 @@ pub struct QueryableBuilder<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	pub(crate) collection: Arc<RwLock<Vec<Queryable<P>>>>,
+	pub(crate) collection: Arc<RwLock<HashMap<String, Queryable<P>>>>,
 	pub(crate) communicator: Arc<Communicator>,
 	pub(crate) props: Arc<RwLock<P>>,
 	pub(crate) key_expr: Option<String>,
@@ -140,7 +143,7 @@ where
 		collection
 			.write()
 			.expect("should never happen")
-			.push(q);
+			.insert(q.key_expr.clone(), q);
 		Ok(())
 	}
 }

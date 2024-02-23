@@ -70,6 +70,7 @@ async fn main() -> Result<()> {
 	// use timer for regular publishing
 	agent
 		.timer()
+		.name("timer")
 		.interval(Duration::from_secs(1))
 		.callback(|ctx, props| {
 			let counter = props.read().expect("should never happen").counter;
