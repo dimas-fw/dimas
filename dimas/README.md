@@ -130,7 +130,7 @@ use std::sync::{Arc, RwLock};
 #[derive(Debug)]
 pub struct AgentProps {}
 
-fn callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn callback(_ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let message: String =	bitcode::decode(message).unwrap();
 	println!("Received '{}'", &message);
 }

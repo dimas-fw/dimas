@@ -12,7 +12,7 @@ use zenoh::prelude::sync::SyncResolve;
 
 // region:		--- types
 //#[allow(clippy::module_name_repetitions)]
-//pub type PublisherCallback<P> = fn(Arc<Context>, Arc<RwLock<P>>, sample: Sample);
+//pub type PublisherCallback<P> = fn(Arc<Context<P>>, Arc<RwLock<P>>, sample: Sample);
 // endregion:	--- types
 
 // region:		--- PublisherBuilder
