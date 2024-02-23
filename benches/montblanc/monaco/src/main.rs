@@ -14,11 +14,11 @@ use tracing::info;
 #[derive(Debug, Default)]
 struct AgentProps {}
 
-fn congo_callback(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn congo_callback(ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::Twist = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 	let msg = messages::Float32::random();
-	let _ = ctx.put("ohio", &msg);
+	let _ = ctx.put_with("ohio", &msg);
 	info!("sent: '{msg}'");
 }
 
@@ -28,6 +28,8 @@ async fn main() -> Result<()> {
 
 	let properties = AgentProps::default();
 	let mut agent = Agent::new(Config::default(), properties);
+
+	agent.publisher().msg_type("ohio").add()?;
 
 	agent
 		.subscriber()

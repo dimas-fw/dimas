@@ -14,7 +14,7 @@ use tracing::info;
 #[derive(Debug, Default)]
 struct AgentProps {}
 
-fn mekong_callback(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn mekong_callback(ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::TwistWithCovarianceStamped =
 		bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
@@ -26,7 +26,7 @@ fn mekong_callback(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message
 		header: value.header,
 		wrench,
 	};
-	let _ = ctx.put("lena", &msg);
+	let _ = ctx.put_with("lena", &msg);
 	info!("sent: '{msg}'");
 }
 
@@ -36,6 +36,8 @@ async fn main() -> Result<()> {
 
 	let properties = AgentProps::default();
 	let mut agent = Agent::new(Config::default(), properties);
+
+	agent.publisher().msg_type("mekong").add()?;
 
 	agent
 		.subscriber()

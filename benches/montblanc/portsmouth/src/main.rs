@@ -18,6 +18,8 @@ async fn main() -> Result<()> {
 	let properties = AgentProps {};
 	let mut agent = Agent::new(Config::default(), properties);
 
+	agent.publisher().msg_type("danube").add()?;
+
 	agent
 		.timer()
 		.name("timer")
@@ -25,7 +27,7 @@ async fn main() -> Result<()> {
 		.callback(move |ctx, _props| {
 			let value = "portsmouth/danube: ".to_string() + &messages::random_string(55);
 			let message = messages::StringMsg { data: value };
-			let _ = ctx.put("danube", &message);
+			let _ = ctx.put_with("danube", &message);
 			// just to see what value has been sent
 			info!("sent: '{message}'");
 		})

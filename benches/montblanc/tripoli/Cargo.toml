@@ -11,7 +11,7 @@ categories.workspace = true
 
 [dependencies]
 bitcode = { workspace = true }
-dimas = { workspace = true, features = ["subscriber"] }
+dimas = { workspace = true, features = ["publisher", "subscriber"] }
 messages = { path = "../messages" }
 tokio = { workspace = true }
 tracing = { workspace = true }

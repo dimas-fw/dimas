@@ -1,14 +1,13 @@
 // Copyright © 2023 Stephan Kunz
 
-use zenoh::prelude::sync::SyncResolve;
-
 // region:		--- modules
-use super::communicator::Communicator;
-use crate::prelude::*;
+use crate::{context::Context, error::Result};
 use std::{
 	collections::HashMap,
+	fmt::Debug,
 	sync::{Arc, RwLock},
 };
+use zenoh::prelude::sync::SyncResolve;
 // endregion:	--- modules
 
 // region:		--- types
@@ -20,16 +19,19 @@ use std::{
 /// The builder for a publisher
 #[allow(clippy::module_name_repetitions)]
 #[derive(Default, Clone)]
-pub struct PublisherBuilder<'a, P> {
-	pub(crate) collection: Arc<RwLock<HashMap<String, Publisher<'a>>>>,
-	pub(crate) communicator: Arc<Communicator>,
+pub struct PublisherBuilder<P>
+where
+	P: Debug + Send + Sync + Unpin + 'static,
+{
+	pub(crate) collection: Arc<RwLock<HashMap<String, Publisher>>>,
+	pub(crate) context: Arc<Context<P>>,
 	pub(crate) props: Arc<RwLock<P>>,
 	pub(crate) key_expr: Option<String>,
 }
 
-impl<'a, P> PublisherBuilder<'a, P>
+impl<P> PublisherBuilder<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// Set the full expression for the publisher
 	#[must_use]
@@ -42,7 +44,7 @@ where
 	/// Will be prefixed with agents prefix.
 	#[must_use]
 	pub fn msg_type(mut self, msg_type: impl Into<String>) -> Self {
-		let key_expr = self.communicator.clone().key_expr(msg_type);
+		let key_expr = self.context.key_expr(msg_type);
 		self.key_expr.replace(key_expr);
 		self
 	}
@@ -52,7 +54,7 @@ where
 	///
 	/// # Panics
 	///
-	pub async fn build(mut self) -> Result<Publisher<'a>> {
+	pub fn build(mut self) -> Result<Publisher> {
 		if self.key_expr.is_none() {
 			return Err("No key expression or msg type given".into());
 		}
@@ -65,7 +67,7 @@ where
 
 		//dbg!(&key_expr);
 		let _props = self.props.clone();
-		let publ = self.communicator.create_publisher(key_expr).await;
+		let publ = self.context.create_publisher(key_expr);
 		let p = Publisher { publisher: publ };
 
 		Ok(p)
@@ -76,9 +78,9 @@ where
 	///
 	/// # Panics
 	///
-	pub async fn add(self) -> Result<()> {
+	pub fn add(self) -> Result<()> {
 		let collection = self.collection.clone();
-		let p = self.build().await?;
+		let p = self.build()?;
 		collection
 			.write()
 			.expect("should never happen")
@@ -90,25 +92,43 @@ where
 
 // region:		--- Publisher
 /// Publisher
-pub struct Publisher<'a> {
-	publisher: zenoh::publication::Publisher<'a>,
+#[derive(Debug)]
+pub struct Publisher {
+	publisher: zenoh::publication::Publisher<'static>,
 }
 
-impl<'a> Publisher<'a> {
+impl Publisher
+//where
+//	P: Send + Sync + Unpin + 'a,
+{
 	/// Send a "put" message
+	/// # Errors
+	///
 	/// # Panics
 	///
-	pub fn put<T>(&self, message: T)
+	pub fn put<T>(&self, message: T) -> Result<()>
 	where
 		T: bitcode::Encode,
 	{
 		let value: Vec<u8> = bitcode::encode(&message).expect("should never happen");
-		let _ = self.publisher.put(value).res_sync();
+		//let _ = self.publisher.put(value).res_sync();
+		match self.publisher.put(value).res_sync() {
+			Ok(()) => Ok(()),
+			Err(_) => Err("Publish failed".into()),
+		}
 	}
 
-	/// Send a "delete" message
-	pub fn delete(&self) {
-		let _ = self.publisher.delete().res_sync();
+	// TODO!
+	/// Send a "delete" message - method currently does not work!!
+	/// # Errors
+	///
+	/// # Panics
+	///
+	pub fn delete(&self) -> Result<()> {
+		match self.publisher.delete().res_sync() {
+			Ok(()) => Ok(()),
+			Err(_) => Err("Delete failed".into()),
+		}
 	}
 }
 // endregion:	--- Publisher
@@ -117,6 +137,7 @@ impl<'a> Publisher<'a> {
 mod tests {
 	use super::*;
 
+	#[derive(Debug)]
 	struct Props {}
 
 	// check, that the auto traits are available

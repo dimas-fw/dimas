@@ -20,30 +20,30 @@ struct AgentProps {
 	tigris: f32,
 }
 
-fn tigris_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn tigris_callback(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::Float32 = bitcode::decode(message).expect("should not happen");
 	props.write().expect("should not happen").tigris = value.data;
 	info!("received: '{}'", &value);
 }
 
-fn ganges_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn ganges_callback(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::Int64 = bitcode::decode(message).expect("should not happen");
 	props.write().expect("should not happen").ganges = value.data;
 	info!("received: '{}'", &value);
 }
 
-fn nile_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn nile_callback(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::Int32 = bitcode::decode(message).expect("should not happen");
 	props.write().expect("should not happen").nile = value.data;
 	info!("received: '{}'", &value);
 }
 
-fn danube_callback(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn danube_callback(ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::StringMsg = bitcode::decode(message).expect("should not happen");
 	let msg = messages::StringMsg {
 		data: format!("hamburg/parana: {}", &value.data),
 	};
-	let _ = ctx.put("parana", &msg);
+	let _ = ctx.put_with("parana", &msg);
 	info!("sent: '{msg}'");
 }
 
@@ -53,6 +53,8 @@ async fn main() -> Result<()> {
 
 	let properties = AgentProps::default();
 	let mut agent = Agent::new(Config::default(), properties);
+
+	agent.publisher().msg_type("parana").add()?;
 
 	agent
 		.subscriber()

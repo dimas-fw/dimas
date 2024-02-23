@@ -37,6 +37,9 @@ async fn main() -> Result<()> {
 	// create an agent with the properties and the prefix given by `args`
 	let mut agent = Agent::new_with_prefix(Config::default(), properties, &args.prefix);
 
+	// create publisher for topic "hello"
+	agent.publisher().msg_type("hello").add()?;
+
 	// use timer for regular publishing
 	agent
 		.timer()
@@ -51,8 +54,8 @@ async fn main() -> Result<()> {
 
 			let text = "Hello World! [".to_string() + &counter + "]";
 			info!("Sending '{}'", &text);
-			// publishing with ad-hoc publisher
-			let _ = ctx.put("hello", text);
+			// publishing with stored publisher
+			let _ = ctx.put_with("hello", text);
 			props
 				.write()
 				.expect("should never happen")
@@ -68,7 +71,7 @@ async fn main() -> Result<()> {
 		.interval(duration)
 		.callback(move |ctx, _props| {
 			info!("Deleting");
-			// sending with ad-hoc delete
+			// delete with ad-hoc publisher
 			let _ = ctx.delete("hello");
 		})
 		.add()?;

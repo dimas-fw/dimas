@@ -21,29 +21,29 @@ struct AgentProps {
 	colorado: Option<messages::Image>,
 }
 
-fn parana_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn parana_callback(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::StringMsg = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 	props.write().expect("should not happen").parana = Some(value);
 }
 
-fn columbia_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn columbia_callback(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::Image = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 	props.write().expect("should not happen").columbia = Some(value);
 }
 
-fn colorado_callback(ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn colorado_callback(ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::Image = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 	props.write().expect("should not happen").colorado = Some(value);
 
 	let message = messages::PointCloud2::random();
-	let _ = ctx.put("salween", &message);
+	let _ = ctx.put_with("salween", &message);
 	info!("sent: '{}'", message);
 
 	let message = messages::LaserScan::random();
-	let _ = ctx.put("godavari", &message);
+	let _ = ctx.put_with("godavari", &message);
 	info!("sent: '{}'", message);
 }
 
@@ -71,6 +71,10 @@ async fn main() -> Result<()> {
 		.put_callback(colorado_callback)
 		.msg_type("colorado")
 		.add()?;
+
+	agent.publisher().msg_type("salween").add()?;
+
+	agent.publisher().msg_type("godavari").add()?;
 
 	agent.start().await;
 	Ok(())

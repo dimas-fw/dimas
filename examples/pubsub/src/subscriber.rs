@@ -21,13 +21,13 @@ struct Args {
 #[derive(Debug)]
 struct AgentProps {}
 
-fn hello_publishing(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn hello_publishing(_ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let message: String = bitcode::decode(message).expect("should not happen");
-	info!("Received '{}'", &message);
+	info!("Received '{message}'");
 }
 
-fn hello_deletion(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>) {
-	info!("Shall delete 'hello'");
+fn hello_deletion(_ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps>>) {
+	info!("Shall delete 'hello' message");
 }
 
 #[tokio::main]

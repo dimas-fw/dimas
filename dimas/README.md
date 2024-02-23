@@ -74,6 +74,12 @@ async fn main() -> Result<()> {
 	// create an agent with the properties
 	let mut agent = Agent::new(Config::default(), properties);
 
+	// create publisher for topic "hello"
+	agent
+		.publisher()
+		.msg_type("hello")
+		.add()?;
+
 	// use a timer for regular publishing of "hello" topic
 	agent
 		// get the TimerBuilder from the agent
@@ -94,8 +100,8 @@ async fn main() -> Result<()> {
 				let text = "Hello World! [".to_string() + &counter + "]";
 				// just to see what will be sent
 				println!("Sending '{}'", &text);
-				// publishing with ad-hoc publisher as topic "hello"
-				let _ = ctx.publish("hello", text);
+				// publishing with stored publisher for topic "hello"
+				let _ = ctx.put_with("hello", text);
 				// modify counter in properties
 				props
 					.write()

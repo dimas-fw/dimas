@@ -32,62 +32,62 @@ struct AgentProps {
 	volga: Option<messages::Float64>,
 }
 
-fn danube_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn danube_callback(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::StringMsg = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 	props.write().expect("should not happen").danube = Some(value);
 }
 
-fn tagus_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn tagus_callback(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::Pose = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 	props.write().expect("should not happen").tagus = Some(value);
 }
 
-fn missouri_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn missouri_callback(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::Image = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 	props.write().expect("should not happen").missouri = Some(value);
 }
 
-fn brazos_callback(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn brazos_callback(ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::PointCloud2 = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 
 	let message = messages::Twist::random();
-	let _ = ctx.put("congo", &message);
+	let _ = ctx.put_with("congo", &message);
 	info!("sent: '{}'", message);
 
 	let message = messages::TwistWithCovarianceStamped::random();
-	let _ = ctx.put("mekong", &message);
+	let _ = ctx.put_with("mekong", &message);
 	info!("sent: '{}'", message);
 }
 
-fn yamuna_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn yamuna_callback(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::Vector3 = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 	props.write().expect("should not happen").yamuna = Some(value);
 }
 
-fn godavari_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn godavari_callback(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::LaserScan = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 	props.write().expect("should not happen").godavari = Some(value);
 }
 
-fn loire_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn loire_callback(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::PointCloud2 = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 	props.write().expect("should not happen").loire = Some(value);
 }
 
-fn ohio_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn ohio_callback(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::Float32 = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 	props.write().expect("should not happen").ohio = Some(value);
 }
 
-fn volga_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn volga_callback(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::Float64 = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 	props.write().expect("should not happen").volga = Some(value);
@@ -153,6 +153,10 @@ async fn main() -> Result<()> {
 		.put_callback(volga_callback)
 		.msg_type("volga")
 		.add()?;
+
+	agent.publisher().msg_type("congo").add()?;
+
+	agent.publisher().msg_type("mekong").add()?;
 
 	agent.start().await;
 	Ok(())

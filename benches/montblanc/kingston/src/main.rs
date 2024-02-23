@@ -18,13 +18,15 @@ async fn main() -> Result<()> {
 	let properties = AgentProps {};
 	let mut agent = Agent::new(Config::local(), properties);
 
+	agent.publisher().msg_type("yamuna").add()?;
+
 	agent
 		.timer()
 		.name("timer")
 		.interval(Duration::from_millis(100))
 		.callback(|ctx, _props| {
 			let message = messages::Vector3::random();
-			let _ = ctx.put("yamuna", &message);
+			let _ = ctx.put_with("yamuna", &message);
 			// just to see what value has been sent
 			info!("sent: '{message}'");
 		})

@@ -11,11 +11,11 @@ use tracing::info;
 #[derive(Debug)]
 struct AgentProps {}
 
-fn columbia_callback(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn columbia_callback(ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let mut value: messages::Image = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 	value.header.frame_id = value.header.frame_id.replace("Test", "Modified");
-	let _ = ctx.put("colorado", &value);
+	let _ = ctx.put_with("colorado", &value);
 	info!("received: '{}'", value);
 }
 
@@ -25,6 +25,8 @@ async fn main() -> Result<()> {
 
 	let properties = AgentProps {};
 	let mut agent = Agent::new(Config::local(), properties);
+
+	agent.publisher().msg_type("colorado").add()?;
 
 	agent
 		.subscriber()

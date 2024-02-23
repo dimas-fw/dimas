@@ -21,10 +21,10 @@ struct Args {
 }
 // endregion:	--- Clap
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct AgentProps {}
 
-fn query_callback(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, answer: &[u8]) {
+fn query_callback(_ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps>>, answer: &[u8]) {
 	let message: String = bitcode::decode(answer).expect("should not happen");
 	info!("Received '{}'", &message);
 }
@@ -43,6 +43,9 @@ async fn main() -> Result<()> {
 	// create an agent with the properties
 	let mut agent = Agent::new_with_prefix(Config::default(), properties, &args.prefix);
 
+	// create publisher for topic "ping"
+	agent.query().msg_type("query").callback(query_callback).add()?;
+
 	// timer for regular querying
 	let duration = Duration::from_secs(1);
 	let mut counter = 0i128;
@@ -50,10 +53,10 @@ async fn main() -> Result<()> {
 		.timer()
 		.name("timer")
 		.interval(duration)
-		.callback(move |ctx, props| {
+		.callback(move |ctx, _props| {
 			info!("Querying [{counter}]");
-			// querying with ad-hoc query
-			ctx.get(ctx.clone(), props, "query", query_callback);
+			// querying with stored query
+			ctx.get_with("query");
 			counter += 1;
 		})
 		.add()?;

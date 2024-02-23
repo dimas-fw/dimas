@@ -4,8 +4,10 @@
 use super::query::QueryCallback;
 use crate::context::Context;
 use crate::error::Result;
-use std::sync::Arc;
-use std::sync::RwLock;
+use std::{
+	fmt::Debug,
+	sync::{Arc, RwLock},
+};
 #[cfg(feature = "liveliness")]
 use zenoh::liveliness::LivelinessToken;
 use zenoh::prelude::{r#async::*, sync::SyncResolve};
@@ -81,20 +83,16 @@ impl Communicator {
 			.expect("should never happen")
 	}
 
-	pub(crate) async fn create_publisher<'a>(
-		&self,
-		key_expr: impl Into<String> + Send,
-	) -> Publisher<'a> {
+	pub(crate) fn create_publisher<'a>(&self, key_expr: impl Into<String> + Send) -> Publisher<'a> {
 		self.session
 			.declare_publisher(key_expr.into())
-			.res_async()
-			.await
+			.res_sync()
 			.expect("should never happen")
 	}
 
-	pub(crate) fn put<T>(&self, msg_name: impl Into<String>, message: T) -> Result<()>
+	pub(crate) fn put<M>(&self, msg_name: impl Into<String>, message: M) -> Result<()>
 	where
-		T: bitcode::Encode,
+		M: bitcode::Encode,
 	{
 		let value: Vec<u8> = bitcode::encode(&message).expect("should never happen");
 		let key_expr = self.key_expr(msg_name);
@@ -116,13 +114,13 @@ impl Communicator {
 
 	pub(crate) fn get<P>(
 		&self,
-		ctx: Arc<Context>,
+		ctx: Arc<Context<P>>,
 		props: Arc<RwLock<P>>,
 		query_name: impl Into<String>,
 		mode: ConsolidationMode,
 		callback: QueryCallback<P>,
 	) where
-		P: Send + Sync + Unpin + 'static,
+		P: Debug + Send + Sync + Unpin + 'static,
 	{
 		let key_expr = self.key_expr(query_name);
 		//dbg!(&key_expr);

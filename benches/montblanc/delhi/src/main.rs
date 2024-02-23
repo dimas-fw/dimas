@@ -18,13 +18,15 @@ async fn main() -> Result<()> {
 	let properties = AgentProps {};
 	let mut agent = Agent::new(Config::local(), properties);
 
+	agent.publisher().msg_type("columbia").add()?;
+
 	agent
 		.timer()
 		.name("timer")
 		.interval(Duration::from_secs(1))
 		.callback(|ctx, _props| {
 			let message = messages::Image::random();
-			let _ = ctx.put("columbia", &message);
+			let _ = ctx.put_with("columbia", &message);
 			// just to see what has been sent
 			info!("sent: '{message}'");
 		})

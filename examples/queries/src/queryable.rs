@@ -18,12 +18,12 @@ struct Args {
 }
 // endregion:	--- Clap
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct AgentProps {
 	counter: u128,
 }
 
-fn queryable(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, request: &Request) {
+fn queryable(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, request: &Request) {
 	let value = props
 		.read()
 		.expect("should never happen")
@@ -48,7 +48,7 @@ async fn main() -> Result<()> {
 	let args = Args::parse();
 
 	// create & initialize agents properties
-	let properties = AgentProps { counter: 1 };
+	let properties = AgentProps { counter: 0 };
 
 	// create an agent with the properties
 	let mut agent = Agent::new_with_prefix(Config::default(), properties, &args.prefix);

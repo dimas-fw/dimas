@@ -1,7 +1,6 @@
 // Copyright © 2023 Stephan Kunz
 
 // region:		--- modules
-use crate::com::communicator::Communicator;
 #[cfg(feature = "liveliness")]
 use crate::com::liveliness_subscriber::{LivelinessSubscriber, LivelinessSubscriberBuilder};
 #[cfg(feature = "publisher")]
@@ -14,6 +13,7 @@ use crate::com::queryable::{Queryable, QueryableBuilder};
 use crate::com::subscriber::{Subscriber, SubscriberBuilder};
 #[cfg(feature = "timer")]
 use crate::timer::{Timer, TimerBuilder};
+use crate::{com::communicator::Communicator, context::Context};
 #[cfg(any(
 	feature = "publisher",
 	feature = "query",
@@ -60,7 +60,7 @@ where
 	queryables: Arc<RwLock<HashMap<String, Queryable<P>>>>,
 	// registered publisher
 	#[cfg(feature = "publisher")]
-	publishers: Arc<RwLock<HashMap<String, Publisher<'a>>>>,
+	publishers: Arc<RwLock<HashMap<String, Publisher>>>,
 	// registered queries
 	#[cfg(feature = "query")]
 	queries: Arc<RwLock<HashMap<String, Query<P>>>>,
@@ -184,6 +184,16 @@ where
 		self.liveliness = activate;
 	}
 
+	fn get_context(&self) -> Arc<Context<P>> {
+		Arc::new(Context {
+			communicator: self.com.clone(),
+			#[cfg(feature = "publisher")]
+			publishers: self.publishers.clone(),
+			#[cfg(feature = "query")]
+			queries: self.queries.clone(),
+		})
+	}
+
 	//#[cfg_attr(doc, doc(cfg(feature = "liveliness")))]
 	/// get a builder for a subscriber for the liveliness information
 	#[cfg(feature = "liveliness")]
@@ -191,7 +201,7 @@ where
 	pub fn liveliness_subscriber(&self) -> LivelinessSubscriberBuilder<P> {
 		LivelinessSubscriberBuilder {
 			subscriber: self.liveliness_subscriber.clone(),
-			communicator: self.com.clone(),
+			context: self.get_context(),
 			props: self.props.clone(),
 			key_expr: None,
 			put_callback: None,
@@ -206,7 +216,7 @@ where
 	pub fn subscriber(&self) -> SubscriberBuilder<P> {
 		SubscriberBuilder {
 			collection: self.subscribers.clone(),
-			communicator: self.com.clone(),
+			context: self.get_context(),
 			props: self.props.clone(),
 			key_expr: None,
 			put_callback: None,
@@ -221,7 +231,7 @@ where
 	pub fn queryable(&self) -> QueryableBuilder<P> {
 		QueryableBuilder {
 			collection: self.queryables.clone(),
-			communicator: self.com.clone(),
+			context: self.get_context(),
 			props: self.props.clone(),
 			key_expr: None,
 			callback: None,
@@ -232,10 +242,10 @@ where
 	/// get a builder for a Publisher
 	#[cfg(feature = "publisher")]
 	#[must_use]
-	pub fn publisher(&self) -> PublisherBuilder<'a, P> {
+	pub fn publisher(&self) -> PublisherBuilder<P> {
 		PublisherBuilder {
 			collection: self.publishers.clone(),
-			communicator: self.com.clone(),
+			context: self.get_context(),
 			props: self.props.clone(),
 			key_expr: None,
 		}
@@ -248,7 +258,7 @@ where
 	pub fn query(&self) -> QueryBuilder<P> {
 		QueryBuilder {
 			collection: self.queries.clone(),
-			communicator: self.com.clone(),
+			context: self.get_context(),
 			props: self.props.clone(),
 			key_expr: None,
 			mode: None,
@@ -263,8 +273,8 @@ where
 	pub fn timer(&self) -> TimerBuilder<P> {
 		TimerBuilder {
 			collection: self.timers.clone(),
-			communicator: self.com.clone(),
 			props: self.props.clone(),
+			context: self.get_context(),
 			name: None,
 			delay: None,
 			interval: None,

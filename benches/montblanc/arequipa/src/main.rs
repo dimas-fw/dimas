@@ -19,7 +19,7 @@ struct AgentProps {
 	file: File,
 }
 
-fn arkansas_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn arkansas_callback(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::StringMsg = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value.data);
 	let final_data = format!("{}\n", value.data);

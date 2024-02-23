@@ -22,13 +22,13 @@ struct AgentProps {
 	volga: Option<messages::Float64>,
 }
 
-fn lena_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn lena_callback(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::WrenchStamped = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 	props.write().expect("should not happen").lena = Some(value);
 }
 
-fn murray_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn murray_callback(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::Vector3Stamped = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 	props.write().expect("should not happen").murray = Some(value);
@@ -40,6 +40,8 @@ async fn main() -> Result<()> {
 
 	let properties = AgentProps::default();
 	let mut agent = Agent::new(Config::local(), properties);
+
+	agent.publisher().msg_type("volga").add()?;
 
 	agent
 		.subscriber()
@@ -60,7 +62,7 @@ async fn main() -> Result<()> {
 		.callback(|ctx, props| {
 			let message = messages::Float64::random();
 			let value = message.data;
-			let _ = ctx.put("volga", &message);
+			let _ = ctx.put_with("volga", &message);
 			props.write().expect("should not happen").volga = Some(message);
 			// just to see what value has been sent
 			info!("sent: '{value}'");

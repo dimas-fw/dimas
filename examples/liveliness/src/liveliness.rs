@@ -21,11 +21,11 @@ struct Args {
 #[derive(Debug, Default)]
 struct AgentProps {}
 
-fn liveliness_subscription(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, agent_id: &str) {
+fn liveliness_subscription(_ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps>>, agent_id: &str) {
 	info!("{agent_id} is alive");
 }
 
-fn delete_subscription(_ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, agent_id: &str) {
+fn delete_subscription(_ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps>>, agent_id: &str) {
 	info!("{agent_id} died");
 }
 

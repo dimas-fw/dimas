@@ -16,18 +16,18 @@ struct AgentProps {
 	columbia: Option<messages::Image>,
 }
 
-fn columbia_callback(_ctx: &Arc<Context>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn columbia_callback(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::Image = bitcode::decode(message).expect("should not happen");
 	// just to see what has been sent
 	info!("received: '{}'", &value);
 	props.write().expect("should not happen").columbia = Some(value);
 }
 
-fn godavari_callback(ctx: &Arc<Context>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn godavari_callback(ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
 	let value: messages::LaserScan = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 	let msg = messages::PointCloud2::random();
-	let _ = ctx.put("loire", &msg);
+	let _ = ctx.put_with("loire", &msg);
 	info!("received: '{}'", msg);
 }
 
@@ -49,6 +49,8 @@ async fn main() -> Result<()> {
 		.put_callback(godavari_callback)
 		.msg_type("godavari")
 		.add()?;
+
+	agent.publisher().msg_type("loire").add()?;
 
 	agent.start().await;
 	Ok(())
