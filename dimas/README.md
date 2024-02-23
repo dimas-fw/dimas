@@ -21,9 +21,9 @@ The feature `all`, including all available features, is a good point to start wi
 
 ```toml
 [dependencies]
-dimas = { version = "0.0.4", features = ["all"] }
+dimas = { version = "0.0.5", features = ["all"] }
 bitcode = "0.5"
-tokio = { version = "1",features = ["macros"] }
+tokio = { version = "1", features = ["macros"] }
 ```
 
 DiMAS needs an `async` runtime. So you have to define your `main` function as an `async` function.
@@ -48,7 +48,7 @@ Your `Cargo.toml` should include
 
 ```toml
 [dependencies]
-dimas = { version = "0.0.4", features = ["timer", "subscriber"] }
+dimas = { version = "0.0.5", features = ["timer", "subscriber"] }
 bitcode = "0.5"
 tokio = { version = "1",features = ["macros"] }
 ```
@@ -174,8 +174,8 @@ It is necessary to enable all those features you want to use within your `Agent`
 
 - `all`: Enables all the features listed below. It's a good point to start with.
 - `liveliness`: Enables liveliness features sending tokens and listening for them.
-- `publisher`: Enables to store Pulishers within the Agent's Context.
-- `query`: Enables to store Queries within the Agent's Context.
-- `queryable`: Enables to store Queryables within the Agent's Context.
-- `subscriber`: Enables to store Subscibers within the Agent's Context.
-- `timer`: Enables to store Timer within the Agent's Context.
+- `publisher`: Enables to store `Publisher`'s within the `Agent`'s `Context`.
+- `query`: Enables to store `Query`'s within the `Agent`'s `Context`.
+- `queryable`: Enables to store `Queryable`'s within the `Agent`'s `Context`.
+- `subscriber`: Enables to store `Subsciber`'s within the `Agent`'s `Context`.
+- `timer`: Enables to store `Timer`'s within the `Agent`'s `Context`.

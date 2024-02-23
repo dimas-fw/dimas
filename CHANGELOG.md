@@ -16,16 +16,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 
-## [0.0.4] - 2024-??-?? <br>_Has breaking changes!!_
+## [0.0.5] - 202?-??-??
 
 ### Added
-- introduce `tracing` support
+
+### Changed
+
+### Fixed
+
+### Removed
+
+
+## [0.0.4] - 2024-02-23 <br>_Has breaking changes!!_
+
+### Added
+- Ability to store Publisher's and Query's in Agent's Context
+- Introduce `tracing` support
 - Agent::new_with_prefix() - as replacement for the old agent::new()
 - benchmarks
   - benches/montblanc/* - an implementation of the Montblanc benchmark for robots
   - benches/montblanc/tmux-robot.sh - a tmux script to run all of the robots nodes
   - benches/montblanc/tmux-workstation.sh - a tmux script to run all of the workstations nodes
-- examples
+- Examples
   - examples/tmux-exampes.sh - a tmux script to run all the examples
 
 ### Changed
@@ -35,8 +47,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - cleanup dependencies
-
-### Removed
 
 
 ## [0.0.3] - 2024-02-08 <br>_Has breaking changes!!_
