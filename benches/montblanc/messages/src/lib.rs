@@ -528,12 +528,14 @@ impl Image {
 			timestamp: Timestamp::now(),
 			frame_id: "Image ".to_string() + &number.to_string(),
 		};
-		let height = random();
-		let width = random();
+		let tmp_height: u16 = random();
+		let tmp_width: u16 = random();
+		let height = u32::from(tmp_height);
+		let width = u32::from(tmp_width);
 		let encodings = random_string(32);
 		let is_bigendian = random();
-		let step = 2 * width;
-		let data = Vec::with_capacity((step * height) as usize);
+		let step = 2 * u32::from(tmp_width);
+		let data = Vec::with_capacity(step as usize * height as usize);
 		Self {
 			header,
 			height,

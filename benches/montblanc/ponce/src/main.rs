@@ -100,6 +100,10 @@ async fn main() -> Result<()> {
 	let properties = AgentProps::default();
 	let mut agent = Agent::new(Config::default(), properties);
 
+	agent.publisher().msg_type("congo").add()?;
+
+	agent.publisher().msg_type("mekong").add()?;
+
 	agent
 		.subscriber()
 		.put_callback(danube_callback)
@@ -153,10 +157,6 @@ async fn main() -> Result<()> {
 		.put_callback(volga_callback)
 		.msg_type("volga")
 		.add()?;
-
-	agent.publisher().msg_type("congo").add()?;
-
-	agent.publisher().msg_type("mekong").add()?;
 
 	agent.start().await;
 	Ok(())

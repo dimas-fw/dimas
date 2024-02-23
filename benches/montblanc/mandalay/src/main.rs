@@ -112,6 +112,10 @@ async fn main() -> Result<()> {
 
 	agent.publisher().msg_type("tagus").add()?;
 
+	agent.publisher().msg_type("missouri").add()?;
+
+	agent.publisher().msg_type("brazos").add()?;
+
 	agent
 		.timer()
 		.name("timer")
