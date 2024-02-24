@@ -132,7 +132,6 @@ where
 // endregion:	--- TimerBuilder
 
 // region:		--- Timer
-//#[derive(Debug, Clone)]
 /// Timer
 pub enum Timer<P>
 where
@@ -189,11 +188,7 @@ where
 				let ctx = context.clone();
 				let props = props.clone();
 				handle.replace(tokio::spawn(async move {
-					let mut interval = time::interval(interval);
-					loop {
-						interval.tick().await;
-						cb.lock().await(ctx.clone(), props.clone());
-					}
+					run_timer(interval, cb, ctx, props).await;
 				}));
 			}
 			Self::DelayedInterval {
@@ -211,11 +206,7 @@ where
 				let props = props.clone();
 				handle.replace(tokio::spawn(async move {
 					tokio::time::sleep(delay).await;
-					let mut interval = time::interval(interval);
-					loop {
-						interval.tick().await;
-						cb.lock().await(ctx.clone(), props.clone());
-					}
+					run_timer(interval, cb, ctx, props).await;
 				}));
 			}
 		}
@@ -247,6 +238,18 @@ where
 					.abort();
 			}
 		}
+	}
+}
+
+//#[tracing::instrument(level = tracing::Level::DEBUG)]
+async fn run_timer<P>(interval: Duration, cb: TimerCallback<P>, ctx: Arc<Context<P>>, props: Arc<RwLock<P>>)
+where
+	P: Debug + Send + Sync + Unpin + 'static,
+{
+	let mut interval = time::interval(interval);
+	loop {
+		interval.tick().await;
+		cb.lock().await(ctx.clone(), props.clone());
 	}
 }
 // endregion:	--- Timer

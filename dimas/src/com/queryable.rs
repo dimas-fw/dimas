@@ -174,22 +174,7 @@ where
 		let ctx = self.context.clone();
 		let props = self.props.clone();
 		self.handle.replace(tokio::spawn(async move {
-			let session = ctx.communicator.session.clone();
-			let subscriber = session
-				.declare_queryable(&key_expr)
-				.res_async()
-				.await
-				.expect("should never happen");
-
-			loop {
-				let query = subscriber
-					.recv_async()
-					.await
-					.expect("should never happen");
-				//dbg!(&query);
-				let request = Request { query };
-				cb(&ctx, &props, &request);
-			}
+			run_queryable(key_expr, cb, ctx, props).await;
 		}));
 	}
 
@@ -201,6 +186,29 @@ where
 			.take()
 			.expect("should never happen")
 			.abort();
+	}
+}
+
+#[tracing::instrument(level = tracing::Level::DEBUG)]
+async fn run_queryable<P>(key_expr:String, cb: QueryableCallback<P>, ctx: Arc<Context<P>>, props: Arc<RwLock<P>>)
+where
+	P: Debug + Send + Sync + Unpin + 'static,
+{
+	let session = ctx.communicator.session.clone();
+	let subscriber = session
+		.declare_queryable(&key_expr)
+		.res_async()
+		.await
+		.expect("should never happen");
+
+	loop {
+		let query = subscriber
+			.recv_async()
+			.await
+			.expect("should never happen");
+		//dbg!(&query);
+		let request = Request { query };
+		cb(&ctx, &props, &request);
 	}
 }
 // endregion:	--- Queryable

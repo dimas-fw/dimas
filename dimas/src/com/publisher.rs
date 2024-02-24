@@ -106,9 +106,10 @@ impl Publisher
 	///
 	/// # Panics
 	///
+	#[tracing::instrument(level = tracing::Level::DEBUG)]
 	pub fn put<T>(&self, message: T) -> Result<()>
 	where
-		T: bitcode::Encode,
+		T: Debug + bitcode::Encode,
 	{
 		let value: Vec<u8> = bitcode::encode(&message).expect("should never happen");
 		//let _ = self.publisher.put(value).res_sync();
@@ -124,6 +125,7 @@ impl Publisher
 	///
 	/// # Panics
 	///
+	#[tracing::instrument(level = tracing::Level::DEBUG)]
 	pub fn delete(&self) -> Result<()> {
 		match self.publisher.delete().res_sync() {
 			Ok(()) => Ok(()),

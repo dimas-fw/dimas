@@ -13,7 +13,7 @@ use zenoh::prelude::{r#async::AsyncResolve, SampleKind};
 // region:		--- types
 /// Type definition for liveliness subscribers 'publish' callback function
 #[allow(clippy::module_name_repetitions)]
-pub type LivelinessSubscriberCallback<P> = fn(&Arc<Context<P>>, &Arc<RwLock<P>>, agent_id: &str);
+pub type LivelinessPutCallback<P> = fn(&Arc<Context<P>>, &Arc<RwLock<P>>, agent_id: &str);
 /// Type definition for a liveliness subscribers `delete` callback function
 pub type LivelinessDeleteCallback<P> = fn(&Arc<Context<P>>, &Arc<RwLock<P>>, agent_id: &str);
 // endregion:	--- types
@@ -30,7 +30,7 @@ where
 	pub(crate) props: Arc<RwLock<P>>,
 	pub(crate) context: Arc<Context<P>>,
 	pub(crate) key_expr: Option<String>,
-	pub(crate) put_callback: Option<LivelinessSubscriberCallback<P>>,
+	pub(crate) put_callback: Option<LivelinessPutCallback<P>>,
 	pub(crate) delete_callback: Option<LivelinessDeleteCallback<P>>,
 }
 
@@ -61,7 +61,7 @@ where
 
 	/// Set liveliness subscribers callback for `put` messages
 	#[must_use]
-	pub fn put_callback(mut self, callback: LivelinessSubscriberCallback<P>) -> Self {
+	pub fn put_callback(mut self, callback: LivelinessPutCallback<P>) -> Self {
 		self.put_callback.replace(callback);
 		self
 	}
@@ -117,7 +117,7 @@ where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
 	key_expr: String,
-	put_callback: LivelinessSubscriberCallback<P>,
+	put_callback: LivelinessPutCallback<P>,
 	delete_callback: Option<LivelinessDeleteCallback<P>>,
 	handle: Option<JoinHandle<()>>,
 	context: Arc<Context<P>>,
@@ -152,63 +152,16 @@ where
 		let props = self.props.clone();
 		//dbg!(&key_expr);
 		self.handle.replace(tokio::spawn(async move {
-			let session = ctx.communicator.session.clone();
-			let subscriber = session
-				.liveliness()
-				.declare_subscriber(&key_expr)
-				.res_async()
-				.await
-				.expect("should never happen");
-
-			let repl = key_expr + "/";
-			loop {
-				let sample = subscriber
-					.recv_async()
-					.await
-					.expect("should never happen");
-				let agent_id = sample.key_expr.to_string().replace(&repl, "");
-				match sample.kind {
-					SampleKind::Put => {
-						p_cb(&ctx, &props, &agent_id);
-					}
-					SampleKind::Delete => {
-						if let Some(cb) = d_cb {
-							cb(&ctx, &props, &agent_id);
-						}
-					}
-				}
-			}
+			run_liveliness(key_expr, p_cb, d_cb, ctx, props).await;
 		}));
 
 		// the initial liveliness query
 		let key_expr = self.key_expr.clone();
-		let cb = self.put_callback;
+		let p_cb = self.put_callback;
 		let ctx = self.context.clone();
 		let props = self.props.clone();
 		tokio::spawn(async move {
-			let session = ctx.communicator.session.clone();
-			let replies = session
-				.liveliness()
-				.get(&key_expr)
-				//.timeout(Duration::from_millis(500))
-				.res()
-				.await
-				.expect("should never happen");
-
-			let repl = key_expr + "/";
-			while let Ok(reply) = replies.recv_async().await {
-				match reply.sample {
-					Ok(sample) => {
-						//dbg!(&sample);
-						let agent_id = sample.key_expr.to_string().replace(&repl, "");
-						cb(&ctx, &props, &agent_id);
-					}
-					Err(err) => println!(
-						">> Received (ERROR: '{}')",
-						String::try_from(&err).expect("to be implemented")
-					),
-				}
-			}
+			run_initial(key_expr, p_cb, ctx, props).await;
 		});
 	}
 
@@ -217,6 +170,69 @@ where
 			.take()
 			.expect("should never happen")
 			.abort();
+	}
+}
+
+#[tracing::instrument(level = tracing::Level::DEBUG)]
+async fn run_liveliness<P>(key_expr:String, p_cb: LivelinessPutCallback<P>, d_cb: Option<LivelinessDeleteCallback<P>>, ctx: Arc<Context<P>>, props: Arc<RwLock<P>>)
+where
+	P: Debug + Send + Sync + Unpin + 'static,
+{
+	let session = ctx.communicator.session.clone();
+	let subscriber = session
+		.liveliness()
+		.declare_subscriber(&key_expr)
+		.res_async()
+		.await
+		.expect("should never happen");
+
+	let replacement = key_expr + "/";
+	loop {
+		let sample = subscriber
+			.recv_async()
+			.await
+			.expect("should never happen");
+		let agent_id = sample.key_expr.to_string().replace(&replacement, "");
+		match sample.kind {
+			SampleKind::Put => {
+				p_cb(&ctx, &props, &agent_id);
+			}
+			SampleKind::Delete => {
+				if let Some(cb) = d_cb {
+					cb(&ctx, &props, &agent_id);
+				}
+			}
+		}
+	}
+}
+
+#[tracing::instrument(level = tracing::Level::DEBUG)]
+async fn run_initial<P>(key_expr:String, p_cb: LivelinessPutCallback<P>, ctx: Arc<Context<P>>, props: Arc<RwLock<P>>)
+where
+	P: Debug + Send + Sync + Unpin + 'static,
+{
+	let session = ctx.communicator.session.clone();
+	let replies = session
+		.liveliness()
+		.get(&key_expr)
+		//.timeout(Duration::from_millis(500))
+		.res()
+		.await
+		.expect("should never happen");
+
+	let repl = key_expr + "/";
+	while let Ok(reply) = replies.recv_async().await {
+		match reply.sample {
+			Ok(sample) => {
+				//dbg!(&sample);
+				let agent_id = sample.key_expr.to_string().replace(&repl, "");
+				p_cb(&ctx, &props, &agent_id);
+			}
+			Err(err) => println!(
+				">> Received (ERROR: '{}')",
+				String::try_from(&err).expect("to be implemented")
+			),
+		}
 	}
 }
 // endregion:	--- Subscriber

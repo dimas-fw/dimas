@@ -145,6 +145,7 @@ where
 	/// run a query
 	/// # Panics
 	///
+	#[tracing::instrument(level = tracing::Level::DEBUG)]
 	pub fn get(&self) {
 		let cb = self.callback;
 		let replies = self

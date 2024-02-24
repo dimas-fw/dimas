@@ -159,39 +159,12 @@ where
 	///
 	pub fn start(&mut self) {
 		let key_expr = self.key_expr.clone();
-		let cb = self.put_callback;
+		let p_cb = self.put_callback;
 		let d_cb = self.delete_callback;
 		let ctx = self.context.clone();
 		let props = self.props.clone();
 		self.handle.replace(tokio::spawn(async move {
-			let session = ctx.communicator.session.clone();
-			let subscriber = session
-				.declare_subscriber(&key_expr)
-				.res_async()
-				.await
-				.expect("should never happen");
-
-			loop {
-				let sample = subscriber
-					.recv_async()
-					.await
-					.expect("should never happen");
-				//tracing::info!("{}: {}", sample.kind, sample.value);
-				match sample.kind {
-					SampleKind::Put => {
-						let value: Vec<u8> = sample
-							.value
-							.try_into()
-							.expect("should not happen");
-						cb(&ctx, &props, &value);
-					}
-					SampleKind::Delete => {
-						if let Some(cb) = d_cb {
-							cb(&ctx, &props);
-						}
-					}
-				}
-			}
+			run_liveliness(key_expr, p_cb, d_cb, ctx, props).await;
 		}));
 	}
 
@@ -203,6 +176,41 @@ where
 			.take()
 			.expect("should never happen")
 			.abort();
+	}
+}
+
+#[tracing::instrument(level = tracing::Level::DEBUG)]
+async fn run_liveliness<P>(key_expr:String, p_cb: SubscriberPutCallback<P>, d_cb: Option<SubscriberDeleteCallback<P>>, ctx: Arc<Context<P>>, props: Arc<RwLock<P>>)
+where
+	P: Debug + Send + Sync + Unpin + 'static,
+{
+	let session = ctx.communicator.session.clone();
+	let subscriber = session
+		.declare_subscriber(&key_expr)
+		.res_async()
+		.await
+		.expect("should never happen");
+
+	loop {
+		let sample = subscriber
+			.recv_async()
+			.await
+			.expect("should never happen");
+		//tracing::info!("{}: {}", sample.kind, sample.value);
+		match sample.kind {
+			SampleKind::Put => {
+				let value: Vec<u8> = sample
+					.value
+					.try_into()
+					.expect("should not happen");
+				p_cb(&ctx, &props, &value);
+			}
+			SampleKind::Delete => {
+				if let Some(cb) = d_cb {
+					cb(&ctx, &props);
+				}
+			}
+		}
 	}
 }
 // endregion:	--- Subscriber

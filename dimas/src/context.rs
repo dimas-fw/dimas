@@ -79,7 +79,7 @@ where
 	#[cfg(feature = "publisher")]
 	pub fn put_with<M>(&self, msg_name: &str, message: M) -> Result<()>
 	where
-		M: bitcode::Encode,
+		M: Debug + bitcode::Encode,
 	{
 		let key_expr = self.key_expr(msg_name);
 		if self
