@@ -2,12 +2,8 @@
 
 // region:		--- modules
 use super::query::QueryCallback;
-use crate::context::Context;
-use crate::error::Result;
-use std::{
-	fmt::Debug,
-	sync::{Arc, RwLock},
-};
+use crate::prelude::*;
+use std::fmt::Debug;
 #[cfg(feature = "liveliness")]
 use zenoh::liveliness::LivelinessToken;
 use zenoh::prelude::{r#async::*, sync::SyncResolve};

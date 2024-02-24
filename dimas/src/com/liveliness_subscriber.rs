@@ -1,11 +1,8 @@
 // Copyright © 2023 Stephan Kunz
 
 // region:		--- modules
-use crate::{context::Context, error::Result};
-use std::{
-	fmt::Debug,
-	sync::{Arc, RwLock},
-};
+use crate::prelude::*;
+use std::fmt::Debug;
 use tokio::task::JoinHandle;
 use zenoh::prelude::{r#async::AsyncResolve, SampleKind};
 // endregion:	--- modules
@@ -174,8 +171,13 @@ where
 }
 
 #[tracing::instrument(level = tracing::Level::DEBUG)]
-async fn run_liveliness<P>(key_expr:String, p_cb: LivelinessPutCallback<P>, d_cb: Option<LivelinessDeleteCallback<P>>, ctx: Arc<Context<P>>, props: Arc<RwLock<P>>)
-where
+async fn run_liveliness<P>(
+	key_expr: String,
+	p_cb: LivelinessPutCallback<P>,
+	d_cb: Option<LivelinessDeleteCallback<P>>,
+	ctx: Arc<Context<P>>,
+	props: Arc<RwLock<P>>,
+) where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
 	let session = ctx.communicator.session.clone();
@@ -192,7 +194,10 @@ where
 			.recv_async()
 			.await
 			.expect("should never happen");
-		let agent_id = sample.key_expr.to_string().replace(&replacement, "");
+		let agent_id = sample
+			.key_expr
+			.to_string()
+			.replace(&replacement, "");
 		match sample.kind {
 			SampleKind::Put => {
 				p_cb(&ctx, &props, &agent_id);
@@ -207,8 +212,12 @@ where
 }
 
 #[tracing::instrument(level = tracing::Level::DEBUG)]
-async fn run_initial<P>(key_expr:String, p_cb: LivelinessPutCallback<P>, ctx: Arc<Context<P>>, props: Arc<RwLock<P>>)
-where
+async fn run_initial<P>(
+	key_expr: String,
+	p_cb: LivelinessPutCallback<P>,
+	ctx: Arc<Context<P>>,
+	props: Arc<RwLock<P>>,
+) where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
 	let session = ctx.communicator.session.clone();

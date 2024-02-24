@@ -19,7 +19,7 @@ async fn main() -> Result<()> {
 	let mut agent = Agent::new(Config::local(), properties);
 
 	agent.publisher().msg_type("amazon").add()?;
-	
+
 	agent
 		.timer()
 		.name("timer")

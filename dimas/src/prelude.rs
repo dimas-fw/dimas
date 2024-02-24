@@ -1,6 +1,11 @@
 // Copyright © 2023 Stephan Kunz
 
 // region:    --- modules
+// re-exports
+// used std synchronisation primitives
+pub use std::sync::Arc;
+pub use std::sync::RwLock;
+
 pub use crate::agent::Agent;
 pub use crate::com::publisher::{Publisher, PublisherBuilder};
 pub use crate::com::query::{Query, QueryBuilder};

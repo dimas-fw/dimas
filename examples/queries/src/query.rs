@@ -4,10 +4,7 @@
 // region:		--- modules
 use clap::Parser;
 use dimas::prelude::*;
-use std::{
-	sync::{Arc, RwLock},
-	time::Duration,
-};
+use std::time::Duration;
 use tracing::info;
 // endregion:	--- modules
 
@@ -24,7 +21,11 @@ struct Args {
 #[derive(Debug)]
 struct AgentProps {}
 
-fn query_callback(_ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps>>, answer: &[u8]) {
+fn query_callback(
+	_ctx: &Arc<Context<AgentProps>>,
+	_props: &Arc<RwLock<AgentProps>>,
+	answer: &[u8],
+) {
 	let message: String = bitcode::decode(answer).expect("should not happen");
 	info!("Received '{}'", &message);
 }
@@ -44,7 +45,11 @@ async fn main() -> Result<()> {
 	let mut agent = Agent::new_with_prefix(Config::default(), properties, &args.prefix);
 
 	// create publisher for topic "ping"
-	agent.query().msg_type("query").callback(query_callback).add()?;
+	agent
+		.query()
+		.msg_type("query")
+		.callback(query_callback)
+		.add()?;
 
 	// timer for regular querying
 	let duration = Duration::from_secs(1);

@@ -5,13 +5,16 @@
 //! This source is part of `DiMAS` implementation of Montblanc benchmark for distributed systems
 
 use dimas::prelude::*;
-use std::sync::{Arc, RwLock};
 use tracing::info;
 
 #[derive(Debug)]
 struct AgentProps {}
 
-fn columbia_callback(ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn columbia_callback(
+	ctx: &Arc<Context<AgentProps>>,
+	_props: &Arc<RwLock<AgentProps>>,
+	message: &[u8],
+) {
 	let mut value: messages::Image = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 	value.header.frame_id = value.header.frame_id.replace("Test", "Modified");

@@ -15,10 +15,7 @@
 //! This source is part of `DiMAS` implementation of Montblanc benchmark for distributed systems
 
 use dimas::prelude::*;
-use std::{
-	sync::{Arc, RwLock},
-	time::Duration,
-};
+use std::time::Duration;
 use tracing::info;
 
 #[derive(Debug, Default)]
@@ -31,37 +28,61 @@ struct AgentProps {
 	yamuna: Option<messages::Vector3>,
 }
 
-fn danube_callback(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn danube_callback(
+	_ctx: &Arc<Context<AgentProps>>,
+	props: &Arc<RwLock<AgentProps>>,
+	message: &[u8],
+) {
 	let value: messages::StringMsg = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 	props.write().expect("should not happen").danube = Some(value);
 }
 
-fn chenab_callback(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn chenab_callback(
+	_ctx: &Arc<Context<AgentProps>>,
+	props: &Arc<RwLock<AgentProps>>,
+	message: &[u8],
+) {
 	let value: messages::Quaternion = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 	props.write().expect("should not happen").chenab = Some(value);
 }
 
-fn salween_callback(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn salween_callback(
+	_ctx: &Arc<Context<AgentProps>>,
+	props: &Arc<RwLock<AgentProps>>,
+	message: &[u8],
+) {
 	let value: messages::PointCloud2 = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 	props.write().expect("should not happen").salween = Some(value);
 }
 
-fn godavari_callback(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn godavari_callback(
+	_ctx: &Arc<Context<AgentProps>>,
+	props: &Arc<RwLock<AgentProps>>,
+	message: &[u8],
+) {
 	let value: messages::LaserScan = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 	props.write().expect("should not happen").godavari = Some(value);
 }
 
-fn yamuna_callback(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn yamuna_callback(
+	_ctx: &Arc<Context<AgentProps>>,
+	props: &Arc<RwLock<AgentProps>>,
+	message: &[u8],
+) {
 	let value: messages::Vector3 = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 	props.write().expect("should not happen").yamuna = Some(value);
 }
 
-fn loire_callback(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn loire_callback(
+	_ctx: &Arc<Context<AgentProps>>,
+	props: &Arc<RwLock<AgentProps>>,
+	message: &[u8],
+) {
 	let value: messages::PointCloud2 = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 	props.write().expect("should not happen").loire = Some(value);

@@ -1,12 +1,8 @@
 // Copyright © 2023 Stephan Kunz
 
 // region:		--- modules
-use crate::{context::Context, error::Result};
-use std::{
-	collections::HashMap,
-	fmt::Debug,
-	sync::{Arc, RwLock},
-};
+use crate::prelude::*;
+use std::{collections::HashMap, fmt::Debug};
 use tokio::task::JoinHandle;
 use zenoh::prelude::{r#async::AsyncResolve, SampleKind};
 // endregion:	--- modules
@@ -180,8 +176,13 @@ where
 }
 
 #[tracing::instrument(level = tracing::Level::DEBUG)]
-async fn run_liveliness<P>(key_expr:String, p_cb: SubscriberPutCallback<P>, d_cb: Option<SubscriberDeleteCallback<P>>, ctx: Arc<Context<P>>, props: Arc<RwLock<P>>)
-where
+async fn run_liveliness<P>(
+	key_expr: String,
+	p_cb: SubscriberPutCallback<P>,
+	d_cb: Option<SubscriberDeleteCallback<P>>,
+	ctx: Arc<Context<P>>,
+	props: Arc<RwLock<P>>,
+) where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
 	let session = ctx.communicator.session.clone();

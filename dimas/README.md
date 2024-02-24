@@ -125,7 +125,6 @@ The `subscriber.rs` should look like this:
 
 ```rust,no_run
 use dimas::prelude::*;
-use std::sync::{Arc, RwLock};
 
 #[derive(Debug)]
 pub struct AgentProps {}

@@ -4,13 +4,8 @@
 //! When fired, the Timer calls his assigned TimerCallback
 
 // region:		--- modules
-use crate::{context::Context, error::Result};
-use std::{
-	collections::HashMap,
-	fmt::Debug,
-	sync::{Arc, RwLock},
-	time::Duration,
-};
+use crate::prelude::*;
+use std::{collections::HashMap, fmt::Debug, time::Duration};
 use tokio::{sync::Mutex, task::JoinHandle, time};
 // endregion:	--- modules
 
@@ -242,8 +237,12 @@ where
 }
 
 //#[tracing::instrument(level = tracing::Level::DEBUG)]
-async fn run_timer<P>(interval: Duration, cb: TimerCallback<P>, ctx: Arc<Context<P>>, props: Arc<RwLock<P>>)
-where
+async fn run_timer<P>(
+	interval: Duration,
+	cb: TimerCallback<P>,
+	ctx: Arc<Context<P>>,
+	props: Arc<RwLock<P>>,
+) where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
 	let mut interval = time::interval(interval);

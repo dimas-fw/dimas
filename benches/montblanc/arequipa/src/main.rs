@@ -6,10 +6,7 @@
 
 use dimas::prelude::*;
 use std::fs::File;
-use std::{
-	io::Write,
-	sync::{Arc, RwLock},
-};
+use std::io::Write;
 use tracing::{error, info};
 
 static OUT_FILE: &str = "/tmp/montblanc.out";
@@ -19,7 +16,11 @@ struct AgentProps {
 	file: File,
 }
 
-fn arkansas_callback(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn arkansas_callback(
+	_ctx: &Arc<Context<AgentProps>>,
+	props: &Arc<RwLock<AgentProps>>,
+	message: &[u8],
+) {
 	let value: messages::StringMsg = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value.data);
 	let final_data = format!("{}\n", value.data);

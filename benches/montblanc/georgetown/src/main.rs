@@ -9,10 +9,7 @@
 //! This source is part of `DiMAS` implementation of Montblanc benchmark for distributed systems
 
 use dimas::prelude::*;
-use std::{
-	sync::{Arc, RwLock},
-	time::Duration,
-};
+use std::time::Duration;
 use tracing::info;
 
 #[derive(Debug, Default)]
@@ -28,7 +25,11 @@ fn lena_callback(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>
 	props.write().expect("should not happen").lena = Some(value);
 }
 
-fn murray_callback(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn murray_callback(
+	_ctx: &Arc<Context<AgentProps>>,
+	props: &Arc<RwLock<AgentProps>>,
+	message: &[u8],
+) {
 	let value: messages::Vector3Stamped = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 	props.write().expect("should not happen").murray = Some(value);

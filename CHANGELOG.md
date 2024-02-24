@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Instrumentation level debug for communication activities
 
 ### Changed
+- Optimized internal structure of `Agent`
+- Re-exporting `Arc` & `RwLock` in prelude
 
 ### Fixed
 

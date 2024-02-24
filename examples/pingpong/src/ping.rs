@@ -6,7 +6,6 @@ use bitcode::{Decode, Encode};
 use chrono::Local;
 use clap::Parser;
 use dimas::prelude::*;
-use std::sync::{Arc, RwLock};
 use std::time::Duration;
 use tracing::info;
 // endregion:	--- modules
@@ -34,7 +33,11 @@ struct PingPongMessage {
 }
 
 #[allow(clippy::cast_precision_loss)]
-fn pong_received(_ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn pong_received(
+	_ctx: &Arc<Context<AgentProps>>,
+	_props: &Arc<RwLock<AgentProps>>,
+	message: &[u8],
+) {
 	let message: PingPongMessage = bitcode::decode(message).expect("should not happen");
 
 	// get current timestamp

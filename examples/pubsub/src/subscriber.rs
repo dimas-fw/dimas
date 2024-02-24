@@ -4,7 +4,6 @@
 // region:		--- modules
 use clap::Parser;
 use dimas::prelude::*;
-use std::sync::{Arc, RwLock};
 use tracing::info;
 // endregion:	--- modules
 
@@ -21,7 +20,11 @@ struct Args {
 #[derive(Debug)]
 struct AgentProps {}
 
-fn hello_publishing(_ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn hello_publishing(
+	_ctx: &Arc<Context<AgentProps>>,
+	_props: &Arc<RwLock<AgentProps>>,
+	message: &[u8],
+) {
 	let message: String = bitcode::decode(message).expect("should not happen");
 	info!("Received '{message}'");
 }

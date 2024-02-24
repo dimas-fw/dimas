@@ -11,7 +11,6 @@
 //! This source is part of `DiMAS` implementation of Montblanc benchmark for distributed systems
 
 use dimas::prelude::*;
-use std::sync::{Arc, RwLock};
 use tracing::info;
 
 #[derive(Debug, Default)]
@@ -21,7 +20,11 @@ struct AgentProps {
 	congo: Option<messages::Twist>,
 }
 
-fn parana_callback(ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn parana_callback(
+	ctx: &Arc<Context<AgentProps>>,
+	_props: &Arc<RwLock<AgentProps>>,
+	message: &[u8],
+) {
 	let value: messages::StringMsg = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 	let msg = messages::StringMsg {
@@ -31,19 +34,31 @@ fn parana_callback(ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProp
 	info!("sent: '{msg}'");
 }
 
-fn danube_callback(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn danube_callback(
+	_ctx: &Arc<Context<AgentProps>>,
+	props: &Arc<RwLock<AgentProps>>,
+	message: &[u8],
+) {
 	let value: messages::StringMsg = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 	props.write().expect("should not happen").danube = Some(value);
 }
 
-fn tagus_callback(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn tagus_callback(
+	_ctx: &Arc<Context<AgentProps>>,
+	props: &Arc<RwLock<AgentProps>>,
+	message: &[u8],
+) {
 	let value: messages::Pose = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 	props.write().expect("should not happen").tagus = Some(value);
 }
 
-fn congo_callback(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn congo_callback(
+	_ctx: &Arc<Context<AgentProps>>,
+	props: &Arc<RwLock<AgentProps>>,
+	message: &[u8],
+) {
 	let value: messages::Twist = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 	props.write().expect("should not happen").congo = Some(value);

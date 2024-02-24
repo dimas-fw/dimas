@@ -4,7 +4,6 @@
 // region:		--- modules
 use clap::Parser;
 use dimas::prelude::*;
-use std::sync::{Arc, RwLock};
 use tracing::info;
 // endregion:	--- modules
 

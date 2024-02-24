@@ -8,13 +8,16 @@
 //! This source is part of `DiMAS` implementation of Montblanc benchmark for distributed systems
 
 use dimas::prelude::*;
-use std::sync::{Arc, RwLock};
 use tracing::info;
 
 #[derive(Debug, Default)]
 struct AgentProps {}
 
-fn congo_callback(ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn congo_callback(
+	ctx: &Arc<Context<AgentProps>>,
+	_props: &Arc<RwLock<AgentProps>>,
+	message: &[u8],
+) {
 	let value: messages::Twist = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 	let msg = messages::Float32::random();

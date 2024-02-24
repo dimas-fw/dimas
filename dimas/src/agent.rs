@@ -1,19 +1,10 @@
 // Copyright © 2023 Stephan Kunz
 
 // region:		--- modules
-#[cfg(feature = "liveliness")]
+use crate::com::communicator::Communicator;
 use crate::com::liveliness_subscriber::{LivelinessSubscriber, LivelinessSubscriberBuilder};
-#[cfg(feature = "publisher")]
-use crate::com::publisher::PublisherBuilder;
-#[cfg(feature = "query")]
-use crate::com::query::QueryBuilder;
-#[cfg(feature = "queryable")]
-use crate::com::queryable::{Queryable, QueryableBuilder};
-#[cfg(feature = "subscriber")]
-use crate::com::subscriber::{Subscriber, SubscriberBuilder};
-#[cfg(feature = "timer")]
-use crate::timer::{Timer, TimerBuilder};
-use crate::{com::communicator::Communicator, context::Context};
+#[cfg(feature = "liveliness")]
+use crate::prelude::*;
 #[cfg(any(
 	feature = "publisher",
 	feature = "query",
@@ -21,14 +12,7 @@ use crate::{com::communicator::Communicator, context::Context};
 	feature = "subscriber",
 	feature = "timer"
 ))]
-use std::collections::HashMap;
-use std::{
-	fmt::Debug,
-	marker::PhantomData,
-	ops::Deref,
-	sync::{Arc, RwLock},
-	time::Duration,
-};
+use std::{collections::HashMap, fmt::Debug, marker::PhantomData, ops::Deref, time::Duration};
 use tokio::signal;
 #[cfg(feature = "liveliness")]
 use zenoh::liveliness::LivelinessToken;
@@ -324,7 +308,11 @@ where
 		#[cfg(feature = "liveliness")]
 		if self.liveliness {
 			let msg_type = "alive";
-			let token: LivelinessToken<'a> = self.context.communicator.liveliness(msg_type).await;
+			let token: LivelinessToken<'a> = self
+				.context
+				.communicator
+				.liveliness(msg_type)
+				.await;
 			self.liveliness_token
 				.write()
 				.expect("should never happen")

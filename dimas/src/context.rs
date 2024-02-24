@@ -3,15 +3,9 @@
 // region:		--- modules
 use crate::com::communicator::Communicator;
 use crate::com::query::QueryCallback;
-use crate::error::Result;
-#[cfg(any(
-	feature = "publisher",
-	feature = "query"
-))]
-use std::collections::HashMap;
-use std::{
-	fmt::Debug, marker::PhantomData, sync::{Arc, RwLock}
-};
+use crate::prelude::*;
+#[cfg(any(feature = "publisher", feature = "query"))]
+use std::{collections::HashMap, fmt::Debug, marker::PhantomData};
 use zenoh::publication::Publisher;
 use zenoh::query::ConsolidationMode;
 // endregion:	--- modules
@@ -179,7 +173,6 @@ mod tests {
 
 	#[derive(Debug)]
 	struct Props {}
-
 
 	#[test]
 	const fn normal_types() {
