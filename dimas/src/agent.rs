@@ -4,9 +4,9 @@
 #[cfg(feature = "liveliness")]
 use crate::com::liveliness_subscriber::{LivelinessSubscriber, LivelinessSubscriberBuilder};
 #[cfg(feature = "publisher")]
-use crate::com::publisher::{Publisher, PublisherBuilder};
+use crate::com::publisher::PublisherBuilder;
 #[cfg(feature = "query")]
-use crate::com::query::{Query, QueryBuilder};
+use crate::com::query::QueryBuilder;
 #[cfg(feature = "queryable")]
 use crate::com::queryable::{Queryable, QueryableBuilder};
 #[cfg(feature = "subscriber")]
@@ -40,7 +40,8 @@ pub struct Agent<'a, P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
-	com: Arc<Communicator>,
+	// The agents context structure
+	context: Arc<Context<P>>,
 	// The agents property structure
 	props: Arc<RwLock<P>>,
 	#[cfg(feature = "liveliness")]
@@ -57,12 +58,6 @@ where
 	// registered queryables
 	#[cfg(feature = "queryable")]
 	queryables: Arc<RwLock<HashMap<String, Queryable<P>>>>,
-	// registered publisher
-	#[cfg(feature = "publisher")]
-	publishers: Arc<RwLock<HashMap<String, Publisher>>>,
-	// registered queries
-	#[cfg(feature = "query")]
-	queries: Arc<RwLock<HashMap<String, Query<P>>>>,
 	// registered timer
 	#[cfg(feature = "timer")]
 	timers: Arc<RwLock<HashMap<String, Timer<P>>>>,
@@ -75,8 +70,8 @@ where
 {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Agent")
-			.field("id", &self.uuid())
-			.field("prefix", &self.com.prefix)
+			.field("id", &self.context.uuid())
+			.field("prefix", &self.context.prefix())
 			//.field("com", &self.com)
 			//.field("pd", &self.pd)
 			//.field("props", &self.props)
@@ -109,10 +104,17 @@ where
 {
 	/// Create an instance of an agent.
 	pub fn new(config: crate::config::Config, properties: P) -> Self {
-		let com = Arc::new(Communicator::new(config));
-		let pd = PhantomData {};
+		let communicator = Arc::new(Communicator::new(config));
+		let context = Arc::new(Context {
+			communicator,
+			#[cfg(feature = "publisher")]
+			publishers: Arc::new(RwLock::new(HashMap::new())),
+			#[cfg(feature = "query")]
+			queries: Arc::new(RwLock::new(HashMap::new())),
+			pd: PhantomData {},
+		});
 		Self {
-			com,
+			context,
 			props: Arc::new(RwLock::new(properties)),
 			#[cfg(feature = "liveliness")]
 			liveliness: false,
@@ -124,13 +126,9 @@ where
 			subscribers: Arc::new(RwLock::new(HashMap::new())),
 			#[cfg(feature = "queryable")]
 			queryables: Arc::new(RwLock::new(HashMap::new())),
-			#[cfg(feature = "publisher")]
-			publishers: Arc::new(RwLock::new(HashMap::new())),
-			#[cfg(feature = "query")]
-			queries: Arc::new(RwLock::new(HashMap::new())),
 			#[cfg(feature = "timer")]
 			timers: Arc::new(RwLock::new(HashMap::new())),
-			pd,
+			pd: PhantomData {},
 		}
 	}
 
@@ -140,10 +138,17 @@ where
 		properties: P,
 		prefix: impl Into<String>,
 	) -> Self {
-		let com = Arc::new(Communicator::new_with_prefix(config, prefix));
-		let pd = PhantomData {};
+		let communicator = Arc::new(Communicator::new_with_prefix(config, prefix));
+		let context = Arc::new(Context {
+			communicator,
+			#[cfg(feature = "publisher")]
+			publishers: Arc::new(RwLock::new(HashMap::new())),
+			#[cfg(feature = "query")]
+			queries: Arc::new(RwLock::new(HashMap::new())),
+			pd: PhantomData {},
+		});
 		Self {
-			com,
+			context,
 			props: Arc::new(RwLock::new(properties)),
 			#[cfg(feature = "liveliness")]
 			liveliness: false,
@@ -155,20 +160,16 @@ where
 			subscribers: Arc::new(RwLock::new(HashMap::new())),
 			#[cfg(feature = "queryable")]
 			queryables: Arc::new(RwLock::new(HashMap::new())),
-			#[cfg(feature = "publisher")]
-			publishers: Arc::new(RwLock::new(HashMap::new())),
-			#[cfg(feature = "query")]
-			queries: Arc::new(RwLock::new(HashMap::new())),
 			#[cfg(feature = "timer")]
 			timers: Arc::new(RwLock::new(HashMap::new())),
-			pd,
+			pd: PhantomData {},
 		}
 	}
 
 	/// get the agents uuid
 	#[must_use]
 	pub fn uuid(&self) -> String {
-		self.com.uuid()
+		self.context.uuid()
 	}
 
 	/// get the agents properties
@@ -186,15 +187,7 @@ where
 
 	/// get a `Context` of the `Agent`
 	pub fn get_context(&self) -> Arc<Context<P>> {
-		let pd = PhantomData {};
-		Arc::new(Context {
-			communicator: self.com.clone(),
-			#[cfg(feature = "publisher")]
-			publishers: self.publishers.clone(),
-			#[cfg(feature = "query")]
-			queries: self.queries.clone(),
-			pd,
-		})
+		self.context.clone()
 	}
 
 	//#[cfg_attr(doc, doc(cfg(feature = "liveliness")))]
@@ -247,7 +240,7 @@ where
 	#[must_use]
 	pub fn publisher(&self) -> PublisherBuilder<P> {
 		PublisherBuilder {
-			collection: self.publishers.clone(),
+			collection: self.context.publishers.clone(),
 			context: self.get_context(),
 			props: self.props.clone(),
 			key_expr: None,
@@ -260,7 +253,7 @@ where
 	#[must_use]
 	pub fn query(&self) -> QueryBuilder<P> {
 		QueryBuilder {
-			collection: self.queries.clone(),
+			collection: self.context.queries.clone(),
 			context: self.get_context(),
 			props: self.props.clone(),
 			key_expr: None,
@@ -331,7 +324,7 @@ where
 		#[cfg(feature = "liveliness")]
 		if self.liveliness {
 			let msg_type = "alive";
-			let token: LivelinessToken<'a> = self.com.liveliness(msg_type).await;
+			let token: LivelinessToken<'a> = self.context.communicator.liveliness(msg_type).await;
 			self.liveliness_token
 				.write()
 				.expect("should never happen")
