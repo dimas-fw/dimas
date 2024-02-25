@@ -172,7 +172,7 @@ where
 
 #[tracing::instrument(level = tracing::Level::DEBUG)]
 async fn run_liveliness<P>(
-	key_expr: String,
+	mut key_expr: String,
 	p_cb: LivelinessPutCallback<P>,
 	d_cb: Option<LivelinessDeleteCallback<P>>,
 	ctx: Arc<Context<P>>,
@@ -188,16 +188,14 @@ async fn run_liveliness<P>(
 		.await
 		.expect("should never happen");
 
-	let replacement = key_expr + "/";
+	key_expr.pop().expect("should never happen");
+
 	loop {
 		let sample = subscriber
 			.recv_async()
 			.await
 			.expect("should never happen");
-		let agent_id = sample
-			.key_expr
-			.to_string()
-			.replace(&replacement, "");
+		let agent_id = sample.key_expr.to_string().replace(&key_expr, "");
 		match sample.kind {
 			SampleKind::Put => {
 				p_cb(&ctx, &props, &agent_id);
@@ -213,7 +211,7 @@ async fn run_liveliness<P>(
 
 #[tracing::instrument(level = tracing::Level::DEBUG)]
 async fn run_initial<P>(
-	key_expr: String,
+	mut key_expr: String,
 	p_cb: LivelinessPutCallback<P>,
 	ctx: Arc<Context<P>>,
 	props: Arc<RwLock<P>>,
@@ -229,12 +227,13 @@ async fn run_initial<P>(
 		.await
 		.expect("should never happen");
 
-	let repl = key_expr + "/";
+	key_expr.pop().expect("should never happen");
+
 	while let Ok(reply) = replies.recv_async().await {
 		match reply.sample {
 			Ok(sample) => {
 				//dbg!(&sample);
-				let agent_id = sample.key_expr.to_string().replace(&repl, "");
+				let agent_id = sample.key_expr.to_string().replace(&key_expr, "");
 				p_cb(&ctx, &props, &agent_id);
 			}
 			Err(err) => println!(

@@ -15,7 +15,6 @@ use crate::prelude::*;
 use std::collections::HashMap;
 use std::{fmt::Debug, marker::PhantomData, ops::Deref, time::Duration};
 use tokio::signal;
-#[cfg(feature = "liveliness")]
 use zenoh::liveliness::LivelinessToken;
 // endregion:	--- modules
 
@@ -29,10 +28,9 @@ where
 	context: Arc<Context<P>>,
 	// The agents property structure
 	props: Arc<RwLock<P>>,
-	#[cfg(feature = "liveliness")]
+	// flag if sending liveliness is active
 	liveliness: bool,
-	// an optional liveliness token
-	#[cfg(feature = "liveliness")]
+	// the liveliness token
 	liveliness_token: RwLock<Option<LivelinessToken<'a>>>,
 	// an optional liveliness subscriber
 	#[cfg(feature = "liveliness")]
@@ -101,9 +99,7 @@ where
 		Self {
 			context,
 			props: Arc::new(RwLock::new(properties)),
-			#[cfg(feature = "liveliness")]
 			liveliness: false,
-			#[cfg(feature = "liveliness")]
 			liveliness_token: RwLock::new(None),
 			#[cfg(feature = "liveliness")]
 			liveliness_subscriber: Arc::new(RwLock::new(None)),
@@ -135,9 +131,7 @@ where
 		Self {
 			context,
 			props: Arc::new(RwLock::new(properties)),
-			#[cfg(feature = "liveliness")]
 			liveliness: false,
-			#[cfg(feature = "liveliness")]
 			liveliness_token: RwLock::new(None),
 			#[cfg(feature = "liveliness")]
 			liveliness_subscriber: Arc::new(RwLock::new(None)),
@@ -163,9 +157,7 @@ where
 		self.props.clone()
 	}
 
-	//#[cfg_attr(doc, doc(cfg(feature = "liveliness")))]
 	/// activate sending liveliness information
-	#[cfg(feature = "liveliness")]
 	pub fn liveliness(&mut self, activate: bool) {
 		self.liveliness = activate;
 	}
@@ -306,13 +298,12 @@ where
 		tokio::time::sleep(Duration::from_millis(100)).await;
 
 		// activate liveliness
-		#[cfg(feature = "liveliness")]
 		if self.liveliness {
 			let msg_type = "alive";
 			let token: LivelinessToken<'a> = self
 				.context
 				.communicator
-				.liveliness(msg_type)
+				.send_liveliness(msg_type)
 				.await;
 			self.liveliness_token
 				.write()

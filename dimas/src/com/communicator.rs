@@ -4,7 +4,6 @@
 use super::query::QueryCallback;
 use crate::prelude::*;
 use std::fmt::Debug;
-#[cfg(feature = "liveliness")]
 use zenoh::liveliness::LivelinessToken;
 use zenoh::prelude::{r#async::*, sync::SyncResolve};
 use zenoh::publication::Publisher;
@@ -62,9 +61,7 @@ impl Communicator {
 		}
 	}
 
-	//#[cfg_attr(doc, doc(cfg(feature = "liveliness")))]
-	#[cfg(feature = "liveliness")]
-	pub(crate) async fn liveliness<'a>(
+	pub(crate) async fn send_liveliness<'a>(
 		&self,
 		msg_type: impl Into<String> + Send,
 	) -> LivelinessToken<'a> {

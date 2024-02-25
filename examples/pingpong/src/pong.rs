@@ -71,6 +71,8 @@ async fn main() -> Result<()> {
 		.put_callback(ping_received)
 		.add()?;
 
+	// activate liveliness
+	agent.liveliness(true);
 	agent.start().await;
 
 	Ok(())
