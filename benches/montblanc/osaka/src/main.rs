@@ -23,7 +23,7 @@ struct AgentProps {
 fn parana_callback(
 	_ctx: &Arc<Context<AgentProps>>,
 	props: &Arc<RwLock<AgentProps>>,
-	message: &[u8],
+	message: &Message,
 ) {
 	let value: messages::StringMsg = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
@@ -33,7 +33,7 @@ fn parana_callback(
 fn columbia_callback(
 	_ctx: &Arc<Context<AgentProps>>,
 	props: &Arc<RwLock<AgentProps>>,
-	message: &[u8],
+	message: &Message,
 ) {
 	let value: messages::Image = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
@@ -43,7 +43,7 @@ fn columbia_callback(
 fn colorado_callback(
 	ctx: &Arc<Context<AgentProps>>,
 	props: &Arc<RwLock<AgentProps>>,
-	message: &[u8],
+	message: &Message,
 ) {
 	let value: messages::Image = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);

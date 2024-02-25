@@ -10,7 +10,7 @@ use zenoh::prelude::{r#async::AsyncResolve, SampleKind};
 // region:		--- types
 /// Type definition for a subscribers `publish` callback function
 #[allow(clippy::module_name_repetitions)]
-pub type SubscriberPutCallback<P> = fn(&Arc<Context<P>>, &Arc<RwLock<P>>, messsage: &[u8]);
+pub type SubscriberPutCallback<P> = fn(&Arc<Context<P>>, &Arc<RwLock<P>>, messsage: &Message);
 /// Type definition for a subscribers `delete` callback function
 #[allow(clippy::module_name_repetitions)]
 pub type SubscriberDeleteCallback<P> = fn(&Arc<Context<P>>, &Arc<RwLock<P>>);
@@ -204,7 +204,12 @@ async fn run_liveliness<P>(
 					.value
 					.try_into()
 					.expect("should not happen");
-				p_cb(&ctx, &props, &value);
+
+				let msg = Message {
+					key_expr: sample.key_expr.to_string(),
+					value,
+				};
+				p_cb(&ctx, &props, &msg);
 			}
 			SampleKind::Delete => {
 				if let Some(cb) = d_cb {

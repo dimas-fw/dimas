@@ -16,7 +16,7 @@ struct AgentProps {}
 fn mekong_callback(
 	ctx: &Arc<Context<AgentProps>>,
 	_props: &Arc<RwLock<AgentProps>>,
-	message: &[u8],
+	message: &Message,
 ) {
 	let value: messages::TwistWithCovarianceStamped =
 		bitcode::decode(message).expect("should not happen");

@@ -31,7 +31,7 @@ struct AgentProps {
 fn danube_callback(
 	_ctx: &Arc<Context<AgentProps>>,
 	props: &Arc<RwLock<AgentProps>>,
-	message: &[u8],
+	message: &Message,
 ) {
 	let value: messages::StringMsg = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
@@ -41,7 +41,7 @@ fn danube_callback(
 fn chenab_callback(
 	_ctx: &Arc<Context<AgentProps>>,
 	props: &Arc<RwLock<AgentProps>>,
-	message: &[u8],
+	message: &Message,
 ) {
 	let value: messages::Quaternion = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
@@ -51,7 +51,7 @@ fn chenab_callback(
 fn salween_callback(
 	_ctx: &Arc<Context<AgentProps>>,
 	props: &Arc<RwLock<AgentProps>>,
-	message: &[u8],
+	message: &Message,
 ) {
 	let value: messages::PointCloud2 = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
@@ -61,7 +61,7 @@ fn salween_callback(
 fn godavari_callback(
 	_ctx: &Arc<Context<AgentProps>>,
 	props: &Arc<RwLock<AgentProps>>,
-	message: &[u8],
+	message: &Message,
 ) {
 	let value: messages::LaserScan = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
@@ -71,7 +71,7 @@ fn godavari_callback(
 fn yamuna_callback(
 	_ctx: &Arc<Context<AgentProps>>,
 	props: &Arc<RwLock<AgentProps>>,
-	message: &[u8],
+	message: &Message,
 ) {
 	let value: messages::Vector3 = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
@@ -81,7 +81,7 @@ fn yamuna_callback(
 fn loire_callback(
 	_ctx: &Arc<Context<AgentProps>>,
 	props: &Arc<RwLock<AgentProps>>,
-	message: &[u8],
+	message: &Message,
 ) {
 	let value: messages::PointCloud2 = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);

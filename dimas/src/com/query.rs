@@ -3,6 +3,7 @@
 // region:		--- modules
 use crate::prelude::*;
 use std::{collections::HashMap, fmt::Debug};
+use tracing::error;
 use zenoh::{
 	prelude::{sync::SyncResolve, SampleKind},
 	query::ConsolidationMode,
@@ -13,7 +14,7 @@ use zenoh::{
 // region:		--- types
 /// type definition for the queries callback function
 #[allow(clippy::module_name_repetitions)]
-pub type QueryCallback<P> = fn(&Arc<Context<P>>, &Arc<RwLock<P>>, answer: &[u8]);
+pub type QueryCallback<P> = fn(&Arc<Context<P>>, &Arc<RwLock<P>>, response: &Message);
 // endregion:	--- types
 
 // region:		--- QueryBuilder
@@ -164,16 +165,20 @@ where
 						.value
 						.try_into()
 						.expect("should not happen");
+					let msg = Message {
+						key_expr: sample.key_expr.to_string(),
+						value,
+					};
 					match sample.kind {
 						SampleKind::Put => {
-							cb(&self.ctx, &self.props, &value);
+							cb(&self.ctx, &self.props, &msg);
 						}
 						SampleKind::Delete => {
-							println!("Delete in Query");
+							error!("Delete in Query");
 						}
 					}
 				}
-				Err(err) => println!(
+				Err(err) => error!(
 					">> No data (ERROR: '{}')",
 					String::try_from(&err).expect("to be implemented")
 				),

@@ -141,9 +141,15 @@ impl Communicator {
 						.value
 						.try_into()
 						.expect("should not happen");
+
+					let msg = Message {
+						key_expr: sample.key_expr.to_string(),
+						value,
+					};
+
 					match sample.kind {
 						SampleKind::Put => {
-							callback(&ctx, &props, &value);
+							callback(&ctx, &props, &msg);
 						}
 						SampleKind::Delete => {
 							println!("Delete in Query");

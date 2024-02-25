@@ -23,7 +23,7 @@ struct AgentProps {
 fn parana_callback(
 	ctx: &Arc<Context<AgentProps>>,
 	_props: &Arc<RwLock<AgentProps>>,
-	message: &[u8],
+	message: &Message,
 ) {
 	let value: messages::StringMsg = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
@@ -37,7 +37,7 @@ fn parana_callback(
 fn danube_callback(
 	_ctx: &Arc<Context<AgentProps>>,
 	props: &Arc<RwLock<AgentProps>>,
-	message: &[u8],
+	message: &Message,
 ) {
 	let value: messages::StringMsg = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
@@ -47,7 +47,7 @@ fn danube_callback(
 fn tagus_callback(
 	_ctx: &Arc<Context<AgentProps>>,
 	props: &Arc<RwLock<AgentProps>>,
-	message: &[u8],
+	message: &Message,
 ) {
 	let value: messages::Pose = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
@@ -57,7 +57,7 @@ fn tagus_callback(
 fn congo_callback(
 	_ctx: &Arc<Context<AgentProps>>,
 	props: &Arc<RwLock<AgentProps>>,
-	message: &[u8],
+	message: &Message,
 ) {
 	let value: messages::Twist = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);

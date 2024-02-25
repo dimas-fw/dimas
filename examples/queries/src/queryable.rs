@@ -28,7 +28,7 @@ fn queryable(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, r
 		.expect("should never happen")
 		.counter
 		.to_string();
-	info!("Received {}. query", &value);
+	info!("Received query, responding with {}", &value,);
 
 	request.reply(&value);
 

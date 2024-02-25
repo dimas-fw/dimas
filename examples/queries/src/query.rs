@@ -24,10 +24,10 @@ struct AgentProps {}
 fn query_callback(
 	_ctx: &Arc<Context<AgentProps>>,
 	_props: &Arc<RwLock<AgentProps>>,
-	answer: &[u8],
+	response: &Message,
 ) {
-	let message: String = bitcode::decode(answer).expect("should not happen");
-	info!("Received '{}'", &message);
+	let message: String = bitcode::decode(response).expect("should not happen");
+	println!("Response '{}'", &message);
 }
 
 #[tokio::main]

@@ -36,7 +36,7 @@ struct PingPongMessage {
 fn pong_received(
 	_ctx: &Arc<Context<AgentProps>>,
 	_props: &Arc<RwLock<AgentProps>>,
-	message: &[u8],
+	message: &Message,
 ) {
 	let message: PingPongMessage = bitcode::decode(message).expect("should not happen");
 
@@ -45,10 +45,10 @@ fn pong_received(
 		.naive_utc()
 		.timestamp_nanos_opt()
 		.unwrap_or(0);
-	// calculate traveltimes
+	// calculate & print traveltimes
 	let oneway = received - message.received.unwrap_or(0);
 	let roundtrip = received - message.sent;
-	info!(
+	println!(
 		"Trip {}, oneway {:.2}ms, roundtrip {:.2}ms",
 		&message.counter,
 		oneway as f64 / 1_000_000.0,

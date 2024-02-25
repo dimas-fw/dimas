@@ -2,8 +2,8 @@
 
 // region:		--- modules
 use crate::com::communicator::Communicator;
-use crate::com::liveliness_subscriber::{LivelinessSubscriber, LivelinessSubscriberBuilder};
 #[cfg(feature = "liveliness")]
+use crate::com::liveliness_subscriber::{LivelinessSubscriber, LivelinessSubscriberBuilder};
 use crate::prelude::*;
 #[cfg(any(
 	feature = "publisher",
@@ -12,7 +12,8 @@ use crate::prelude::*;
 	feature = "subscriber",
 	feature = "timer"
 ))]
-use std::{collections::HashMap, fmt::Debug, marker::PhantomData, ops::Deref, time::Duration};
+use std::collections::HashMap;
+use std::{fmt::Debug, marker::PhantomData, ops::Deref, time::Duration};
 use tokio::signal;
 #[cfg(feature = "liveliness")]
 use zenoh::liveliness::LivelinessToken;

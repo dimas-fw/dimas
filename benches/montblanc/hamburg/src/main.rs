@@ -22,7 +22,7 @@ struct AgentProps {
 fn tigris_callback(
 	_ctx: &Arc<Context<AgentProps>>,
 	props: &Arc<RwLock<AgentProps>>,
-	message: &[u8],
+	message: &Message,
 ) {
 	let value: messages::Float32 = bitcode::decode(message).expect("should not happen");
 	props.write().expect("should not happen").tigris = value.data;
@@ -32,14 +32,18 @@ fn tigris_callback(
 fn ganges_callback(
 	_ctx: &Arc<Context<AgentProps>>,
 	props: &Arc<RwLock<AgentProps>>,
-	message: &[u8],
+	message: &Message,
 ) {
 	let value: messages::Int64 = bitcode::decode(message).expect("should not happen");
 	props.write().expect("should not happen").ganges = value.data;
 	info!("received: '{}'", &value);
 }
 
-fn nile_callback(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn nile_callback(
+	_ctx: &Arc<Context<AgentProps>>,
+	props: &Arc<RwLock<AgentProps>>,
+	message: &Message,
+) {
 	let value: messages::Int32 = bitcode::decode(message).expect("should not happen");
 	props.write().expect("should not happen").nile = value.data;
 	info!("received: '{}'", &value);
@@ -48,7 +52,7 @@ fn nile_callback(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>
 fn danube_callback(
 	ctx: &Arc<Context<AgentProps>>,
 	_props: &Arc<RwLock<AgentProps>>,
-	message: &[u8],
+	message: &Message,
 ) {
 	let value: messages::StringMsg = bitcode::decode(message).expect("should not happen");
 	let msg = messages::StringMsg {

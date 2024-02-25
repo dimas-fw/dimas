@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 
-## [0.0.5] - 2024-??-??
+## [0.0.5] - 2024-??-?? <br>_Has breaking changes!!_
 
 ### Added
 - Instrumentation level debug for communication activities
@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Optimized internal structure of `Agent`
 - Re-exporting `Arc` & `RwLock` in prelude
+- _Introduced `Message` which changes the signature of callbacks_
 
 ### Fixed
 

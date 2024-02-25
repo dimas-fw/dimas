@@ -4,11 +4,7 @@
 use crate::prelude::*;
 use std::{collections::HashMap, fmt::Debug};
 use tokio::task::JoinHandle;
-use zenoh::{
-	prelude::{r#async::AsyncResolve, sync::SyncResolve},
-	queryable::Query,
-	sample::Sample,
-};
+use zenoh::prelude::r#async::AsyncResolve;
 // endregion:	--- modules
 
 // region:		--- types
@@ -16,40 +12,6 @@ use zenoh::{
 #[allow(clippy::module_name_repetitions)]
 pub type QueryableCallback<P> = fn(&Arc<Context<P>>, &Arc<RwLock<P>>, request: &Request);
 // endregion:	--- types
-
-// region:    --- Request
-/// Implementation of a request for handling within a `Queryable`
-#[derive(Debug)]
-pub struct Request {
-	/// internal reference to zenoh `Query`
-	query: Query,
-}
-
-impl Request {
-	/// Reply to the given request
-	/// # Panics
-	///
-	pub fn reply<T>(&self, value: T)
-	where
-		T: bitcode::Encode,
-	{
-		let key = self.query.selector().key_expr.to_string();
-		let encoded: Vec<u8> = bitcode::encode(&value).expect("should never happen");
-		let sample = Sample::try_from(key, encoded).expect("should never happen");
-
-		self.query
-			.reply(Ok(sample))
-			.res_sync()
-			.expect("should never happen");
-	}
-
-	/// access the queries parameters
-	#[must_use]
-	pub fn parameters(&self) -> &str {
-		self.query.parameters()
-	}
-}
-// endregion: --- Request
 
 // region:		--- QueryableBuilder
 /// The builder fo a queryable.

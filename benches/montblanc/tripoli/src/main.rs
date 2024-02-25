@@ -18,7 +18,7 @@ struct AgentProps {
 fn columbia_callback(
 	_ctx: &Arc<Context<AgentProps>>,
 	props: &Arc<RwLock<AgentProps>>,
-	message: &[u8],
+	message: &Message,
 ) {
 	let value: messages::Image = bitcode::decode(message).expect("should not happen");
 	// just to see what has been sent
@@ -29,7 +29,7 @@ fn columbia_callback(
 fn godavari_callback(
 	ctx: &Arc<Context<AgentProps>>,
 	_props: &Arc<RwLock<AgentProps>>,
-	message: &[u8],
+	message: &Message,
 ) {
 	let value: messages::LaserScan = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);

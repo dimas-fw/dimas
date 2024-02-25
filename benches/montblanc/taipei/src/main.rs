@@ -13,7 +13,7 @@ struct AgentProps {}
 fn columbia_callback(
 	ctx: &Arc<Context<AgentProps>>,
 	_props: &Arc<RwLock<AgentProps>>,
-	message: &[u8],
+	message: &Message,
 ) {
 	let mut value: messages::Image = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);

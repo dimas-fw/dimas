@@ -19,7 +19,11 @@ struct AgentProps {
 	volga: Option<messages::Float64>,
 }
 
-fn lena_callback(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
+fn lena_callback(
+	_ctx: &Arc<Context<AgentProps>>,
+	props: &Arc<RwLock<AgentProps>>,
+	message: &Message,
+) {
 	let value: messages::WrenchStamped = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
 	props.write().expect("should not happen").lena = Some(value);
@@ -28,7 +32,7 @@ fn lena_callback(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>
 fn murray_callback(
 	_ctx: &Arc<Context<AgentProps>>,
 	props: &Arc<RwLock<AgentProps>>,
-	message: &[u8],
+	message: &Message,
 ) {
 	let value: messages::Vector3Stamped = bitcode::decode(message).expect("should not happen");
 	info!("received: '{}'", &value);
