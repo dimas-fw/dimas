@@ -49,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - _Rename ad hoc methods in `Context` & `Communicator`_
 - _A `Timer` needs a unique name_
 - _Rework of `Context` which is now generic over the `Agent`'s properties_
+- Moved montblanc benchmark (`benches/montblanc`) from this repo into separate repo `examples`
 
 ### Fixed
 - Cleanup dependencies
