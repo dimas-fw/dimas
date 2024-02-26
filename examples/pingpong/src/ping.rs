@@ -58,7 +58,7 @@ fn pong_received(
 #[tokio::main]
 async fn main() -> Result<()> {
 	// a tracing subscriber writing logs
-	tracing_subscriber::fmt().init();
+	tracing_subscriber::fmt::init();
 
 	// parse arguments
 	let args = Args::parse();
