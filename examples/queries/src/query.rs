@@ -66,6 +66,8 @@ async fn main() -> Result<()> {
 		})
 		.add()?;
 
+	// activate liveliness
+	agent.liveliness(true);
 	agent.start().await;
 
 	Ok(())

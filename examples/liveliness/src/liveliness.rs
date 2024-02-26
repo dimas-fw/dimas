@@ -50,9 +50,6 @@ async fn main() -> Result<()> {
 	// create an agent with the properties
 	let mut agent = Agent::new_with_prefix(Config::default(), properties, &args.prefix);
 
-	// activate sending liveliness signal
-	agent.liveliness(true);
-
 	// add a liveliness subscriber to listen for other agents
 	// the subscriber will also get its own liveliness signal
 	agent
@@ -62,6 +59,8 @@ async fn main() -> Result<()> {
 		.msg_type("alive")
 		.add()?;
 
+	// activate sending liveliness signal
+	agent.liveliness(true);
 	agent.start().await;
 
 	Ok(())

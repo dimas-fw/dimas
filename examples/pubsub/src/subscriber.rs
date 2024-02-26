@@ -55,6 +55,8 @@ async fn main() -> Result<()> {
 		.delete_callback(hello_deletion)
 		.add()?;
 
+	// activate liveliness
+	agent.liveliness(true);
 	agent.start().await;
 
 	Ok(())

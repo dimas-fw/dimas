@@ -59,6 +59,8 @@ async fn main() -> Result<()> {
 		.callback(queryable)
 		.add()?;
 
+	// activate liveliness
+	agent.liveliness(true);
 	agent.start().await;
 
 	Ok(())
