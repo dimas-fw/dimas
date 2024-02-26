@@ -161,10 +161,8 @@ async fn main() -> Result<()> {
 ```
 
 #### More examples
-You can find more examples in [dimas-fw/examples](https://github.com/dimas-fw/dimas/blob/main/examples/README.md)
-
-#### Benchmarks
-You can find benchmarks in [dimas-fw/benches](https://github.com/dimas-fw/dimas/blob/main/benches/README.md)
+You can find some simple examples in [dimas-fw/dimas/examples](https://github.com/dimas-fw/dimas/blob/main/examples/README.md)
+and more complex examples in [dimas-fw/examples](https://github.com/dimas-fw/examples/blob/main/README.md)
 
 ## Feature flags
 
