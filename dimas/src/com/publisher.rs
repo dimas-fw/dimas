@@ -105,9 +105,9 @@ impl Publisher
 	#[tracing::instrument(level = tracing::Level::DEBUG)]
 	pub fn put<T>(&self, message: T) -> Result<()>
 	where
-		T: Debug + bitcode::Encode,
+		T: Debug + Encode,
 	{
-		let value: Vec<u8> = bitcode::encode(&message).expect("should never happen");
+		let value: Vec<u8> = encode(&message).expect("should never happen");
 		//let _ = self.publisher.put(value).res_sync();
 		match self.publisher.put(value).res_sync() {
 			Ok(()) => Ok(()),

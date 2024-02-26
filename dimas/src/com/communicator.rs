@@ -85,9 +85,9 @@ impl Communicator {
 
 	pub(crate) fn put<M>(&self, msg_name: impl Into<String>, message: M) -> Result<()>
 	where
-		M: bitcode::Encode,
+		M: Encode,
 	{
-		let value: Vec<u8> = bitcode::encode(&message).expect("should never happen");
+		let value: Vec<u8> = encode(&message).expect("should never happen");
 		let key_expr = self.key_expr(msg_name);
 		//dbg!(&key_expr);
 		match self.session.put(&key_expr, value).res_sync() {

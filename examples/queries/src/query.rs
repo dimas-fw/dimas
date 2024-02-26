@@ -26,7 +26,7 @@ fn query_callback(
 	_props: &Arc<RwLock<AgentProps>>,
 	response: &Message,
 ) {
-	let message: String = bitcode::decode(response).expect("should not happen");
+	let message: String = decode(response).expect("should not happen");
 	println!("Response '{}'", &message);
 }
 

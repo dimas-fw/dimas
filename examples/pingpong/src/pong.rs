@@ -34,7 +34,7 @@ fn ping_received(
 	_props: &Arc<RwLock<AgentProps>>,
 	message: &Message,
 ) {
-	let mut message: PingPongMessage = bitcode::decode(message).expect("should not happen");
+	let mut message: PingPongMessage = decode(message).expect("should not happen");
 
 	// set receive-timestamp
 	message.received = Local::now().naive_utc().timestamp_nanos_opt();

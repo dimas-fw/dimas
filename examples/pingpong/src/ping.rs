@@ -38,7 +38,7 @@ fn pong_received(
 	_props: &Arc<RwLock<AgentProps>>,
 	message: &Message,
 ) {
-	let message: PingPongMessage = bitcode::decode(message).expect("should not happen");
+	let message: PingPongMessage = decode(message).expect("should not happen");
 
 	// get current timestamp
 	let received = Local::now()

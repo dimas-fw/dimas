@@ -25,7 +25,7 @@ fn hello_publishing(
 	_props: &Arc<RwLock<AgentProps>>,
 	message: &Message,
 ) {
-	let message: String = bitcode::decode(message).expect("should not happen");
+	let message: String = decode(message).expect("should not happen");
 	info!("Received '{message}'");
 }
 
