@@ -13,27 +13,34 @@ that until version 1.0.0 each new version may include breaking changes, which wi
 
 # Usage
 
-DiMAS currently also needs to include the crates `bitcode` and `tokio`.
-So include `dimas` together with these crates in the dependencies section of your `Cargo.toml`.
+DiMAS needs an `async` runtime. So you have to define your `main` function as an `async` function.
+
+So include `dimas` together with an async runtime in the dependencies section of your `Cargo.toml`.
+As DiMAS uses `tokio` as async runtime, so preferably use `tokio` for your application.
 
 DiMAS uses features to have some control over compile time and the size of the binary. 
 The feature `all`, including all available features, is a good point to start with.
 
+So your `Cargo.toml` should include:
+
 ```toml
 [dependencies]
 dimas = { version = "0.0.5", features = ["all"] }
-bitcode = "0.5"
 tokio = { version = "1", features = ["macros"] }
 ```
 
-DiMAS needs an `async` runtime. So you have to define your `main` function as an `async` function.
 It also makes sense to return a `Result` as some functions return one. DiMAS prelude provides a simplified `Result` type for that.
+
+A suitable main programm skeleton may look like:
 
 ```rust
 use dimas::prelude::*;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+
+	// your code
+	// ...
 
 	Ok(())
 }
@@ -44,12 +51,11 @@ async fn main() -> Result<()> {
 A very simple example consist at least of two agents, a `publisher` publishing messages 
 and a `subscriber` that is listening to those messages.
 
-Your `Cargo.toml` should include
+The `Cargo.toml` for this publisher/subscriber example should include
 
 ```toml
 [dependencies]
 dimas = { version = "0.0.5", features = ["timer", "subscriber"] }
-bitcode = "0.5"
 tokio = { version = "1",features = ["macros"] }
 ```
 
@@ -130,7 +136,7 @@ use dimas::prelude::*;
 pub struct AgentProps {}
 
 fn callback(_ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps>>, message: &Message) {
-	let message: String =	bitcode::decode(message).unwrap();
+	let message: String =	decode(message).unwrap();
 	println!("Received '{}'", &message);
 }
 

@@ -5,6 +5,9 @@
 // used std synchronisation primitives
 pub use std::sync::Arc;
 pub use std::sync::RwLock;
+// bitcode encoding/decoding
+pub use bitcode::{Encode, encode, Decode, decode};
+pub extern crate bitcode;
 
 pub use crate::agent::Agent;
 pub use crate::com::message::{Message, Request};

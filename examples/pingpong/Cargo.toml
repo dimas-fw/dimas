@@ -22,7 +22,6 @@ name = "pong"
 path = "src/pong.rs"
 
 [dependencies]
-bitcode = { workspace = true }
 chrono = "0.4"
 clap = { workspace = true }
 dimas = { workspace = true, features = ["publisher", "subscriber", "timer"] }

@@ -2,7 +2,6 @@
 //! Copyright © 2024 Stephan Kunz
 
 // region:		--- modules
-use bitcode::{Decode, Encode};
 use chrono::Local;
 use clap::Parser;
 use dimas::prelude::*;
@@ -38,7 +37,7 @@ fn pong_received(
 	_props: &Arc<RwLock<AgentProps>>,
 	message: &Message,
 ) {
-	let message: PingPongMessage = bitcode::decode(message).expect("should not happen");
+	let message: PingPongMessage = decode(message).expect("should not happen");
 
 	// get current timestamp
 	let received = Local::now()
@@ -59,7 +58,7 @@ fn pong_received(
 #[tokio::main]
 async fn main() -> Result<()> {
 	// a tracing subscriber writing logs
-	tracing_subscriber::fmt().init();
+	tracing_subscriber::fmt::init();
 
 	// parse arguments
 	let args = Args::parse();

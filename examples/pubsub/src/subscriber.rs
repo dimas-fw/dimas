@@ -25,7 +25,7 @@ fn hello_publishing(
 	_props: &Arc<RwLock<AgentProps>>,
 	message: &Message,
 ) {
-	let message: String = bitcode::decode(message).expect("should not happen");
+	let message: String = decode(message).expect("should not happen");
 	info!("Received '{message}'");
 }
 
@@ -36,7 +36,7 @@ fn hello_deletion(_ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProp
 #[tokio::main]
 async fn main() -> Result<()> {
 	// a tracing subscriber writing logs
-	tracing_subscriber::fmt().init();
+	tracing_subscriber::fmt::init();
 
 	// parse arguments
 	let args = Args::parse();

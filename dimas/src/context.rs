@@ -61,7 +61,7 @@ where
 	///   Error is propagated from Communicator
 	pub fn put<M>(&self, msg_name: impl Into<String>, message: M) -> Result<()>
 	where
-		M: bitcode::Encode,
+		M: Encode,
 	{
 		self.communicator.put(msg_name, message)
 	}
@@ -74,7 +74,7 @@ where
 	#[cfg(feature = "publisher")]
 	pub fn put_with<M>(&self, msg_name: &str, message: M) -> Result<()>
 	where
-		M: Debug + bitcode::Encode,
+		M: Debug + Encode,
 	{
 		let key_expr = self.key_expr(msg_name);
 		if self

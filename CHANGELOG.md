@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Optimized internal structure of `Agent`
 - Re-exporting `Arc` & `RwLock` in prelude
 - _Introduced `Message` which changes the signature of callbacks_
+- Removed crate `bitcode` as exteral dependency
 
 ### Fixed
 

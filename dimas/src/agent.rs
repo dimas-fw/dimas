@@ -327,7 +327,7 @@ where
 				self.stop();
 			}
 			Err(err) => {
-				eprintln!("Unable to listen for shutdown signal: {err}");
+				tracing::error!("Unable to listen for 'Ctrl-C': {err}");
 				// we also shut down in case of error
 				self.stop();
 			}
