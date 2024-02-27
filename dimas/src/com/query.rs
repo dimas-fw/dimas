@@ -74,10 +74,10 @@ where
 	///
 	pub fn build(mut self) -> Result<Query<P>> {
 		if self.key_expr.is_none() {
-			return Err("No key expression or msg type given".into());
+			return Err(DimasError::NoKeyExpression);
 		}
 		let callback = if self.callback.is_none() {
-			return Err("No callback given".into());
+			return Err(DimasError::NoCallback);
 		} else {
 			self.callback.expect("should never happen")
 		};

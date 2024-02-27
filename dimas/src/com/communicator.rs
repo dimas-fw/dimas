@@ -92,7 +92,7 @@ impl Communicator {
 		//dbg!(&key_expr);
 		match self.session.put(&key_expr, value).res_sync() {
 			Ok(()) => Ok(()),
-			Err(_) => Err("Publish failed".into()),
+			Err(_) => Err(DimasError::PutFailed),
 		}
 	}
 
@@ -101,7 +101,7 @@ impl Communicator {
 		//dbg!(&key_expr);
 		match self.session.delete(&key_expr).res_sync() {
 			Ok(()) => Ok(()),
-			Err(_) => Err("Delete failed".into()),
+			Err(_) => Err(DimasError::DeleteFailed),
 		}
 	}
 

@@ -52,7 +52,7 @@ where
 	///
 	pub fn build(mut self) -> Result<Publisher> {
 		if self.key_expr.is_none() {
-			return Err("No key expression or msg type given".into());
+			return Err(DimasError::NoKeyExpression);
 		}
 
 		let key_expr = if self.key_expr.is_some() {
@@ -111,7 +111,7 @@ impl Publisher
 		//let _ = self.publisher.put(value).res_sync();
 		match self.publisher.put(value).res_sync() {
 			Ok(()) => Ok(()),
-			Err(_) => Err("Publish failed".into()),
+			Err(_) => Err(DimasError::PutFailed),
 		}
 	}
 
@@ -125,7 +125,7 @@ impl Publisher
 	pub fn delete(&self) -> Result<()> {
 		match self.publisher.delete().res_sync() {
 			Ok(()) => Ok(()),
-			Err(_) => Err("Delete failed".into()),
+			Err(_) => Err(DimasError::DeleteFailed),
 		}
 	}
 }

@@ -76,12 +76,12 @@ where
 	///
 	pub fn build(self) -> Result<Timer<P>> {
 		let interval = if self.interval.is_none() {
-			return Err("No interval given".into());
+			return Err(DimasError::NoInterval);
 		} else {
 			self.interval.expect("should never happen")
 		};
 		let callback = if self.callback.is_none() {
-			return Err("No callback given".into());
+			return Err(DimasError::NoCallback);
 		} else {
 			self.callback.expect("should never happen")
 		};
@@ -112,7 +112,7 @@ where
 	///
 	pub fn add(self) -> Result<()> {
 		let name = if self.name.is_none() {
-			return Err("No name given".into());
+			return Err(DimasError::NoName);
 		} else {
 			self.name.clone().expect("should never happen")
 		};
