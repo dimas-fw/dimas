@@ -18,6 +18,7 @@ workspace = true
 
 [dependencies]
 bitcode = { workspace = true }
+thiserror = { workspace = true }
 tokio = { workspace = true, features = ["signal", "time"]}
 tracing = { workspace = true }
 zenoh = { workspace = true, features = ["unstable"] }

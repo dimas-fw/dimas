@@ -41,6 +41,7 @@ categories = [
 bitcode = "0.5"
 clap = "4"
 dimas = { path = "dimas" }
+thiserror = "1"
 tokio = "1"
 tracing = "0.1"
 tracing-subscriber = "0.3"
