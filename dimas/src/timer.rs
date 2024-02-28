@@ -12,8 +12,7 @@ use tokio::{sync::Mutex, task::JoinHandle, time};
 // region:		--- types
 /// type definition for the functions called by a timer
 #[allow(clippy::module_name_repetitions)]
-pub type TimerCallback<P> =
-	Arc<Mutex<dyn FnMut(Arc<Context<P>>, Arc<RwLock<P>>) + Send + Sync + Unpin + 'static>>;
+pub type TimerCallback<P> = Arc<Mutex<dyn FnMut(Arc<Context<P>>) + Send + Sync + Unpin + 'static>>;
 // endregion:	--- types
 
 // region:		--- TimerBuilder
@@ -25,7 +24,6 @@ where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
 	pub(crate) collection: Arc<RwLock<HashMap<String, Timer<P>>>>,
-	pub(crate) props: Arc<RwLock<P>>,
 	pub(crate) context: Arc<Context<P>>,
 	pub(crate) name: Option<String>,
 	pub(crate) delay: Option<Duration>,
@@ -62,7 +60,7 @@ where
 	#[must_use]
 	pub fn callback<F>(mut self, callback: F) -> Self
 	where
-		F: FnMut(Arc<Context<P>>, Arc<RwLock<P>>) + Send + Sync + Unpin + 'static,
+		F: FnMut(Arc<Context<P>>) + Send + Sync + Unpin + 'static,
 	{
 		self.callback
 			.replace(Arc::new(Mutex::new(callback)));
@@ -76,12 +74,12 @@ where
 	///
 	pub fn build(self) -> Result<Timer<P>> {
 		let interval = if self.interval.is_none() {
-			return Err(DimasError::NoInterval);
+			return Err(Error::NoInterval);
 		} else {
 			self.interval.expect("should never happen")
 		};
 		let callback = if self.callback.is_none() {
-			return Err(DimasError::NoCallback);
+			return Err(Error::NoCallback);
 		} else {
 			self.callback.expect("should never happen")
 		};
@@ -93,14 +91,12 @@ where
 				callback,
 				handle: None,
 				context: self.context,
-				props: self.props,
 			}),
 			None => Ok(Timer::Interval {
 				interval,
 				callback,
 				handle: None,
 				context: self.context,
-				props: self.props,
 			}),
 		}
 	}
@@ -112,7 +108,7 @@ where
 	///
 	pub fn add(self) -> Result<()> {
 		let name = if self.name.is_none() {
-			return Err(DimasError::NoName);
+			return Err(Error::NoName);
 		} else {
 			self.name.clone().expect("should never happen")
 		};
@@ -140,10 +136,8 @@ where
 		callback: TimerCallback<P>,
 		/// The handle to stop the Timer
 		handle: Option<JoinHandle<()>>,
-		/// The Context available within the callback function
+		/// The agents Context available within the callback function
 		context: Arc<Context<P>>,
-		/// The Agents properties, available in the callback function
-		props: Arc<RwLock<P>>,
 	},
 	/// A delayed Timer with an Interval
 	DelayedInterval {
@@ -155,10 +149,8 @@ where
 		callback: TimerCallback<P>,
 		/// The handle to stop the Timer
 		handle: Option<JoinHandle<()>>,
-		/// The Context available within the callback function
+		/// The agents Context available within the callback function
 		context: Arc<Context<P>>,
-		/// The Agents properties, available in the callback function
-		props: Arc<RwLock<P>>,
 	},
 }
 
@@ -176,14 +168,12 @@ where
 				callback,
 				handle,
 				context,
-				props,
 			} => {
 				let interval = *interval;
 				let cb = callback.clone();
 				let ctx = context.clone();
-				let props = props.clone();
 				handle.replace(tokio::spawn(async move {
-					run_timer(interval, cb, ctx, props).await;
+					run_timer(interval, cb, ctx).await;
 				}));
 			}
 			Self::DelayedInterval {
@@ -192,16 +182,14 @@ where
 				callback,
 				handle,
 				context,
-				props,
 			} => {
 				let delay = *delay;
 				let interval = *interval;
 				let cb = callback.clone();
 				let ctx = context.clone();
-				let props = props.clone();
 				handle.replace(tokio::spawn(async move {
 					tokio::time::sleep(delay).await;
-					run_timer(interval, cb, ctx, props).await;
+					run_timer(interval, cb, ctx).await;
 				}));
 			}
 		}
@@ -217,7 +205,6 @@ where
 				callback: _,
 				handle,
 				context: _,
-				props: _,
 			}
 			| Self::DelayedInterval {
 				delay: _,
@@ -225,7 +212,6 @@ where
 				callback: _,
 				handle,
 				context: _,
-				props: _,
 			} => {
 				handle
 					.take()
@@ -236,19 +222,19 @@ where
 	}
 }
 
+use tracing::{span, Instrument, Level};
+
 //#[tracing::instrument(level = tracing::Level::DEBUG)]
-async fn run_timer<P>(
-	interval: Duration,
-	cb: TimerCallback<P>,
-	ctx: Arc<Context<P>>,
-	props: Arc<RwLock<P>>,
-) where
+async fn run_timer<P>(interval: Duration, cb: TimerCallback<P>, ctx: Arc<Context<P>>)
+where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
 	let mut interval = time::interval(interval);
 	loop {
 		interval.tick().await;
-		cb.lock().await(ctx.clone(), props.clone());
+		cb.lock()
+			.instrument(span!(Level::INFO, "run_timer"))
+			.await(ctx.clone());
 	}
 }
 // endregion:	--- Timer

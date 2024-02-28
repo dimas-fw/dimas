@@ -22,14 +22,13 @@ struct AgentProps {}
 
 fn hello_publishing(
 	_ctx: &Arc<Context<AgentProps>>,
-	_props: &Arc<RwLock<AgentProps>>,
 	message: &Message,
 ) {
 	let message: String = decode(message).expect("should not happen");
 	info!("Received '{message}'");
 }
 
-fn hello_deletion(_ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps>>) {
+fn hello_deletion(_ctx: &Arc<Context<AgentProps>>) {
 	info!("Shall delete 'hello' message");
 }
 

@@ -22,7 +22,6 @@ struct AgentProps {}
 
 fn liveliness_subscription(
 	_ctx: &Arc<Context<AgentProps>>,
-	_props: &Arc<RwLock<AgentProps>>,
 	agent_id: &str,
 ) {
 	info!("{agent_id} is alive");
@@ -30,7 +29,6 @@ fn liveliness_subscription(
 
 fn delete_subscription(
 	_ctx: &Arc<Context<AgentProps>>,
-	_props: &Arc<RwLock<AgentProps>>,
 	agent_id: &str,
 ) {
 	info!("{agent_id} died");

@@ -34,7 +34,6 @@ struct PingPongMessage {
 #[allow(clippy::cast_precision_loss)]
 fn pong_received(
 	_ctx: &Arc<Context<AgentProps>>,
-	_props: &Arc<RwLock<AgentProps>>,
 	message: &Message,
 ) {
 	let message: PingPongMessage = decode(message).expect("should not happen");
@@ -77,8 +76,8 @@ async fn main() -> Result<()> {
 		.timer()
 		.name("timer")
 		.interval(Duration::from_secs(1))
-		.callback(|ctx, props| {
-			let counter = props.read().expect("should never happen").counter;
+		.callback(|ctx| {
+			let counter = ctx.read().expect("should never happen").counter;
 
 			let message = PingPongMessage {
 				counter,
@@ -96,10 +95,7 @@ async fn main() -> Result<()> {
 			info!("Sent {} ", &text);
 
 			// increase counter
-			props
-				.write()
-				.expect("should never happen")
-				.counter += 1;
+			ctx.write().expect("should never happen").counter += 1;
 		})
 		.add()?;
 

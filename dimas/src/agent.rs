@@ -13,7 +13,7 @@ use crate::prelude::*;
 	feature = "timer"
 ))]
 use std::collections::HashMap;
-use std::{fmt::Debug, marker::PhantomData, ops::Deref, time::Duration};
+use std::{fmt::Debug, ops::Deref, time::Duration};
 use tokio::signal;
 use zenoh::liveliness::LivelinessToken;
 // endregion:	--- modules
@@ -26,8 +26,6 @@ where
 {
 	// The agents context structure
 	context: Arc<Context<P>>,
-	// The agents property structure
-	props: Arc<RwLock<P>>,
 	// flag if sending liveliness is active
 	liveliness: bool,
 	// the liveliness token
@@ -44,7 +42,6 @@ where
 	// registered timer
 	#[cfg(feature = "timer")]
 	timers: Arc<RwLock<HashMap<String, Timer<P>>>>,
-	pd: PhantomData<&'a P>,
 }
 
 impl<'a, P> Debug for Agent<'a, P>
@@ -55,17 +52,6 @@ where
 		f.debug_struct("Agent")
 			.field("id", &self.context.uuid())
 			.field("prefix", &self.context.prefix())
-			//.field("com", &self.com)
-			//.field("pd", &self.pd)
-			//.field("props", &self.props)
-			//.field("liveliness", &self.liveliness)
-			//.field("liveliness_token", &self.liveliness_token)
-			//.field("liveliness_subscriber", &self.liveliness_subscriber)
-			//.field("subscribers", &self.subscribers)
-			//.field("queryables", &self.queryables)
-			//.field("publishers", &self.publishers)
-			//.field("queries", &self.queries)
-			//.field("timers", &self.timers)
 			.finish_non_exhaustive()
 	}
 }
@@ -77,7 +63,7 @@ where
 	type Target = Arc<RwLock<P>>;
 
 	fn deref(&self) -> &Self::Target {
-		&self.props
+		&self.context.props
 	}
 }
 
@@ -94,11 +80,10 @@ where
 			publishers: Arc::new(RwLock::new(HashMap::new())),
 			#[cfg(feature = "query")]
 			queries: Arc::new(RwLock::new(HashMap::new())),
-			pd: PhantomData {},
+			props: Arc::new(RwLock::new(properties)),
 		});
 		Self {
 			context,
-			props: Arc::new(RwLock::new(properties)),
 			liveliness: false,
 			liveliness_token: RwLock::new(None),
 			#[cfg(feature = "liveliness")]
@@ -109,7 +94,6 @@ where
 			queryables: Arc::new(RwLock::new(HashMap::new())),
 			#[cfg(feature = "timer")]
 			timers: Arc::new(RwLock::new(HashMap::new())),
-			pd: PhantomData {},
 		}
 	}
 
@@ -126,11 +110,10 @@ where
 			publishers: Arc::new(RwLock::new(HashMap::new())),
 			#[cfg(feature = "query")]
 			queries: Arc::new(RwLock::new(HashMap::new())),
-			pd: PhantomData {},
+			props: Arc::new(RwLock::new(properties)),
 		});
 		Self {
 			context,
-			props: Arc::new(RwLock::new(properties)),
 			liveliness: false,
 			liveliness_token: RwLock::new(None),
 			#[cfg(feature = "liveliness")]
@@ -141,7 +124,6 @@ where
 			queryables: Arc::new(RwLock::new(HashMap::new())),
 			#[cfg(feature = "timer")]
 			timers: Arc::new(RwLock::new(HashMap::new())),
-			pd: PhantomData {},
 		}
 	}
 
@@ -154,7 +136,7 @@ where
 	/// get the agents properties
 	#[must_use]
 	pub fn props(&self) -> Arc<RwLock<P>> {
-		self.props.clone()
+		self.context.props.clone()
 	}
 
 	/// activate sending liveliness information
@@ -175,7 +157,6 @@ where
 		LivelinessSubscriberBuilder {
 			subscriber: self.liveliness_subscriber.clone(),
 			context: self.get_context(),
-			props: self.props.clone(),
 			key_expr: None,
 			put_callback: None,
 			delete_callback: None,
@@ -190,7 +171,6 @@ where
 		SubscriberBuilder {
 			collection: self.subscribers.clone(),
 			context: self.get_context(),
-			props: self.props.clone(),
 			key_expr: None,
 			put_callback: None,
 			delete_callback: None,
@@ -205,7 +185,6 @@ where
 		QueryableBuilder {
 			collection: self.queryables.clone(),
 			context: self.get_context(),
-			props: self.props.clone(),
 			key_expr: None,
 			callback: None,
 		}
@@ -219,7 +198,6 @@ where
 		PublisherBuilder {
 			collection: self.context.publishers.clone(),
 			context: self.get_context(),
-			props: self.props.clone(),
 			key_expr: None,
 		}
 	}
@@ -232,7 +210,6 @@ where
 		QueryBuilder {
 			collection: self.context.queries.clone(),
 			context: self.get_context(),
-			props: self.props.clone(),
 			key_expr: None,
 			mode: None,
 			callback: None,
@@ -246,7 +223,6 @@ where
 	pub fn timer(&self) -> TimerBuilder<P> {
 		TimerBuilder {
 			collection: self.timers.clone(),
-			props: self.props.clone(),
 			context: self.get_context(),
 			name: None,
 			delay: None,

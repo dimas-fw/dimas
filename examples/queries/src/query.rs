@@ -23,7 +23,6 @@ struct AgentProps {}
 
 fn query_callback(
 	_ctx: &Arc<Context<AgentProps>>,
-	_props: &Arc<RwLock<AgentProps>>,
 	response: &Message,
 ) {
 	let message: String = decode(response).expect("should not happen");
@@ -58,7 +57,7 @@ async fn main() -> Result<()> {
 		.timer()
 		.name("timer")
 		.interval(duration)
-		.callback(move |ctx, _props| {
+		.callback(move |ctx| {
 			info!("Querying [{counter}]");
 			// querying with stored query
 			ctx.get_with("query");

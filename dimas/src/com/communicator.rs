@@ -67,7 +67,7 @@ impl Communicator {
 	) -> LivelinessToken<'a> {
 		let session = self.session.clone();
 		let uuid = self.key_expr(msg_type) + "/" + &session.zid().to_string();
-		//dbg!(&uuid);
+
 		session
 			.liveliness()
 			.declare_token(&uuid)
@@ -89,26 +89,23 @@ impl Communicator {
 	{
 		let value: Vec<u8> = encode(&message).expect("should never happen");
 		let key_expr = self.key_expr(msg_name);
-		//dbg!(&key_expr);
 		match self.session.put(&key_expr, value).res_sync() {
 			Ok(()) => Ok(()),
-			Err(_) => Err(DimasError::PutFailed),
+			Err(_) => Err(Error::PutFailed),
 		}
 	}
 
 	pub(crate) fn delete(&self, msg_name: impl Into<String>) -> Result<()> {
 		let key_expr = self.key_expr(msg_name);
-		//dbg!(&key_expr);
 		match self.session.delete(&key_expr).res_sync() {
 			Ok(()) => Ok(()),
-			Err(_) => Err(DimasError::DeleteFailed),
+			Err(_) => Err(Error::DeleteFailed),
 		}
 	}
 
 	pub(crate) fn get<P>(
 		&self,
 		ctx: Arc<Context<P>>,
-		props: Arc<RwLock<P>>,
 		query_name: impl Into<String>,
 		mode: ConsolidationMode,
 		callback: QueryCallback<P>,
@@ -118,7 +115,6 @@ impl Communicator {
 		let key_expr = self.key_expr(query_name);
 		//dbg!(&key_expr);
 		let ctx = ctx;
-		let props = props;
 		let session = self.session.clone();
 
 		let replies = session
@@ -146,7 +142,7 @@ impl Communicator {
 
 					match sample.kind {
 						SampleKind::Put => {
-							callback(&ctx, &props, &msg);
+							callback(&ctx, &msg);
 						}
 						SampleKind::Delete => {
 							println!("Delete in Query");

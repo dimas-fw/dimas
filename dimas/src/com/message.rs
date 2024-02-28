@@ -1,7 +1,7 @@
 // Copyright © 2024 Stephan Kunz
 
 // region:		--- modules
-use crate::prelude::{Encode, encode};
+use crate::prelude::{encode, Encode};
 use std::ops::Deref;
 use zenoh::{prelude::sync::SyncResolve, queryable::Query, sample::Sample};
 // endregion:	--- modules
@@ -10,7 +10,7 @@ use zenoh::{prelude::sync::SyncResolve, queryable::Query, sample::Sample};
 /// Implementation of a message received by subscriber callbacks
 #[derive(Debug)]
 pub struct Message {
-	/// the kye expression on which the message was sent
+	/// the key expression on which the message was sent
 	pub key_expr: String,
 	/// the messages data
 	pub value: Vec<u8>,

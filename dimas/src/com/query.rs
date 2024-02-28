@@ -14,7 +14,7 @@ use zenoh::{
 // region:		--- types
 /// type definition for the queries callback function
 #[allow(clippy::module_name_repetitions)]
-pub type QueryCallback<P> = fn(&Arc<Context<P>>, &Arc<RwLock<P>>, response: &Message);
+pub type QueryCallback<P> = fn(&Arc<Context<P>>, response: &Message);
 // endregion:	--- types
 
 // region:		--- QueryBuilder
@@ -27,7 +27,6 @@ where
 {
 	pub(crate) collection: Arc<RwLock<HashMap<String, Query<P>>>>,
 	pub(crate) context: Arc<Context<P>>,
-	pub(crate) props: Arc<RwLock<P>>,
 	pub(crate) key_expr: Option<String>,
 	pub(crate) mode: Option<ConsolidationMode>,
 	pub(crate) callback: Option<QueryCallback<P>>,
@@ -74,10 +73,10 @@ where
 	///
 	pub fn build(mut self) -> Result<Query<P>> {
 		if self.key_expr.is_none() {
-			return Err(DimasError::NoKeyExpression);
+			return Err(Error::NoKeyExpression);
 		}
 		let callback = if self.callback.is_none() {
-			return Err(DimasError::NoCallback);
+			return Err(Error::NoCallback);
 		} else {
 			self.callback.expect("should never happen")
 		};
@@ -96,7 +95,6 @@ where
 			key_expr,
 			mode,
 			ctx: self.context,
-			props: self.props,
 			callback,
 		};
 
@@ -131,7 +129,6 @@ where
 	key_expr: String,
 	mode: ConsolidationMode,
 	ctx: Arc<Context<P>>,
-	props: Arc<RwLock<P>>,
 	callback: QueryCallback<P>,
 }
 
@@ -171,7 +168,7 @@ where
 					};
 					match sample.kind {
 						SampleKind::Put => {
-							cb(&self.ctx, &self.props, &msg);
+							cb(&self.ctx, &msg);
 						}
 						SampleKind::Delete => {
 							error!("Delete in Query");

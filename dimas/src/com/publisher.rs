@@ -21,7 +21,6 @@ where
 {
 	pub(crate) collection: Arc<RwLock<HashMap<String, Publisher>>>,
 	pub(crate) context: Arc<Context<P>>,
-	pub(crate) props: Arc<RwLock<P>>,
 	pub(crate) key_expr: Option<String>,
 }
 
@@ -52,7 +51,7 @@ where
 	///
 	pub fn build(mut self) -> Result<Publisher> {
 		if self.key_expr.is_none() {
-			return Err(DimasError::NoKeyExpression);
+			return Err(Error::NoKeyExpression);
 		}
 
 		let key_expr = if self.key_expr.is_some() {
@@ -62,7 +61,6 @@ where
 		};
 
 		//dbg!(&key_expr);
-		let _props = self.props.clone();
 		let publ = self.context.create_publisher(key_expr);
 		let p = Publisher { publisher: publ };
 
@@ -108,10 +106,9 @@ impl Publisher
 		T: Debug + Encode,
 	{
 		let value: Vec<u8> = encode(&message).expect("should never happen");
-		//let _ = self.publisher.put(value).res_sync();
 		match self.publisher.put(value).res_sync() {
 			Ok(()) => Ok(()),
-			Err(_) => Err(DimasError::PutFailed),
+			Err(_) => Err(Error::PutFailed),
 		}
 	}
 
@@ -125,7 +122,7 @@ impl Publisher
 	pub fn delete(&self) -> Result<()> {
 		match self.publisher.delete().res_sync() {
 			Ok(()) => Ok(()),
-			Err(_) => Err(DimasError::DeleteFailed),
+			Err(_) => Err(Error::DeleteFailed),
 		}
 	}
 }
