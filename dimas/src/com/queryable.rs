@@ -10,7 +10,7 @@ use zenoh::prelude::r#async::AsyncResolve;
 // region:		--- types
 /// type defnition for the queryables callback function.
 #[allow(clippy::module_name_repetitions)]
-pub type QueryableCallback<P> = fn(&Arc<Context<P>>, &Arc<RwLock<P>>, request: &Request);
+pub type QueryableCallback<P> = fn(&Arc<Context<P>>, request: &Request);
 // endregion:	--- types
 
 // region:		--- QueryableBuilder
@@ -23,7 +23,6 @@ where
 {
 	pub(crate) collection: Arc<RwLock<HashMap<String, Queryable<P>>>>,
 	pub(crate) context: Arc<Context<P>>,
-	pub(crate) props: Arc<RwLock<P>>,
 	pub(crate) key_expr: Option<String>,
 	pub(crate) callback: Option<QueryableCallback<P>>,
 }
@@ -62,10 +61,10 @@ where
 	///
 	pub fn build(mut self) -> Result<Queryable<P>> {
 		if self.key_expr.is_none() {
-			return Err("No key expression or msg type given".into());
+			return Err(Error::NoKeyExpression);
 		}
 		let callback = if self.callback.is_none() {
-			return Err("No callback given".into());
+			return Err(Error::NoCallback);
 		} else {
 			self.callback.expect("should never happen")
 		};
@@ -81,7 +80,6 @@ where
 			callback,
 			handle: None,
 			context: self.context,
-			props: self.props,
 		};
 
 		Ok(q)
@@ -115,7 +113,6 @@ where
 	callback: QueryableCallback<P>,
 	handle: Option<JoinHandle<()>>,
 	context: Arc<Context<P>>,
-	props: Arc<RwLock<P>>,
 }
 
 impl<P> Queryable<P>
@@ -130,9 +127,8 @@ where
 		//dbg!(&key_expr);
 		let cb = self.callback;
 		let ctx = self.context.clone();
-		let props = self.props.clone();
 		self.handle.replace(tokio::spawn(async move {
-			run_queryable(key_expr, cb, ctx, props).await;
+			run_queryable(key_expr, cb, ctx).await;
 		}));
 	}
 
@@ -152,7 +148,6 @@ async fn run_queryable<P>(
 	key_expr: String,
 	cb: QueryableCallback<P>,
 	ctx: Arc<Context<P>>,
-	props: Arc<RwLock<P>>,
 ) where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
@@ -170,7 +165,7 @@ async fn run_queryable<P>(
 			.expect("should never happen");
 		//dbg!(&query);
 		let request = Request { query };
-		cb(&ctx, &props, &request);
+		cb(&ctx, &request);
 	}
 }
 // endregion:	--- Queryable

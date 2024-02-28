@@ -45,8 +45,8 @@ async fn main() -> Result<()> {
 		.timer()
 		.name("timer1")
 		.interval(Duration::from_secs(1))
-		.callback(|ctx, props| {
-			let counter = props
+		.callback(|ctx| {
+			let counter = ctx
 				.read()
 				.expect("should never happen")
 				.counter
@@ -56,10 +56,7 @@ async fn main() -> Result<()> {
 			info!("Sending '{}'", &text);
 			// publishing with stored publisher
 			let _ = ctx.put_with("hello", text);
-			props
-				.write()
-				.expect("should never happen")
-				.counter += 1;
+			ctx.write().expect("should never happen").counter += 1;
 		})
 		.add()?;
 
@@ -69,7 +66,7 @@ async fn main() -> Result<()> {
 		.timer()
 		.name("timer2")
 		.interval(duration)
-		.callback(move |ctx, _props| {
+		.callback(move |ctx| {
 			info!("Deleting");
 			// delete with ad-hoc publisher
 			let _ = ctx.delete("hello");

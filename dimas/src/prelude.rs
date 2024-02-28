@@ -6,7 +6,7 @@
 pub use std::sync::Arc;
 pub use std::sync::RwLock;
 // bitcode encoding/decoding
-pub use bitcode::{Encode, encode, Decode, decode};
+pub use bitcode::{decode, encode, Decode, Encode};
 pub extern crate bitcode;
 
 pub use crate::agent::Agent;
@@ -17,7 +17,7 @@ pub use crate::com::queryable::{Queryable, QueryableBuilder};
 pub use crate::com::subscriber::{Subscriber, SubscriberBuilder};
 pub use crate::config::Config;
 pub use crate::context::Context;
-pub use crate::error::{DimasError, Result};
+pub use crate::error::{Error, Result};
 pub use crate::timer::{Timer, TimerBuilder};
 // endregeion:  --- modules
 

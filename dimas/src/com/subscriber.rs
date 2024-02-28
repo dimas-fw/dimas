@@ -10,10 +10,10 @@ use zenoh::prelude::{r#async::AsyncResolve, SampleKind};
 // region:		--- types
 /// Type definition for a subscribers `publish` callback function
 #[allow(clippy::module_name_repetitions)]
-pub type SubscriberPutCallback<P> = fn(&Arc<Context<P>>, &Arc<RwLock<P>>, messsage: &Message);
+pub type SubscriberPutCallback<P> = fn(&Arc<Context<P>>, messsage: &Message);
 /// Type definition for a subscribers `delete` callback function
 #[allow(clippy::module_name_repetitions)]
-pub type SubscriberDeleteCallback<P> = fn(&Arc<Context<P>>, &Arc<RwLock<P>>);
+pub type SubscriberDeleteCallback<P> = fn(&Arc<Context<P>>);
 // endregion:	--- types
 
 // region:		--- SubscriberBuilder
@@ -26,7 +26,6 @@ where
 {
 	pub(crate) collection: Arc<RwLock<HashMap<String, Subscriber<P>>>>,
 	pub(crate) context: Arc<Context<P>>,
-	pub(crate) props: Arc<RwLock<P>>,
 	pub(crate) key_expr: Option<String>,
 	pub(crate) put_callback: Option<SubscriberPutCallback<P>>,
 	pub(crate) delete_callback: Option<SubscriberDeleteCallback<P>>,
@@ -73,10 +72,10 @@ where
 	///
 	pub fn build(mut self) -> Result<Subscriber<P>> {
 		if self.key_expr.is_none() {
-			return Err("No key expression or msg type given".into());
+			return Err(Error::NoKeyExpression);
 		}
 		let put_callback = if self.put_callback.is_none() {
-			return Err("No callback given".into());
+			return Err(Error::NoCallback);
 		} else {
 			self.put_callback.expect("should never happen")
 		};
@@ -92,7 +91,6 @@ where
 			delete_callback: self.delete_callback,
 			handle: None,
 			context: self.context,
-			props: self.props,
 		};
 
 		Ok(s)
@@ -127,7 +125,6 @@ where
 	delete_callback: Option<SubscriberDeleteCallback<P>>,
 	handle: Option<JoinHandle<()>>,
 	context: Arc<Context<P>>,
-	props: Arc<RwLock<P>>,
 }
 
 impl<P> std::fmt::Debug for Subscriber<P>
@@ -137,11 +134,6 @@ where
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Subscriber")
 			.field("key_expr", &self.key_expr)
-			//.field("put_callback", &self.put_callback)
-			//.field("delete_callback", &self.put_callback)
-			//.field("handle", &self.handle)
-			//.field("context", &self.context)
-			//.field("props", &self.props)
 			.finish_non_exhaustive()
 	}
 }
@@ -158,9 +150,8 @@ where
 		let p_cb = self.put_callback;
 		let d_cb = self.delete_callback;
 		let ctx = self.context.clone();
-		let props = self.props.clone();
 		self.handle.replace(tokio::spawn(async move {
-			run_liveliness(key_expr, p_cb, d_cb, ctx, props).await;
+			run_subscriber(key_expr, p_cb, d_cb, ctx).await;
 		}));
 	}
 
@@ -176,12 +167,11 @@ where
 }
 
 #[tracing::instrument(level = tracing::Level::DEBUG)]
-async fn run_liveliness<P>(
+async fn run_subscriber<P>(
 	key_expr: String,
 	p_cb: SubscriberPutCallback<P>,
 	d_cb: Option<SubscriberDeleteCallback<P>>,
 	ctx: Arc<Context<P>>,
-	props: Arc<RwLock<P>>,
 ) where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
@@ -209,11 +199,11 @@ async fn run_liveliness<P>(
 					key_expr: sample.key_expr.to_string(),
 					value,
 				};
-				p_cb(&ctx, &props, &msg);
+				p_cb(&ctx, &msg);
 			}
 			SampleKind::Delete => {
 				if let Some(cb) = d_cb {
-					cb(&ctx, &props);
+					cb(&ctx);
 				}
 			}
 		}

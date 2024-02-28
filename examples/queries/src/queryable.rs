@@ -22,8 +22,8 @@ struct AgentProps {
 	counter: u128,
 }
 
-fn queryable(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, request: &Request) {
-	let value = props
+fn queryable(ctx: &Arc<Context<AgentProps>>, request: &Request) {
+	let value = ctx
 		.read()
 		.expect("should never happen")
 		.counter
@@ -32,7 +32,7 @@ fn queryable(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, r
 
 	request.reply(&value);
 
-	props
+	ctx
 		.write()
 		.expect("should never happen")
 		.counter += 1;

@@ -96,8 +96,8 @@ async fn main() -> Result<()> {
 		.interval(Duration::from_secs(1))
 		// the timers callback function as a closure
 		.callback(
-			|ctx, props| {
-				let counter = props
+			|ctx| {
+				let counter = ctx
 					.read()
 					.unwrap()
 					.counter
@@ -109,7 +109,7 @@ async fn main() -> Result<()> {
 				// publishing with stored publisher for topic "hello"
 				let _ = ctx.put_with("hello", text);
 				// modify counter in properties
-				props
+				ctx
 					.write()
 					.unwrap()
 					.counter += 1;
@@ -135,7 +135,7 @@ use dimas::prelude::*;
 #[derive(Debug)]
 pub struct AgentProps {}
 
-fn callback(_ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps>>, message: &Message) {
+fn callback(_ctx: &Arc<Context<AgentProps>>, message: &Message) {
 	let message: String =	decode(message).unwrap();
 	println!("Received '{}'", &message);
 }

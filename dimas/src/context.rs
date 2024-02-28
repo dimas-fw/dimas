@@ -6,7 +6,7 @@ use crate::com::query::QueryCallback;
 use crate::prelude::*;
 #[cfg(any(feature = "publisher", feature = "query"))]
 use std::collections::HashMap;
-use std::{fmt::Debug, marker::PhantomData};
+use std::{fmt::Debug, ops::Deref};
 use zenoh::publication::Publisher;
 use zenoh::query::ConsolidationMode;
 // endregion:	--- modules
@@ -18,12 +18,24 @@ pub struct Context<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
+	/// The agents property structure
+	pub(crate) props: Arc<RwLock<P>>,
 	pub(crate) communicator: Arc<Communicator>,
 	#[cfg(feature = "publisher")]
 	pub(crate) publishers: Arc<RwLock<HashMap<String, crate::com::publisher::Publisher>>>,
 	#[cfg(feature = "query")]
 	pub(crate) queries: Arc<RwLock<HashMap<String, crate::com::query::Query<P>>>>,
-	pub(crate) pd: PhantomData<P>,
+}
+
+impl<P> Deref for Context<P>
+where
+	P: Debug + Send + Sync + Unpin + 'static,
+{
+	type Target = Arc<RwLock<P>>;
+
+	fn deref(&self) -> &Self::Target {
+		&self.props
+	}
 }
 
 impl<P> Context<P>
@@ -131,12 +143,11 @@ where
 	pub fn get(
 		&self,
 		ctx: Arc<Self>,
-		props: Arc<RwLock<P>>,
 		query_name: impl Into<String>,
 		callback: QueryCallback<P>,
 	) {
 		self.communicator
-			.get(ctx, props, query_name, ConsolidationMode::None, callback);
+			.get(ctx, query_name, ConsolidationMode::None, callback);
 	}
 
 	/// Method to query data with a stored Query

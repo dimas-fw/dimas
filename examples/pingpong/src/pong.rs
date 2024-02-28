@@ -30,7 +30,6 @@ struct PingPongMessage {
 
 fn ping_received(
 	ctx: &Arc<Context<AgentProps>>,
-	_props: &Arc<RwLock<AgentProps>>,
 	message: &Message,
 ) {
 	let mut message: PingPongMessage = decode(message).expect("should not happen");
