@@ -5,7 +5,7 @@
 
 // region:		--- modules
 use crate::prelude::*;
-use std::{collections::HashMap, fmt::Debug, time::Duration};
+use std::{fmt::Debug, time::Duration};
 use tokio::{sync::Mutex, task::JoinHandle, time};
 // endregion:	--- modules
 
@@ -23,7 +23,6 @@ pub struct TimerBuilder<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
-	pub(crate) collection: Arc<RwLock<HashMap<String, Timer<P>>>>,
 	pub(crate) context: Arc<Context<P>>,
 	pub(crate) name: Option<String>,
 	pub(crate) delay: Option<Duration>,
@@ -101,18 +100,19 @@ where
 		}
 	}
 
-	/// add the timer to the agent
+	/// add the timer to the agents context
 	/// # Errors
 	///
 	/// # Panics
 	///
+	#[cfg(feature = "timer")]
 	pub fn add(self) -> Result<()> {
 		let name = if self.name.is_none() {
 			return Err(Error::NoName);
 		} else {
 			self.name.clone().expect("should never happen")
 		};
-		let c = self.collection.clone();
+		let c = self.context.timers.clone();
 		let timer = self.build()?;
 		c.write()
 			.expect("should never happen")
@@ -152,6 +152,27 @@ where
 		/// The agents Context available within the callback function
 		context: Arc<Context<P>>,
 	},
+}
+
+impl<P> Debug for Timer<P>
+where
+	P: Debug + Send + Sync + Unpin + 'static,
+{
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Interval { interval, .. } => f
+				.debug_struct("IntervalTimer")
+				.field("interval", interval)
+				.finish_non_exhaustive(),
+			Self::DelayedInterval {
+				delay, interval, ..
+			} => f
+				.debug_struct("DelayedIntervalTimer")
+				.field("delay", delay)
+				.field("interval", interval)
+				.finish_non_exhaustive(),
+		}
+	}
 }
 
 impl<P> Timer<P>

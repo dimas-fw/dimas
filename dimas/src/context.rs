@@ -4,7 +4,13 @@
 use crate::com::communicator::Communicator;
 use crate::com::query::QueryCallback;
 use crate::prelude::*;
-#[cfg(any(feature = "publisher", feature = "query"))]
+#[cfg(any(
+	feature = "publisher",
+	feature = "query",
+	feature = "queryable",
+	feature = "subscriber",
+	feature = "timer",
+))]
 use std::collections::HashMap;
 use std::{fmt::Debug, ops::Deref};
 use zenoh::publication::Publisher;
@@ -25,6 +31,15 @@ where
 	pub(crate) publishers: Arc<RwLock<HashMap<String, crate::com::publisher::Publisher>>>,
 	#[cfg(feature = "query")]
 	pub(crate) queries: Arc<RwLock<HashMap<String, crate::com::query::Query<P>>>>,
+	// registered queryables
+	#[cfg(feature = "queryable")]
+	pub(crate) queryables: Arc<RwLock<HashMap<String, Queryable<P>>>>,
+	// registered subscribers
+	#[cfg(feature = "subscriber")]
+	pub(crate) subscribers: Arc<RwLock<HashMap<String, Subscriber<P>>>>,
+	// registered timer
+	#[cfg(feature = "timer")]
+	pub(crate) timers: Arc<RwLock<HashMap<String, Timer<P>>>>,
 }
 
 impl<P> Deref for Context<P>
@@ -42,6 +57,48 @@ impl<P> Context<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
+	/// Constructor for the `Context`
+	pub(crate) fn new(config: Config, props: P) -> Arc<Self> {
+		let communicator = Arc::new(Communicator::new(config));
+		Arc::new(Self {
+			communicator,
+			props: Arc::new(RwLock::new(props)),
+			#[cfg(feature = "publisher")]
+			publishers: Arc::new(RwLock::new(HashMap::new())),
+			#[cfg(feature = "query")]
+			queries: Arc::new(RwLock::new(HashMap::new())),
+			#[cfg(feature = "query")]
+			queryables: Arc::new(RwLock::new(HashMap::new())),
+			#[cfg(feature = "subscriber")]
+			subscribers: Arc::new(RwLock::new(HashMap::new())),
+			#[cfg(feature = "timer")]
+			timers: Arc::new(RwLock::new(HashMap::new())),
+		})
+	}
+
+	/// Constructor for the `Context` with a prefix
+	pub(crate) fn new_with_prefix(
+		config: Config,
+		props: P,
+		prefix: impl Into<String>,
+	) -> Arc<Self> {
+		let communicator = Arc::new(Communicator::new_with_prefix(config, prefix));
+		Arc::new(Self {
+			communicator,
+			props: Arc::new(RwLock::new(props)),
+			#[cfg(feature = "publisher")]
+			publishers: Arc::new(RwLock::new(HashMap::new())),
+			#[cfg(feature = "query")]
+			queries: Arc::new(RwLock::new(HashMap::new())),
+			#[cfg(feature = "query")]
+			queryables: Arc::new(RwLock::new(HashMap::new())),
+			#[cfg(feature = "subscriber")]
+			subscribers: Arc::new(RwLock::new(HashMap::new())),
+			#[cfg(feature = "timer")]
+			timers: Arc::new(RwLock::new(HashMap::new())),
+		})
+	}
+
 	/// Get the agents uuid
 	#[must_use]
 	pub fn uuid(&self) -> String {
@@ -140,12 +197,7 @@ where
 
 	/// Method to do an ad hoc query without any consolodation of answers.
 	/// Multiple answers may be received for the same timestamp.
-	pub fn get(
-		&self,
-		ctx: Arc<Self>,
-		query_name: impl Into<String>,
-		callback: QueryCallback<P>,
-	) {
+	pub fn get(&self, ctx: Arc<Self>, query_name: impl Into<String>, callback: QueryCallback<P>) {
 		self.communicator
 			.get(ctx, query_name, ConsolidationMode::None, callback);
 	}

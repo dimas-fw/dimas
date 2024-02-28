@@ -2,7 +2,7 @@
 
 // region:		--- modules
 use crate::prelude::*;
-use std::{collections::HashMap, fmt::Debug};
+use std::fmt::Debug;
 use tokio::task::JoinHandle;
 use zenoh::prelude::{r#async::AsyncResolve, SampleKind};
 // endregion:	--- modules
@@ -24,7 +24,6 @@ pub struct SubscriberBuilder<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
-	pub(crate) collection: Arc<RwLock<HashMap<String, Subscriber<P>>>>,
 	pub(crate) context: Arc<Context<P>>,
 	pub(crate) key_expr: Option<String>,
 	pub(crate) put_callback: Option<SubscriberPutCallback<P>>,
@@ -96,13 +95,14 @@ where
 		Ok(s)
 	}
 
-	/// Build and add the subscriber to the agent
+	/// Build and add the subscriber to the agents context
 	/// # Errors
 	///
 	/// # Panics
 	///
+	#[cfg(feature = "subscriber")]
 	pub fn add(self) -> Result<()> {
-		let collection = self.collection.clone();
+		let collection = self.context.subscribers.clone();
 		let s = self.build()?;
 
 		collection

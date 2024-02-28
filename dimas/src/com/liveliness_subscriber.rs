@@ -71,6 +71,7 @@ where
 	///
 	/// # Panics
 	///
+	#[cfg(feature = "liveliness")]
 	pub fn add(mut self) -> Result<()> {
 		if self.key_expr.is_none() {
 			return Err(Error::NoKeyExpression);
@@ -196,11 +197,8 @@ async fn run_liveliness<P>(
 }
 
 #[tracing::instrument(level = tracing::Level::DEBUG)]
-async fn run_initial<P>(
-	mut key_expr: String,
-	p_cb: LivelinessCallback<P>,
-	ctx: Arc<Context<P>>,
-) where
+async fn run_initial<P>(mut key_expr: String, p_cb: LivelinessCallback<P>, ctx: Arc<Context<P>>)
+where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
 	let session = ctx.communicator.session.clone();

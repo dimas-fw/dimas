@@ -28,10 +28,7 @@ struct PingPongMessage {
 	received: Option<i64>,
 }
 
-fn ping_received(
-	ctx: &Arc<Context<AgentProps>>,
-	message: &Message,
-) {
+fn ping_received(ctx: &Arc<Context<AgentProps>>, message: &Message) {
 	let mut message: PingPongMessage = decode(message).expect("should not happen");
 
 	// set receive-timestamp

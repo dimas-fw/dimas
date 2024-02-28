@@ -20,10 +20,7 @@ struct Args {
 #[derive(Debug)]
 struct AgentProps {}
 
-fn hello_publishing(
-	_ctx: &Arc<Context<AgentProps>>,
-	message: &Message,
-) {
+fn hello_publishing(_ctx: &Arc<Context<AgentProps>>, message: &Message) {
 	let message: String = decode(message).expect("should not happen");
 	info!("Received '{message}'");
 }

@@ -2,14 +2,9 @@
 
 // region:		--- modules
 use crate::prelude::*;
-use std::{collections::HashMap, fmt::Debug};
+use std::fmt::Debug;
 use zenoh::prelude::sync::SyncResolve;
 // endregion:	--- modules
-
-// region:		--- types
-//#[allow(clippy::module_name_repetitions)]
-//pub type PublisherCallback<P> = fn(Arc<Context<P>>, Arc<RwLock<P>>, sample: Sample);
-// endregion:	--- types
 
 // region:		--- PublisherBuilder
 /// The builder for a publisher
@@ -19,7 +14,6 @@ pub struct PublisherBuilder<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
-	pub(crate) collection: Arc<RwLock<HashMap<String, Publisher>>>,
 	pub(crate) context: Arc<Context<P>>,
 	pub(crate) key_expr: Option<String>,
 }
@@ -67,13 +61,14 @@ where
 		Ok(p)
 	}
 
-	/// Build and add the publisher to the agent
+	/// Build and add the publisher to the agents context
 	/// # Errors
 	///
 	/// # Panics
 	///
+	#[cfg(feature = "publisher")]
 	pub fn add(self) -> Result<()> {
-		let collection = self.collection.clone();
+		let collection = self.context.publishers.clone();
 		let p = self.build()?;
 		collection
 			.write()
@@ -86,9 +81,16 @@ where
 
 // region:		--- Publisher
 /// Publisher
-#[derive(Debug)]
 pub struct Publisher {
 	publisher: zenoh::publication::Publisher<'static>,
+}
+
+impl Debug for Publisher {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("Publisher")
+			.field("key_expr", &self.publisher.key_expr())
+			.finish_non_exhaustive()
+	}
 }
 
 impl Publisher
@@ -112,7 +114,7 @@ impl Publisher
 		}
 	}
 
-	// TODO!
+	// TODO! This currently does not work - it sends a put message
 	/// Send a "delete" message - method currently does not work!!
 	/// # Errors
 	///
