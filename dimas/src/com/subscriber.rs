@@ -10,10 +10,10 @@ use zenoh::prelude::{r#async::AsyncResolve, SampleKind};
 // region:		--- types
 /// Type definition for a subscribers `publish` callback function
 #[allow(clippy::module_name_repetitions)]
-pub type SubscriberPutCallback<P> = fn(&Arc<Context<P>>, messsage: &Message);
+pub type SubscriberPutCallback<P> = fn(&ArcContext<P>, messsage: &Message);
 /// Type definition for a subscribers `delete` callback function
 #[allow(clippy::module_name_repetitions)]
-pub type SubscriberDeleteCallback<P> = fn(&Arc<Context<P>>);
+pub type SubscriberDeleteCallback<P> = fn(&ArcContext<P>);
 // endregion:	--- types
 
 // region:		--- SubscriberBuilder
@@ -24,7 +24,7 @@ pub struct SubscriberBuilder<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
-	pub(crate) context: Arc<Context<P>>,
+	pub(crate) context: ArcContext<P>,
 	pub(crate) key_expr: Option<String>,
 	pub(crate) put_callback: Option<SubscriberPutCallback<P>>,
 	pub(crate) delete_callback: Option<SubscriberDeleteCallback<P>>,
@@ -95,6 +95,7 @@ where
 		Ok(s)
 	}
 
+	//#[cfg_attr(doc, doc(cfg(feature = "subscriber")))]
 	/// Build and add the subscriber to the agents context
 	/// # Errors
 	///
@@ -124,7 +125,7 @@ where
 	put_callback: SubscriberPutCallback<P>,
 	delete_callback: Option<SubscriberDeleteCallback<P>>,
 	handle: Option<JoinHandle<()>>,
-	context: Arc<Context<P>>,
+	context: ArcContext<P>,
 }
 
 impl<P> std::fmt::Debug for Subscriber<P>
@@ -171,7 +172,7 @@ async fn run_subscriber<P>(
 	key_expr: String,
 	p_cb: SubscriberPutCallback<P>,
 	d_cb: Option<SubscriberDeleteCallback<P>>,
-	ctx: Arc<Context<P>>,
+	ctx: ArcContext<P>,
 ) where
 	P: Debug + Send + Sync + Unpin + 'static,
 {

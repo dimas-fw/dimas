@@ -14,7 +14,7 @@ pub struct PublisherBuilder<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
-	pub(crate) context: Arc<Context<P>>,
+	pub(crate) context: ArcContext<P>,
 	pub(crate) key_expr: Option<String>,
 }
 
@@ -61,6 +61,7 @@ where
 		Ok(p)
 	}
 
+	//#[cfg_attr(doc, doc(cfg(feature = "publisher")))]
 	/// Build and add the publisher to the agents context
 	/// # Errors
 	///

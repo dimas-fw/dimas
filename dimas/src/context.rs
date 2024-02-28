@@ -17,6 +17,12 @@ use zenoh::publication::Publisher;
 use zenoh::query::ConsolidationMode;
 // endregion:	--- modules
 
+// region:		--- types
+/// Type definition for a thread safe `Context` 
+#[allow(clippy::module_name_repetitions)]
+pub type ArcContext<P> = Arc<Context<P>>;
+// endregion:	--- types
+
 // region:		--- Context
 /// Context makes all relevant data of the agent accessible via accessor methods.
 #[derive(Debug, Clone, Default)]

@@ -10,7 +10,7 @@ use zenoh::prelude::r#async::AsyncResolve;
 // region:		--- types
 /// type defnition for the queryables callback function.
 #[allow(clippy::module_name_repetitions)]
-pub type QueryableCallback<P> = fn(&Arc<Context<P>>, request: &Request);
+pub type QueryableCallback<P> = fn(&ArcContext<P>, request: &Request);
 // endregion:	--- types
 
 // region:		--- QueryableBuilder
@@ -21,7 +21,7 @@ pub struct QueryableBuilder<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
-	pub(crate) context: Arc<Context<P>>,
+	pub(crate) context: ArcContext<P>,
 	pub(crate) key_expr: Option<String>,
 	pub(crate) callback: Option<QueryableCallback<P>>,
 }
@@ -53,6 +53,7 @@ where
 		self
 	}
 
+	//#[cfg_attr(doc, doc(cfg(feature = "queryable")))]
 	/// Build the queryable
 	/// # Errors
 	///
@@ -112,7 +113,7 @@ where
 	key_expr: String,
 	callback: QueryableCallback<P>,
 	handle: Option<JoinHandle<()>>,
-	context: Arc<Context<P>>,
+	context: ArcContext<P>,
 }
 
 impl<P> Debug for Queryable<P>
@@ -155,7 +156,7 @@ where
 }
 
 #[tracing::instrument(level = tracing::Level::DEBUG)]
-async fn run_queryable<P>(key_expr: String, cb: QueryableCallback<P>, ctx: Arc<Context<P>>)
+async fn run_queryable<P>(key_expr: String, cb: QueryableCallback<P>, ctx: ArcContext<P>)
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {

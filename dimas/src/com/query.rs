@@ -14,7 +14,7 @@ use zenoh::{
 // region:		--- types
 /// type definition for the queries callback function
 #[allow(clippy::module_name_repetitions)]
-pub type QueryCallback<P> = fn(&Arc<Context<P>>, response: &Message);
+pub type QueryCallback<P> = fn(&ArcContext<P>, response: &Message);
 // endregion:	--- types
 
 // region:		--- QueryBuilder
@@ -25,7 +25,7 @@ pub struct QueryBuilder<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
-	pub(crate) context: Arc<Context<P>>,
+	pub(crate) context: ArcContext<P>,
 	pub(crate) key_expr: Option<String>,
 	pub(crate) mode: Option<ConsolidationMode>,
 	pub(crate) callback: Option<QueryCallback<P>>,
@@ -100,6 +100,7 @@ where
 		Ok(q)
 	}
 
+	//#[cfg_attr(doc, doc(cfg(feature = "query")))]
 	/// Build and add the query to the agents context
 	/// # Errors
 	///
@@ -127,7 +128,7 @@ where
 {
 	key_expr: String,
 	mode: ConsolidationMode,
-	ctx: Arc<Context<P>>,
+	ctx: ArcContext<P>,
 	callback: QueryCallback<P>,
 }
 

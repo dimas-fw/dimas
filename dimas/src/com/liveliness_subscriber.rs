@@ -9,7 +9,7 @@ use zenoh::prelude::{r#async::AsyncResolve, SampleKind};
 
 // region:		--- types
 /// Type definition for liveliness callback function
-pub type LivelinessCallback<P> = fn(&Arc<Context<P>>, agent_id: &str);
+pub type LivelinessCallback<P> = fn(&ArcContext<P>, agent_id: &str);
 // endregion:	--- types
 
 // region:		--- LivelinessSubscriberBuilder
@@ -21,7 +21,7 @@ where
 	P: std::fmt::Debug + Send + Sync + Unpin + 'static,
 {
 	pub(crate) subscriber: Arc<RwLock<Option<LivelinessSubscriber<P>>>>,
-	pub(crate) context: Arc<Context<P>>,
+	pub(crate) context: ArcContext<P>,
 	pub(crate) key_expr: Option<String>,
 	pub(crate) put_callback: Option<LivelinessCallback<P>>,
 	pub(crate) delete_callback: Option<LivelinessCallback<P>>,
@@ -113,7 +113,7 @@ where
 	put_callback: LivelinessCallback<P>,
 	delete_callback: Option<LivelinessCallback<P>>,
 	handle: Option<JoinHandle<()>>,
-	context: Arc<Context<P>>,
+	context: ArcContext<P>,
 }
 
 impl<P> std::fmt::Debug for LivelinessSubscriber<P>
@@ -163,7 +163,7 @@ async fn run_liveliness<P>(
 	mut key_expr: String,
 	p_cb: LivelinessCallback<P>,
 	d_cb: Option<LivelinessCallback<P>>,
-	ctx: Arc<Context<P>>,
+	ctx: ArcContext<P>,
 ) where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
@@ -197,7 +197,7 @@ async fn run_liveliness<P>(
 }
 
 #[tracing::instrument(level = tracing::Level::DEBUG)]
-async fn run_initial<P>(mut key_expr: String, p_cb: LivelinessCallback<P>, ctx: Arc<Context<P>>)
+async fn run_initial<P>(mut key_expr: String, p_cb: LivelinessCallback<P>, ctx: ArcContext<P>)
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {

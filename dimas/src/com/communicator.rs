@@ -105,7 +105,7 @@ impl Communicator {
 
 	pub(crate) fn get<P>(
 		&self,
-		ctx: Arc<Context<P>>,
+		ctx: ArcContext<P>,
 		query_name: impl Into<String>,
 		mode: ConsolidationMode,
 		callback: QueryCallback<P>,

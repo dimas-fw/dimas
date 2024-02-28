@@ -32,7 +32,7 @@ struct PingPongMessage {
 }
 
 #[allow(clippy::cast_precision_loss)]
-fn pong_received(_ctx: &Arc<Context<AgentProps>>, message: &Message) {
+fn pong_received(_ctx: &ArcContext<AgentProps>, message: &Message) {
 	let message: PingPongMessage = decode(message).expect("should not happen");
 
 	// get current timestamp

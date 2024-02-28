@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - _Introduced `Message` which changes the signature of callbacks_
 - Removed crate `bitcode` as exteral dependency by re-exporting it in prelude
 - _Removed parameter `props` from callbacks_
+- _Removed `Context<P>` from public api and replaced it with a threadSafe `ArcContext<P>`_
 
 ### Fixed
 

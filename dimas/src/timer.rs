@@ -12,7 +12,7 @@ use tokio::{sync::Mutex, task::JoinHandle, time};
 // region:		--- types
 /// type definition for the functions called by a timer
 #[allow(clippy::module_name_repetitions)]
-pub type TimerCallback<P> = Arc<Mutex<dyn FnMut(Arc<Context<P>>) + Send + Sync + Unpin + 'static>>;
+pub type TimerCallback<P> = Arc<Mutex<dyn FnMut(ArcContext<P>) + Send + Sync + Unpin + 'static>>;
 // endregion:	--- types
 
 // region:		--- TimerBuilder
@@ -23,7 +23,7 @@ pub struct TimerBuilder<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
-	pub(crate) context: Arc<Context<P>>,
+	pub(crate) context: ArcContext<P>,
 	pub(crate) name: Option<String>,
 	pub(crate) delay: Option<Duration>,
 	pub(crate) interval: Option<Duration>,
@@ -59,7 +59,7 @@ where
 	#[must_use]
 	pub fn callback<F>(mut self, callback: F) -> Self
 	where
-		F: FnMut(Arc<Context<P>>) + Send + Sync + Unpin + 'static,
+		F: FnMut(ArcContext<P>) + Send + Sync + Unpin + 'static,
 	{
 		self.callback
 			.replace(Arc::new(Mutex::new(callback)));
@@ -100,6 +100,7 @@ where
 		}
 	}
 
+	//#[cfg_attr(doc, doc(cfg(feature = "timer")))]
 	/// add the timer to the agents context
 	/// # Errors
 	///
@@ -137,7 +138,7 @@ where
 		/// The handle to stop the Timer
 		handle: Option<JoinHandle<()>>,
 		/// The agents Context available within the callback function
-		context: Arc<Context<P>>,
+		context: ArcContext<P>,
 	},
 	/// A delayed Timer with an Interval
 	DelayedInterval {
@@ -150,7 +151,7 @@ where
 		/// The handle to stop the Timer
 		handle: Option<JoinHandle<()>>,
 		/// The agents Context available within the callback function
-		context: Arc<Context<P>>,
+		context: ArcContext<P>,
 	},
 }
 
@@ -246,7 +247,7 @@ where
 use tracing::{span, Instrument, Level};
 
 //#[tracing::instrument(level = tracing::Level::DEBUG)]
-async fn run_timer<P>(interval: Duration, cb: TimerCallback<P>, ctx: Arc<Context<P>>)
+async fn run_timer<P>(interval: Duration, cb: TimerCallback<P>, ctx: ArcContext<P>)
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {

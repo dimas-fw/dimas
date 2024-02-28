@@ -22,7 +22,7 @@ struct AgentProps {
 	counter: u128,
 }
 
-fn queryable(ctx: &Arc<Context<AgentProps>>, request: &Request) {
+fn queryable(ctx: &ArcContext<AgentProps>, request: &Request) {
 	let value = ctx
 		.read()
 		.expect("should never happen")

@@ -3,6 +3,7 @@
 // region:		--- modules
 #[cfg(feature = "liveliness")]
 use crate::com::liveliness_subscriber::{LivelinessSubscriber, LivelinessSubscriberBuilder};
+use crate::context::Context;
 use crate::prelude::*;
 use std::{fmt::Debug, ops::Deref, time::Duration};
 use tokio::signal;
@@ -16,7 +17,7 @@ where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
 	// The agents context structure
-	context: Arc<Context<P>>,
+	context: ArcContext<P>,
 	// flag if sending liveliness is active
 	liveliness: bool,
 	// the liveliness token
@@ -115,34 +116,7 @@ where
 		}
 	}
 
-	//#[cfg_attr(doc, doc(cfg(feature = "subscriber")))]
-	/// get a builder for a Subscriber
-	#[cfg(feature = "subscriber")]
-	#[must_use]
-	pub fn subscriber(&self) -> SubscriberBuilder<P> {
-		SubscriberBuilder {
-			context: self.get_context(),
-			key_expr: None,
-			put_callback: None,
-			delete_callback: None,
-		}
-	}
-
-	//#[cfg_attr(doc, doc(cfg(feature = "queryable")))]
-	/// get a builder for a Queryable
-	#[cfg(feature = "queryable")]
-	#[must_use]
-	pub fn queryable(&self) -> QueryableBuilder<P> {
-		QueryableBuilder {
-			context: self.get_context(),
-			key_expr: None,
-			callback: None,
-		}
-	}
-
-	//#[cfg_attr(doc, doc(cfg(feature = "publisher")))]
 	/// get a builder for a Publisher
-	#[cfg(feature = "publisher")]
 	#[must_use]
 	pub fn publisher(&self) -> PublisherBuilder<P> {
 		PublisherBuilder {
@@ -151,9 +125,7 @@ where
 		}
 	}
 
-	//#[cfg_attr(doc, doc(cfg(feature = "query")))]
 	/// get a builder for a Query
-	#[cfg(feature = "query")]
 	#[must_use]
 	pub fn query(&self) -> QueryBuilder<P> {
 		QueryBuilder {
@@ -164,9 +136,28 @@ where
 		}
 	}
 
-	//#[cfg_attr(doc, doc(cfg(feature = "timer")))]
+	/// get a builder for a Queryable
+	#[must_use]
+	pub fn queryable(&self) -> QueryableBuilder<P> {
+		QueryableBuilder {
+			context: self.get_context(),
+			key_expr: None,
+			callback: None,
+		}
+	}
+
+	/// get a builder for a Subscriber
+	#[must_use]
+	pub fn subscriber(&self) -> SubscriberBuilder<P> {
+		SubscriberBuilder {
+			context: self.get_context(),
+			key_expr: None,
+			put_callback: None,
+			delete_callback: None,
+		}
+	}
+
 	/// get a builder for a Timer
-	#[cfg(feature = "timer")]
 	#[must_use]
 	pub fn timer(&self) -> TimerBuilder<P> {
 		TimerBuilder {
