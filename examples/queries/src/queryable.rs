@@ -32,10 +32,7 @@ fn queryable(ctx: &Arc<Context<AgentProps>>, request: &Request) {
 
 	request.reply(&value);
 
-	ctx
-		.write()
-		.expect("should never happen")
-		.counter += 1;
+	ctx.write().expect("should never happen").counter += 1;
 }
 
 #[tokio::main]

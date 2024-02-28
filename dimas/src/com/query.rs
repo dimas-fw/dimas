@@ -2,7 +2,7 @@
 
 // region:		--- modules
 use crate::prelude::*;
-use std::{collections::HashMap, fmt::Debug};
+use std::fmt::Debug;
 use tracing::error;
 use zenoh::{
 	prelude::{sync::SyncResolve, SampleKind},
@@ -25,7 +25,6 @@ pub struct QueryBuilder<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
-	pub(crate) collection: Arc<RwLock<HashMap<String, Query<P>>>>,
 	pub(crate) context: Arc<Context<P>>,
 	pub(crate) key_expr: Option<String>,
 	pub(crate) mode: Option<ConsolidationMode>,
@@ -101,13 +100,14 @@ where
 		Ok(q)
 	}
 
-	/// Build and add the query to the agent
+	/// Build and add the query to the agents context
 	/// # Errors
 	///
 	/// # Panics
 	///
+	#[cfg(feature = "query")]
 	pub fn add(self) -> Result<()> {
-		let collection = self.collection.clone();
+		let collection = self.context.queries.clone();
 		let q = self.build()?;
 
 		collection
@@ -121,7 +121,6 @@ where
 
 // region:		--- Query
 /// Query
-#[derive(Debug)]
 pub struct Query<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
@@ -130,6 +129,18 @@ where
 	mode: ConsolidationMode,
 	ctx: Arc<Context<P>>,
 	callback: QueryCallback<P>,
+}
+
+impl<P> Debug for Query<P>
+where
+	P: Debug + Send + Sync + Unpin + 'static,
+{
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("Query")
+			.field("key_expr", &self.key_expr)
+			.field("mode", &self.mode)
+			.finish_non_exhaustive()
+	}
 }
 
 impl<P> Query<P>

@@ -21,10 +21,7 @@ struct Args {
 #[derive(Debug)]
 struct AgentProps {}
 
-fn query_callback(
-	_ctx: &Arc<Context<AgentProps>>,
-	response: &Message,
-) {
+fn query_callback(_ctx: &Arc<Context<AgentProps>>, response: &Message) {
 	let message: String = decode(response).expect("should not happen");
 	println!("Response '{}'", &message);
 }

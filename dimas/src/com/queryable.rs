@@ -2,7 +2,7 @@
 
 // region:		--- modules
 use crate::prelude::*;
-use std::{collections::HashMap, fmt::Debug};
+use std::fmt::Debug;
 use tokio::task::JoinHandle;
 use zenoh::prelude::r#async::AsyncResolve;
 // endregion:	--- modules
@@ -21,7 +21,6 @@ pub struct QueryableBuilder<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
-	pub(crate) collection: Arc<RwLock<HashMap<String, Queryable<P>>>>,
 	pub(crate) context: Arc<Context<P>>,
 	pub(crate) key_expr: Option<String>,
 	pub(crate) callback: Option<QueryableCallback<P>>,
@@ -85,13 +84,14 @@ where
 		Ok(q)
 	}
 
-	/// Build and add the queryable to the agent
+	/// Build and add the queryable to the agents context
 	/// # Errors
 	///
 	/// # Panics
 	///
+	#[cfg(feature = "queryable")]
 	pub fn add(self) -> Result<()> {
-		let collection = self.collection.clone();
+		let collection = self.context.queryables.clone();
 		let q = self.build()?;
 
 		collection
@@ -113,6 +113,17 @@ where
 	callback: QueryableCallback<P>,
 	handle: Option<JoinHandle<()>>,
 	context: Arc<Context<P>>,
+}
+
+impl<P> Debug for Queryable<P>
+where
+	P: Debug + Send + Sync + Unpin + 'static,
+{
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("Queryable")
+			.field("key_expr", &self.key_expr)
+			.finish_non_exhaustive()
+	}
 }
 
 impl<P> Queryable<P>
@@ -144,11 +155,8 @@ where
 }
 
 #[tracing::instrument(level = tracing::Level::DEBUG)]
-async fn run_queryable<P>(
-	key_expr: String,
-	cb: QueryableCallback<P>,
-	ctx: Arc<Context<P>>,
-) where
+async fn run_queryable<P>(key_expr: String, cb: QueryableCallback<P>, ctx: Arc<Context<P>>)
+where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
 	let session = ctx.communicator.session.clone();
