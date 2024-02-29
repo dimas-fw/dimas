@@ -2,7 +2,7 @@
 
 // region:		--- modules
 use crate::prelude::*;
-use std::fmt::Debug;
+use std::{fmt::Debug, sync::Mutex};
 use tracing::error;
 use zenoh::{
 	prelude::{sync::SyncResolve, SampleKind},
@@ -14,7 +14,8 @@ use zenoh::{
 // region:		--- types
 /// type definition for the queries callback function
 #[allow(clippy::module_name_repetitions)]
-pub type QueryCallback<P> = fn(&ArcContext<P>, response: &Message);
+pub type QueryCallback<P> =
+	Arc<Mutex<dyn FnMut(&ArcContext<P>, &Message) + Send + Sync + Unpin + 'static>>;
 // endregion:	--- types
 
 // region:		--- QueryBuilder
@@ -60,8 +61,12 @@ where
 
 	/// Set the queries callback function
 	#[must_use]
-	pub fn callback(mut self, callback: QueryCallback<P>) -> Self {
-		self.callback.replace(callback);
+	pub fn callback<F>(mut self, callback: F) -> Self
+	where
+		F: FnMut(&ArcContext<P>, &Message) + Send + Sync + Unpin + 'static,
+	{
+		self.callback
+			.replace(Arc::new(Mutex::new(callback)));
 		self
 	}
 
@@ -100,12 +105,12 @@ where
 		Ok(q)
 	}
 
-	//#[cfg_attr(doc, doc(cfg(feature = "query")))]
 	/// Build and add the query to the agents context
 	/// # Errors
 	///
 	/// # Panics
 	///
+	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "query")))]
 	#[cfg(feature = "query")]
 	pub fn add(self) -> Result<()> {
 		let collection = self.context.queries.clone();
@@ -153,7 +158,7 @@ where
 	///
 	#[tracing::instrument(level = tracing::Level::DEBUG)]
 	pub fn get(&self) {
-		let cb = self.callback;
+		let cb = self.callback.clone();
 		let replies = self
 			.ctx
 			.communicator
@@ -180,7 +185,7 @@ where
 					};
 					match sample.kind {
 						SampleKind::Put => {
-							cb(&self.ctx, &msg);
+							cb.lock().expect("should not happen")(&self.ctx, &msg);
 						}
 						SampleKind::Delete => {
 							error!("Delete in Query");

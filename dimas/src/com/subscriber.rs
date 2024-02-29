@@ -2,18 +2,21 @@
 
 // region:		--- modules
 use crate::prelude::*;
-use std::fmt::Debug;
+use std::{fmt::Debug, sync::Mutex};
 use tokio::task::JoinHandle;
+use tracing::{span, Level};
 use zenoh::prelude::{r#async::AsyncResolve, SampleKind};
 // endregion:	--- modules
 
 // region:		--- types
 /// Type definition for a subscribers `publish` callback function
 #[allow(clippy::module_name_repetitions)]
-pub type SubscriberPutCallback<P> = fn(&ArcContext<P>, messsage: &Message);
+pub type SubscriberPutCallback<P> =
+	Arc<Mutex<dyn FnMut(&ArcContext<P>, &Message) + Send + Sync + Unpin + 'static>>;
 /// Type definition for a subscribers `delete` callback function
 #[allow(clippy::module_name_repetitions)]
-pub type SubscriberDeleteCallback<P> = fn(&ArcContext<P>);
+pub type SubscriberDeleteCallback<P> =
+	Arc<Mutex<dyn FnMut(&ArcContext<P>) + Send + Sync + Unpin + 'static>>;
 // endregion:	--- types
 
 // region:		--- SubscriberBuilder
@@ -52,15 +55,23 @@ where
 
 	/// Set subscribers callback for `put` messages
 	#[must_use]
-	pub fn put_callback(mut self, callback: SubscriberPutCallback<P>) -> Self {
-		self.put_callback.replace(callback);
+	pub fn put_callback<F>(mut self, callback: F) -> Self
+	where
+		F: FnMut(&ArcContext<P>, &Message) + Send + Sync + Unpin + 'static,
+	{
+		self.put_callback
+			.replace(Arc::new(Mutex::new(callback)));
 		self
 	}
 
 	/// Set subscribers callback for `delete` messages
 	#[must_use]
-	pub fn delete_callback(mut self, callback: SubscriberDeleteCallback<P>) -> Self {
-		self.delete_callback.replace(callback);
+	pub fn delete_callback<F>(mut self, callback: F) -> Self
+	where
+		F: FnMut(&ArcContext<P>) + Send + Sync + Unpin + 'static,
+	{
+		self.delete_callback
+			.replace(Arc::new(Mutex::new(callback)));
 		self
 	}
 
@@ -95,12 +106,12 @@ where
 		Ok(s)
 	}
 
-	//#[cfg_attr(doc, doc(cfg(feature = "subscriber")))]
 	/// Build and add the subscriber to the agents context
 	/// # Errors
 	///
 	/// # Panics
 	///
+	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "subscriber")))]
 	#[cfg(feature = "subscriber")]
 	pub fn add(self) -> Result<()> {
 		let collection = self.context.subscribers.clone();
@@ -148,8 +159,8 @@ where
 	///
 	pub fn start(&mut self) {
 		let key_expr = self.key_expr.clone();
-		let p_cb = self.put_callback;
-		let d_cb = self.delete_callback;
+		let p_cb = self.put_callback.clone();
+		let d_cb = self.delete_callback.clone();
 		let ctx = self.context.clone();
 		self.handle.replace(tokio::spawn(async move {
 			run_subscriber(key_expr, p_cb, d_cb, ctx).await;
@@ -167,7 +178,7 @@ where
 	}
 }
 
-#[tracing::instrument(level = tracing::Level::DEBUG)]
+//#[tracing::instrument(level = tracing::Level::DEBUG)]
 async fn run_subscriber<P>(
 	key_expr: String,
 	p_cb: SubscriberPutCallback<P>,
@@ -188,7 +199,9 @@ async fn run_subscriber<P>(
 			.recv_async()
 			.await
 			.expect("should never happen");
-		//tracing::info!("{}: {}", sample.kind, sample.value);
+
+		let span = span!(Level::DEBUG, "run_subscriber");
+		let _guard = span.enter();
 		match sample.kind {
 			SampleKind::Put => {
 				let value: Vec<u8> = sample
@@ -200,11 +213,11 @@ async fn run_subscriber<P>(
 					key_expr: sample.key_expr.to_string(),
 					value,
 				};
-				p_cb(&ctx, &msg);
+				p_cb.lock().expect("should not happen")(&ctx, &msg);
 			}
 			SampleKind::Delete => {
-				if let Some(cb) = d_cb {
-					cb(&ctx);
+				if let Some(cb) = d_cb.clone() {
+					cb.lock().expect("should not happen")(&ctx);
 				}
 			}
 		}

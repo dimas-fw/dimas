@@ -61,12 +61,12 @@ where
 		Ok(p)
 	}
 
-	//#[cfg_attr(doc, doc(cfg(feature = "publisher")))]
 	/// Build and add the publisher to the agents context
 	/// # Errors
 	///
 	/// # Panics
 	///
+	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "publisher")))]
 	#[cfg(feature = "publisher")]
 	pub fn add(self) -> Result<()> {
 		let collection = self.context.publishers.clone();

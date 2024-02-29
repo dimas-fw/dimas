@@ -2,7 +2,6 @@
 
 // region:		--- modules
 use crate::com::communicator::Communicator;
-use crate::com::query::QueryCallback;
 use crate::prelude::*;
 #[cfg(any(
 	feature = "publisher",
@@ -18,7 +17,7 @@ use zenoh::query::ConsolidationMode;
 // endregion:	--- modules
 
 // region:		--- types
-/// Type definition for a thread safe `Context` 
+/// Type definition for a thread safe `Context`
 #[allow(clippy::module_name_repetitions)]
 pub type ArcContext<P> = Arc<Context<P>>;
 // endregion:	--- types
@@ -203,7 +202,11 @@ where
 
 	/// Method to do an ad hoc query without any consolodation of answers.
 	/// Multiple answers may be received for the same timestamp.
-	pub fn get(&self, ctx: Arc<Self>, query_name: impl Into<String>, callback: QueryCallback<P>) {
+	pub fn get<F>(&self, ctx: Arc<Self>, query_name: impl Into<String>, callback: F)
+	where
+		P: Debug + Send + Sync + Unpin + 'static,
+		F: Fn(&ArcContext<P>, &Message) + Send + Sync + Unpin + 'static,
+	{
 		self.communicator
 			.get(ctx, query_name, ConsolidationMode::None, callback);
 	}

@@ -2,20 +2,22 @@
 
 // region:		--- modules
 use crate::prelude::*;
-use std::fmt::Debug;
+use std::{fmt::Debug, sync::Mutex};
 use tokio::task::JoinHandle;
+use tracing::{span, Level};
 use zenoh::prelude::{r#async::AsyncResolve, SampleKind};
 // endregion:	--- modules
 
 // region:		--- types
 /// Type definition for liveliness callback function
-pub type LivelinessCallback<P> = fn(&ArcContext<P>, agent_id: &str);
+pub type LivelinessCallback<P> =
+	Arc<Mutex<dyn FnMut(&ArcContext<P>, &str) + Send + Sync + Unpin + 'static>>;
 // endregion:	--- types
 
 // region:		--- LivelinessSubscriberBuilder
 /// The builder for the liveliness subscriber
 #[allow(clippy::module_name_repetitions)]
-#[derive(Clone, Debug)]
+#[derive(Default, Clone)]
 pub struct LivelinessSubscriberBuilder<P>
 where
 	P: std::fmt::Debug + Send + Sync + Unpin + 'static,
@@ -29,7 +31,7 @@ where
 
 impl<P> LivelinessSubscriberBuilder<P>
 where
-	P: std::fmt::Debug + Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// Set the full expression for the liveliness subscriber
 	#[must_use]
@@ -54,15 +56,23 @@ where
 
 	/// Set liveliness subscribers callback for `put` messages
 	#[must_use]
-	pub fn put_callback(mut self, callback: LivelinessCallback<P>) -> Self {
-		self.put_callback.replace(callback);
+	pub fn put_callback<F>(mut self, callback: F) -> Self
+	where
+		F: FnMut(&ArcContext<P>, &str) + Send + Sync + Unpin + 'static,
+	{
+		self.put_callback
+			.replace(Arc::new(Mutex::new(callback)));
 		self
 	}
 
 	/// Set liveliness subscribers callback for `delete` messages
 	#[must_use]
-	pub fn delete_callback(mut self, callback: LivelinessCallback<P>) -> Self {
-		self.delete_callback.replace(callback);
+	pub fn delete_callback<F>(mut self, callback: F) -> Self
+	where
+		F: FnMut(&ArcContext<P>, &str) + Send + Sync + Unpin + 'static,
+	{
+		self.delete_callback
+			.replace(Arc::new(Mutex::new(callback)));
 		self
 	}
 
@@ -71,6 +81,7 @@ where
 	///
 	/// # Panics
 	///
+	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "liveliness")))]
 	#[cfg(feature = "liveliness")]
 	pub fn add(mut self) -> Result<()> {
 		if self.key_expr.is_none() {
@@ -133,8 +144,8 @@ where
 {
 	pub fn start(&mut self) {
 		let key_expr = self.key_expr.clone();
-		let p_cb = self.put_callback;
-		let d_cb = self.delete_callback;
+		let p_cb = self.put_callback.clone();
+		let d_cb = self.delete_callback.clone();
 		let ctx = self.context.clone();
 		//dbg!(&key_expr);
 		self.handle.replace(tokio::spawn(async move {
@@ -143,7 +154,7 @@ where
 
 		// the initial liveliness query
 		let key_expr = self.key_expr.clone();
-		let p_cb = self.put_callback;
+		let p_cb = self.put_callback.clone();
 		let ctx = self.context.clone();
 		tokio::spawn(async move {
 			run_initial(key_expr, p_cb, ctx).await;
@@ -158,7 +169,7 @@ where
 	}
 }
 
-#[tracing::instrument(level = tracing::Level::DEBUG)]
+//#[tracing::instrument(level = tracing::Level::DEBUG)]
 async fn run_liveliness<P>(
 	mut key_expr: String,
 	p_cb: LivelinessCallback<P>,
@@ -183,20 +194,23 @@ async fn run_liveliness<P>(
 			.await
 			.expect("should never happen");
 		let agent_id = sample.key_expr.to_string().replace(&key_expr, "");
+		
+		let span = span!(Level::DEBUG, "run_liveliness");
+		let _guard = span.enter();
 		match sample.kind {
 			SampleKind::Put => {
-				p_cb(&ctx, &agent_id);
+				p_cb.lock().expect("should not happen")(&ctx, &agent_id);
 			}
 			SampleKind::Delete => {
-				if let Some(cb) = d_cb {
-					cb(&ctx, &agent_id);
+				if let Some(cb) = d_cb.clone() {
+					cb.lock().expect("should not happen")(&ctx, &agent_id);
 				}
 			}
 		}
 	}
 }
 
-#[tracing::instrument(level = tracing::Level::DEBUG)]
+//#[tracing::instrument(level = tracing::Level::DEBUG)]
 async fn run_initial<P>(mut key_expr: String, p_cb: LivelinessCallback<P>, ctx: ArcContext<P>)
 where
 	P: Debug + Send + Sync + Unpin + 'static,
@@ -213,11 +227,13 @@ where
 	key_expr.pop().expect("should never happen");
 
 	while let Ok(reply) = replies.recv_async().await {
+		let span = span!(Level::DEBUG, "run_initial_liveliness");
+		let _guard = span.enter();
 		match reply.sample {
 			Ok(sample) => {
 				//dbg!(&sample);
 				let agent_id = sample.key_expr.to_string().replace(&key_expr, "");
-				p_cb(&ctx, &agent_id);
+				p_cb.lock().expect("should not happen")(&ctx, &agent_id);
 			}
 			Err(err) => println!(
 				">> Received (ERROR: '{}')",

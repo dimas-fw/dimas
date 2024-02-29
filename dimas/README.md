@@ -135,7 +135,7 @@ use dimas::prelude::*;
 #[derive(Debug)]
 pub struct AgentProps {}
 
-fn callback(_ctx: &Arc<Context<AgentProps>>, message: &Message) {
+fn callback(_ctx: &ArcContext<AgentProps>, message: &Message) {
 	let message: String =	decode(message).unwrap();
 	println!("Received '{}'", &message);
 }

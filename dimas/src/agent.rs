@@ -98,7 +98,7 @@ where
 	}
 
 	/// get a `Context` of the `Agent`
-	pub fn get_context(&self) -> Arc<Context<P>> {
+	pub fn get_context(&self) -> ArcContext<P> {
 		self.context.clone()
 	}
 

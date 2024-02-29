@@ -2,15 +2,17 @@
 
 // region:		--- modules
 use crate::prelude::*;
-use std::fmt::Debug;
+use std::{fmt::Debug, sync::Mutex};
 use tokio::task::JoinHandle;
+use tracing::{span, Level};
 use zenoh::prelude::r#async::AsyncResolve;
 // endregion:	--- modules
 
 // region:		--- types
 /// type defnition for the queryables callback function.
 #[allow(clippy::module_name_repetitions)]
-pub type QueryableCallback<P> = fn(&ArcContext<P>, request: &Request);
+pub type QueryableCallback<P> =
+	Arc<Mutex<dyn FnMut(&ArcContext<P>, &Request) + Send + Sync + Unpin + 'static>>;
 // endregion:	--- types
 
 // region:		--- QueryableBuilder
@@ -48,12 +50,15 @@ where
 
 	/// Set the queryables callback function.
 	#[must_use]
-	pub fn callback(mut self, callback: QueryableCallback<P>) -> Self {
-		self.callback.replace(callback);
+	pub fn callback<F>(mut self, callback: F) -> Self
+	where
+		F: FnMut(&ArcContext<P>, &Request) + Send + Sync + Unpin + 'static,
+	{
+		self.callback
+			.replace(Arc::new(Mutex::new(callback)));
 		self
 	}
 
-	//#[cfg_attr(doc, doc(cfg(feature = "queryable")))]
 	/// Build the queryable
 	/// # Errors
 	///
@@ -90,6 +95,7 @@ where
 	///
 	/// # Panics
 	///
+	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "queryable")))]
 	#[cfg(feature = "queryable")]
 	pub fn add(self) -> Result<()> {
 		let collection = self.context.queryables.clone();
@@ -137,7 +143,7 @@ where
 	pub fn start(&mut self) {
 		let key_expr = self.key_expr.clone();
 		//dbg!(&key_expr);
-		let cb = self.callback;
+		let cb = self.callback.clone();
 		let ctx = self.context.clone();
 		self.handle.replace(tokio::spawn(async move {
 			run_queryable(key_expr, cb, ctx).await;
@@ -155,7 +161,7 @@ where
 	}
 }
 
-#[tracing::instrument(level = tracing::Level::DEBUG)]
+//#[tracing::instrument(level = tracing::Level::DEBUG)]
 async fn run_queryable<P>(key_expr: String, cb: QueryableCallback<P>, ctx: ArcContext<P>)
 where
 	P: Debug + Send + Sync + Unpin + 'static,
@@ -172,9 +178,11 @@ where
 			.recv_async()
 			.await
 			.expect("should never happen");
-		//dbg!(&query);
 		let request = Request { query };
-		cb(&ctx, &request);
+
+		let span = span!(Level::DEBUG, "run_queryable");
+		let _guard = span.enter();
+		cb.lock().expect("should not happen")(&ctx, &request);
 	}
 }
 // endregion:	--- Queryable

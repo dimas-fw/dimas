@@ -12,7 +12,7 @@ use tokio::{sync::Mutex, task::JoinHandle, time};
 // region:		--- types
 /// type definition for the functions called by a timer
 #[allow(clippy::module_name_repetitions)]
-pub type TimerCallback<P> = Arc<Mutex<dyn FnMut(ArcContext<P>) + Send + Sync + Unpin + 'static>>;
+pub type TimerCallback<P> = Arc<Mutex<dyn FnMut(&ArcContext<P>) + Send + Sync + Unpin + 'static>>;
 // endregion:	--- types
 
 // region:		--- TimerBuilder
@@ -59,7 +59,7 @@ where
 	#[must_use]
 	pub fn callback<F>(mut self, callback: F) -> Self
 	where
-		F: FnMut(ArcContext<P>) + Send + Sync + Unpin + 'static,
+		F: FnMut(&ArcContext<P>) + Send + Sync + Unpin + 'static,
 	{
 		self.callback
 			.replace(Arc::new(Mutex::new(callback)));
@@ -100,12 +100,12 @@ where
 		}
 	}
 
-	//#[cfg_attr(doc, doc(cfg(feature = "timer")))]
 	/// add the timer to the agents context
 	/// # Errors
 	///
 	/// # Panics
 	///
+	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "timer")))]
 	#[cfg(feature = "timer")]
 	pub fn add(self) -> Result<()> {
 		let name = if self.name.is_none() {
@@ -256,7 +256,7 @@ where
 		interval.tick().await;
 		cb.lock()
 			.instrument(span!(Level::INFO, "run_timer"))
-			.await(ctx.clone());
+			.await(&ctx);
 	}
 }
 // endregion:	--- Timer

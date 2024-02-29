@@ -1,7 +1,6 @@
 // Copyright © 2023 Stephan Kunz
 
 // region:		--- modules
-use super::query::QueryCallback;
 use crate::prelude::*;
 use std::fmt::Debug;
 use zenoh::liveliness::LivelinessToken;
@@ -103,14 +102,15 @@ impl Communicator {
 		}
 	}
 
-	pub(crate) fn get<P>(
+	pub(crate) fn get<P, F>(
 		&self,
 		ctx: ArcContext<P>,
 		query_name: impl Into<String>,
 		mode: ConsolidationMode,
-		callback: QueryCallback<P>,
+		callback: F,
 	) where
 		P: Debug + Send + Sync + Unpin + 'static,
+		F: Fn(&ArcContext<P>, &Message) + Send + Sync + Unpin + 'static,
 	{
 		let key_expr = self.key_expr(query_name);
 		//dbg!(&key_expr);
