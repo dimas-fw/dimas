@@ -1,5 +1,7 @@
 // Copyright © 2023 Stephan Kunz
 
+//! Module `query` provides an information/compute requestor `Query` which can be created using the `QueryBuilder`.
+
 // region:		--- modules
 use crate::prelude::*;
 use std::{fmt::Debug, sync::Mutex};

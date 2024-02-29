@@ -1,5 +1,7 @@
 // Copyright © 2024 Stephan Kunz
 
+//! Module `message` provides the different types of `Message`s used in callbacks.
+
 // region:		--- modules
 use crate::prelude::{encode, Encode};
 use std::ops::Deref;

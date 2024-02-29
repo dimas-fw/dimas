@@ -1,12 +1,13 @@
 // Copyright © 2023 Stephan Kunz
 
-//! Module Timer provides a set of timer which can be creating using the TimerBuilder.
-//! When fired, the Timer calls his assigned TimerCallback
+//! Module `timer` provides a set of `Timer` variants which can be created using the `TimerBuilder`.
+//! When fired, a `Timer` calls his assigned `TimerCallback`.
 
 // region:		--- modules
 use crate::prelude::*;
-use std::{fmt::Debug, time::Duration};
-use tokio::{sync::Mutex, task::JoinHandle, time};
+use std::{fmt::Debug, sync::Mutex, time::Duration};
+use tokio::{task::JoinHandle, time};
+use tracing::{span, Level};
 // endregion:	--- modules
 
 // region:		--- types
@@ -244,9 +245,6 @@ where
 	}
 }
 
-use tracing::{span, Instrument, Level};
-
-//#[tracing::instrument(level = tracing::Level::DEBUG)]
 async fn run_timer<P>(interval: Duration, cb: TimerCallback<P>, ctx: ArcContext<P>)
 where
 	P: Debug + Send + Sync + Unpin + 'static,
@@ -254,9 +252,10 @@ where
 	let mut interval = time::interval(interval);
 	loop {
 		interval.tick().await;
-		cb.lock()
-			.instrument(span!(Level::INFO, "run_timer"))
-			.await(&ctx);
+
+		let span = span!(Level::DEBUG, "run_timer");
+		let _guard = span.enter();
+		cb.lock().expect("should nothappen")(&ctx);
 	}
 }
 // endregion:	--- Timer

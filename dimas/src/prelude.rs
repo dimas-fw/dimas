@@ -1,5 +1,7 @@
 // Copyright © 2023 Stephan Kunz
 
+//! DiMAS `prelude` should be in most cases sufficient to include.
+
 // region:    --- modules
 // re-exports
 // used std synchronisation primitives

@@ -1,5 +1,7 @@
 // Copyright © 2023 Stephan Kunz
 
+//! Module `communicator` provides the `Communicator` implementing the communication capabilities for an `Agent`.
+
 // region:		--- modules
 use crate::prelude::*;
 use std::fmt::Debug;
@@ -13,7 +15,7 @@ use zenoh::publication::Publisher;
 pub struct Communicator {
 	/// the zenoh session
 	pub(crate) session: Arc<Session>,
-	/// prefix to separate agents communicaton
+	/// prefix to separate agents communication
 	pub(crate) prefix: Option<String>,
 }
 

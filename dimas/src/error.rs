@@ -1,5 +1,7 @@
 // Copyright © 2023 Stephan Kunz
 
+//! Module `error` provides the DiMAS specific `Error`s and `Result`.
+
 // region:    --- types
 /// Enables simplified usage of Result with dimas Error type
 pub type Result<T> = core::result::Result<T, Error>;

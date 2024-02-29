@@ -1,5 +1,8 @@
 // Copyright © 2023 Stephan Kunz
 
+//! Module `liveliness_subscriber` provides a `LivelinessSubscriber` which can be created using the `LivelinessSubscriberBuilder`.
+//! A `LivelinessSubscriber` can optional subscribe on a delete message.
+
 // region:		--- modules
 use crate::prelude::*;
 use std::{fmt::Debug, sync::Mutex};
@@ -194,7 +197,7 @@ async fn run_liveliness<P>(
 			.await
 			.expect("should never happen");
 		let agent_id = sample.key_expr.to_string().replace(&key_expr, "");
-		
+
 		let span = span!(Level::DEBUG, "run_liveliness");
 		let _guard = span.enter();
 		match sample.kind {

@@ -1,5 +1,8 @@
 // Copyright © 2023 Stephan Kunz
 
+//! Module `subscriber` provides a message `Subscriber` which can be created using the `SubscriberBuilder`.
+//! A `Subscriber` can optional subscribe on a delete message.
+
 // region:		--- modules
 use crate::prelude::*;
 use std::{fmt::Debug, sync::Mutex};

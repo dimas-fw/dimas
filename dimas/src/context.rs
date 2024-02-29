@@ -1,5 +1,7 @@
 // Copyright © 2023 Stephan Kunz
 
+//! The `Context` provides access to an `Agent`'s internal data and its defined properties.
+
 // region:		--- modules
 use crate::com::communicator::Communicator;
 use crate::prelude::*;
