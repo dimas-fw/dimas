@@ -2,11 +2,9 @@
 //! Copyright © 2024 Stephan Kunz
 
 // region:		--- modules
-use bitcode::{Decode, Encode};
 use chrono::Local;
 use clap::Parser;
 use dimas::prelude::*;
-use std::sync::{Arc, RwLock};
 use std::time::Duration;
 use tracing::info;
 // endregion:	--- modules
@@ -34,18 +32,18 @@ struct PingPongMessage {
 }
 
 #[allow(clippy::cast_precision_loss)]
-fn pong_received(_ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
-	let message: PingPongMessage = bitcode::decode(message).expect("should not happen");
+fn pong_received(_ctx: &ArcContext<AgentProps>, message: &Message) {
+	let message: PingPongMessage = decode(message).expect("should not happen");
 
 	// get current timestamp
 	let received = Local::now()
 		.naive_utc()
 		.timestamp_nanos_opt()
 		.unwrap_or(0);
-	// calculate traveltimes
+	// calculate & print traveltimes
 	let oneway = received - message.received.unwrap_or(0);
 	let roundtrip = received - message.sent;
-	info!(
+	println!(
 		"Trip {}, oneway {:.2}ms, roundtrip {:.2}ms",
 		&message.counter,
 		oneway as f64 / 1_000_000.0,
@@ -56,7 +54,7 @@ fn pong_received(_ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps
 #[tokio::main]
 async fn main() -> Result<()> {
 	// a tracing subscriber writing logs
-	tracing_subscriber::fmt().init();
+	tracing_subscriber::fmt::init();
 
 	// parse arguments
 	let args = Args::parse();
@@ -75,8 +73,8 @@ async fn main() -> Result<()> {
 		.timer()
 		.name("timer")
 		.interval(Duration::from_secs(1))
-		.callback(|ctx, props| {
-			let counter = props.read().expect("should never happen").counter;
+		.callback(|ctx| {
+			let counter = ctx.read().expect("should never happen").counter;
 
 			let message = PingPongMessage {
 				counter,
@@ -94,10 +92,7 @@ async fn main() -> Result<()> {
 			info!("Sent {} ", &text);
 
 			// increase counter
-			props
-				.write()
-				.expect("should never happen")
-				.counter += 1;
+			ctx.write().expect("should never happen").counter += 1;
 		})
 		.add()?;
 
@@ -108,6 +103,8 @@ async fn main() -> Result<()> {
 		.put_callback(pong_received)
 		.add()?;
 
+	// activate liveliness
+	agent.liveliness(true);
 	agent.start().await;
 
 	Ok(())

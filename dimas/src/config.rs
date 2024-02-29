@@ -1,6 +1,6 @@
 // Copyright © 2024 Stephan Kunz
 
-use zenoh::config::ValidatedMap;
+//! Module `config` provides `Config`, the configuration data for an `Agent`.
 
 /// Manages the agents configuration
 #[repr(transparent)]
@@ -10,10 +10,7 @@ pub struct Config(zenoh::config::Config);
 impl Default for Config {
 	/// create a default configuration that connecs to agents in same subnet
 	fn default() -> Self {
-		let mut res = zenoh::config::peer();
-		// use every interface for connection
-		res.insert_json5("connect/endpoints", r#"["tcp/0.0.0.0/7447"]"#)
-			.expect("could not create default config");
+		let res = zenoh::config::peer();
 		Self(res)
 	}
 }

@@ -1,36 +1,14 @@
 // Copyright © 2023 Stephan Kunz
 
+//! Module `agent` provides the `Agent`.
+
 // region:		--- modules
 #[cfg(feature = "liveliness")]
 use crate::com::liveliness_subscriber::{LivelinessSubscriber, LivelinessSubscriberBuilder};
-#[cfg(feature = "publisher")]
-use crate::com::publisher::{Publisher, PublisherBuilder};
-#[cfg(feature = "query")]
-use crate::com::query::{Query, QueryBuilder};
-#[cfg(feature = "queryable")]
-use crate::com::queryable::{Queryable, QueryableBuilder};
-#[cfg(feature = "subscriber")]
-use crate::com::subscriber::{Subscriber, SubscriberBuilder};
-#[cfg(feature = "timer")]
-use crate::timer::{Timer, TimerBuilder};
-use crate::{com::communicator::Communicator, context::Context};
-#[cfg(any(
-	feature = "publisher",
-	feature = "query",
-	feature = "queryable",
-	feature = "subscriber",
-	feature = "timer"
-))]
-use std::collections::HashMap;
-use std::{
-	fmt::Debug,
-	marker::PhantomData,
-	ops::Deref,
-	sync::{Arc, RwLock},
-	time::Duration,
-};
+use crate::context::Context;
+use crate::prelude::*;
+use std::{fmt::Debug, ops::Deref, time::Duration};
 use tokio::signal;
-#[cfg(feature = "liveliness")]
 use zenoh::liveliness::LivelinessToken;
 // endregion:	--- modules
 
@@ -40,33 +18,15 @@ pub struct Agent<'a, P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
-	com: Arc<Communicator>,
-	// The agents property structure
-	props: Arc<RwLock<P>>,
-	#[cfg(feature = "liveliness")]
+	// The agents context structure
+	context: ArcContext<P>,
+	// flag if sending liveliness is active
 	liveliness: bool,
-	// an optional liveliness token
-	#[cfg(feature = "liveliness")]
+	// the liveliness token
 	liveliness_token: RwLock<Option<LivelinessToken<'a>>>,
 	// an optional liveliness subscriber
 	#[cfg(feature = "liveliness")]
 	liveliness_subscriber: Arc<RwLock<Option<LivelinessSubscriber<P>>>>,
-	// registered subscribers
-	#[cfg(feature = "subscriber")]
-	subscribers: Arc<RwLock<HashMap<String, Subscriber<P>>>>,
-	// registered queryables
-	#[cfg(feature = "queryable")]
-	queryables: Arc<RwLock<HashMap<String, Queryable<P>>>>,
-	// registered publisher
-	#[cfg(feature = "publisher")]
-	publishers: Arc<RwLock<HashMap<String, Publisher>>>,
-	// registered queries
-	#[cfg(feature = "query")]
-	queries: Arc<RwLock<HashMap<String, Query<P>>>>,
-	// registered timer
-	#[cfg(feature = "timer")]
-	timers: Arc<RwLock<HashMap<String, Timer<P>>>>,
-	pd: PhantomData<&'a P>,
 }
 
 impl<'a, P> Debug for Agent<'a, P>
@@ -75,19 +35,8 @@ where
 {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Agent")
-			.field("id", &self.uuid())
-			.field("prefix", &self.com.prefix)
-			//.field("com", &self.com)
-			//.field("pd", &self.pd)
-			//.field("props", &self.props)
-			//.field("liveliness", &self.liveliness)
-			//.field("liveliness_token", &self.liveliness_token)
-			//.field("liveliness_subscriber", &self.liveliness_subscriber)
-			//.field("subscribers", &self.subscribers)
-			//.field("queryables", &self.queryables)
-			//.field("publishers", &self.publishers)
-			//.field("queries", &self.queries)
-			//.field("timers", &self.timers)
+			.field("id", &self.context.uuid())
+			.field("prefix", &self.context.prefix())
 			.finish_non_exhaustive()
 	}
 }
@@ -99,7 +48,7 @@ where
 	type Target = Arc<RwLock<P>>;
 
 	fn deref(&self) -> &Self::Target {
-		&self.props
+		&self.context.props
 	}
 }
 
@@ -109,28 +58,12 @@ where
 {
 	/// Create an instance of an agent.
 	pub fn new(config: crate::config::Config, properties: P) -> Self {
-		let com = Arc::new(Communicator::new(config));
-		let pd = PhantomData {};
 		Self {
-			com,
-			props: Arc::new(RwLock::new(properties)),
-			#[cfg(feature = "liveliness")]
+			context: Context::new(config, properties),
 			liveliness: false,
-			#[cfg(feature = "liveliness")]
 			liveliness_token: RwLock::new(None),
 			#[cfg(feature = "liveliness")]
 			liveliness_subscriber: Arc::new(RwLock::new(None)),
-			#[cfg(feature = "subscriber")]
-			subscribers: Arc::new(RwLock::new(HashMap::new())),
-			#[cfg(feature = "queryable")]
-			queryables: Arc::new(RwLock::new(HashMap::new())),
-			#[cfg(feature = "publisher")]
-			publishers: Arc::new(RwLock::new(HashMap::new())),
-			#[cfg(feature = "query")]
-			queries: Arc::new(RwLock::new(HashMap::new())),
-			#[cfg(feature = "timer")]
-			timers: Arc::new(RwLock::new(HashMap::new())),
-			pd,
 		}
 	}
 
@@ -140,61 +73,35 @@ where
 		properties: P,
 		prefix: impl Into<String>,
 	) -> Self {
-		let com = Arc::new(Communicator::new_with_prefix(config, prefix));
-		let pd = PhantomData {};
 		Self {
-			com,
-			props: Arc::new(RwLock::new(properties)),
-			#[cfg(feature = "liveliness")]
+			context: Context::new_with_prefix(config, properties, prefix),
 			liveliness: false,
-			#[cfg(feature = "liveliness")]
 			liveliness_token: RwLock::new(None),
 			#[cfg(feature = "liveliness")]
 			liveliness_subscriber: Arc::new(RwLock::new(None)),
-			#[cfg(feature = "subscriber")]
-			subscribers: Arc::new(RwLock::new(HashMap::new())),
-			#[cfg(feature = "queryable")]
-			queryables: Arc::new(RwLock::new(HashMap::new())),
-			#[cfg(feature = "publisher")]
-			publishers: Arc::new(RwLock::new(HashMap::new())),
-			#[cfg(feature = "query")]
-			queries: Arc::new(RwLock::new(HashMap::new())),
-			#[cfg(feature = "timer")]
-			timers: Arc::new(RwLock::new(HashMap::new())),
-			pd,
 		}
 	}
 
 	/// get the agents uuid
 	#[must_use]
 	pub fn uuid(&self) -> String {
-		self.com.uuid()
+		self.context.uuid()
 	}
 
 	/// get the agents properties
 	#[must_use]
 	pub fn props(&self) -> Arc<RwLock<P>> {
-		self.props.clone()
+		self.context.props.clone()
 	}
 
-	//#[cfg_attr(doc, doc(cfg(feature = "liveliness")))]
 	/// activate sending liveliness information
-	#[cfg(feature = "liveliness")]
 	pub fn liveliness(&mut self, activate: bool) {
 		self.liveliness = activate;
 	}
 
 	/// get a `Context` of the `Agent`
-	pub fn get_context(&self) -> Arc<Context<P>> {
-		let pd = PhantomData {};
-		Arc::new(Context {
-			communicator: self.com.clone(),
-			#[cfg(feature = "publisher")]
-			publishers: self.publishers.clone(),
-			#[cfg(feature = "query")]
-			queries: self.queries.clone(),
-			pd,
-		})
+	pub fn get_context(&self) -> ArcContext<P> {
+		self.context.clone()
 	}
 
 	//#[cfg_attr(doc, doc(cfg(feature = "liveliness")))]
@@ -205,78 +112,57 @@ where
 		LivelinessSubscriberBuilder {
 			subscriber: self.liveliness_subscriber.clone(),
 			context: self.get_context(),
-			props: self.props.clone(),
 			key_expr: None,
 			put_callback: None,
 			delete_callback: None,
 		}
 	}
 
-	//#[cfg_attr(doc, doc(cfg(feature = "subscriber")))]
-	/// get a builder for a Subscriber
-	#[cfg(feature = "subscriber")]
-	#[must_use]
-	pub fn subscriber(&self) -> SubscriberBuilder<P> {
-		SubscriberBuilder {
-			collection: self.subscribers.clone(),
-			context: self.get_context(),
-			props: self.props.clone(),
-			key_expr: None,
-			put_callback: None,
-			delete_callback: None,
-		}
-	}
-
-	//#[cfg_attr(doc, doc(cfg(feature = "queryable")))]
-	/// get a builder for a Queryable
-	#[cfg(feature = "queryable")]
-	#[must_use]
-	pub fn queryable(&self) -> QueryableBuilder<P> {
-		QueryableBuilder {
-			collection: self.queryables.clone(),
-			context: self.get_context(),
-			props: self.props.clone(),
-			key_expr: None,
-			callback: None,
-		}
-	}
-
-	//#[cfg_attr(doc, doc(cfg(feature = "publisher")))]
 	/// get a builder for a Publisher
-	#[cfg(feature = "publisher")]
 	#[must_use]
 	pub fn publisher(&self) -> PublisherBuilder<P> {
 		PublisherBuilder {
-			collection: self.publishers.clone(),
 			context: self.get_context(),
-			props: self.props.clone(),
 			key_expr: None,
 		}
 	}
 
-	//#[cfg_attr(doc, doc(cfg(feature = "query")))]
 	/// get a builder for a Query
-	#[cfg(feature = "query")]
 	#[must_use]
 	pub fn query(&self) -> QueryBuilder<P> {
 		QueryBuilder {
-			collection: self.queries.clone(),
 			context: self.get_context(),
-			props: self.props.clone(),
 			key_expr: None,
 			mode: None,
 			callback: None,
 		}
 	}
 
-	//#[cfg_attr(doc, doc(cfg(feature = "timer")))]
+	/// get a builder for a Queryable
+	#[must_use]
+	pub fn queryable(&self) -> QueryableBuilder<P> {
+		QueryableBuilder {
+			context: self.get_context(),
+			key_expr: None,
+			callback: None,
+		}
+	}
+
+	/// get a builder for a Subscriber
+	#[must_use]
+	pub fn subscriber(&self) -> SubscriberBuilder<P> {
+		SubscriberBuilder {
+			context: self.get_context(),
+			key_expr: None,
+			put_callback: None,
+			delete_callback: None,
+		}
+	}
+
 	/// get a builder for a Timer
-	#[cfg(feature = "timer")]
 	#[must_use]
 	pub fn timer(&self) -> TimerBuilder<P> {
 		TimerBuilder {
-			collection: self.timers.clone(),
-			props: self.props.clone(),
 			context: self.get_context(),
 			name: None,
 			delay: None,
@@ -292,7 +178,8 @@ where
 	pub async fn start(&mut self) {
 		// start all registered queryables
 		#[cfg(feature = "queryable")]
-		self.queryables
+		self.context
+			.queryables
 			.write()
 			.expect("should never happen")
 			.iter_mut()
@@ -301,7 +188,8 @@ where
 			});
 		// start all registered subscribers
 		#[cfg(feature = "subscriber")]
-		self.subscribers
+		self.context
+			.subscribers
 			.write()
 			.expect("should never happen")
 			.iter_mut()
@@ -328,10 +216,13 @@ where
 		tokio::time::sleep(Duration::from_millis(100)).await;
 
 		// activate liveliness
-		#[cfg(feature = "liveliness")]
 		if self.liveliness {
 			let msg_type = "alive";
-			let token: LivelinessToken<'a> = self.com.liveliness(msg_type).await;
+			let token: LivelinessToken<'a> = self
+				.context
+				.communicator
+				.send_liveliness(msg_type)
+				.await;
 			self.liveliness_token
 				.write()
 				.expect("should never happen")
@@ -340,7 +231,8 @@ where
 
 		// start all registered timers
 		#[cfg(feature = "timer")]
-		self.timers
+		self.context
+			.timers
 			.write()
 			.expect("should never happen")
 			.iter_mut()
@@ -354,7 +246,7 @@ where
 				self.stop();
 			}
 			Err(err) => {
-				eprintln!("Unable to listen for shutdown signal: {err}");
+				tracing::error!("Unable to listen for 'Ctrl-C': {err}");
 				// we also shut down in case of error
 				self.stop();
 			}
@@ -368,7 +260,8 @@ where
 		// reverse order of start!
 		// stop all registered timers
 		#[cfg(feature = "timer")]
-		self.timers
+		self.context
+			.timers
 			.write()
 			.expect("should never happen")
 			.iter_mut()
@@ -404,7 +297,8 @@ where
 
 		// stop all registered subscribers
 		#[cfg(feature = "subscriber")]
-		self.subscribers
+		self.context
+			.subscribers
 			.write()
 			.expect("should never happen")
 			.iter_mut()
@@ -413,7 +307,8 @@ where
 			});
 		// stop all registered queryables
 		#[cfg(feature = "queryable")]
-		self.queryables
+		self.context
+			.queryables
 			.write()
 			.expect("should never happen")
 			.iter_mut()

@@ -1,12 +1,11 @@
 // Copyright © 2023 Stephan Kunz
 
+//! Module `query` provides an information/compute requestor `Query` which can be created using the `QueryBuilder`.
+
 // region:		--- modules
-use crate::{context::Context, error::Result};
-use std::{
-	collections::HashMap,
-	fmt::Debug,
-	sync::{Arc, RwLock},
-};
+use crate::prelude::*;
+use std::{fmt::Debug, sync::Mutex};
+use tracing::error;
 use zenoh::{
 	prelude::{sync::SyncResolve, SampleKind},
 	query::ConsolidationMode,
@@ -17,7 +16,8 @@ use zenoh::{
 // region:		--- types
 /// type definition for the queries callback function
 #[allow(clippy::module_name_repetitions)]
-pub type QueryCallback<P> = fn(&Arc<Context<P>>, &Arc<RwLock<P>>, answer: &[u8]);
+pub type QueryCallback<P> =
+	Arc<Mutex<dyn FnMut(&ArcContext<P>, &Message) + Send + Sync + Unpin + 'static>>;
 // endregion:	--- types
 
 // region:		--- QueryBuilder
@@ -28,9 +28,7 @@ pub struct QueryBuilder<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
-	pub(crate) collection: Arc<RwLock<HashMap<String, Query<P>>>>,
-	pub(crate) context: Arc<Context<P>>,
-	pub(crate) props: Arc<RwLock<P>>,
+	pub(crate) context: ArcContext<P>,
 	pub(crate) key_expr: Option<String>,
 	pub(crate) mode: Option<ConsolidationMode>,
 	pub(crate) callback: Option<QueryCallback<P>>,
@@ -65,8 +63,12 @@ where
 
 	/// Set the queries callback function
 	#[must_use]
-	pub fn callback(mut self, callback: QueryCallback<P>) -> Self {
-		self.callback.replace(callback);
+	pub fn callback<F>(mut self, callback: F) -> Self
+	where
+		F: FnMut(&ArcContext<P>, &Message) + Send + Sync + Unpin + 'static,
+	{
+		self.callback
+			.replace(Arc::new(Mutex::new(callback)));
 		self
 	}
 
@@ -77,10 +79,10 @@ where
 	///
 	pub fn build(mut self) -> Result<Query<P>> {
 		if self.key_expr.is_none() {
-			return Err("No key expression or msg type given".into());
+			return Err(Error::NoKeyExpression);
 		}
 		let callback = if self.callback.is_none() {
-			return Err("No callback given".into());
+			return Err(Error::NoCallback);
 		} else {
 			self.callback.expect("should never happen")
 		};
@@ -99,20 +101,21 @@ where
 			key_expr,
 			mode,
 			ctx: self.context,
-			props: self.props,
 			callback,
 		};
 
 		Ok(q)
 	}
 
-	/// Build and add the query to the agent
+	/// Build and add the query to the agents context
 	/// # Errors
 	///
 	/// # Panics
 	///
+	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "query")))]
+	#[cfg(feature = "query")]
 	pub fn add(self) -> Result<()> {
-		let collection = self.collection.clone();
+		let collection = self.context.queries.clone();
 		let q = self.build()?;
 
 		collection
@@ -126,16 +129,26 @@ where
 
 // region:		--- Query
 /// Query
-#[derive(Debug)]
 pub struct Query<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
 	key_expr: String,
 	mode: ConsolidationMode,
-	ctx: Arc<Context<P>>,
-	props: Arc<RwLock<P>>,
+	ctx: ArcContext<P>,
 	callback: QueryCallback<P>,
+}
+
+impl<P> Debug for Query<P>
+where
+	P: Debug + Send + Sync + Unpin + 'static,
+{
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("Query")
+			.field("key_expr", &self.key_expr)
+			.field("mode", &self.mode)
+			.finish_non_exhaustive()
+	}
 }
 
 impl<P> Query<P>
@@ -145,8 +158,9 @@ where
 	/// run a query
 	/// # Panics
 	///
+	#[tracing::instrument(level = tracing::Level::DEBUG)]
 	pub fn get(&self) {
-		let cb = self.callback;
+		let cb = self.callback.clone();
 		let replies = self
 			.ctx
 			.communicator
@@ -167,16 +181,20 @@ where
 						.value
 						.try_into()
 						.expect("should not happen");
+					let msg = Message {
+						key_expr: sample.key_expr.to_string(),
+						value,
+					};
 					match sample.kind {
 						SampleKind::Put => {
-							cb(&self.ctx, &self.props, &value);
+							cb.lock().expect("should not happen")(&self.ctx, &msg);
 						}
 						SampleKind::Delete => {
-							println!("Delete in Query");
+							error!("Delete in Query");
 						}
 					}
 				}
-				Err(err) => println!(
+				Err(err) => error!(
 					">> No data (ERROR: '{}')",
 					String::try_from(&err).expect("to be implemented")
 				),

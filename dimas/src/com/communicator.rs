@@ -1,14 +1,10 @@
 // Copyright © 2023 Stephan Kunz
 
+//! Module `communicator` provides the `Communicator` implementing the communication capabilities for an `Agent`.
+
 // region:		--- modules
-use super::query::QueryCallback;
-use crate::context::Context;
-use crate::error::Result;
-use std::{
-	fmt::Debug,
-	sync::{Arc, RwLock},
-};
-#[cfg(feature = "liveliness")]
+use crate::prelude::*;
+use std::fmt::Debug;
 use zenoh::liveliness::LivelinessToken;
 use zenoh::prelude::{r#async::*, sync::SyncResolve};
 use zenoh::publication::Publisher;
@@ -19,7 +15,7 @@ use zenoh::publication::Publisher;
 pub struct Communicator {
 	/// the zenoh session
 	pub(crate) session: Arc<Session>,
-	/// prefix to separate agents communicaton
+	/// prefix to separate agents communication
 	pub(crate) prefix: Option<String>,
 }
 
@@ -66,15 +62,13 @@ impl Communicator {
 		}
 	}
 
-	//#[cfg_attr(doc, doc(cfg(feature = "liveliness")))]
-	#[cfg(feature = "liveliness")]
-	pub(crate) async fn liveliness<'a>(
+	pub(crate) async fn send_liveliness<'a>(
 		&self,
 		msg_type: impl Into<String> + Send,
 	) -> LivelinessToken<'a> {
 		let session = self.session.clone();
 		let uuid = self.key_expr(msg_type) + "/" + &session.zid().to_string();
-		//dbg!(&uuid);
+
 		session
 			.liveliness()
 			.declare_token(&uuid)
@@ -92,40 +86,37 @@ impl Communicator {
 
 	pub(crate) fn put<M>(&self, msg_name: impl Into<String>, message: M) -> Result<()>
 	where
-		M: bitcode::Encode,
+		M: Encode,
 	{
-		let value: Vec<u8> = bitcode::encode(&message).expect("should never happen");
+		let value: Vec<u8> = encode(&message).expect("should never happen");
 		let key_expr = self.key_expr(msg_name);
-		//dbg!(&key_expr);
 		match self.session.put(&key_expr, value).res_sync() {
 			Ok(()) => Ok(()),
-			Err(_) => Err("Publish failed".into()),
+			Err(_) => Err(Error::PutFailed),
 		}
 	}
 
 	pub(crate) fn delete(&self, msg_name: impl Into<String>) -> Result<()> {
 		let key_expr = self.key_expr(msg_name);
-		//dbg!(&key_expr);
 		match self.session.delete(&key_expr).res_sync() {
 			Ok(()) => Ok(()),
-			Err(_) => Err("Delete failed".into()),
+			Err(_) => Err(Error::DeleteFailed),
 		}
 	}
 
-	pub(crate) fn get<P>(
+	pub(crate) fn get<P, F>(
 		&self,
-		ctx: Arc<Context<P>>,
-		props: Arc<RwLock<P>>,
+		ctx: ArcContext<P>,
 		query_name: impl Into<String>,
 		mode: ConsolidationMode,
-		callback: QueryCallback<P>,
+		callback: F,
 	) where
 		P: Debug + Send + Sync + Unpin + 'static,
+		F: Fn(&ArcContext<P>, &Message) + Send + Sync + Unpin + 'static,
 	{
 		let key_expr = self.key_expr(query_name);
 		//dbg!(&key_expr);
 		let ctx = ctx;
-		let props = props;
 		let session = self.session.clone();
 
 		let replies = session
@@ -145,9 +136,15 @@ impl Communicator {
 						.value
 						.try_into()
 						.expect("should not happen");
+
+					let msg = Message {
+						key_expr: sample.key_expr.to_string(),
+						value,
+					};
+
 					match sample.kind {
 						SampleKind::Put => {
-							callback(&ctx, &props, &value);
+							callback(&ctx, &msg);
 						}
 						SampleKind::Delete => {
 							println!("Delete in Query");

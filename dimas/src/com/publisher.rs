@@ -1,19 +1,12 @@
 // Copyright © 2023 Stephan Kunz
 
+//! Module `publisher` provides a message sender `Publisher` which can be created using the `PublisherBuilder`.
+
 // region:		--- modules
-use crate::{context::Context, error::Result};
-use std::{
-	collections::HashMap,
-	fmt::Debug,
-	sync::{Arc, RwLock},
-};
+use crate::prelude::*;
+use std::fmt::Debug;
 use zenoh::prelude::sync::SyncResolve;
 // endregion:	--- modules
-
-// region:		--- types
-//#[allow(clippy::module_name_repetitions)]
-//pub type PublisherCallback<P> = fn(Arc<Context<P>>, Arc<RwLock<P>>, sample: Sample);
-// endregion:	--- types
 
 // region:		--- PublisherBuilder
 /// The builder for a publisher
@@ -23,9 +16,7 @@ pub struct PublisherBuilder<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
-	pub(crate) collection: Arc<RwLock<HashMap<String, Publisher>>>,
-	pub(crate) context: Arc<Context<P>>,
-	pub(crate) props: Arc<RwLock<P>>,
+	pub(crate) context: ArcContext<P>,
 	pub(crate) key_expr: Option<String>,
 }
 
@@ -56,7 +47,7 @@ where
 	///
 	pub fn build(mut self) -> Result<Publisher> {
 		if self.key_expr.is_none() {
-			return Err("No key expression or msg type given".into());
+			return Err(Error::NoKeyExpression);
 		}
 
 		let key_expr = if self.key_expr.is_some() {
@@ -66,20 +57,21 @@ where
 		};
 
 		//dbg!(&key_expr);
-		let _props = self.props.clone();
 		let publ = self.context.create_publisher(key_expr);
 		let p = Publisher { publisher: publ };
 
 		Ok(p)
 	}
 
-	/// Build and add the publisher to the agent
+	/// Build and add the publisher to the agents context
 	/// # Errors
 	///
 	/// # Panics
 	///
+	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "publisher")))]
+	#[cfg(feature = "publisher")]
 	pub fn add(self) -> Result<()> {
-		let collection = self.collection.clone();
+		let collection = self.context.publishers.clone();
 		let p = self.build()?;
 		collection
 			.write()
@@ -92,9 +84,16 @@ where
 
 // region:		--- Publisher
 /// Publisher
-#[derive(Debug)]
 pub struct Publisher {
 	publisher: zenoh::publication::Publisher<'static>,
+}
+
+impl Debug for Publisher {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("Publisher")
+			.field("key_expr", &self.publisher.key_expr())
+			.finish_non_exhaustive()
+	}
 }
 
 impl Publisher
@@ -106,28 +105,29 @@ impl Publisher
 	///
 	/// # Panics
 	///
+	#[tracing::instrument(level = tracing::Level::DEBUG)]
 	pub fn put<T>(&self, message: T) -> Result<()>
 	where
-		T: bitcode::Encode,
+		T: Debug + Encode,
 	{
-		let value: Vec<u8> = bitcode::encode(&message).expect("should never happen");
-		//let _ = self.publisher.put(value).res_sync();
+		let value: Vec<u8> = encode(&message).expect("should never happen");
 		match self.publisher.put(value).res_sync() {
 			Ok(()) => Ok(()),
-			Err(_) => Err("Publish failed".into()),
+			Err(_) => Err(Error::PutFailed),
 		}
 	}
 
-	// TODO!
+	// TODO! This currently does not work - it sends a put message
 	/// Send a "delete" message - method currently does not work!!
 	/// # Errors
 	///
 	/// # Panics
 	///
+	#[tracing::instrument(level = tracing::Level::DEBUG)]
 	pub fn delete(&self) -> Result<()> {
 		match self.publisher.delete().res_sync() {
 			Ok(()) => Ok(()),
-			Err(_) => Err("Delete failed".into()),
+			Err(_) => Err(Error::DeleteFailed),
 		}
 	}
 }

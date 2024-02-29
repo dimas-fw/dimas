@@ -13,27 +13,34 @@ that until version 1.0.0 each new version may include breaking changes, which wi
 
 # Usage
 
-DiMAS currently also needs to include the crates `bitcode` and `tokio`.
-So include `dimas` together with these crates in the dependencies section of your `Cargo.toml`.
+DiMAS needs an `async` runtime. So you have to define your `main` function as an `async` function.
+
+So include `dimas` together with an async runtime in the dependencies section of your `Cargo.toml`.
+As DiMAS uses `tokio` as async runtime, so preferably use `tokio` for your application.
 
 DiMAS uses features to have some control over compile time and the size of the binary. 
 The feature `all`, including all available features, is a good point to start with.
 
+So your `Cargo.toml` should include:
+
 ```toml
 [dependencies]
-dimas = { version = "0.0.4", features = ["all"] }
-bitcode = "0.5"
-tokio = { version = "1",features = ["macros"] }
+dimas = { version = "0.0.5", features = ["all"] }
+tokio = { version = "1", features = ["macros"] }
 ```
 
-DiMAS needs an `async` runtime. So you have to define your `main` function as an `async` function.
 It also makes sense to return a `Result` as some functions return one. DiMAS prelude provides a simplified `Result` type for that.
+
+A suitable main programm skeleton may look like:
 
 ```rust
 use dimas::prelude::*;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+
+	// your code
+	// ...
 
 	Ok(())
 }
@@ -44,12 +51,11 @@ async fn main() -> Result<()> {
 A very simple example consist at least of two agents, a `publisher` publishing messages 
 and a `subscriber` that is listening to those messages.
 
-Your `Cargo.toml` should include
+The `Cargo.toml` for this publisher/subscriber example should include
 
 ```toml
 [dependencies]
-dimas = { version = "0.0.4", features = ["timer", "subscriber"] }
-bitcode = "0.5"
+dimas = { version = "0.0.5", features = ["timer", "subscriber"] }
 tokio = { version = "1",features = ["macros"] }
 ```
 
@@ -90,8 +96,8 @@ async fn main() -> Result<()> {
 		.interval(Duration::from_secs(1))
 		// the timers callback function as a closure
 		.callback(
-			|ctx, props| {
-				let counter = props
+			|ctx| {
+				let counter = ctx
 					.read()
 					.unwrap()
 					.counter
@@ -103,7 +109,7 @@ async fn main() -> Result<()> {
 				// publishing with stored publisher for topic "hello"
 				let _ = ctx.put_with("hello", text);
 				// modify counter in properties
-				props
+				ctx
 					.write()
 					.unwrap()
 					.counter += 1;
@@ -125,13 +131,12 @@ The `subscriber.rs` should look like this:
 
 ```rust,no_run
 use dimas::prelude::*;
-use std::sync::{Arc, RwLock};
 
 #[derive(Debug)]
 pub struct AgentProps {}
 
-fn callback(_ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
-	let message: String =	bitcode::decode(message).unwrap();
+fn callback(_ctx: &ArcContext<AgentProps>, message: &Message) {
+	let message: String =	decode(message).unwrap();
 	println!("Received '{}'", &message);
 }
 
@@ -162,10 +167,8 @@ async fn main() -> Result<()> {
 ```
 
 #### More examples
-You can find more examples in [dimas-fw/examples](https://github.com/dimas-fw/dimas/blob/main/examples/README.md)
-
-#### Benchmarks
-You can find benchmarks in [dimas-fw/benches](https://github.com/dimas-fw/dimas/blob/main/benches/README.md)
+You can find some simple examples in [dimas-fw/dimas/examples](https://github.com/dimas-fw/dimas/blob/main/examples/README.md)
+and more complex examples in [dimas-fw/examples](https://github.com/dimas-fw/examples/blob/main/README.md)
 
 ## Feature flags
 
@@ -174,8 +177,8 @@ It is necessary to enable all those features you want to use within your `Agent`
 
 - `all`: Enables all the features listed below. It's a good point to start with.
 - `liveliness`: Enables liveliness features sending tokens and listening for them.
-- `publisher`: Enables to store Pulishers within the Agent's Context.
-- `query`: Enables to store Queries within the Agent's Context.
-- `queryable`: Enables to store Queryables within the Agent's Context.
-- `subscriber`: Enables to store Subscibers within the Agent's Context.
-- `timer`: Enables to store Timer within the Agent's Context.
+- `publisher`: Enables to store `Publisher`'s within the `Agent`'s `Context`.
+- `query`: Enables to store `Query`'s within the `Agent`'s `Context`.
+- `queryable`: Enables to store `Queryable`'s within the `Agent`'s `Context`.
+- `subscriber`: Enables to store `Subsciber`'s within the `Agent`'s `Context`.
+- `timer`: Enables to store `Timer`'s within the `Agent`'s `Context`.

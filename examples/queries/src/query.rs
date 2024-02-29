@@ -4,10 +4,7 @@
 // region:		--- modules
 use clap::Parser;
 use dimas::prelude::*;
-use std::{
-	sync::{Arc, RwLock},
-	time::Duration,
-};
+use std::time::Duration;
 use tracing::info;
 // endregion:	--- modules
 
@@ -24,15 +21,15 @@ struct Args {
 #[derive(Debug)]
 struct AgentProps {}
 
-fn query_callback(_ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps>>, answer: &[u8]) {
-	let message: String = bitcode::decode(answer).expect("should not happen");
-	info!("Received '{}'", &message);
+fn query_callback(_ctx: &ArcContext<AgentProps>, response: &Message) {
+	let message: String = decode(response).expect("should not happen");
+	println!("Response '{}'", &message);
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
 	// a tracing subscriber writing logs
-	tracing_subscriber::fmt().init();
+	tracing_subscriber::fmt::init();
 
 	// parse arguments
 	let args = Args::parse();
@@ -44,7 +41,11 @@ async fn main() -> Result<()> {
 	let mut agent = Agent::new_with_prefix(Config::default(), properties, &args.prefix);
 
 	// create publisher for topic "ping"
-	agent.query().msg_type("query").callback(query_callback).add()?;
+	agent
+		.query()
+		.msg_type("query")
+		.callback(query_callback)
+		.add()?;
 
 	// timer for regular querying
 	let duration = Duration::from_secs(1);
@@ -53,7 +54,7 @@ async fn main() -> Result<()> {
 		.timer()
 		.name("timer")
 		.interval(duration)
-		.callback(move |ctx, _props| {
+		.callback(move |ctx| {
 			info!("Querying [{counter}]");
 			// querying with stored query
 			ctx.get_with("query");
@@ -61,6 +62,8 @@ async fn main() -> Result<()> {
 		})
 		.add()?;
 
+	// activate liveliness
+	agent.liveliness(true);
 	agent.start().await;
 
 	Ok(())

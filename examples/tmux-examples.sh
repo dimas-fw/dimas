@@ -13,16 +13,16 @@ tmux rename-window -t $session:$window 'examples'
 #
 #  +-------------+-------------+-------------+
 #  |             |             |             |
-#  |      0      |      3      |      7      |
+#  |      0      |      3      |      6      |
 #  |             |             |             |
 #  +-------------+-------------+-------------+
 #  |             |             |             |
-#  |      1      |      4      |      8      |
+#  |      1      |      4      |      7      |
 #  |             |             |             |
 #  +-------------+-------------+-------------+
-#  |             |      5      |             |
-#  |      2      +-------------+      9      |
-#  |             |      6      |             |
+#  |             |             |             |
+#  |      2      |      5      |      8      |
+#  |             |             |             |
 #  +-------------+-------------+-------------+
 
 tmux split-pane -h -p 70
@@ -33,11 +33,10 @@ tmux split-pane -v -p 66
 tmux split-pane -v -p 50
 
 tmux select-pane -t 3
-tmux split-pane -v -p 50
-tmux split-pane -v -p 50
+tmux split-pane -v -p 66
 tmux split-pane -v -p 50
 
-tmux select-pane -t 7
+tmux select-pane -t 6
 tmux split-pane -v -p 66
 tmux split-pane -v -p 50
 
@@ -58,14 +57,12 @@ tmux send-keys "cargo run --bin queryable $1" C-m
 # liveliness
 tmux select-pane -t 5
 tmux send-keys "cargo run --bin liveliness $1" C-m
-tmux select-pane -t 6
-tmux send-keys "cargo run --bin liveliness $1" C-m
 # ping/pong
-tmux select-pane -t 7
+tmux select-pane -t 6
 tmux send-keys "cargo run --bin ping $1" C-m
-tmux select-pane -t 8
+tmux select-pane -t 7
 tmux send-keys "cargo run --bin pong $1" C-m
 
-tmux select-pane -t 9
+tmux select-pane -t 8
 
 tmux attach-session -t $session

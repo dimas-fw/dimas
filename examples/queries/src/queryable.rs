@@ -4,7 +4,6 @@
 // region:		--- modules
 use clap::Parser;
 use dimas::prelude::*;
-use std::sync::{Arc, RwLock};
 use tracing::info;
 // endregion:	--- modules
 
@@ -23,26 +22,23 @@ struct AgentProps {
 	counter: u128,
 }
 
-fn queryable(_ctx: &Arc<Context<AgentProps>>, props: &Arc<RwLock<AgentProps>>, request: &Request) {
-	let value = props
+fn queryable(ctx: &ArcContext<AgentProps>, request: &Request) {
+	let value = ctx
 		.read()
 		.expect("should never happen")
 		.counter
 		.to_string();
-	info!("Received {}. query", &value);
+	info!("Received query, responding with {}", &value,);
 
 	request.reply(&value);
 
-	props
-		.write()
-		.expect("should never happen")
-		.counter += 1;
+	ctx.write().expect("should never happen").counter += 1;
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
 	// a tracing subscriber writing logs
-	tracing_subscriber::fmt().init();
+	tracing_subscriber::fmt::init();
 
 	// parse arguments
 	let args = Args::parse();
@@ -60,6 +56,8 @@ async fn main() -> Result<()> {
 		.callback(queryable)
 		.add()?;
 
+	// activate liveliness
+	agent.liveliness(true);
 	agent.start().await;
 
 	Ok(())

@@ -2,11 +2,9 @@
 //! Copyright © 2024 Stephan Kunz
 
 // region:		--- modules
-use bitcode::{Decode, Encode};
 use chrono::Local;
 use clap::Parser;
 use dimas::prelude::*;
-use std::sync::{Arc, RwLock};
 use tracing::info;
 // endregion:	--- modules
 
@@ -30,8 +28,8 @@ struct PingPongMessage {
 	received: Option<i64>,
 }
 
-fn ping_received(ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps>>, message: &[u8]) {
-	let mut message: PingPongMessage = bitcode::decode(message).expect("should not happen");
+fn ping_received(ctx: &ArcContext<AgentProps>, message: &Message) {
+	let mut message: PingPongMessage = decode(message).expect("should not happen");
 
 	// set receive-timestamp
 	message.received = Local::now().naive_utc().timestamp_nanos_opt();
@@ -47,7 +45,7 @@ fn ping_received(ctx: &Arc<Context<AgentProps>>, _props: &Arc<RwLock<AgentProps>
 #[tokio::main]
 async fn main() -> Result<()> {
 	// a tracing subscriber writing logs
-	tracing_subscriber::fmt().init();
+	tracing_subscriber::fmt::init();
 
 	// parse arguments
 	let args = Args::parse();
@@ -68,6 +66,8 @@ async fn main() -> Result<()> {
 		.put_callback(ping_received)
 		.add()?;
 
+	// activate liveliness
+	agent.liveliness(true);
 	agent.start().await;
 
 	Ok(())

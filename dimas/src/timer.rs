@@ -1,24 +1,19 @@
 // Copyright © 2023 Stephan Kunz
 
-//! Module Timer provides a set of timer which can be creating using the TimerBuilder.
-//! When fired, the Timer calls his assigned TimerCallback
+//! Module `timer` provides a set of `Timer` variants which can be created using the `TimerBuilder`.
+//! When fired, a `Timer` calls his assigned `TimerCallback`.
 
 // region:		--- modules
-use crate::{context::Context, error::Result};
-use std::{
-	collections::HashMap,
-	fmt::Debug,
-	sync::{Arc, RwLock},
-	time::Duration,
-};
-use tokio::{sync::Mutex, task::JoinHandle, time};
+use crate::prelude::*;
+use std::{fmt::Debug, sync::Mutex, time::Duration};
+use tokio::{task::JoinHandle, time};
+use tracing::{span, Level};
 // endregion:	--- modules
 
 // region:		--- types
 /// type definition for the functions called by a timer
 #[allow(clippy::module_name_repetitions)]
-pub type TimerCallback<P> =
-	Arc<Mutex<dyn FnMut(Arc<Context<P>>, Arc<RwLock<P>>) + Send + Sync + Unpin + 'static>>;
+pub type TimerCallback<P> = Arc<Mutex<dyn FnMut(&ArcContext<P>) + Send + Sync + Unpin + 'static>>;
 // endregion:	--- types
 
 // region:		--- TimerBuilder
@@ -29,9 +24,7 @@ pub struct TimerBuilder<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
-	pub(crate) collection: Arc<RwLock<HashMap<String, Timer<P>>>>,
-	pub(crate) props: Arc<RwLock<P>>,
-	pub(crate) context: Arc<Context<P>>,
+	pub(crate) context: ArcContext<P>,
 	pub(crate) name: Option<String>,
 	pub(crate) delay: Option<Duration>,
 	pub(crate) interval: Option<Duration>,
@@ -67,7 +60,7 @@ where
 	#[must_use]
 	pub fn callback<F>(mut self, callback: F) -> Self
 	where
-		F: FnMut(Arc<Context<P>>, Arc<RwLock<P>>) + Send + Sync + Unpin + 'static,
+		F: FnMut(&ArcContext<P>) + Send + Sync + Unpin + 'static,
 	{
 		self.callback
 			.replace(Arc::new(Mutex::new(callback)));
@@ -81,12 +74,12 @@ where
 	///
 	pub fn build(self) -> Result<Timer<P>> {
 		let interval = if self.interval.is_none() {
-			return Err("No interval given".into());
+			return Err(Error::NoInterval);
 		} else {
 			self.interval.expect("should never happen")
 		};
 		let callback = if self.callback.is_none() {
-			return Err("No callback given".into());
+			return Err(Error::NoCallback);
 		} else {
 			self.callback.expect("should never happen")
 		};
@@ -98,30 +91,30 @@ where
 				callback,
 				handle: None,
 				context: self.context,
-				props: self.props,
 			}),
 			None => Ok(Timer::Interval {
 				interval,
 				callback,
 				handle: None,
 				context: self.context,
-				props: self.props,
 			}),
 		}
 	}
 
-	/// add the timer to the agent
+	/// add the timer to the agents context
 	/// # Errors
 	///
 	/// # Panics
 	///
+	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "timer")))]
+	#[cfg(feature = "timer")]
 	pub fn add(self) -> Result<()> {
 		let name = if self.name.is_none() {
-			return Err("No name given".into());
+			return Err(Error::NoName);
 		} else {
 			self.name.clone().expect("should never happen")
 		};
-		let c = self.collection.clone();
+		let c = self.context.timers.clone();
 		let timer = self.build()?;
 		c.write()
 			.expect("should never happen")
@@ -132,7 +125,6 @@ where
 // endregion:	--- TimerBuilder
 
 // region:		--- Timer
-//#[derive(Debug, Clone)]
 /// Timer
 pub enum Timer<P>
 where
@@ -146,10 +138,8 @@ where
 		callback: TimerCallback<P>,
 		/// The handle to stop the Timer
 		handle: Option<JoinHandle<()>>,
-		/// The Context available within the callback function
-		context: Arc<Context<P>>,
-		/// The Agents properties, available in the callback function
-		props: Arc<RwLock<P>>,
+		/// The agents Context available within the callback function
+		context: ArcContext<P>,
 	},
 	/// A delayed Timer with an Interval
 	DelayedInterval {
@@ -161,11 +151,30 @@ where
 		callback: TimerCallback<P>,
 		/// The handle to stop the Timer
 		handle: Option<JoinHandle<()>>,
-		/// The Context available within the callback function
-		context: Arc<Context<P>>,
-		/// The Agents properties, available in the callback function
-		props: Arc<RwLock<P>>,
+		/// The agents Context available within the callback function
+		context: ArcContext<P>,
 	},
+}
+
+impl<P> Debug for Timer<P>
+where
+	P: Debug + Send + Sync + Unpin + 'static,
+{
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Interval { interval, .. } => f
+				.debug_struct("IntervalTimer")
+				.field("interval", interval)
+				.finish_non_exhaustive(),
+			Self::DelayedInterval {
+				delay, interval, ..
+			} => f
+				.debug_struct("DelayedIntervalTimer")
+				.field("delay", delay)
+				.field("interval", interval)
+				.finish_non_exhaustive(),
+		}
+	}
 }
 
 impl<P> Timer<P>
@@ -182,18 +191,12 @@ where
 				callback,
 				handle,
 				context,
-				props,
 			} => {
 				let interval = *interval;
 				let cb = callback.clone();
 				let ctx = context.clone();
-				let props = props.clone();
 				handle.replace(tokio::spawn(async move {
-					let mut interval = time::interval(interval);
-					loop {
-						interval.tick().await;
-						cb.lock().await(ctx.clone(), props.clone());
-					}
+					run_timer(interval, cb, ctx).await;
 				}));
 			}
 			Self::DelayedInterval {
@@ -202,20 +205,14 @@ where
 				callback,
 				handle,
 				context,
-				props,
 			} => {
 				let delay = *delay;
 				let interval = *interval;
 				let cb = callback.clone();
 				let ctx = context.clone();
-				let props = props.clone();
 				handle.replace(tokio::spawn(async move {
 					tokio::time::sleep(delay).await;
-					let mut interval = time::interval(interval);
-					loop {
-						interval.tick().await;
-						cb.lock().await(ctx.clone(), props.clone());
-					}
+					run_timer(interval, cb, ctx).await;
 				}));
 			}
 		}
@@ -231,7 +228,6 @@ where
 				callback: _,
 				handle,
 				context: _,
-				props: _,
 			}
 			| Self::DelayedInterval {
 				delay: _,
@@ -239,7 +235,6 @@ where
 				callback: _,
 				handle,
 				context: _,
-				props: _,
 			} => {
 				handle
 					.take()
@@ -247,6 +242,20 @@ where
 					.abort();
 			}
 		}
+	}
+}
+
+async fn run_timer<P>(interval: Duration, cb: TimerCallback<P>, ctx: ArcContext<P>)
+where
+	P: Debug + Send + Sync + Unpin + 'static,
+{
+	let mut interval = time::interval(interval);
+	loop {
+		interval.tick().await;
+
+		let span = span!(Level::DEBUG, "run_timer");
+		let _guard = span.enter();
+		cb.lock().expect("should nothappen")(&ctx);
 	}
 }
 // endregion:	--- Timer

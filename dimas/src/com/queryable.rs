@@ -1,59 +1,21 @@
 // Copyright © 2023 Stephan Kunz
 
+//! Module `queryable` provides an information/compute provider `Queryable` which can be created using the `QueryableBuilder`.
+
 // region:		--- modules
-use crate::{context::Context, error::Result};
-use std::{
-	collections::HashMap,
-	fmt::Debug,
-	sync::{Arc, RwLock},
-};
+use crate::prelude::*;
+use std::{fmt::Debug, sync::Mutex};
 use tokio::task::JoinHandle;
-use zenoh::{
-	prelude::{r#async::AsyncResolve, sync::SyncResolve},
-	queryable::Query,
-	sample::Sample,
-};
+use tracing::{span, Level};
+use zenoh::prelude::r#async::AsyncResolve;
 // endregion:	--- modules
 
 // region:		--- types
 /// type defnition for the queryables callback function.
 #[allow(clippy::module_name_repetitions)]
-pub type QueryableCallback<P> = fn(&Arc<Context<P>>, &Arc<RwLock<P>>, request: &Request);
+pub type QueryableCallback<P> =
+	Arc<Mutex<dyn FnMut(&ArcContext<P>, &Request) + Send + Sync + Unpin + 'static>>;
 // endregion:	--- types
-
-// region:    --- Request
-/// Implementation of a request for handling within a `Queryable`
-#[derive(Debug)]
-pub struct Request {
-	/// internal reference to zenoh `Query`
-	query: Query,
-}
-
-impl Request {
-	/// Reply to the given request
-	/// # Panics
-	///
-	pub fn reply<T>(&self, value: T)
-	where
-		T: bitcode::Encode,
-	{
-		let key = self.query.selector().key_expr.to_string();
-		let encoded: Vec<u8> = bitcode::encode(&value).expect("should never happen");
-		let sample = Sample::try_from(key, encoded).expect("should never happen");
-
-		self.query
-			.reply(Ok(sample))
-			.res_sync()
-			.expect("should never happen");
-	}
-
-	/// access the queries parameters
-	#[must_use]
-	pub fn parameters(&self) -> &str {
-		self.query.parameters()
-	}
-}
-// endregion: --- Request
 
 // region:		--- QueryableBuilder
 /// The builder fo a queryable.
@@ -63,9 +25,7 @@ pub struct QueryableBuilder<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
-	pub(crate) collection: Arc<RwLock<HashMap<String, Queryable<P>>>>,
-	pub(crate) context: Arc<Context<P>>,
-	pub(crate) props: Arc<RwLock<P>>,
+	pub(crate) context: ArcContext<P>,
 	pub(crate) key_expr: Option<String>,
 	pub(crate) callback: Option<QueryableCallback<P>>,
 }
@@ -92,8 +52,12 @@ where
 
 	/// Set the queryables callback function.
 	#[must_use]
-	pub fn callback(mut self, callback: QueryableCallback<P>) -> Self {
-		self.callback.replace(callback);
+	pub fn callback<F>(mut self, callback: F) -> Self
+	where
+		F: FnMut(&ArcContext<P>, &Request) + Send + Sync + Unpin + 'static,
+	{
+		self.callback
+			.replace(Arc::new(Mutex::new(callback)));
 		self
 	}
 
@@ -104,10 +68,10 @@ where
 	///
 	pub fn build(mut self) -> Result<Queryable<P>> {
 		if self.key_expr.is_none() {
-			return Err("No key expression or msg type given".into());
+			return Err(Error::NoKeyExpression);
 		}
 		let callback = if self.callback.is_none() {
-			return Err("No callback given".into());
+			return Err(Error::NoCallback);
 		} else {
 			self.callback.expect("should never happen")
 		};
@@ -123,19 +87,20 @@ where
 			callback,
 			handle: None,
 			context: self.context,
-			props: self.props,
 		};
 
 		Ok(q)
 	}
 
-	/// Build and add the queryable to the agent
+	/// Build and add the queryable to the agents context
 	/// # Errors
 	///
 	/// # Panics
 	///
+	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "queryable")))]
+	#[cfg(feature = "queryable")]
 	pub fn add(self) -> Result<()> {
-		let collection = self.collection.clone();
+		let collection = self.context.queryables.clone();
 		let q = self.build()?;
 
 		collection
@@ -156,8 +121,18 @@ where
 	key_expr: String,
 	callback: QueryableCallback<P>,
 	handle: Option<JoinHandle<()>>,
-	context: Arc<Context<P>>,
-	props: Arc<RwLock<P>>,
+	context: ArcContext<P>,
+}
+
+impl<P> Debug for Queryable<P>
+where
+	P: Debug + Send + Sync + Unpin + 'static,
+{
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("Queryable")
+			.field("key_expr", &self.key_expr)
+			.finish_non_exhaustive()
+	}
 }
 
 impl<P> Queryable<P>
@@ -170,26 +145,10 @@ where
 	pub fn start(&mut self) {
 		let key_expr = self.key_expr.clone();
 		//dbg!(&key_expr);
-		let cb = self.callback;
+		let cb = self.callback.clone();
 		let ctx = self.context.clone();
-		let props = self.props.clone();
 		self.handle.replace(tokio::spawn(async move {
-			let session = ctx.communicator.session.clone();
-			let subscriber = session
-				.declare_queryable(&key_expr)
-				.res_async()
-				.await
-				.expect("should never happen");
-
-			loop {
-				let query = subscriber
-					.recv_async()
-					.await
-					.expect("should never happen");
-				//dbg!(&query);
-				let request = Request { query };
-				cb(&ctx, &props, &request);
-			}
+			run_queryable(key_expr, cb, ctx).await;
 		}));
 	}
 
@@ -201,6 +160,31 @@ where
 			.take()
 			.expect("should never happen")
 			.abort();
+	}
+}
+
+//#[tracing::instrument(level = tracing::Level::DEBUG)]
+async fn run_queryable<P>(key_expr: String, cb: QueryableCallback<P>, ctx: ArcContext<P>)
+where
+	P: Debug + Send + Sync + Unpin + 'static,
+{
+	let session = ctx.communicator.session.clone();
+	let subscriber = session
+		.declare_queryable(&key_expr)
+		.res_async()
+		.await
+		.expect("should never happen");
+
+	loop {
+		let query = subscriber
+			.recv_async()
+			.await
+			.expect("should never happen");
+		let request = Request { query };
+
+		let span = span!(Level::DEBUG, "run_queryable");
+		let _guard = span.enter();
+		cb.lock().expect("should not happen")(&ctx, &request);
 	}
 }
 // endregion:	--- Queryable
