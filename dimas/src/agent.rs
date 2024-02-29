@@ -1,5 +1,7 @@
 // Copyright © 2023 Stephan Kunz
 
+//! Module `agent` provides the `Agent`.
+
 // region:		--- modules
 #[cfg(feature = "liveliness")]
 use crate::com::liveliness_subscriber::{LivelinessSubscriber, LivelinessSubscriberBuilder};

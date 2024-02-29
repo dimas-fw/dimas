@@ -1,5 +1,7 @@
 // Copyright © 2023 Stephan Kunz
 
+//! Module `publisher` provides a message sender `Publisher` which can be created using the `PublisherBuilder`.
+
 // region:		--- modules
 use crate::prelude::*;
 use std::fmt::Debug;

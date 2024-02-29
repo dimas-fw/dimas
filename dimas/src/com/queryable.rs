@@ -1,5 +1,7 @@
 // Copyright © 2023 Stephan Kunz
 
+//! Module `queryable` provides an information/compute provider `Queryable` which can be created using the `QueryableBuilder`.
+
 // region:		--- modules
 use crate::prelude::*;
 use std::{fmt::Debug, sync::Mutex};
