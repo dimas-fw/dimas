@@ -43,17 +43,11 @@ where
 	/// Build the publisher
 	/// # Errors
 	///
-	/// # Panics
-	///
-	pub fn build(mut self) -> Result<Publisher, DimasError> {
-		if self.key_expr.is_none() {
+	pub fn build(self) -> Result<Publisher, DimasError> {
+		let key_expr = if self.key_expr.is_none() {
 			return Err(DimasError::NoKeyExpression);
-		}
-
-		let key_expr = if self.key_expr.is_some() {
-			self.key_expr.take().expect("should never happen")
 		} else {
-			String::new()
+			self.key_expr.ok_or(DimasError::ShouldNotHappen)?
 		};
 
 		//dbg!(&key_expr);
@@ -66,8 +60,6 @@ where
 	/// Build and add the publisher to the agents context
 	/// # Errors
 	///
-	/// # Panics
-	///
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "publisher")))]
 	#[cfg(feature = "publisher")]
 	pub fn add(self) -> Result<(), DimasError> {
@@ -75,7 +67,7 @@ where
 		let p = self.build()?;
 		collection
 			.write()
-			.expect("should never happen")
+			.map_err(|_| { DimasError::ShouldNotHappen })?
 			.insert(p.publisher.key_expr().to_string(), p);
 		Ok(())
 	}

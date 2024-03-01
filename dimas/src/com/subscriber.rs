@@ -92,21 +92,16 @@ where
 	/// Build the subscriber
 	/// # Errors
 	///
-	/// # Panics
-	///
-	pub fn build(mut self) -> Result<Subscriber<P>, DimasError> {
-		if self.key_expr.is_none() {
+	pub fn build(self) -> Result<Subscriber<P>, DimasError> {
+		let key_expr = if self.key_expr.is_none() {
 			return Err(DimasError::NoKeyExpression);
-		}
+		} else {
+			self.key_expr.ok_or(DimasError::ShouldNotHappen)?
+		};
 		let put_callback = if self.put_callback.is_none() {
 			return Err(DimasError::NoCallback);
 		} else {
-			self.put_callback.expect("should never happen")
-		};
-		let key_expr = if self.key_expr.is_some() {
-			self.key_expr.take().expect("should never happen")
-		} else {
-			String::new()
+			self.put_callback.ok_or(DimasError::ShouldNotHappen)?
 		};
 
 		let s = Subscriber {
@@ -123,8 +118,6 @@ where
 	/// Build and add the subscriber to the agents context
 	/// # Errors
 	///
-	/// # Panics
-	///
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "subscriber")))]
 	#[cfg(feature = "subscriber")]
 	pub fn add(self) -> Result<(), DimasError> {
@@ -133,7 +126,7 @@ where
 
 		collection
 			.write()
-			.expect("should never happen")
+			.map_err(|_| { DimasError::ShouldNotHappen })?
 			.insert(s.key_expr.clone(), s);
 		Ok(())
 	}

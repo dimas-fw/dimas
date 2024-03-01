@@ -82,26 +82,19 @@ where
 		self
 	}
 
-	/// Add the liveliness subscriber to the agent
+	/// Build the liveliness subscriber
 	/// # Errors
 	///
-	/// # Panics
-	///
-	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "liveliness")))]
-	#[cfg(feature = "liveliness")]
-	pub fn add(mut self) -> Result<(), DimasError> {
-		if self.key_expr.is_none() {
+	pub fn build(self) -> Result<LivelinessSubscriber<P>, DimasError> {
+		let key_expr = if self.key_expr.is_none() {
 			return Err(DimasError::NoKeyExpression);
-		}
+		} else {
+			self.key_expr.ok_or(DimasError::ShouldNotHappen)?
+		};
 		let put_callback = if self.put_callback.is_none() {
 			return Err(DimasError::NoCallback);
 		} else {
-			self.put_callback.expect("should never happen")
-		};
-		let key_expr = if self.key_expr.is_some() {
-			self.key_expr.take().expect("should never happen")
-		} else {
-			String::new()
+			self.put_callback.ok_or(DimasError::ShouldNotHappen)?
 		};
 
 		let s = LivelinessSubscriber {
@@ -112,9 +105,22 @@ where
 			context: self.context,
 		};
 
-		self.subscriber
+		Ok(s)
+	}
+
+	/// Build and add the liveliness subscriber to the agent
+	/// # Errors
+	///
+	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "liveliness")))]
+	#[cfg(feature = "liveliness")]
+	pub fn add(self) -> Result<(), DimasError> {
+		
+		let c = self.subscriber.clone();
+		let s = self.build()?;
+
+		c
 			.write()
-			.expect("should never happen")
+			.map_err(|_| { DimasError::ShouldNotHappen })?
 			.replace(s);
 		Ok(())
 	}

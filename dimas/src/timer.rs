@@ -70,18 +70,16 @@ where
 	/// Build a timer
 	/// # Errors
 	///
-	/// # Panics
-	///
 	pub fn build(self) -> Result<Timer<P>, DimasError> {
 		let interval = if self.interval.is_none() {
 			return Err(DimasError::NoInterval);
 		} else {
-			self.interval.expect("should never happen")
+			self.interval.ok_or(DimasError::ShouldNotHappen)?
 		};
 		let callback = if self.callback.is_none() {
 			return Err(DimasError::NoCallback);
 		} else {
-			self.callback.expect("should never happen")
+			self.callback.ok_or(DimasError::ShouldNotHappen)?
 		};
 
 		match self.delay {
@@ -101,10 +99,8 @@ where
 		}
 	}
 
-	/// add the timer to the agents context
+	/// Build and add the timer to the agents context
 	/// # Errors
-	///
-	/// # Panics
 	///
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "timer")))]
 	#[cfg(feature = "timer")]
@@ -112,12 +108,12 @@ where
 		let name = if self.name.is_none() {
 			return Err(DimasError::NoName);
 		} else {
-			self.name.clone().expect("should never happen")
+			self.name.clone().ok_or(DimasError::ShouldNotHappen)?
 		};
 		let c = self.context.timers.clone();
 		let timer = self.build()?;
 		c.write()
-			.expect("should never happen")
+			.map_err(|_| { DimasError::ShouldNotHappen })?
 			.insert(name, timer);
 		Ok(())
 	}

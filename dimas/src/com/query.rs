@@ -86,24 +86,19 @@ where
 	/// Build the query
 	/// # Errors
 	///
-	/// # Panics
-	///
-	pub fn build(mut self) -> Result<Query<P>, DimasError> {
-		if self.key_expr.is_none() {
+	pub fn build(self) -> Result<Query<P>, DimasError> {
+		let key_expr = if self.key_expr.is_none() {
 			return Err(DimasError::NoKeyExpression);
-		}
+		} else {
+			self.key_expr.ok_or(DimasError::ShouldNotHappen)?
+		};
 		let callback = if self.callback.is_none() {
 			return Err(DimasError::NoCallback);
 		} else {
-			self.callback.expect("should never happen")
+			self.callback.ok_or(DimasError::ShouldNotHappen)?
 		};
-		let key_expr = if self.key_expr.is_some() {
-			self.key_expr.take().expect("should never happen")
-		} else {
-			String::new()
-		};
-		let mode = if self.key_expr.is_some() {
-			self.mode.take().expect("should never happen")
+		let mode = if self.mode.is_some() {
+			self.mode.ok_or(DimasError::ShouldNotHappen)?
 		} else {
 			ConsolidationMode::None
 		};
@@ -121,8 +116,6 @@ where
 	/// Build and add the query to the agents context
 	/// # Errors
 	///
-	/// # Panics
-	///
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "query")))]
 	#[cfg(feature = "query")]
 	pub fn add(self) -> Result<(), DimasError> {
@@ -131,7 +124,7 @@ where
 
 		collection
 			.write()
-			.expect("should never happen")
+			.map_err(|_| { DimasError::ShouldNotHappen })?
 			.insert(q.key_expr.clone(), q);
 		Ok(())
 	}

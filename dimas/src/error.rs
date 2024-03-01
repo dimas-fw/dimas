@@ -7,6 +7,9 @@
 #[derive(thiserror::Error, Debug)]
 #[allow(clippy::module_name_repetitions)]
 pub enum DimasError {
+	/// this error should never happen
+	#[error("should not happen")]
+	ShouldNotHappen,
 	/// A custom error message
 	#[error("{0}")]
 	Custom(String),
