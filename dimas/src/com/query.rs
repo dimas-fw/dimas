@@ -16,8 +16,15 @@ use zenoh::{
 // region:		--- types
 /// type definition for the queries callback function
 #[allow(clippy::module_name_repetitions)]
-pub type QueryCallback<P> =
-	Arc<Mutex<dyn FnMut(&ArcContext<P>, &Message) + Send + Sync + Unpin + 'static>>;
+pub type QueryCallback<P> = Arc<
+	Mutex<
+		dyn FnMut(&ArcContext<P>, &Message) -> Result<(), DimasError>
+			+ Send
+			+ Sync
+			+ Unpin
+			+ 'static,
+	>,
+>;
 // endregion:	--- types
 
 // region:		--- QueryBuilder
@@ -65,7 +72,11 @@ where
 	#[must_use]
 	pub fn callback<F>(mut self, callback: F) -> Self
 	where
-		F: FnMut(&ArcContext<P>, &Message) + Send + Sync + Unpin + 'static,
+		F: FnMut(&ArcContext<P>, &Message) -> Result<(), DimasError>
+			+ Send
+			+ Sync
+			+ Unpin
+			+ 'static,
 	{
 		self.callback
 			.replace(Arc::new(Mutex::new(callback)));
@@ -77,12 +88,12 @@ where
 	///
 	/// # Panics
 	///
-	pub fn build(mut self) -> Result<Query<P>> {
+	pub fn build(mut self) -> Result<Query<P>, DimasError> {
 		if self.key_expr.is_none() {
-			return Err(Error::NoKeyExpression);
+			return Err(DimasError::NoKeyExpression);
 		}
 		let callback = if self.callback.is_none() {
-			return Err(Error::NoCallback);
+			return Err(DimasError::NoCallback);
 		} else {
 			self.callback.expect("should never happen")
 		};
@@ -114,7 +125,7 @@ where
 	///
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "query")))]
 	#[cfg(feature = "query")]
-	pub fn add(self) -> Result<()> {
+	pub fn add(self) -> Result<(), DimasError> {
 		let collection = self.context.queries.clone();
 		let q = self.build()?;
 
@@ -187,7 +198,11 @@ where
 					};
 					match sample.kind {
 						SampleKind::Put => {
-							cb.lock().expect("should not happen")(&self.ctx, &msg);
+							if let Err(error) =
+								cb.lock().expect("should not happen")(&self.ctx, &msg)
+							{
+								error!("call failed with {error}");
+							};
 						}
 						SampleKind::Delete => {
 							error!("Delete in Query");

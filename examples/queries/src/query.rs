@@ -21,13 +21,14 @@ struct Args {
 #[derive(Debug)]
 struct AgentProps {}
 
-fn query_callback(_ctx: &ArcContext<AgentProps>, response: &Message) {
-	let message: String = decode(response).expect("should not happen");
-	println!("Response '{}'", &message);
+fn query_callback(_ctx: &ArcContext<AgentProps>, response: &Message) -> Result<(), DimasError> {
+	let message: u128 = response.decode()?;
+	println!("Response is '{message}'");
+	Ok(())
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), DimasError> {
 	// a tracing subscriber writing logs
 	tracing_subscriber::fmt::init();
 

@@ -13,7 +13,7 @@ use crate::prelude::*;
 	feature = "timer",
 ))]
 use std::collections::HashMap;
-use std::{fmt::Debug, ops::Deref};
+use std::fmt::Debug;
 use zenoh::publication::Publisher;
 use zenoh::query::ConsolidationMode;
 // endregion:	--- modules
@@ -47,17 +47,6 @@ where
 	// registered timer
 	#[cfg(feature = "timer")]
 	pub(crate) timers: Arc<RwLock<HashMap<String, Timer<P>>>>,
-}
-
-impl<P> Deref for Context<P>
-where
-	P: Debug + Send + Sync + Unpin + 'static,
-{
-	type Target = Arc<RwLock<P>>;
-
-	fn deref(&self) -> &Self::Target {
-		&self.props
-	}
 }
 
 impl<P> Context<P>
@@ -118,6 +107,7 @@ where
 		self.communicator.prefix()
 	}
 
+	#[must_use]
 	pub(crate) fn key_expr(&self, msg_name: impl Into<String>) -> String {
 		match self.prefix() {
 			Some(prefix) => prefix + "/" + &msg_name.into(),
@@ -125,6 +115,19 @@ where
 		}
 	}
 
+	pub fn read(&self) -> Result<std::sync::RwLockReadGuard<'_, P>, DimasError> {
+		self.props
+			.read()
+			.map_err(|_| DimasError::ReadPropertiesFailed)
+	}
+
+	pub fn write(&self) -> Result<std::sync::RwLockWriteGuard<'_, P>, DimasError> {
+		self.props
+			.write()
+			.map_err(|_| DimasError::WritePropertiesFailed)
+	}
+
+	#[must_use]
 	pub(crate) fn create_publisher<'publisher>(
 		&self,
 		key_expr: impl Into<String> + Send,
@@ -135,7 +138,7 @@ where
 	/// Method to do an ad hoc publishing
 	/// # Errors
 	///   Error is propagated from Communicator
-	pub fn put<M>(&self, msg_name: impl Into<String>, message: M) -> Result<()>
+	pub fn put<M>(&self, msg_name: impl Into<String>, message: M) -> Result<(), DimasError>
 	where
 		M: Encode,
 	{
@@ -148,7 +151,7 @@ where
 	/// # Panics
 	///
 	#[cfg(feature = "publisher")]
-	pub fn put_with<M>(&self, msg_name: &str, message: M) -> Result<()>
+	pub fn put_with<M>(&self, msg_name: &str, message: M) -> Result<(), DimasError>
 	where
 		M: Debug + Encode,
 	{
@@ -173,7 +176,7 @@ where
 	/// Method to do an ad hoc deletion
 	/// # Errors
 	///   Error is propagated from Communicator
-	pub fn delete(&self, msg_name: impl Into<String>) -> Result<()> {
+	pub fn delete(&self, msg_name: impl Into<String>) -> Result<(), DimasError> {
 		self.communicator.delete(msg_name)
 	}
 
@@ -183,7 +186,7 @@ where
 	/// # Panics
 	///
 	#[cfg(feature = "publisher")]
-	pub fn delete_with(&self, msg_name: &str) -> Result<()> {
+	pub fn delete_with(&self, msg_name: &str) -> Result<(), DimasError> {
 		let key_expr = self.key_expr(msg_name);
 		if self
 			.publishers
@@ -202,7 +205,7 @@ where
 		Ok(())
 	}
 
-	/// Method to do an ad hoc query without any consolodation of answers.
+	/// Method to do an ad hoc query without any consolidation of answers.
 	/// Multiple answers may be received for the same timestamp.
 	pub fn get<F>(&self, ctx: Arc<Self>, query_name: impl Into<String>, callback: F)
 	where

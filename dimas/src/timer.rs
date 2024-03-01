@@ -72,14 +72,14 @@ where
 	///
 	/// # Panics
 	///
-	pub fn build(self) -> Result<Timer<P>> {
+	pub fn build(self) -> Result<Timer<P>, DimasError> {
 		let interval = if self.interval.is_none() {
-			return Err(Error::NoInterval);
+			return Err(DimasError::NoInterval);
 		} else {
 			self.interval.expect("should never happen")
 		};
 		let callback = if self.callback.is_none() {
-			return Err(Error::NoCallback);
+			return Err(DimasError::NoCallback);
 		} else {
 			self.callback.expect("should never happen")
 		};
@@ -108,9 +108,9 @@ where
 	///
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "timer")))]
 	#[cfg(feature = "timer")]
-	pub fn add(self) -> Result<()> {
+	pub fn add(self) -> Result<(), DimasError> {
 		let name = if self.name.is_none() {
-			return Err(Error::NoName);
+			return Err(DimasError::NoName);
 		} else {
 			self.name.clone().expect("should never happen")
 		};

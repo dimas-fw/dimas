@@ -1,20 +1,15 @@
 // Copyright © 2023 Stephan Kunz
 
-//! Module `error` provides the DiMAS specific `Error`s and `Result`.
-
-// region:    --- types
-/// Enables simplified usage of Result with dimas Error type
-pub type Result<T> = core::result::Result<T, Error>;
-// endregion: --- types
+//! Module `error` provides the DiMAS specific `Error`s.
 
 // region:    --- Error
 /// `DiMAS` Error type
 #[derive(thiserror::Error, Debug)]
 #[allow(clippy::module_name_repetitions)]
-pub enum Error {
-	/// A generic error
-	#[error("Generic {0}")]
-	Generic(String),
+pub enum DimasError {
+	/// A custom error message
+	#[error("{0}")]
+	Custom(String),
 	/// The `put` of a `Publisher` failed
 	#[error("Publisher 'put' failed")]
 	PutFailed,
@@ -33,11 +28,25 @@ pub enum Error {
 	/// There was no name given to the `TimerBuilder`
 	#[error("no name given")]
 	NoName,
-}
+	/// Encoding of message failed
+	#[error("message encoding failed")]
+	EncodingFailed,
+	/// Decoding of message failed
+	#[error("message decoding failed")]
+	DecodingFailed,
+	/// Read access to properties failed
+	#[error("read  of properties failed")]
+	ReadPropertiesFailed,
+	/// Write access to properties failed
+	#[error("write  of properties failed")]
+	WritePropertiesFailed,
+	/// Lock on callback failed
+	#[error("could not execute callback")]
+	CallbackFailed,
 
-impl Default for Error {
-	fn default() -> Self {
-		Self::Generic("error".to_string())
-	}
+	// should be last line
+	/// standard error for boxed `std::error::Error`
+	#[error(transparent)]
+	StdError(#[from] Box<dyn std::error::Error + 'static>),
 }
 // endregion: --- Error

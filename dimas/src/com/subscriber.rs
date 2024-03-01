@@ -7,19 +7,26 @@
 use crate::prelude::*;
 use std::{fmt::Debug, sync::Mutex};
 use tokio::task::JoinHandle;
-use tracing::{span, Level};
+use tracing::{error, span, Level};
 use zenoh::prelude::{r#async::AsyncResolve, SampleKind};
 // endregion:	--- modules
 
 // region:		--- types
 /// Type definition for a subscribers `publish` callback function
 #[allow(clippy::module_name_repetitions)]
-pub type SubscriberPutCallback<P> =
-	Arc<Mutex<dyn FnMut(&ArcContext<P>, &Message) + Send + Sync + Unpin + 'static>>;
+pub type SubscriberPutCallback<P> = Arc<
+	Mutex<
+		dyn FnMut(&ArcContext<P>, &Message) -> Result<(), DimasError>
+			+ Send
+			+ Sync
+			+ Unpin
+			+ 'static,
+	>,
+>;
 /// Type definition for a subscribers `delete` callback function
 #[allow(clippy::module_name_repetitions)]
 pub type SubscriberDeleteCallback<P> =
-	Arc<Mutex<dyn FnMut(&ArcContext<P>) + Send + Sync + Unpin + 'static>>;
+	Arc<Mutex<dyn FnMut(&ArcContext<P>) -> Result<(), DimasError> + Send + Sync + Unpin + 'static>>;
 // endregion:	--- types
 
 // region:		--- SubscriberBuilder
@@ -60,7 +67,11 @@ where
 	#[must_use]
 	pub fn put_callback<F>(mut self, callback: F) -> Self
 	where
-		F: FnMut(&ArcContext<P>, &Message) + Send + Sync + Unpin + 'static,
+		F: FnMut(&ArcContext<P>, &Message) -> Result<(), DimasError>
+			+ Send
+			+ Sync
+			+ Unpin
+			+ 'static,
 	{
 		self.put_callback
 			.replace(Arc::new(Mutex::new(callback)));
@@ -71,7 +82,7 @@ where
 	#[must_use]
 	pub fn delete_callback<F>(mut self, callback: F) -> Self
 	where
-		F: FnMut(&ArcContext<P>) + Send + Sync + Unpin + 'static,
+		F: FnMut(&ArcContext<P>) -> Result<(), DimasError> + Send + Sync + Unpin + 'static,
 	{
 		self.delete_callback
 			.replace(Arc::new(Mutex::new(callback)));
@@ -83,12 +94,12 @@ where
 	///
 	/// # Panics
 	///
-	pub fn build(mut self) -> Result<Subscriber<P>> {
+	pub fn build(mut self) -> Result<Subscriber<P>, DimasError> {
 		if self.key_expr.is_none() {
-			return Err(Error::NoKeyExpression);
+			return Err(DimasError::NoKeyExpression);
 		}
 		let put_callback = if self.put_callback.is_none() {
-			return Err(Error::NoCallback);
+			return Err(DimasError::NoCallback);
 		} else {
 			self.put_callback.expect("should never happen")
 		};
@@ -116,7 +127,7 @@ where
 	///
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "subscriber")))]
 	#[cfg(feature = "subscriber")]
-	pub fn add(self) -> Result<()> {
+	pub fn add(self) -> Result<(), DimasError> {
 		let collection = self.context.subscribers.clone();
 		let s = self.build()?;
 
@@ -216,11 +227,15 @@ async fn run_subscriber<P>(
 					key_expr: sample.key_expr.to_string(),
 					value,
 				};
-				p_cb.lock().expect("should not happen")(&ctx, &msg);
+				if let Err(error) = p_cb.lock().expect("should not happen")(&ctx, &msg) {
+					error!("call failed with {error}");
+				};
 			}
 			SampleKind::Delete => {
 				if let Some(cb) = d_cb.clone() {
-					cb.lock().expect("should not happen")(&ctx);
+					if let Err(error) = cb.lock().expect("should not happen")(&ctx) {
+						error!("call failed with {error}");
+					};
 				}
 			}
 		}

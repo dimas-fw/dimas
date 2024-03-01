@@ -18,18 +18,24 @@ struct Args {
 // endregion:	--- Clap
 
 #[derive(Debug, Default)]
-struct AgentProps {}
-
-fn liveliness_subscription(_ctx: &ArcContext<AgentProps>, agent_id: &str) {
-	info!("{agent_id} is alive");
+struct AgentProps {
+	test: u32,
 }
 
-fn delete_subscription(_ctx: &ArcContext<AgentProps>, agent_id: &str) {
-	info!("{agent_id} died");
+fn liveliness_subscription(ctx: &ArcContext<AgentProps>, id: &str) -> Result<(), DimasError> {
+	let _ = ctx.read()?.test;
+	info!("{id} is alive");
+	Ok(())
+}
+
+fn delete_subscription(ctx: &ArcContext<AgentProps>, id: &str) -> Result<(), DimasError> {
+	let _ = ctx.read()?.test;
+	info!("{id} died");
+	Ok(())
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), DimasError> {
 	// a tracing subscriber writing logs
 	tracing_subscriber::fmt::init();
 
@@ -37,7 +43,7 @@ async fn main() -> Result<()> {
 	let args = Args::parse();
 
 	// create & initialize agents properties
-	let properties = AgentProps {};
+	let properties = AgentProps { test: 0 };
 
 	// create an agent with the properties
 	let mut agent = Agent::new_with_prefix(Config::default(), properties, &args.prefix);

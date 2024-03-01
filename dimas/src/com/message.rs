@@ -3,7 +3,10 @@
 //! Module `message` provides the different types of `Message`s used in callbacks.
 
 // region:		--- modules
-use crate::prelude::{encode, Encode};
+use crate::{
+	error::DimasError,
+	prelude::{decode, encode, Decode, Encode},
+};
 use std::ops::Deref;
 use zenoh::{prelude::sync::SyncResolve, queryable::Query, sample::Sample};
 // endregion:	--- modules
@@ -26,7 +29,16 @@ impl Deref for Message {
 	}
 }
 
-impl Message {}
+impl Message {
+	/// decode message
+	/// # Errors
+	pub fn decode<T>(&self) -> Result<T, DimasError>
+	where
+		T: Decode,
+	{
+		decode::<T>(self).map_err(|_| DimasError::DecodingFailed)
+	}
+}
 // endregion:	--- Message
 
 // region:    --- Request

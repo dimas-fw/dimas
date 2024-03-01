@@ -32,8 +32,8 @@ struct PingPongMessage {
 }
 
 #[allow(clippy::cast_precision_loss)]
-fn pong_received(_ctx: &ArcContext<AgentProps>, message: &Message) {
-	let message: PingPongMessage = decode(message).expect("should not happen");
+fn pong_received(_ctx: &ArcContext<AgentProps>, message: &Message) -> Result<(), DimasError> {
+	let message: PingPongMessage = message.decode()?;
 
 	// get current timestamp
 	let received = Local::now()
@@ -49,10 +49,12 @@ fn pong_received(_ctx: &ArcContext<AgentProps>, message: &Message) {
 		oneway as f64 / 1_000_000.0,
 		roundtrip as f64 / 1_000_000.0
 	);
+
+	Ok(())
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), DimasError> {
 	// a tracing subscriber writing logs
 	tracing_subscriber::fmt::init();
 

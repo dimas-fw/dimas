@@ -84,7 +84,7 @@ impl Communicator {
 			.expect("should never happen")
 	}
 
-	pub(crate) fn put<M>(&self, msg_name: impl Into<String>, message: M) -> Result<()>
+	pub(crate) fn put<M>(&self, msg_name: impl Into<String>, message: M) -> Result<(), DimasError>
 	where
 		M: Encode,
 	{
@@ -92,15 +92,15 @@ impl Communicator {
 		let key_expr = self.key_expr(msg_name);
 		match self.session.put(&key_expr, value).res_sync() {
 			Ok(()) => Ok(()),
-			Err(_) => Err(Error::PutFailed),
+			Err(_) => Err(DimasError::PutFailed),
 		}
 	}
 
-	pub(crate) fn delete(&self, msg_name: impl Into<String>) -> Result<()> {
+	pub(crate) fn delete(&self, msg_name: impl Into<String>) -> Result<(), DimasError> {
 		let key_expr = self.key_expr(msg_name);
 		match self.session.delete(&key_expr).res_sync() {
 			Ok(()) => Ok(()),
-			Err(_) => Err(Error::DeleteFailed),
+			Err(_) => Err(DimasError::DeleteFailed),
 		}
 	}
 

@@ -6,15 +6,22 @@
 use crate::prelude::*;
 use std::{fmt::Debug, sync::Mutex};
 use tokio::task::JoinHandle;
-use tracing::{span, Level};
+use tracing::{error, span, Level};
 use zenoh::prelude::r#async::AsyncResolve;
 // endregion:	--- modules
 
 // region:		--- types
 /// type defnition for the queryables callback function.
 #[allow(clippy::module_name_repetitions)]
-pub type QueryableCallback<P> =
-	Arc<Mutex<dyn FnMut(&ArcContext<P>, &Request) + Send + Sync + Unpin + 'static>>;
+pub type QueryableCallback<P> = Arc<
+	Mutex<
+		dyn FnMut(&ArcContext<P>, &Request) -> Result<(), DimasError>
+			+ Send
+			+ Sync
+			+ Unpin
+			+ 'static,
+	>,
+>;
 // endregion:	--- types
 
 // region:		--- QueryableBuilder
@@ -54,7 +61,11 @@ where
 	#[must_use]
 	pub fn callback<F>(mut self, callback: F) -> Self
 	where
-		F: FnMut(&ArcContext<P>, &Request) + Send + Sync + Unpin + 'static,
+		F: FnMut(&ArcContext<P>, &Request) -> Result<(), DimasError>
+			+ Send
+			+ Sync
+			+ Unpin
+			+ 'static,
 	{
 		self.callback
 			.replace(Arc::new(Mutex::new(callback)));
@@ -66,12 +77,12 @@ where
 	///
 	/// # Panics
 	///
-	pub fn build(mut self) -> Result<Queryable<P>> {
+	pub fn build(mut self) -> Result<Queryable<P>, DimasError> {
 		if self.key_expr.is_none() {
-			return Err(Error::NoKeyExpression);
+			return Err(DimasError::NoKeyExpression);
 		}
 		let callback = if self.callback.is_none() {
-			return Err(Error::NoCallback);
+			return Err(DimasError::NoCallback);
 		} else {
 			self.callback.expect("should never happen")
 		};
@@ -99,7 +110,7 @@ where
 	///
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "queryable")))]
 	#[cfg(feature = "queryable")]
-	pub fn add(self) -> Result<()> {
+	pub fn add(self) -> Result<(), DimasError> {
 		let collection = self.context.queryables.clone();
 		let q = self.build()?;
 
@@ -184,7 +195,9 @@ where
 
 		let span = span!(Level::DEBUG, "run_queryable");
 		let _guard = span.enter();
-		cb.lock().expect("should not happen")(&ctx, &request);
+		if let Err(error) = cb.lock().expect("should not happen")(&ctx, &request) {
+			error!("call failed with {error}");
+		};
 	}
 }
 // endregion:	--- Queryable

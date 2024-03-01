@@ -22,21 +22,18 @@ struct AgentProps {
 	counter: u128,
 }
 
-fn queryable(ctx: &ArcContext<AgentProps>, request: &Request) {
-	let value = ctx
-		.read()
-		.expect("should never happen")
-		.counter
-		.to_string();
-	info!("Received query, responding with {}", &value,);
+fn queryable(ctx: &ArcContext<AgentProps>, request: &Request) -> Result<(), DimasError> {
+	let value = ctx.read()?.counter;
+	info!("Received query, responding with {}", &value);
 
-	request.reply(&value);
+	request.reply(value);
 
-	ctx.write().expect("should never happen").counter += 1;
+	ctx.write()?.counter += 1;
+	Ok(())
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), DimasError> {
 	// a tracing subscriber writing logs
 	tracing_subscriber::fmt::init();
 

@@ -18,19 +18,25 @@ struct Args {
 // endregion:	--- Clap
 
 #[derive(Debug)]
-struct AgentProps {}
-
-fn hello_publishing(_ctx: &ArcContext<AgentProps>, message: &Message) {
-	let message: String = decode(message).expect("should not happen");
-	info!("Received '{message}'");
+struct AgentProps {
+	test: u8,
 }
 
-fn hello_deletion(_ctx: &ArcContext<AgentProps>) {
+fn hello_publishing(_ctx: &ArcContext<AgentProps>, message: &Message) -> Result<(), DimasError> {
+	let message: String = message.decode()?;
+	info!("Received '{message}'");
+
+	Ok(())
+}
+
+fn hello_deletion(ctx: &ArcContext<AgentProps>) -> Result<(), DimasError> {
+	let _value = ctx.read()?.test;
 	info!("Shall delete 'hello' message");
+	Ok(())
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), DimasError> {
 	// a tracing subscriber writing logs
 	tracing_subscriber::fmt::init();
 
@@ -38,7 +44,7 @@ async fn main() -> Result<()> {
 	let args = Args::parse();
 
 	// create & initialize agents properties
-	let properties = AgentProps {};
+	let properties = AgentProps { test: 0 };
 
 	// create an agent with the properties
 	let mut agent = Agent::new_with_prefix(Config::default(), properties, &args.prefix);

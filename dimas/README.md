@@ -25,11 +25,11 @@ So your `Cargo.toml` should include:
 
 ```toml
 [dependencies]
-dimas = { version = "0.0.5", features = ["all"] }
+dimas = { version = "0.0.6", features = ["all"] }
 tokio = { version = "1", features = ["macros"] }
 ```
 
-It also makes sense to return a `Result` as some functions return one. DiMAS prelude provides a simplified `Result` type for that.
+It also makes sense to return a `Result` with a `DimasError`, as some functions may return one.
 
 A suitable main programm skeleton may look like:
 
@@ -37,7 +37,7 @@ A suitable main programm skeleton may look like:
 use dimas::prelude::*;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), DimasError> {
 
 	// your code
 	// ...
@@ -73,7 +73,7 @@ struct AgentProps {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), DimasError> {
 	// create & initialize agents properties
 	let properties = AgentProps { counter: 0 };
 
@@ -135,13 +135,14 @@ use dimas::prelude::*;
 #[derive(Debug)]
 pub struct AgentProps {}
 
-fn callback(_ctx: &ArcContext<AgentProps>, message: &Message) {
-	let message: String =	decode(message).unwrap();
+fn callback(_ctx: &ArcContext<AgentProps>, message: &Message) -> Result<(), DimasError> {
+	let message: String =	message.decode()?;
 	println!("Received '{}'", &message);
+	Ok(())
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), DimasError> {
 	// create & initialize agents properties
 	let properties = AgentProps {};
 

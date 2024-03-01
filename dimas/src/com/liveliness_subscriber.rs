@@ -7,14 +7,17 @@
 use crate::prelude::*;
 use std::{fmt::Debug, sync::Mutex};
 use tokio::task::JoinHandle;
-use tracing::{span, Level};
+use tracing::{error, span, Level};
 use zenoh::prelude::{r#async::AsyncResolve, SampleKind};
 // endregion:	--- modules
 
 // region:		--- types
 /// Type definition for liveliness callback function
-pub type LivelinessCallback<P> =
-	Arc<Mutex<dyn FnMut(&ArcContext<P>, &str) + Send + Sync + Unpin + 'static>>;
+pub type LivelinessCallback<P> = Arc<
+	Mutex<
+		dyn FnMut(&ArcContext<P>, &str) -> Result<(), DimasError> + Send + Sync + Unpin + 'static,
+	>,
+>;
 // endregion:	--- types
 
 // region:		--- LivelinessSubscriberBuilder
@@ -61,7 +64,7 @@ where
 	#[must_use]
 	pub fn put_callback<F>(mut self, callback: F) -> Self
 	where
-		F: FnMut(&ArcContext<P>, &str) + Send + Sync + Unpin + 'static,
+		F: FnMut(&ArcContext<P>, &str) -> Result<(), DimasError> + Send + Sync + Unpin + 'static,
 	{
 		self.put_callback
 			.replace(Arc::new(Mutex::new(callback)));
@@ -72,7 +75,7 @@ where
 	#[must_use]
 	pub fn delete_callback<F>(mut self, callback: F) -> Self
 	where
-		F: FnMut(&ArcContext<P>, &str) + Send + Sync + Unpin + 'static,
+		F: FnMut(&ArcContext<P>, &str) -> Result<(), DimasError> + Send + Sync + Unpin + 'static,
 	{
 		self.delete_callback
 			.replace(Arc::new(Mutex::new(callback)));
@@ -86,12 +89,12 @@ where
 	///
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "liveliness")))]
 	#[cfg(feature = "liveliness")]
-	pub fn add(mut self) -> Result<()> {
+	pub fn add(mut self) -> Result<(), DimasError> {
 		if self.key_expr.is_none() {
-			return Err(Error::NoKeyExpression);
+			return Err(DimasError::NoKeyExpression);
 		}
 		let put_callback = if self.put_callback.is_none() {
-			return Err(Error::NoCallback);
+			return Err(DimasError::NoCallback);
 		} else {
 			self.put_callback.expect("should never happen")
 		};
@@ -196,17 +199,21 @@ async fn run_liveliness<P>(
 			.recv_async()
 			.await
 			.expect("should never happen");
-		let agent_id = sample.key_expr.to_string().replace(&key_expr, "");
 
+		let id = sample.key_expr.to_string().replace(&key_expr, "");
 		let span = span!(Level::DEBUG, "run_liveliness");
 		let _guard = span.enter();
 		match sample.kind {
 			SampleKind::Put => {
-				p_cb.lock().expect("should not happen")(&ctx, &agent_id);
+				if let Err(error) = p_cb.lock().expect("should not happen")(&ctx, &id) {
+					error!("call failed with {error}");
+				};
 			}
 			SampleKind::Delete => {
 				if let Some(cb) = d_cb.clone() {
-					cb.lock().expect("should not happen")(&ctx, &agent_id);
+					if let Err(error) = cb.lock().expect("should not happen")(&ctx, &id) {
+						error!("call failed with {error}");
+					};
 				}
 			}
 		}
@@ -234,9 +241,10 @@ where
 		let _guard = span.enter();
 		match reply.sample {
 			Ok(sample) => {
-				//dbg!(&sample);
-				let agent_id = sample.key_expr.to_string().replace(&key_expr, "");
-				p_cb.lock().expect("should not happen")(&ctx, &agent_id);
+				let id = sample.key_expr.to_string().replace(&key_expr, "");
+				if let Err(error) = p_cb.lock().expect("should not happen")(&ctx, &id) {
+					error!("call failed with {error}");
+				};
 			}
 			Err(err) => println!(
 				">> Received (ERROR: '{}')",

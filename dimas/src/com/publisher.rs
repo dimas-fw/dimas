@@ -45,9 +45,9 @@ where
 	///
 	/// # Panics
 	///
-	pub fn build(mut self) -> Result<Publisher> {
+	pub fn build(mut self) -> Result<Publisher, DimasError> {
 		if self.key_expr.is_none() {
-			return Err(Error::NoKeyExpression);
+			return Err(DimasError::NoKeyExpression);
 		}
 
 		let key_expr = if self.key_expr.is_some() {
@@ -70,7 +70,7 @@ where
 	///
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "publisher")))]
 	#[cfg(feature = "publisher")]
-	pub fn add(self) -> Result<()> {
+	pub fn add(self) -> Result<(), DimasError> {
 		let collection = self.context.publishers.clone();
 		let p = self.build()?;
 		collection
@@ -106,14 +106,14 @@ impl Publisher
 	/// # Panics
 	///
 	#[tracing::instrument(level = tracing::Level::DEBUG)]
-	pub fn put<T>(&self, message: T) -> Result<()>
+	pub fn put<T>(&self, message: T) -> Result<(), DimasError>
 	where
 		T: Debug + Encode,
 	{
-		let value: Vec<u8> = encode(&message).expect("should never happen");
+		let value: Vec<u8> = encode(&message).map_err(|_| DimasError::EncodingFailed)?;
 		match self.publisher.put(value).res_sync() {
 			Ok(()) => Ok(()),
-			Err(_) => Err(Error::PutFailed),
+			Err(_) => Err(DimasError::PutFailed),
 		}
 	}
 
@@ -124,10 +124,10 @@ impl Publisher
 	/// # Panics
 	///
 	#[tracing::instrument(level = tracing::Level::DEBUG)]
-	pub fn delete(&self) -> Result<()> {
+	pub fn delete(&self) -> Result<(), DimasError> {
 		match self.publisher.delete().res_sync() {
 			Ok(()) => Ok(()),
-			Err(_) => Err(Error::DeleteFailed),
+			Err(_) => Err(DimasError::DeleteFailed),
 		}
 	}
 }

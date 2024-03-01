@@ -28,8 +28,8 @@ struct PingPongMessage {
 	received: Option<i64>,
 }
 
-fn ping_received(ctx: &ArcContext<AgentProps>, message: &Message) {
-	let mut message: PingPongMessage = decode(message).expect("should not happen");
+fn ping_received(ctx: &ArcContext<AgentProps>, message: &Message) -> Result<(), DimasError> {
+	let mut message: PingPongMessage = message.decode()?;
 
 	// set receive-timestamp
 	message.received = Local::now().naive_utc().timestamp_nanos_opt();
@@ -37,13 +37,15 @@ fn ping_received(ctx: &ArcContext<AgentProps>, message: &Message) {
 	let text = "pong! [".to_string() + &message.counter.to_string() + "]";
 
 	// publishing with ad-hoc publisher
-	let _ = ctx.put_with("pong", message);
+	ctx.put_with("pong", message)?;
 
 	info!("Sent '{}'", &text);
+
+	Ok(())
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), DimasError> {
 	// a tracing subscriber writing logs
 	tracing_subscriber::fmt::init();
 
