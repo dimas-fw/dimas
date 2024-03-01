@@ -7,13 +7,14 @@
 use crate::prelude::*;
 use std::{fmt::Debug, sync::Mutex, time::Duration};
 use tokio::{task::JoinHandle, time};
-use tracing::{span, Level};
+use tracing::{error, span, Level};
 // endregion:	--- modules
 
 // region:		--- types
 /// type definition for the functions called by a timer
 #[allow(clippy::module_name_repetitions)]
-pub type TimerCallback<P> = Arc<Mutex<dyn FnMut(&ArcContext<P>) + Send + Sync + Unpin + 'static>>;
+pub type TimerCallback<P> =
+	Arc<Mutex<dyn FnMut(&ArcContext<P>) -> Result<(), DimasError> + Send + Sync + Unpin + 'static>>;
 // endregion:	--- types
 
 // region:		--- TimerBuilder
@@ -60,7 +61,7 @@ where
 	#[must_use]
 	pub fn callback<F>(mut self, callback: F) -> Self
 	where
-		F: FnMut(&ArcContext<P>) + Send + Sync + Unpin + 'static,
+		F: FnMut(&ArcContext<P>) -> Result<(), DimasError> + Send + Sync + Unpin + 'static,
 	{
 		self.callback
 			.replace(Arc::new(Mutex::new(callback)));
@@ -108,12 +109,14 @@ where
 		let name = if self.name.is_none() {
 			return Err(DimasError::NoName);
 		} else {
-			self.name.clone().ok_or(DimasError::ShouldNotHappen)?
+			self.name
+				.clone()
+				.ok_or(DimasError::ShouldNotHappen)?
 		};
 		let c = self.context.timers.clone();
 		let timer = self.build()?;
 		c.write()
-			.map_err(|_| { DimasError::ShouldNotHappen })?
+			.map_err(|_| DimasError::ShouldNotHappen)?
 			.insert(name, timer);
 		Ok(())
 	}
@@ -251,7 +254,9 @@ where
 
 		let span = span!(Level::DEBUG, "run_timer");
 		let _guard = span.enter();
-		cb.lock().expect("should nothappen")(&ctx);
+		if let Err(error) = cb.lock().expect("should not happen")(&ctx) {
+			error!("call failed with {error}");
+		};
 	}
 }
 // endregion:	--- Timer

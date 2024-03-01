@@ -26,7 +26,7 @@ fn queryable(ctx: &ArcContext<AgentProps>, request: &Request) -> Result<(), Dima
 	let value = ctx.read()?.counter;
 	info!("Received query, responding with {}", &value);
 
-	request.reply(value);
+	request.reply(value)?;
 
 	ctx.write()?.counter += 1;
 	Ok(())

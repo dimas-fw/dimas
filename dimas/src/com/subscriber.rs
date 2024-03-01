@@ -101,7 +101,8 @@ where
 		let put_callback = if self.put_callback.is_none() {
 			return Err(DimasError::NoCallback);
 		} else {
-			self.put_callback.ok_or(DimasError::ShouldNotHappen)?
+			self.put_callback
+				.ok_or(DimasError::ShouldNotHappen)?
 		};
 
 		let s = Subscriber {
@@ -126,7 +127,7 @@ where
 
 		collection
 			.write()
-			.map_err(|_| { DimasError::ShouldNotHappen })?
+			.map_err(|_| DimasError::ShouldNotHappen)?
 			.insert(s.key_expr.clone(), s);
 		Ok(())
 	}

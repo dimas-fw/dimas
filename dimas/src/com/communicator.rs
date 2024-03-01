@@ -88,7 +88,7 @@ impl Communicator {
 	where
 		M: Encode,
 	{
-		let value: Vec<u8> = encode(&message).expect("should never happen");
+		let value: Vec<u8> = encode(&message).map_err(|_| DimasError::ShouldNotHappen)?;
 		let key_expr = self.key_expr(msg_name);
 		match self.session.put(&key_expr, value).res_sync() {
 			Ok(()) => Ok(()),

@@ -51,20 +51,21 @@ pub struct Request {
 
 impl Request {
 	/// Reply to the given request
-	/// # Panics
+	/// # Errors
 	///
-	pub fn reply<T>(&self, value: T)
+	pub fn reply<T>(&self, value: T) -> Result<(), DimasError>
 	where
 		T: Encode,
 	{
 		let key = self.query.selector().key_expr.to_string();
-		let encoded: Vec<u8> = encode(&value).expect("should never happen");
-		let sample = Sample::try_from(key, encoded).expect("should never happen");
+		let encoded: Vec<u8> = encode(&value).map_err(|_| DimasError::ShouldNotHappen)?;
+		let sample = Sample::try_from(key, encoded).map_err(|_| DimasError::ShouldNotHappen)?;
 
 		self.query
 			.reply(Ok(sample))
 			.res_sync()
-			.expect("should never happen");
+			.map_err(|_| DimasError::ShouldNotHappen)?;
+		Ok(())
 	}
 
 	/// access the queries parameters

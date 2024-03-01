@@ -45,10 +45,9 @@ async fn main() -> Result<(), DimasError> {
 		.timer()
 		.name("timer1")
 		.interval(Duration::from_secs(1))
-		.callback(|ctx| {
+		.callback(|ctx| -> Result<(), DimasError> {
 			let counter = ctx
-				.read()
-				.expect("should never happen")
+				.read()?
 				.counter
 				.to_string();
 
@@ -56,7 +55,8 @@ async fn main() -> Result<(), DimasError> {
 			info!("Sending '{}'", &text);
 			// publishing with stored publisher
 			let _ = ctx.put_with("hello", text);
-			ctx.write().expect("should never happen").counter += 1;
+			ctx.write()?.counter += 1;
+			Ok(())
 		})
 		.add()?;
 
@@ -66,10 +66,11 @@ async fn main() -> Result<(), DimasError> {
 		.timer()
 		.name("timer2")
 		.interval(duration)
-		.callback(move |ctx| {
+		.callback(move |ctx| -> Result<(), DimasError> {
 			info!("Deleting");
 			// delete with ad-hoc publisher
-			let _ = ctx.delete("hello");
+			ctx.delete("hello")?;
+			Ok(())
 		})
 		.add()?;
 

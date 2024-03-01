@@ -55,11 +55,12 @@ async fn main() -> Result<(), DimasError> {
 		.timer()
 		.name("timer")
 		.interval(duration)
-		.callback(move |ctx| {
+		.callback(move |ctx| -> Result<(), DimasError> {
 			info!("Querying [{counter}]");
 			// querying with stored query
-			ctx.get_with("query");
+			ctx.get_with("query")?;
 			counter += 1;
+			Ok(())
 		})
 		.add()?;
 

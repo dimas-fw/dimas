@@ -124,7 +124,7 @@ where
 
 		collection
 			.write()
-			.map_err(|_| { DimasError::ShouldNotHappen })?
+			.map_err(|_| DimasError::ShouldNotHappen)?
 			.insert(q.key_expr.clone(), q);
 		Ok(())
 	}

@@ -75,7 +75,7 @@ async fn main() -> Result<(), DimasError> {
 		.timer()
 		.name("timer")
 		.interval(Duration::from_secs(1))
-		.callback(|ctx| {
+		.callback(|ctx| -> Result<(), DimasError> {
 			let counter = ctx.read().expect("should never happen").counter;
 
 			let message = PingPongMessage {
@@ -88,13 +88,14 @@ async fn main() -> Result<(), DimasError> {
 			};
 
 			// publishing with stored publisher
-			let _ = ctx.put_with("ping", message);
+			ctx.put_with("ping", message)?;
 
 			let text = "ping! [".to_string() + &counter.to_string() + "]";
 			info!("Sent {} ", &text);
 
 			// increase counter
 			ctx.write().expect("should never happen").counter += 1;
+			Ok(())
 		})
 		.add()?;
 

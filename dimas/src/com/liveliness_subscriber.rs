@@ -94,7 +94,8 @@ where
 		let put_callback = if self.put_callback.is_none() {
 			return Err(DimasError::NoCallback);
 		} else {
-			self.put_callback.ok_or(DimasError::ShouldNotHappen)?
+			self.put_callback
+				.ok_or(DimasError::ShouldNotHappen)?
 		};
 
 		let s = LivelinessSubscriber {
@@ -114,13 +115,11 @@ where
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "liveliness")))]
 	#[cfg(feature = "liveliness")]
 	pub fn add(self) -> Result<(), DimasError> {
-		
 		let c = self.subscriber.clone();
 		let s = self.build()?;
 
-		c
-			.write()
-			.map_err(|_| { DimasError::ShouldNotHappen })?
+		c.write()
+			.map_err(|_| DimasError::ShouldNotHappen)?
 			.replace(s);
 		Ok(())
 	}

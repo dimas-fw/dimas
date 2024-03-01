@@ -67,7 +67,7 @@ where
 		let p = self.build()?;
 		collection
 			.write()
-			.map_err(|_| { DimasError::ShouldNotHappen })?
+			.map_err(|_| DimasError::ShouldNotHappen)?
 			.insert(p.publisher.key_expr().to_string(), p);
 		Ok(())
 	}

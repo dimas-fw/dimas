@@ -148,8 +148,6 @@ where
 	/// Method to pubish data with a stored Publisher
 	/// # Errors
 	///
-	/// # Panics
-	///
 	#[cfg(feature = "publisher")]
 	pub fn put_with<M>(&self, msg_name: &str, message: M) -> Result<(), DimasError>
 	where
@@ -159,15 +157,15 @@ where
 		if self
 			.publishers
 			.read()
-			.expect("should not happen")
+			.map_err(|_| DimasError::ShouldNotHappen)?
 			.get(&key_expr)
 			.is_some()
 		{
 			self.publishers
 				.read()
-				.expect("should not happen")
+				.map_err(|_| DimasError::ShouldNotHappen)?
 				.get(&key_expr)
-				.expect("should not happen")
+				.ok_or(DimasError::ShouldNotHappen)?
 				.put(message)?;
 		};
 		Ok(())
@@ -183,23 +181,21 @@ where
 	/// Method to delete data with a stored Publisher
 	/// # Errors
 	///
-	/// # Panics
-	///
 	#[cfg(feature = "publisher")]
 	pub fn delete_with(&self, msg_name: &str) -> Result<(), DimasError> {
 		let key_expr = self.key_expr(msg_name);
 		if self
 			.publishers
 			.read()
-			.expect("should not happen")
+			.map_err(|_| DimasError::ShouldNotHappen)?
 			.get(&key_expr)
 			.is_some()
 		{
 			self.publishers
 				.read()
-				.expect("should not happen")
+				.map_err(|_| DimasError::ShouldNotHappen)?
 				.get(&key_expr)
-				.expect("should not happen")
+				.ok_or(DimasError::ShouldNotHappen)?
 				.delete()?;
 		}
 		Ok(())
@@ -219,25 +215,24 @@ where
 	/// Method to query data with a stored Query
 	/// # Errors
 	///
-	/// # Panics
-	///
 	#[cfg(feature = "query")]
-	pub fn get_with(&self, msg_name: &str) {
+	pub fn get_with(&self, msg_name: &str) -> Result<(), DimasError> {
 		let key_expr = self.key_expr(msg_name);
 		if self
 			.queries
 			.read()
-			.expect("should not happen")
+			.map_err(|_| DimasError::ShouldNotHappen)?
 			.get(&key_expr)
 			.is_some()
 		{
 			self.queries
 				.read()
-				.expect("should not happen")
+				.map_err(|_| DimasError::ShouldNotHappen)?
 				.get(&key_expr)
-				.expect("should not happen")
+				.ok_or(DimasError::ShouldNotHappen)?
 				.get();
 		};
+		Ok(())
 	}
 }
 // endregion:	--- Context
