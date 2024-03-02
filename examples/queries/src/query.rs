@@ -27,7 +27,7 @@ fn query_callback(_ctx: &ArcContext<AgentProps>, response: Response) -> Result<(
 	Ok(())
 }
 
-#[tokio::main(flavor="current_thread")]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), DimasError> {
 	// a tracing subscriber writing logs
 	tracing_subscriber::fmt::init();

@@ -172,11 +172,12 @@ where
 		});
 	}
 
-	pub fn stop(&mut self) {
+	pub fn stop(&mut self) -> Result<(), DimasError> {
 		self.handle
 			.take()
-			.expect("should never happen")
+			.ok_or(DimasError::ShouldNotHappen)?
 			.abort();
+		Ok(())
 	}
 }
 
@@ -210,15 +211,31 @@ async fn run_liveliness<P>(
 		let _guard = span.enter();
 		match sample.kind {
 			SampleKind::Put => {
-				if let Err(error) = p_cb.lock().expect("should not happen")(&ctx, &id) {
-					error!("call failed with {error}");
-				};
+				let guard = p_cb.lock();
+				match guard {
+					Ok(mut lock) => {
+						if let Err(error) = lock(&ctx, &id) {
+							error!("lveliness put callback failed with {error}");
+						}
+					}
+					Err(err) => {
+						error!("liveliness put callback failed with {err}");
+					}
+				}
 			}
 			SampleKind::Delete => {
 				if let Some(cb) = d_cb.clone() {
-					if let Err(error) = cb.lock().expect("should not happen")(&ctx, &id) {
-						error!("call failed with {error}");
-					};
+					let guard = cb.lock();
+					match guard {
+						Ok(mut lock) => {
+							if let Err(error) = lock(&ctx, &id) {
+								error!("lveliness delete callback failed with {error}");
+							}
+						}
+						Err(err) => {
+							error!("liveliness delete callback failed with {err}");
+						}
+					}
 				}
 			}
 		}
@@ -247,9 +264,17 @@ where
 		match reply.sample {
 			Ok(sample) => {
 				let id = sample.key_expr.to_string().replace(&key_expr, "");
-				if let Err(error) = p_cb.lock().expect("should not happen")(&ctx, &id) {
-					error!("call failed with {error}");
-				};
+				let guard = p_cb.lock();
+				match guard {
+					Ok(mut lock) => {
+						if let Err(error) = lock(&ctx, &id) {
+							error!("lveliness put callback failed with {error}");
+						}
+					}
+					Err(err) => {
+						error!("liveliness put callback failed with {err}");
+					}
+				}
 			}
 			Err(err) => println!(
 				">> Received (ERROR: '{}')",

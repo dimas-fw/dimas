@@ -67,11 +67,7 @@ where
 	#[must_use]
 	pub fn put_callback<F>(mut self, callback: F) -> Self
 	where
-		F: FnMut(&ArcContext<P>, Message) -> Result<(), DimasError>
-			+ Send
-			+ Sync
-			+ Unpin
-			+ 'static,
+		F: FnMut(&ArcContext<P>, Message) -> Result<(), DimasError> + Send + Sync + Unpin + 'static,
 	{
 		self.put_callback
 			.replace(Arc::new(Mutex::new(callback)));
@@ -215,15 +211,31 @@ async fn run_subscriber<P>(
 		match sample.kind {
 			SampleKind::Put => {
 				let msg = Message(sample);
-				if let Err(error) = p_cb.lock().expect("should not happen")(&ctx, msg) {
-					error!("call failed with {error}");
-				};
+				let guard = p_cb.lock();
+				match guard {
+					Ok(mut lock) => {
+						if let Err(error) = lock(&ctx, msg) {
+							error!("subscriber put callback failed with {error}");
+						}
+					}
+					Err(err) => {
+						error!("subscriber put callback failed with {err}");
+					}
+				}
 			}
 			SampleKind::Delete => {
 				if let Some(cb) = d_cb.clone() {
-					if let Err(error) = cb.lock().expect("should not happen")(&ctx) {
-						error!("call failed with {error}");
-					};
+					let guard = cb.lock();
+					match guard {
+						Ok(mut lock) => {
+							if let Err(error) = lock(&ctx) {
+								error!("subscriber delete callback failed with {error}");
+							}
+						}
+						Err(err) => {
+							error!("subscriber delete callback failed with {err}");
+						}
+					}
 				}
 			}
 		}

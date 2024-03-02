@@ -61,11 +61,7 @@ where
 	#[must_use]
 	pub fn callback<F>(mut self, callback: F) -> Self
 	where
-		F: FnMut(&ArcContext<P>, Request) -> Result<(), DimasError>
-			+ Send
-			+ Sync
-			+ Unpin
-			+ 'static,
+		F: FnMut(&ArcContext<P>, Request) -> Result<(), DimasError> + Send + Sync + Unpin + 'static,
 	{
 		self.callback
 			.replace(Arc::new(Mutex::new(callback)));
@@ -190,9 +186,17 @@ where
 
 		let span = span!(Level::DEBUG, "run_queryable");
 		let _guard = span.enter();
-		if let Err(error) = cb.lock().expect("should not happen")(&ctx, request) {
-			error!("call failed with {error}");
-		};
+		let guard = cb.lock();
+		match guard {
+			Ok(mut lock) => {
+				if let Err(error) = lock(&ctx, request) {
+					error!("queryable callback failed with {error}");
+				}
+			}
+			Err(err) => {
+				error!("queryable callback failed with {err}");
+			}
+		}
 	}
 }
 // endregion:	--- Queryable

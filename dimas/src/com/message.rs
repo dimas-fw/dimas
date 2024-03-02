@@ -14,7 +14,7 @@ use zenoh::{prelude::sync::SyncResolve, queryable::Query, sample::Sample};
 // region:		--- Message
 /// Implementation of a message received by subscriber callbacks
 #[derive(Debug)]
-pub struct Message(pub(crate)Sample);
+pub struct Message(pub(crate) Sample);
 
 impl Deref for Message {
 	type Target = Sample;
@@ -32,10 +32,11 @@ impl Message {
 	where
 		T: Decode,
 	{
-		let value: Vec<u8> = self.0
-						.value
-						.try_into()
-						.map_err(|_| DimasError::DecodingFailed)?;
+		let value: Vec<u8> = self
+			.0
+			.value
+			.try_into()
+			.map_err(|_| DimasError::DecodingFailed)?;
 		decode::<T>(value.as_slice()).map_err(|_| DimasError::DecodingFailed)
 	}
 }
@@ -102,12 +103,12 @@ impl Response {
 	where
 		T: Decode,
 	{
-		let value: Vec<u8> = self.0
-						.value
-						.try_into()
-						.map_err(|_| DimasError::DecodingFailed)?;
+		let value: Vec<u8> = self
+			.0
+			.value
+			.try_into()
+			.map_err(|_| DimasError::DecodingFailed)?;
 		decode::<T>(value.as_slice()).map_err(|_| DimasError::DecodingFailed)
 	}
 }
 // endregion:	--- Response
-

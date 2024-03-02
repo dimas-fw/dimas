@@ -175,24 +175,28 @@ where
 
 		while let Ok(reply) = replies.recv() {
 			match reply.sample {
-				Ok(sample) => {
-					match sample.kind {
-						SampleKind::Put => {
-							let msg = Response(sample);
-							if let Err(error) =
-								cb.lock().expect("should not happen")(&self.ctx, msg)
-							{
-								error!("call failed with {error}");
-							};
-						}
-						SampleKind::Delete => {
-							error!("Delete in Query");
+				Ok(sample) => match sample.kind {
+					SampleKind::Put => {
+						let msg = Response(sample);
+						let guard = cb.lock();
+						match guard {
+							Ok(mut lock) => {
+								if let Err(error) = lock(&self.ctx, msg) {
+									error!("query callback failed with {error}");
+								}
+							}
+							Err(err) => {
+								error!("query callback failed with {err}");
+							}
 						}
 					}
-				}
+					SampleKind::Delete => {
+						error!("Delete in Query");
+					}
+				},
 				Err(err) => error!(
 					">> No data (ERROR: '{}')",
-					String::try_from(&err).expect("to be implemented")
+					String::try_from(&err).map_err(|_| DimasError::ShouldNotHappen)?
 				),
 			}
 		}

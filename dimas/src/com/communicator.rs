@@ -128,17 +128,15 @@ impl Communicator {
 
 		while let Ok(reply) = replies.recv() {
 			match reply.sample {
-				Ok(sample) => {
-					match sample.kind {
-						SampleKind::Put => {
-							let msg = Message(sample);
-							callback(&ctx, msg);
-						}
-						SampleKind::Delete => {
-							println!("Delete in Query");
-						}
+				Ok(sample) => match sample.kind {
+					SampleKind::Put => {
+						let msg = Message(sample);
+						callback(&ctx, msg);
 					}
-				}
+					SampleKind::Delete => {
+						println!("Delete in Query");
+					}
+				},
 				Err(err) => println!(
 					">> No data (ERROR: '{}')",
 					String::try_from(&err).expect("to be implemented")

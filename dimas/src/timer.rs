@@ -256,9 +256,17 @@ where
 
 		let span = span!(Level::DEBUG, "run_timer");
 		let _guard = span.enter();
-		if let Err(error) = cb.lock().expect("should not happen")(&ctx) {
-			error!("call failed with {error}");
-		};
+		let guard = cb.lock();
+		match guard {
+			Ok(mut lock) => {
+				if let Err(error) = lock(&ctx) {
+					error!("timer callback failed with {error}");
+				}
+			}
+			Err(err) => {
+				error!("timer callback failed with {err}");
+			}
+		}
 	}
 }
 // endregion:	--- Timer

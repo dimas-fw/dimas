@@ -53,7 +53,7 @@ fn pong_received(_ctx: &ArcContext<AgentProps>, message: Message) -> Result<(), 
 	Ok(())
 }
 
-#[tokio::main(flavor="current_thread")]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), DimasError> {
 	// a tracing subscriber writing logs
 	tracing_subscriber::fmt::init();
@@ -76,7 +76,7 @@ async fn main() -> Result<(), DimasError> {
 		.name("timer")
 		.interval(Duration::from_secs(1))
 		.callback(|ctx| -> Result<(), DimasError> {
-			let counter = ctx.read().expect("should never happen").counter;
+			let counter = ctx.read()?.counter;
 
 			let message = PingPongMessage {
 				counter,
@@ -94,7 +94,7 @@ async fn main() -> Result<(), DimasError> {
 			info!("Sent {} ", &text);
 
 			// increase counter
-			ctx.write().expect("should never happen").counter += 1;
+			ctx.write()?.counter += 1;
 			Ok(())
 		})
 		.add()?;

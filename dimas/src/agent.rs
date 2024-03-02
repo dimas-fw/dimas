@@ -247,7 +247,7 @@ where
 				tracing::error!("Unable to listen for 'Ctrl-C': {err}");
 				// we also try to shut down the agent properly
 				self.stop()?;
-				return Err(DimasError::ShouldNotHappen)
+				return Err(DimasError::ShouldNotHappen);
 			}
 		}
 		Ok(())
@@ -290,7 +290,7 @@ where
 					.map_err(|_| DimasError::ShouldNotHappen)?
 					.as_mut()
 					.ok_or(DimasError::ShouldNotHappen)?
-					.stop();
+					.stop()?;
 			}
 		}
 
@@ -314,7 +314,7 @@ where
 			.for_each(|queryable| {
 				let _ = queryable.1.stop();
 			});
-			Ok(())
+		Ok(())
 	}
 }
 // endregion:	--- Agent

@@ -23,7 +23,7 @@ struct AgentProps {
 	counter: u128,
 }
 
-#[tokio::main(flavor="current_thread")]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), DimasError> {
 	// a tracing subscriber writing logs
 	tracing_subscriber::fmt::init();
@@ -46,10 +46,7 @@ async fn main() -> Result<(), DimasError> {
 		.name("timer1")
 		.interval(Duration::from_secs(1))
 		.callback(|ctx| -> Result<(), DimasError> {
-			let counter = ctx
-				.read()?
-				.counter
-				.to_string();
+			let counter = ctx.read()?.counter.to_string();
 
 			let text = "Hello World! [".to_string() + &counter + "]";
 			info!("Sending '{}'", &text);
