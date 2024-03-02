@@ -28,7 +28,7 @@ struct PingPongMessage {
 	received: Option<i64>,
 }
 
-fn ping_received(ctx: &ArcContext<AgentProps>, message: &Message) -> Result<(), DimasError> {
+fn ping_received(ctx: &ArcContext<AgentProps>, message: Message) -> Result<(), DimasError> {
 	let mut message: PingPongMessage = message.decode()?;
 
 	// set receive-timestamp

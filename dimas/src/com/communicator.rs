@@ -112,7 +112,7 @@ impl Communicator {
 		callback: F,
 	) where
 		P: Debug + Send + Sync + Unpin + 'static,
-		F: Fn(&ArcContext<P>, &Message) + Send + Sync + Unpin + 'static,
+		F: Fn(&ArcContext<P>, Message) + Send + Sync + Unpin + 'static,
 	{
 		let key_expr = self.key_expr(query_name);
 		//dbg!(&key_expr);
@@ -125,26 +125,14 @@ impl Communicator {
 			//.timeout(Duration::from_millis(1000))
 			.res_sync()
 			.expect("should never happen");
-		//dbg!(&replies);
 
 		while let Ok(reply) = replies.recv() {
-			//dbg!(&reply);
 			match reply.sample {
 				Ok(sample) => {
-					//dbg!(&sample);
-					let value: Vec<u8> = sample
-						.value
-						.try_into()
-						.expect("should not happen");
-
-					let msg = Message {
-						key_expr: sample.key_expr.to_string(),
-						value,
-					};
-
 					match sample.kind {
 						SampleKind::Put => {
-							callback(&ctx, &msg);
+							let msg = Message(sample);
+							callback(&ctx, msg);
 						}
 						SampleKind::Delete => {
 							println!("Delete in Query");

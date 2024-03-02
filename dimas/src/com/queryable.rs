@@ -15,7 +15,7 @@ use zenoh::prelude::r#async::AsyncResolve;
 #[allow(clippy::module_name_repetitions)]
 pub type QueryableCallback<P> = Arc<
 	Mutex<
-		dyn FnMut(&ArcContext<P>, &Request) -> Result<(), DimasError>
+		dyn FnMut(&ArcContext<P>, Request) -> Result<(), DimasError>
 			+ Send
 			+ Sync
 			+ Unpin
@@ -61,7 +61,7 @@ where
 	#[must_use]
 	pub fn callback<F>(mut self, callback: F) -> Self
 	where
-		F: FnMut(&ArcContext<P>, &Request) -> Result<(), DimasError>
+		F: FnMut(&ArcContext<P>, Request) -> Result<(), DimasError>
 			+ Send
 			+ Sync
 			+ Unpin
@@ -184,11 +184,11 @@ where
 			.recv_async()
 			.await
 			.expect("should never happen");
-		let request = Request { query };
+		let request = Request(query);
 
 		let span = span!(Level::DEBUG, "run_queryable");
 		let _guard = span.enter();
-		if let Err(error) = cb.lock().expect("should not happen")(&ctx, &request) {
+		if let Err(error) = cb.lock().expect("should not happen")(&ctx, request) {
 			error!("call failed with {error}");
 		};
 	}

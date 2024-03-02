@@ -16,7 +16,7 @@ use zenoh::prelude::{r#async::AsyncResolve, SampleKind};
 #[allow(clippy::module_name_repetitions)]
 pub type SubscriberPutCallback<P> = Arc<
 	Mutex<
-		dyn FnMut(&ArcContext<P>, &Message) -> Result<(), DimasError>
+		dyn FnMut(&ArcContext<P>, Message) -> Result<(), DimasError>
 			+ Send
 			+ Sync
 			+ Unpin
@@ -67,7 +67,7 @@ where
 	#[must_use]
 	pub fn put_callback<F>(mut self, callback: F) -> Self
 	where
-		F: FnMut(&ArcContext<P>, &Message) -> Result<(), DimasError>
+		F: FnMut(&ArcContext<P>, Message) -> Result<(), DimasError>
 			+ Send
 			+ Sync
 			+ Unpin
@@ -212,16 +212,8 @@ async fn run_subscriber<P>(
 		let _guard = span.enter();
 		match sample.kind {
 			SampleKind::Put => {
-				let value: Vec<u8> = sample
-					.value
-					.try_into()
-					.expect("should not happen");
-
-				let msg = Message {
-					key_expr: sample.key_expr.to_string(),
-					value,
-				};
-				if let Err(error) = p_cb.lock().expect("should not happen")(&ctx, &msg) {
+				let msg = Message(sample);
+				if let Err(error) = p_cb.lock().expect("should not happen")(&ctx, msg) {
 					error!("call failed with {error}");
 				};
 			}

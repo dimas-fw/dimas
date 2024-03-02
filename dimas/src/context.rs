@@ -206,7 +206,7 @@ where
 	pub fn get<F>(&self, ctx: Arc<Self>, query_name: impl Into<String>, callback: F)
 	where
 		P: Debug + Send + Sync + Unpin + 'static,
-		F: Fn(&ArcContext<P>, &Message) + Send + Sync + Unpin + 'static,
+		F: Fn(&ArcContext<P>, Message) + Send + Sync + Unpin + 'static,
 	{
 		self.communicator
 			.get(ctx, query_name, ConsolidationMode::None, callback);

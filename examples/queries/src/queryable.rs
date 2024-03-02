@@ -22,10 +22,10 @@ struct AgentProps {
 	counter: u128,
 }
 
-fn queryable(ctx: &ArcContext<AgentProps>, request: &Request) -> Result<(), DimasError> {
+fn queryable(ctx: &ArcContext<AgentProps>, request: Request) -> Result<(), DimasError> {
 	let value = ctx.read()?.counter;
-	info!("Received query, responding with {}", &value);
-
+	let query = request.key_expr();
+	info!("Received query for {}, responding with {}", &query,  &value);
 	request.reply(value)?;
 
 	ctx.write()?.counter += 1;

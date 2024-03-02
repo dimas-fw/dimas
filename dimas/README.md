@@ -96,10 +96,9 @@ async fn main() -> Result<(), DimasError> {
 		.interval(Duration::from_secs(1))
 		// the timers callback function as a closure
 		.callback(
-			|ctx| {
+			|ctx| -> Result<(), DimasError> {
 				let counter = ctx
-					.read()
-					.unwrap()
+					.read()?
 					.counter
 					.to_string();
 				// the message to send
@@ -107,12 +106,12 @@ async fn main() -> Result<(), DimasError> {
 				// just to see what will be sent
 				println!("Sending '{}'", &text);
 				// publishing with stored publisher for topic "hello"
-				let _ = ctx.put_with("hello", text);
+				ctx.put_with("hello", text)?;
 				// modify counter in properties
 				ctx
-					.write()
-					.unwrap()
+					.write()?
 					.counter += 1;
+				Ok(())
 			}
 		)
 		// finally add the timer to the agent
@@ -135,9 +134,9 @@ use dimas::prelude::*;
 #[derive(Debug)]
 pub struct AgentProps {}
 
-fn callback(_ctx: &ArcContext<AgentProps>, message: &Message) -> Result<(), DimasError> {
+fn callback(_ctx: &ArcContext<AgentProps>, message: Message) -> Result<(), DimasError> {
 	let message: String =	message.decode()?;
-	println!("Received '{}'", &message);
+	println!("Received '{}'", message);
 	Ok(())
 }
 

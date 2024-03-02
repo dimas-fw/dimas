@@ -22,7 +22,7 @@ struct AgentProps {
 	test: u8,
 }
 
-fn hello_publishing(_ctx: &ArcContext<AgentProps>, message: &Message) -> Result<(), DimasError> {
+fn hello_publishing(_ctx: &ArcContext<AgentProps>, message: Message) -> Result<(), DimasError> {
 	let message: String = message.decode()?;
 	info!("Received '{message}'");
 
