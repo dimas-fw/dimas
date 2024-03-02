@@ -75,3 +75,34 @@ impl Request {
 	}
 }
 // endregion: --- Request
+
+// region:		--- Response
+/// Implementation of a response received by query callbacks
+#[derive(Debug)]
+pub struct Response {
+	/// the key expression for which the response was sent
+	pub key_expr: String,
+	/// the responses data
+	pub value: Vec<u8>,
+}
+
+impl Deref for Response {
+	type Target = [u8];
+
+	fn deref(&self) -> &Self::Target {
+		self.value.as_slice()
+	}
+}
+
+impl Response {
+	/// decode response
+	/// # Errors
+	pub fn decode<T>(&self) -> Result<T, DimasError>
+	where
+		T: Decode,
+	{
+		decode::<T>(self).map_err(|_| DimasError::DecodingFailed)
+	}
+}
+// endregion:	--- Response
+

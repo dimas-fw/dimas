@@ -23,7 +23,7 @@ struct AgentProps {
 	counter: u128,
 }
 
-#[tokio::main]
+#[tokio::main(flavor="current_thread")]
 async fn main() -> Result<(), DimasError> {
 	// a tracing subscriber writing logs
 	tracing_subscriber::fmt::init();

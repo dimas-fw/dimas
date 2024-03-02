@@ -34,7 +34,7 @@ fn delete_subscription(ctx: &ArcContext<AgentProps>, id: &str) -> Result<(), Dim
 	Ok(())
 }
 
-#[tokio::main]
+#[tokio::main(flavor="current_thread")]
 async fn main() -> Result<(), DimasError> {
 	// a tracing subscriber writing logs
 	tracing_subscriber::fmt::init();

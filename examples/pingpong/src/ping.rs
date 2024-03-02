@@ -53,7 +53,7 @@ fn pong_received(_ctx: &ArcContext<AgentProps>, message: &Message) -> Result<(),
 	Ok(())
 }
 
-#[tokio::main]
+#[tokio::main(flavor="current_thread")]
 async fn main() -> Result<(), DimasError> {
 	// a tracing subscriber writing logs
 	tracing_subscriber::fmt::init();

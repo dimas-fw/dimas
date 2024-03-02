@@ -18,7 +18,7 @@ use zenoh::{
 #[allow(clippy::module_name_repetitions)]
 pub type QueryCallback<P> = Arc<
 	Mutex<
-		dyn FnMut(&ArcContext<P>, &Message) -> Result<(), DimasError>
+		dyn FnMut(&ArcContext<P>, &Response) -> Result<(), DimasError>
 			+ Send
 			+ Sync
 			+ Unpin
@@ -72,7 +72,7 @@ where
 	#[must_use]
 	pub fn callback<F>(mut self, callback: F) -> Self
 	where
-		F: FnMut(&ArcContext<P>, &Message) -> Result<(), DimasError>
+		F: FnMut(&ArcContext<P>, &Response) -> Result<(), DimasError>
 			+ Send
 			+ Sync
 			+ Unpin
@@ -185,7 +185,7 @@ where
 						.value
 						.try_into()
 						.expect("should not happen");
-					let msg = Message {
+					let msg = Response {
 						key_expr: sample.key_expr.to_string(),
 						value,
 					};

@@ -35,7 +35,7 @@ fn hello_deletion(ctx: &ArcContext<AgentProps>) -> Result<(), DimasError> {
 	Ok(())
 }
 
-#[tokio::main]
+#[tokio::main(flavor="current_thread")]
 async fn main() -> Result<(), DimasError> {
 	// a tracing subscriber writing logs
 	tracing_subscriber::fmt::init();

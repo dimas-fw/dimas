@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - _Implemented error handling for callbacks which changes the signature of callbacks_
+- _Separated `Response` for `Query` from `Message` for `Subscriber`_
 
 ### Fixed
 

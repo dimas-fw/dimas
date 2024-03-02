@@ -32,7 +32,7 @@ fn queryable(ctx: &ArcContext<AgentProps>, request: &Request) -> Result<(), Dima
 	Ok(())
 }
 
-#[tokio::main]
+#[tokio::main(flavor="current_thread")]
 async fn main() -> Result<(), DimasError> {
 	// a tracing subscriber writing logs
 	tracing_subscriber::fmt::init();
