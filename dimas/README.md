@@ -119,7 +119,7 @@ async fn main() -> Result<(), DimasError> {
 		.add()?;
 
 	// run the agent
-	agent.start().await;
+	agent.start().await?;
 	Ok(())
 }
 ```
@@ -161,7 +161,7 @@ async fn main() -> Result<(), DimasError> {
 		.add()?;
 
 	// run the agent
-	agent.start().await;
+	agent.start().await?;
 	Ok(())
 }
 ```

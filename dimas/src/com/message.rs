@@ -98,8 +98,6 @@ impl Response {
 	/// decode response
 	/// # Errors
 	///
-	/// # Panics
-	///
 	pub fn decode<T>(self) -> Result<T, DimasError>
 	where
 		T: Decode,

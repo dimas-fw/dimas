@@ -76,7 +76,7 @@ async fn main() -> Result<(), DimasError> {
 
 	// activate liveliness
 	agent.liveliness(true);
-	agent.start().await;
+	agent.start().await?;
 
 	Ok(())
 }

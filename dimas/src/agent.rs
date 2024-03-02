@@ -172,16 +172,14 @@ where
 	}
 
 	/// start the agent
-	/// # Panics
-	///
 	#[tracing::instrument]
-	pub async fn start(&mut self) {
+	pub async fn start(&mut self) -> Result<(), DimasError> {
 		// start all registered queryables
 		#[cfg(feature = "queryable")]
 		self.context
 			.queryables
 			.write()
-			.expect("should never happen")
+			.map_err(|_| DimasError::ShouldNotHappen)?
 			.iter_mut()
 			.for_each(|queryable| {
 				queryable.1.start();
@@ -191,7 +189,7 @@ where
 		self.context
 			.subscribers
 			.write()
-			.expect("should never happen")
+			.map_err(|_| DimasError::ShouldNotHappen)?
 			.iter_mut()
 			.for_each(|subscriber| {
 				subscriber.1.start();
@@ -201,14 +199,14 @@ where
 		if self
 			.liveliness_subscriber
 			.read()
-			.expect("should never happen")
+			.map_err(|_| DimasError::ShouldNotHappen)?
 			.is_some()
 		{
 			self.liveliness_subscriber
 				.write()
-				.expect("should never happen")
+				.map_err(|_| DimasError::ShouldNotHappen)?
 				.as_mut()
-				.expect("should never happen")
+				.ok_or(DimasError::ShouldNotHappen)?
 				.start();
 		}
 
@@ -225,7 +223,7 @@ where
 				.await;
 			self.liveliness_token
 				.write()
-				.expect("should never happen")
+				.map_err(|_| DimasError::ShouldNotHappen)?
 				.replace(token);
 		}
 
@@ -234,7 +232,7 @@ where
 		self.context
 			.timers
 			.write()
-			.expect("should never happen")
+			.map_err(|_| DimasError::ShouldNotHappen)?
 			.iter_mut()
 			.for_each(|timer| {
 				timer.1.start();
@@ -243,27 +241,28 @@ where
 		// wait for a shutdown signal
 		match signal::ctrl_c().await {
 			Ok(()) => {
-				self.stop();
+				self.stop()?;
 			}
 			Err(err) => {
 				tracing::error!("Unable to listen for 'Ctrl-C': {err}");
-				// we also shut down in case of error
-				self.stop();
+				// we also try to shut down the agent properly
+				self.stop()?;
+				return Err(DimasError::ShouldNotHappen)
 			}
 		}
+		Ok(())
 	}
 
 	/// stop the agent
-	/// # Panics
 	#[tracing::instrument]
-	pub fn stop(&mut self) {
+	pub fn stop(&mut self) -> Result<(), DimasError> {
 		// reverse order of start!
 		// stop all registered timers
 		#[cfg(feature = "timer")]
 		self.context
 			.timers
 			.write()
-			.expect("should never happen")
+			.map_err(|_| DimasError::ShouldNotHappen)?
 			.iter_mut()
 			.for_each(|timer| {
 				timer.1.stop();
@@ -274,7 +273,7 @@ where
 			// stop liveliness
 			self.liveliness_token
 				.write()
-				.expect("should never happen")
+				.map_err(|_| DimasError::ShouldNotHappen)?
 				.take();
 			self.liveliness = false;
 
@@ -283,14 +282,14 @@ where
 			if self
 				.liveliness_subscriber
 				.read()
-				.expect("should never happen")
+				.map_err(|_| DimasError::ShouldNotHappen)?
 				.is_some()
 			{
 				self.liveliness_subscriber
 					.write()
-					.expect("should never happen")
+					.map_err(|_| DimasError::ShouldNotHappen)?
 					.as_mut()
-					.expect("should never happen")
+					.ok_or(DimasError::ShouldNotHappen)?
 					.stop();
 			}
 		}
@@ -300,7 +299,7 @@ where
 		self.context
 			.subscribers
 			.write()
-			.expect("should never happen")
+			.map_err(|_| DimasError::ShouldNotHappen)?
 			.iter_mut()
 			.for_each(|subscriber| {
 				subscriber.1.stop();
@@ -310,11 +309,12 @@ where
 		self.context
 			.queryables
 			.write()
-			.expect("should never happen")
+			.map_err(|_| DimasError::ShouldNotHappen)?
 			.iter_mut()
 			.for_each(|queryable| {
 				queryable.1.stop();
 			});
+			Ok(())
 	}
 }
 // endregion:	--- Agent
