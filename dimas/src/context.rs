@@ -230,7 +230,7 @@ where
 				.map_err(|_| DimasError::ShouldNotHappen)?
 				.get(&key_expr)
 				.ok_or(DimasError::ShouldNotHappen)?
-				.get();
+				.get()?;
 		};
 		Ok(())
 	}

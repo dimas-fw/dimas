@@ -144,9 +144,9 @@ where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// Start Queryable
-	/// # Panics
+	/// # Errors
 	///
-	pub fn start(&mut self) {
+	pub fn start(&mut self) -> Result<(), DimasError> {
 		let key_expr = self.key_expr.clone();
 		//dbg!(&key_expr);
 		let cb = self.callback.clone();
@@ -154,16 +154,18 @@ where
 		self.handle.replace(tokio::spawn(async move {
 			run_queryable(key_expr, cb, ctx).await;
 		}));
+		Ok(())
 	}
 
 	/// Stop Queryable
-	/// # Panics
+	/// # Errors
 	///
-	pub fn stop(&mut self) {
+	pub fn stop(&mut self) -> Result<(), DimasError> {
 		self.handle
 			.take()
-			.expect("should never happen")
+			.ok_or(DimasError::ShouldNotHappen)?
 			.abort();
+		Ok(())
 	}
 }
 

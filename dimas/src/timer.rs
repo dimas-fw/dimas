@@ -181,9 +181,9 @@ where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// Start Timer
-	/// # Panics
+	/// # Errors
 	///
-	pub fn start(&mut self) {
+	pub fn start(&mut self) -> Result<(), DimasError> {
 		match self {
 			Self::Interval {
 				interval,
@@ -215,12 +215,13 @@ where
 				}));
 			}
 		}
+		Ok(())
 	}
 
 	/// Stop Timer
-	/// # Panics
+	/// # Errors
 	///
-	pub fn stop(&mut self) {
+	pub fn stop(&mut self) -> Result<(), DimasError> {
 		match self {
 			Self::Interval {
 				interval: _,
@@ -237,10 +238,11 @@ where
 			} => {
 				handle
 					.take()
-					.expect("should never happen")
+					.ok_or(DimasError::ShouldNotHappen)?
 					.abort();
 			}
 		}
+		Ok(())
 	}
 }
 

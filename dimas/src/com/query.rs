@@ -160,10 +160,8 @@ where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// run a query
-	/// # Panics
-	///
 	#[tracing::instrument(level = tracing::Level::DEBUG)]
-	pub fn get(&self) {
+	pub fn get(&self) -> Result<(), DimasError> {
 		let cb = self.callback.clone();
 		let replies = self
 			.ctx
@@ -173,7 +171,7 @@ where
 			.consolidation(self.mode)
 			//.timeout(Duration::from_millis(1000))
 			.res_sync()
-			.expect("should never happen");
+			.map_err(|_| DimasError::ShouldNotHappen)?;
 
 		while let Ok(reply) = replies.recv() {
 			match reply.sample {
@@ -198,6 +196,7 @@ where
 				),
 			}
 		}
+		Ok(())
 	}
 }
 // endregion:	--- Query

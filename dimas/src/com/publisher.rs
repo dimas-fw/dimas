@@ -95,8 +95,6 @@ impl Publisher
 	/// Send a "put" message
 	/// # Errors
 	///
-	/// # Panics
-	///
 	#[tracing::instrument(level = tracing::Level::DEBUG)]
 	pub fn put<T>(&self, message: T) -> Result<(), DimasError>
 	where
@@ -112,8 +110,6 @@ impl Publisher
 	// TODO! This currently does not work - it sends a put message
 	/// Send a "delete" message - method currently does not work!!
 	/// # Errors
-	///
-	/// # Panics
 	///
 	#[tracing::instrument(level = tracing::Level::DEBUG)]
 	pub fn delete(&self) -> Result<(), DimasError> {

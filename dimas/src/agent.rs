@@ -182,7 +182,7 @@ where
 			.map_err(|_| DimasError::ShouldNotHappen)?
 			.iter_mut()
 			.for_each(|queryable| {
-				queryable.1.start();
+				let _ = queryable.1.start();
 			});
 		// start all registered subscribers
 		#[cfg(feature = "subscriber")]
@@ -192,7 +192,7 @@ where
 			.map_err(|_| DimasError::ShouldNotHappen)?
 			.iter_mut()
 			.for_each(|subscriber| {
-				subscriber.1.start();
+				let _ = subscriber.1.start();
 			});
 		// start liveliness subscriber
 		#[cfg(feature = "liveliness")]
@@ -235,7 +235,7 @@ where
 			.map_err(|_| DimasError::ShouldNotHappen)?
 			.iter_mut()
 			.for_each(|timer| {
-				timer.1.start();
+				let _ = timer.1.start();
 			});
 
 		// wait for a shutdown signal
@@ -265,7 +265,7 @@ where
 			.map_err(|_| DimasError::ShouldNotHappen)?
 			.iter_mut()
 			.for_each(|timer| {
-				timer.1.stop();
+				let _ = timer.1.stop();
 			});
 
 		#[cfg(feature = "liveliness")]
@@ -302,7 +302,7 @@ where
 			.map_err(|_| DimasError::ShouldNotHappen)?
 			.iter_mut()
 			.for_each(|subscriber| {
-				subscriber.1.stop();
+				let _ = subscriber.1.stop();
 			});
 		// stop all registered queryables
 		#[cfg(feature = "queryable")]
@@ -312,7 +312,7 @@ where
 			.map_err(|_| DimasError::ShouldNotHappen)?
 			.iter_mut()
 			.for_each(|queryable| {
-				queryable.1.stop();
+				let _ = queryable.1.stop();
 			});
 			Ok(())
 	}
