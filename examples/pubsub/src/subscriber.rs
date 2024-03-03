@@ -2,20 +2,9 @@
 //! Copyright © 2024 Stephan Kunz
 
 // region:		--- modules
-use clap::Parser;
 use dimas::prelude::*;
 use tracing::info;
 // endregion:	--- modules
-
-// region:		--- Clap
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-struct Args {
-	/// prefix
-	#[arg(short, long, value_parser, default_value_t = String::from("examples"))]
-	prefix: String,
-}
-// endregion:	--- Clap
 
 #[derive(Debug)]
 struct AgentProps {
@@ -40,14 +29,11 @@ async fn main() -> Result<(), DimasError> {
 	// a tracing subscriber writing logs
 	tracing_subscriber::fmt::init();
 
-	// parse arguments
-	let args = Args::parse();
-
 	// create & initialize agents properties
 	let properties = AgentProps { test: 0 };
 
-	// create an agent with the properties
-	let mut agent = Agent::new_with_prefix(Config::default(), properties, &args.prefix);
+	// create an agent with the properties and the prefix 'examples'
+	let mut agent = Agent::new_with_prefix(Config::default(), properties, "examples");
 
 	// listen for 'hello' messages
 	agent

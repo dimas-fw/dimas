@@ -28,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 ### Removed
-
+- Removed crate clap from examples
 
 ## [0.0.5] - 2024-02-29 <br>_Has breaking changes!!_
 

@@ -22,7 +22,6 @@ name = "subscriber"
 path = "src/subscriber.rs"
 
 [dependencies]
-clap = { workspace = true }
 dimas = { workspace = true, features = ["publisher", "subscriber", "timer"] }
 tokio = { workspace = true, features = ["macros"] }
 tracing = { workspace = true }
