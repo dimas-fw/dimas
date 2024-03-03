@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.0.6] - 2024-??-?? <br>_Has breaking changes!!_
 
 ### Added
+- using cargo vet as auditing tool
 
 ### Changed
 - _Implemented error handling for callbacks which changes the signature of callbacks_
@@ -29,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 - Removed crate clap from examples
+- calls to panic!, unwrap()'s, expect(...)'s and others
 
 ## [0.0.5] - 2024-02-29 <br>_Has breaking changes!!_
 

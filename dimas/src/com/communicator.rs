@@ -120,7 +120,6 @@ impl Communicator {
 		F: Fn(&ArcContext<P>, Message) + Send + Sync + Unpin + 'static,
 	{
 		let key_expr = self.key_expr(query_name);
-		//dbg!(&key_expr);
 		let ctx = ctx;
 		let session = self.session.clone();
 

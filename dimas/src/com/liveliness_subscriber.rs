@@ -158,7 +158,7 @@ where
 		let p_cb = self.put_callback.clone();
 		let d_cb = self.delete_callback.clone();
 		let ctx = self.context.clone();
-		//dbg!(&key_expr);
+
 		self.handle.replace(tokio::spawn(async move {
 			if let Err(error) = run_liveliness(key_expr, p_cb, d_cb, ctx).await {
 				error!("spawning liveliness subscriber failed with {error}");

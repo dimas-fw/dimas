@@ -83,7 +83,6 @@ where
 			self.callback.ok_or(DimasError::ShouldNotHappen)?
 		};
 
-		//dbg!(&key_expr);
 		let q = Queryable {
 			key_expr,
 			callback,
@@ -144,9 +143,9 @@ where
 	///
 	pub fn start(&mut self) -> Result<(), DimasError> {
 		let key_expr = self.key_expr.clone();
-		//dbg!(&key_expr);
 		let cb = self.callback.clone();
 		let ctx = self.context.clone();
+
 		self.handle.replace(tokio::spawn(async move {
 			if let Err(error) = run_queryable(key_expr, cb, ctx).await {
 				error!("queryable failed with {error}");

@@ -50,7 +50,6 @@ where
 			self.key_expr.ok_or(DimasError::ShouldNotHappen)?
 		};
 
-		//dbg!(&key_expr);
 		let publ = self.context.create_publisher(key_expr)?;
 		let p = Publisher { publisher: publ };
 
