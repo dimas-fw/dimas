@@ -209,7 +209,7 @@ version = "0.10.7"
 criteria = "safe-to-deploy"
 
 [[exemptions.dimas]]
-version = "0.0.6"
+version = "0.0.7"
 criteria = "safe-to-deploy"
 
 [[exemptions.dirs]]
