@@ -13,6 +13,9 @@ pub enum DimasError {
 	/// A custom error message
 	#[error("{0}")]
 	Custom(String),
+	/// `zenoh` session creation failed
+	#[error("could not create zenoh session")]
+	SessionCreationFailed,
 	/// The `put` of a `Publisher` failed
 	#[error("Publisher 'put' failed")]
 	PutFailed,

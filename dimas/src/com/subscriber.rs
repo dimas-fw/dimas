@@ -167,7 +167,9 @@ where
 		let d_cb = self.delete_callback.clone();
 		let ctx = self.context.clone();
 		self.handle.replace(tokio::spawn(async move {
-			run_subscriber(key_expr, p_cb, d_cb, ctx).await;
+			if let Err(error) = run_subscriber(key_expr, p_cb, d_cb, ctx).await {
+				error!("subscriber failed with {error}");
+			};
 		}));
 		Ok(())
 	}
@@ -190,7 +192,8 @@ async fn run_subscriber<P>(
 	p_cb: SubscriberPutCallback<P>,
 	d_cb: Option<SubscriberDeleteCallback<P>>,
 	ctx: ArcContext<P>,
-) where
+) -> Result<(), DimasError>
+where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
 	let session = ctx.communicator.session.clone();
@@ -198,13 +201,13 @@ async fn run_subscriber<P>(
 		.declare_subscriber(&key_expr)
 		.res_async()
 		.await
-		.expect("should never happen");
+		.map_err(|_| DimasError::ShouldNotHappen)?;
 
 	loop {
 		let sample = subscriber
 			.recv_async()
 			.await
-			.expect("should never happen");
+			.map_err(|_| DimasError::ShouldNotHappen)?;
 
 		let span = span!(Level::DEBUG, "run_subscriber");
 		let _guard = span.enter();
@@ -219,7 +222,7 @@ async fn run_subscriber<P>(
 						}
 					}
 					Err(err) => {
-						error!("subscriber put callback failed with {err}");
+						error!("subscriber put callback lock failed with {err}");
 					}
 				}
 			}
@@ -233,7 +236,7 @@ async fn run_subscriber<P>(
 							}
 						}
 						Err(err) => {
-							error!("subscriber delete callback failed with {err}");
+							error!("subscriber delete callback lock failed with {err}");
 						}
 					}
 				}

@@ -26,7 +26,7 @@ pub type ArcContext<P> = Arc<Context<P>>;
 
 // region:		--- Context
 /// Context makes all relevant data of the agent accessible via accessor methods.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct Context<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
@@ -54,9 +54,9 @@ where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// Constructor for the `Context`
-	pub(crate) fn new(config: Config, props: P) -> Arc<Self> {
-		let communicator = Arc::new(Communicator::new(config));
-		Arc::new(Self {
+	pub(crate) fn new(config: Config, props: P) -> Result<Arc<Self>, DimasError> {
+		let communicator = Arc::new(Communicator::new(config)?);
+		Ok(Arc::new(Self {
 			communicator,
 			props: Arc::new(RwLock::new(props)),
 			#[cfg(feature = "publisher")]
@@ -69,7 +69,7 @@ where
 			subscribers: Arc::new(RwLock::new(HashMap::new())),
 			#[cfg(feature = "timer")]
 			timers: Arc::new(RwLock::new(HashMap::new())),
-		})
+		}))
 	}
 
 	/// Constructor for the `Context` with a prefix
@@ -77,9 +77,9 @@ where
 		config: Config,
 		props: P,
 		prefix: impl Into<String>,
-	) -> Arc<Self> {
-		let communicator = Arc::new(Communicator::new_with_prefix(config, prefix));
-		Arc::new(Self {
+	) -> Result<Arc<Self>, DimasError> {
+		let communicator = Arc::new(Communicator::new_with_prefix(config, prefix)?);
+		Ok(Arc::new(Self {
 			communicator,
 			props: Arc::new(RwLock::new(props)),
 			#[cfg(feature = "publisher")]
@@ -92,7 +92,7 @@ where
 			subscribers: Arc::new(RwLock::new(HashMap::new())),
 			#[cfg(feature = "timer")]
 			timers: Arc::new(RwLock::new(HashMap::new())),
-		})
+		}))
 	}
 
 	/// Get the agents uuid
@@ -127,11 +127,10 @@ where
 			.map_err(|_| DimasError::WritePropertiesFailed)
 	}
 
-	#[must_use]
 	pub(crate) fn create_publisher<'publisher>(
 		&self,
 		key_expr: impl Into<String> + Send,
-	) -> Publisher<'publisher> {
+	) -> Result<Publisher<'publisher>, DimasError> {
 		self.communicator.create_publisher(key_expr)
 	}
 
@@ -203,13 +202,18 @@ where
 
 	/// Method to do an ad hoc query without any consolidation of answers.
 	/// Multiple answers may be received for the same timestamp.
-	pub fn get<F>(&self, ctx: Arc<Self>, query_name: impl Into<String>, callback: F)
+	pub fn get<F>(
+		&self,
+		ctx: Arc<Self>,
+		query_name: impl Into<String>,
+		callback: F,
+	) -> Result<(), DimasError>
 	where
 		P: Debug + Send + Sync + Unpin + 'static,
 		F: Fn(&ArcContext<P>, Message) + Send + Sync + Unpin + 'static,
 	{
 		self.communicator
-			.get(ctx, query_name, ConsolidationMode::None, callback);
+			.get(ctx, query_name, ConsolidationMode::None, callback)
 	}
 
 	/// Method to query data with a stored Query

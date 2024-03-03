@@ -78,7 +78,7 @@ async fn main() -> Result<(), DimasError> {
 	let properties = AgentProps { counter: 0 };
 
 	// create an agent with the properties
-	let mut agent = Agent::new(Config::default(), properties);
+	let mut agent = Agent::new(Config::default(), properties)?;
 
 	// create publisher for topic "hello"
 	agent
@@ -146,7 +146,7 @@ async fn main() -> Result<(), DimasError> {
 	let properties = AgentProps {};
 
 	// create an agent with the properties
-	let mut agent = Agent::new(Config::default(), properties);
+	let mut agent = Agent::new(Config::default(), properties)?;
 
 	// subscribe to "hello" messages
 	agent

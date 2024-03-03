@@ -30,7 +30,7 @@ async fn main() -> Result<(), DimasError> {
 	let properties = AgentProps { counter: 0 };
 
 	// create an agent with the properties and the prefix 'examples'
-	let mut agent = Agent::new_with_prefix(Config::default(), properties, "examples");
+	let mut agent = Agent::new_with_prefix(Config::default(), properties, "examples")?;
 
 	// add a queryable
 	agent

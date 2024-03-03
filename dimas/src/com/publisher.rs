@@ -11,7 +11,7 @@ use zenoh::prelude::sync::SyncResolve;
 // region:		--- PublisherBuilder
 /// The builder for a publisher
 #[allow(clippy::module_name_repetitions)]
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct PublisherBuilder<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
@@ -51,7 +51,7 @@ where
 		};
 
 		//dbg!(&key_expr);
-		let publ = self.context.create_publisher(key_expr);
+		let publ = self.context.create_publisher(key_expr)?;
 		let p = Publisher { publisher: publ };
 
 		Ok(p)

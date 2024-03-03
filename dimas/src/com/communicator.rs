@@ -5,6 +5,7 @@
 // region:		--- modules
 use crate::prelude::*;
 use std::fmt::Debug;
+use tracing::error;
 use zenoh::liveliness::LivelinessToken;
 use zenoh::prelude::{r#async::*, sync::SyncResolve};
 use zenoh::publication::Publisher;
@@ -20,31 +21,31 @@ pub struct Communicator {
 }
 
 impl Communicator {
-	pub(crate) fn new(config: crate::config::Config) -> Self {
+	pub(crate) fn new(config: crate::config::Config) -> Result<Self, DimasError> {
 		let cfg = config;
 		let session = Arc::new(
 			zenoh::open(cfg.zenoh_config())
 				.res_sync()
-				.expect("could not create zenoh session"),
+				.map_err(|_| DimasError::SessionCreationFailed)?,
 		);
-		Self {
+		Ok(Self {
 			session,
 			prefix: None,
-		}
+		})
 	}
 
 	pub(crate) fn new_with_prefix(
 		config: crate::config::Config,
 		prefix: impl Into<String>,
-	) -> Self {
+	) -> Result<Self, DimasError> {
 		let cfg = config;
 		let session = Arc::new(
 			zenoh::open(cfg.zenoh_config())
 				.res_sync()
-				.expect("could not create zenoh session"),
+				.map_err(|_| DimasError::SessionCreationFailed)?,
 		);
 		let prefix = Some(prefix.into());
-		Self { session, prefix }
+		Ok(Self { session, prefix })
 	}
 
 	pub(crate) fn uuid(&self) -> String {
@@ -65,7 +66,7 @@ impl Communicator {
 	pub(crate) async fn send_liveliness<'a>(
 		&self,
 		msg_type: impl Into<String> + Send,
-	) -> LivelinessToken<'a> {
+	) -> Result<LivelinessToken<'a>, DimasError> {
 		let session = self.session.clone();
 		let uuid = self.key_expr(msg_type) + "/" + &session.zid().to_string();
 
@@ -74,14 +75,17 @@ impl Communicator {
 			.declare_token(&uuid)
 			.res_async()
 			.await
-			.expect("should never happen")
+			.map_err(|_| DimasError::ShouldNotHappen)
 	}
 
-	pub(crate) fn create_publisher<'a>(&self, key_expr: impl Into<String> + Send) -> Publisher<'a> {
+	pub(crate) fn create_publisher<'a>(
+		&self,
+		key_expr: impl Into<String> + Send,
+	) -> Result<Publisher<'a>, DimasError> {
 		self.session
 			.declare_publisher(key_expr.into())
 			.res_sync()
-			.expect("should never happen")
+			.map_err(|_| DimasError::ShouldNotHappen)
 	}
 
 	pub(crate) fn put<M>(&self, msg_name: impl Into<String>, message: M) -> Result<(), DimasError>
@@ -110,7 +114,8 @@ impl Communicator {
 		query_name: impl Into<String>,
 		mode: ConsolidationMode,
 		callback: F,
-	) where
+	) -> Result<(), DimasError>
+	where
 		P: Debug + Send + Sync + Unpin + 'static,
 		F: Fn(&ArcContext<P>, Message) + Send + Sync + Unpin + 'static,
 	{
@@ -124,7 +129,7 @@ impl Communicator {
 			.consolidation(mode)
 			//.timeout(Duration::from_millis(1000))
 			.res_sync()
-			.expect("should never happen");
+			.map_err(|_| DimasError::ShouldNotHappen)?;
 
 		while let Ok(reply) = replies.recv() {
 			match reply.sample {
@@ -137,18 +142,10 @@ impl Communicator {
 						println!("Delete in Query");
 					}
 				},
-				Err(err) => println!(
-					">> No data (ERROR: '{}')",
-					String::try_from(&err).expect("to be implemented")
-				),
+				Err(err) => error!(">> query receive error: {err})"),
 			}
 		}
-	}
-}
-
-impl Default for Communicator {
-	fn default() -> Self {
-		Self::new(crate::config::Config::local())
+		Ok(())
 	}
 }
 // endregion:	--- Communicator
@@ -169,7 +166,7 @@ mod tests {
 	#[tokio::test]
 	//#[serial]
 	async fn communicator_create_default() {
-		let _peer1 = Communicator::default();
+		let _peer1 = Communicator::new(crate::config::Config::default());
 		let _peer2 = Communicator::new_with_prefix(crate::config::Config::local(), "peer2");
 		//let _peer3 = Communicator::new(config::client());
 	}
@@ -177,21 +174,21 @@ mod tests {
 	#[tokio::test(flavor = "current_thread")]
 	//#[serial]
 	async fn communicator_create_single() {
-		let _peer1 = Communicator::default();
+		let _peer1 = Communicator::new(crate::config::Config::default());
 		let _peer2 = Communicator::new_with_prefix(crate::config::Config::local(), "peer2");
 	}
 
 	#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 	//#[serial]
 	async fn communicator_create_restricted() {
-		let _peer1 = Communicator::default();
+		let _peer1 = Communicator::new(crate::config::Config::default());
 		let _peer2 = Communicator::new_with_prefix(crate::config::Config::local(), "peer2");
 	}
 
 	#[tokio::test(flavor = "multi_thread")]
 	//#[serial]
 	async fn communicator_create_multi() {
-		let _peer1 = Communicator::default();
+		let _peer1 = Communicator::new(crate::config::Config::default());
 		let _peer2 = Communicator::new_with_prefix(crate::config::Config::local(), "peer2");
 	}
 }

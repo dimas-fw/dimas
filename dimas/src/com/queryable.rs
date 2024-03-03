@@ -27,7 +27,7 @@ pub type QueryableCallback<P> = Arc<
 // region:		--- QueryableBuilder
 /// The builder fo a queryable.
 #[allow(clippy::module_name_repetitions)]
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct QueryableBuilder<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
@@ -148,7 +148,9 @@ where
 		let cb = self.callback.clone();
 		let ctx = self.context.clone();
 		self.handle.replace(tokio::spawn(async move {
-			run_queryable(key_expr, cb, ctx).await;
+			if let Err(error) = run_queryable(key_expr, cb, ctx).await {
+				error!("queryable failed with {error}");
+			};
 		}));
 		Ok(())
 	}
@@ -166,7 +168,11 @@ where
 }
 
 //#[tracing::instrument(level = tracing::Level::DEBUG)]
-async fn run_queryable<P>(key_expr: String, cb: QueryableCallback<P>, ctx: ArcContext<P>)
+async fn run_queryable<P>(
+	key_expr: String,
+	cb: QueryableCallback<P>,
+	ctx: ArcContext<P>,
+) -> Result<(), DimasError>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
@@ -175,13 +181,13 @@ where
 		.declare_queryable(&key_expr)
 		.res_async()
 		.await
-		.expect("should never happen");
+		.map_err(|_| DimasError::ShouldNotHappen)?;
 
 	loop {
 		let query = subscriber
 			.recv_async()
 			.await
-			.expect("should never happen");
+			.map_err(|_| DimasError::ShouldNotHappen)?;
 		let request = Request(query);
 
 		let span = span!(Level::DEBUG, "run_queryable");

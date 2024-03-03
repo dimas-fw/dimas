@@ -20,7 +20,7 @@ pub type TimerCallback<P> =
 // region:		--- TimerBuilder
 /// A builder for a timer
 #[allow(clippy::module_name_repetitions)]
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct TimerBuilder<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,

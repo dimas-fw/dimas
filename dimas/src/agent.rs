@@ -57,29 +57,33 @@ where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// Create an instance of an agent.
-	pub fn new(config: crate::config::Config, properties: P) -> Self {
-		Self {
-			context: Context::new(config, properties),
+	/// # Errors
+	///
+	pub fn new(config: crate::config::Config, properties: P) -> Result<Self, DimasError> {
+		Ok(Self {
+			context: Context::new(config, properties)?,
 			liveliness: false,
 			liveliness_token: RwLock::new(None),
 			#[cfg(feature = "liveliness")]
 			liveliness_subscriber: Arc::new(RwLock::new(None)),
-		}
+		})
 	}
 
 	/// Create an instance of an agent with a standard prefix for the topics.
+	/// # Errors
+	///
 	pub fn new_with_prefix(
 		config: crate::config::Config,
 		properties: P,
 		prefix: impl Into<String>,
-	) -> Self {
-		Self {
-			context: Context::new_with_prefix(config, properties, prefix),
+	) -> Result<Self, DimasError> {
+		Ok(Self {
+			context: Context::new_with_prefix(config, properties, prefix)?,
 			liveliness: false,
 			liveliness_token: RwLock::new(None),
 			#[cfg(feature = "liveliness")]
 			liveliness_subscriber: Arc::new(RwLock::new(None)),
-		}
+		})
 	}
 
 	/// get the agents uuid
@@ -220,7 +224,7 @@ where
 				.context
 				.communicator
 				.send_liveliness(msg_type)
-				.await;
+				.await?;
 			self.liveliness_token
 				.write()
 				.map_err(|_| DimasError::ShouldNotHappen)?
@@ -337,32 +341,28 @@ mod tests {
 	#[tokio::test]
 	//#[serial]
 	async fn agent_create_default() {
-		let _agent1: Agent<Props> = Agent::new(crate::config::Config::local(), Props {});
-		let _agent2: Agent<Props> =
-			Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
+		let _agent1 = Agent::new(crate::config::Config::local(), Props {});
+		let _agent2 = Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
 	}
 
 	#[tokio::test(flavor = "current_thread")]
 	//#[serial]
 	async fn agent_create_current() {
-		let _agent1: Agent<Props> = Agent::new(crate::config::Config::local(), Props {});
-		let _agent2: Agent<Props> =
-			Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
+		let _agent1 = Agent::new(crate::config::Config::local(), Props {});
+		let _agent2 = Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
 	}
 
 	#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 	//#[serial]
 	async fn agent_create_restricted() {
-		let _agent1: Agent<Props> = Agent::new(crate::config::Config::local(), Props {});
-		let _agent2: Agent<Props> =
-			Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
+		let _agent1 = Agent::new(crate::config::Config::local(), Props {});
+		let _agent2 = Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
 	}
 
 	#[tokio::test(flavor = "multi_thread")]
 	//#[serial]
 	async fn agent_create_multi() {
-		let _agent1: Agent<Props> = Agent::new(crate::config::Config::local(), Props {});
-		let _agent2: Agent<Props> =
-			Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
+		let _agent1 = Agent::new(crate::config::Config::local(), Props {});
+		let _agent2 = Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
 	}
 }

@@ -23,7 +23,7 @@ pub type LivelinessCallback<P> = Arc<
 // region:		--- LivelinessSubscriberBuilder
 /// The builder for the liveliness subscriber
 #[allow(clippy::module_name_repetitions)]
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct LivelinessSubscriberBuilder<P>
 where
 	P: std::fmt::Debug + Send + Sync + Unpin + 'static,
@@ -160,7 +160,9 @@ where
 		let ctx = self.context.clone();
 		//dbg!(&key_expr);
 		self.handle.replace(tokio::spawn(async move {
-			run_liveliness(key_expr, p_cb, d_cb, ctx).await;
+			if let Err(error) = run_liveliness(key_expr, p_cb, d_cb, ctx).await {
+				error!("spawning liveliness subscriber failed with {error}");
+			};
 		}));
 
 		// the initial liveliness query
@@ -168,7 +170,9 @@ where
 		let p_cb = self.put_callback.clone();
 		let ctx = self.context.clone();
 		tokio::spawn(async move {
-			run_initial(key_expr, p_cb, ctx).await;
+			if let Err(error) = run_initial(key_expr, p_cb, ctx).await {
+				error!("spawning initial liveliness failed with {error}");
+			};
 		});
 	}
 
@@ -187,7 +191,8 @@ async fn run_liveliness<P>(
 	p_cb: LivelinessCallback<P>,
 	d_cb: Option<LivelinessCallback<P>>,
 	ctx: ArcContext<P>,
-) where
+) -> Result<(), DimasError>
+where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
 	let session = ctx.communicator.session.clone();
@@ -196,92 +201,105 @@ async fn run_liveliness<P>(
 		.declare_subscriber(&key_expr)
 		.res_async()
 		.await
-		.expect("should never happen");
+		.map_err(|_| DimasError::ShouldNotHappen)?;
 
-	key_expr.pop().expect("should never happen");
+	key_expr
+		.pop()
+		.ok_or(DimasError::ShouldNotHappen)?;
 
 	loop {
-		let sample = subscriber
-			.recv_async()
-			.await
-			.expect("should never happen");
-
-		let id = sample.key_expr.to_string().replace(&key_expr, "");
+		let result = subscriber.recv_async().await;
 		let span = span!(Level::DEBUG, "run_liveliness");
 		let _guard = span.enter();
-		match sample.kind {
-			SampleKind::Put => {
-				let guard = p_cb.lock();
-				match guard {
-					Ok(mut lock) => {
-						if let Err(error) = lock(&ctx, &id) {
-							error!("lveliness put callback failed with {error}");
+		match result {
+			Ok(sample) => {
+				let id = sample.key_expr.to_string().replace(&key_expr, "");
+				match sample.kind {
+					SampleKind::Put => {
+						let guard = p_cb.lock();
+						match guard {
+							Ok(mut lock) => {
+								if let Err(error) = lock(&ctx, &id) {
+									error!("liveliness put callback failed with {error}");
+								}
+							}
+							Err(err) => {
+								error!("liveliness put callback lock failed with {err}");
+							}
 						}
 					}
-					Err(err) => {
-						error!("liveliness put callback failed with {err}");
+					SampleKind::Delete => {
+						if let Some(cb) = d_cb.clone() {
+							let guard = cb.lock();
+							match guard {
+								Ok(mut lock) => {
+									if let Err(error) = lock(&ctx, &id) {
+										error!("liveliness delete callback failed with {error}");
+									}
+								}
+								Err(err) => {
+									error!("liveliness delete callback lock failed with {err}");
+								}
+							}
+						}
 					}
 				}
 			}
-			SampleKind::Delete => {
-				if let Some(cb) = d_cb.clone() {
-					let guard = cb.lock();
-					match guard {
-						Ok(mut lock) => {
-							if let Err(error) = lock(&ctx, &id) {
-								error!("lveliness delete callback failed with {error}");
-							}
-						}
-						Err(err) => {
-							error!("liveliness delete callback failed with {err}");
-						}
-					}
-				}
+			Err(error) => {
+				error!("livelieness subscriber failed with {error}");
 			}
 		}
 	}
 }
 
 //#[tracing::instrument(level = tracing::Level::DEBUG)]
-async fn run_initial<P>(mut key_expr: String, p_cb: LivelinessCallback<P>, ctx: ArcContext<P>)
+async fn run_initial<P>(
+	key_expr: String,
+	p_cb: LivelinessCallback<P>,
+	ctx: ArcContext<P>,
+) -> Result<(), DimasError>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
+	let span = span!(Level::DEBUG, "run_initial_liveliness");
+	let _guard = span.enter();
 	let session = ctx.communicator.session.clone();
-	let replies = session
+	let result = session
 		.liveliness()
 		.get(&key_expr)
 		//.timeout(Duration::from_millis(500))
 		.res()
-		.await
-		.expect("should never happen");
+		.await;
 
-	key_expr.pop().expect("should never happen");
-
-	while let Ok(reply) = replies.recv_async().await {
-		let span = span!(Level::DEBUG, "run_initial_liveliness");
-		let _guard = span.enter();
-		match reply.sample {
-			Ok(sample) => {
-				let id = sample.key_expr.to_string().replace(&key_expr, "");
-				let guard = p_cb.lock();
-				match guard {
-					Ok(mut lock) => {
-						if let Err(error) = lock(&ctx, &id) {
-							error!("lveliness put callback failed with {error}");
+	match result {
+		Ok(replies) => {
+			let span = span!(Level::DEBUG, "run_initial_liveliness");
+			let _guard = span.enter();
+			while let Ok(reply) = replies.recv_async().await {
+				match reply.sample {
+					Ok(sample) => {
+						let id = sample.key_expr.to_string().replace(&key_expr, "");
+						let guard = p_cb.lock();
+						match guard {
+							Ok(mut lock) => {
+								if let Err(error) = lock(&ctx, &id) {
+									error!("lveliness put callback failed with {error}");
+								}
+							}
+							Err(err) => {
+								error!("liveliness put callback failed with {err}");
+							}
 						}
 					}
-					Err(err) => {
-						error!("liveliness put callback failed with {err}");
-					}
+					Err(err) => error!(">> liveliness subscriber delete error: {err})"),
 				}
 			}
-			Err(err) => println!(
-				">> Received (ERROR: '{}')",
-				String::try_from(&err).expect("to be implemented")
-			),
+		}
+		Err(error) => {
+			error!("livelieness subscriber failed with {error}");
 		}
 	}
+	Ok(())
 }
 // endregion:	--- Subscriber
 

@@ -194,10 +194,7 @@ where
 						error!("Delete in Query");
 					}
 				},
-				Err(err) => error!(
-					">> No data (ERROR: '{}')",
-					String::try_from(&err).map_err(|_| DimasError::ShouldNotHappen)?
-				),
+				Err(err) => error!(">> query receive error: {err})"),
 			}
 		}
 		Ok(())
