@@ -3,21 +3,10 @@
 
 // region:		--- modules
 use chrono::Local;
-use clap::Parser;
 use dimas::prelude::*;
 use std::time::Duration;
 use tracing::info;
 // endregion:	--- modules
-
-// region:		--- Clap
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-struct Args {
-	/// prefix
-	#[arg(short, long, value_parser, default_value_t = String::from("examples"))]
-	prefix: String,
-}
-// endregion:	--- Clap
 
 #[derive(Debug)]
 struct AgentProps {
@@ -32,8 +21,8 @@ struct PingPongMessage {
 }
 
 #[allow(clippy::cast_precision_loss)]
-fn pong_received(_ctx: &ArcContext<AgentProps>, message: &Message) {
-	let message: PingPongMessage = decode(message).expect("should not happen");
+fn pong_received(_ctx: &ArcContext<AgentProps>, message: Message) -> Result<(), DimasError> {
+	let message: PingPongMessage = message.decode()?;
 
 	// get current timestamp
 	let received = Local::now()
@@ -49,21 +38,20 @@ fn pong_received(_ctx: &ArcContext<AgentProps>, message: &Message) {
 		oneway as f64 / 1_000_000.0,
 		roundtrip as f64 / 1_000_000.0
 	);
+
+	Ok(())
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
+#[tokio::main(flavor = "current_thread")]
+async fn main() -> Result<(), DimasError> {
 	// a tracing subscriber writing logs
 	tracing_subscriber::fmt::init();
-
-	// parse arguments
-	let args = Args::parse();
 
 	// create & initialize agents properties
 	let properties = AgentProps { counter: 0 };
 
-	// create an agent with the properties and the prefix given by `args`
-	let mut agent = Agent::new_with_prefix(Config::default(), properties, &args.prefix);
+	// create an agent with the properties and the prefix 'examples'
+	let mut agent = Agent::new_with_prefix(Config::default(), properties, "examples")?;
 
 	// create publisher for topic "ping"
 	agent.publisher().msg_type("ping").add()?;
@@ -73,8 +61,8 @@ async fn main() -> Result<()> {
 		.timer()
 		.name("timer")
 		.interval(Duration::from_secs(1))
-		.callback(|ctx| {
-			let counter = ctx.read().expect("should never happen").counter;
+		.callback(|ctx| -> Result<(), DimasError> {
+			let counter = ctx.read()?.counter;
 
 			let message = PingPongMessage {
 				counter,
@@ -86,13 +74,14 @@ async fn main() -> Result<()> {
 			};
 
 			// publishing with stored publisher
-			let _ = ctx.put_with("ping", message);
+			ctx.put_with("ping", message)?;
 
 			let text = "ping! [".to_string() + &counter.to_string() + "]";
 			info!("Sent {} ", &text);
 
 			// increase counter
-			ctx.write().expect("should never happen").counter += 1;
+			ctx.write()?.counter += 1;
+			Ok(())
 		})
 		.add()?;
 
@@ -105,7 +94,7 @@ async fn main() -> Result<()> {
 
 	// activate liveliness
 	agent.liveliness(true);
-	agent.start().await;
+	agent.start().await?;
 
 	Ok(())
 }

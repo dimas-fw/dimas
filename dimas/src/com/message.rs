@@ -3,7 +3,10 @@
 //! Module `message` provides the different types of `Message`s used in callbacks.
 
 // region:		--- modules
-use crate::prelude::{encode, Encode};
+use crate::{
+	error::DimasError,
+	prelude::{decode, encode, Decode, Encode},
+};
 use std::ops::Deref;
 use zenoh::{prelude::sync::SyncResolve, queryable::Query, sample::Sample};
 // endregion:	--- modules
@@ -11,54 +14,101 @@ use zenoh::{prelude::sync::SyncResolve, queryable::Query, sample::Sample};
 // region:		--- Message
 /// Implementation of a message received by subscriber callbacks
 #[derive(Debug)]
-pub struct Message {
-	/// the key expression on which the message was sent
-	pub key_expr: String,
-	/// the messages data
-	pub value: Vec<u8>,
-}
+pub struct Message(pub(crate) Sample);
 
 impl Deref for Message {
-	type Target = [u8];
+	type Target = Sample;
 
 	fn deref(&self) -> &Self::Target {
-		self.value.as_slice()
+		&self.0
 	}
 }
 
-impl Message {}
+impl Message {
+	/// decode message
+	/// # Errors
+	///
+	pub fn decode<T>(self) -> Result<T, DimasError>
+	where
+		T: Decode,
+	{
+		let value: Vec<u8> = self
+			.0
+			.value
+			.try_into()
+			.map_err(|_| DimasError::DecodingFailed)?;
+		decode::<T>(value.as_slice()).map_err(|_| DimasError::DecodingFailed)
+	}
+}
 // endregion:	--- Message
 
 // region:    --- Request
 /// Implementation of a request for handling within a `Queryable`
 #[derive(Debug)]
-pub struct Request {
-	/// internal reference to zenoh `Query`
-	pub(crate) query: Query,
+pub struct Request(pub(crate) Query);
+
+impl Deref for Request {
+	type Target = Query;
+
+	fn deref(&self) -> &Self::Target {
+		&self.0
+	}
 }
 
 impl Request {
 	/// Reply to the given request
-	/// # Panics
+	/// # Errors
 	///
-	pub fn reply<T>(&self, value: T)
+	pub fn reply<T>(self, value: T) -> Result<(), DimasError>
 	where
 		T: Encode,
 	{
-		let key = self.query.selector().key_expr.to_string();
-		let encoded: Vec<u8> = encode(&value).expect("should never happen");
-		let sample = Sample::try_from(key, encoded).expect("should never happen");
+		let key = self.0.selector().key_expr.to_string();
+		let encoded: Vec<u8> = encode(&value).map_err(|_| DimasError::ShouldNotHappen)?;
+		let sample = Sample::try_from(key, encoded).map_err(|_| DimasError::ShouldNotHappen)?;
 
-		self.query
+		self.0
 			.reply(Ok(sample))
 			.res_sync()
-			.expect("should never happen");
+			.map_err(|_| DimasError::ShouldNotHappen)?;
+		Ok(())
 	}
 
 	/// access the queries parameters
 	#[must_use]
 	pub fn parameters(&self) -> &str {
-		self.query.parameters()
+		self.0.parameters()
 	}
 }
 // endregion: --- Request
+
+// region:		--- Response
+/// Implementation of a response received by query callbacks
+#[derive(Debug)]
+pub struct Response(pub(crate) Sample);
+
+impl Deref for Response {
+	type Target = Sample;
+
+	fn deref(&self) -> &Self::Target {
+		&self.0
+	}
+}
+
+impl Response {
+	/// decode response
+	/// # Errors
+	///
+	pub fn decode<T>(self) -> Result<T, DimasError>
+	where
+		T: Decode,
+	{
+		let value: Vec<u8> = self
+			.0
+			.value
+			.try_into()
+			.map_err(|_| DimasError::DecodingFailed)?;
+		decode::<T>(value.as_slice()).map_err(|_| DimasError::DecodingFailed)
+	}
+}
+// endregion:	--- Response

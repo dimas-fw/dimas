@@ -16,7 +16,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 
-## [0.0.5] - 2024-??-?? <br>_Has breaking changes!!_
+## [0.0.6] - 2024-??-?? <br>_Has breaking changes!!_
+
+### Added
+- using cargo vet as auditing tool
+
+### Changed
+- _Implemented error handling for callbacks which changes the signature of callbacks_
+- _Separated `Response` for `Query` from `Message` for `Subscriber`_
+- _Wrap zenoh `Sample` in messages which also changes the signature of callbacks_
+
+### Fixed
+
+### Removed
+- Removed crate clap from examples
+- calls to panic!, unwrap()'s, expect(...)'s and others
+
+## [0.0.5] - 2024-02-29 <br>_Has breaking changes!!_
 
 ### Added
 - Instrumentation level debug for communication activities
@@ -27,12 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Re-exporting `Arc` & `RwLock` in prelude
 - _Introduced `Message` which changes the signature of callbacks_
 - Removed crate `bitcode` as exteral dependency by re-exporting it in prelude
-- _Removed parameter `props` from callbacks_
+- _Removed parameter `props` from callbacks, access now via `Context`_
 - _Removed `Context<P>` from public api and replaced it with a thread safe `ArcContext<P>`_
-
-### Fixed
-
-### Removed
 
 
 ## [0.0.4] - 2024-02-23 <br>_Has breaking changes!!_

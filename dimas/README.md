@@ -25,11 +25,11 @@ So your `Cargo.toml` should include:
 
 ```toml
 [dependencies]
-dimas = { version = "0.0.5", features = ["all"] }
+dimas = { version = "0.0.6", features = ["all"] }
 tokio = { version = "1", features = ["macros"] }
 ```
 
-It also makes sense to return a `Result` as some functions return one. DiMAS prelude provides a simplified `Result` type for that.
+It also makes sense to return a `Result` with a `DimasError`, as some functions may return one.
 
 A suitable main programm skeleton may look like:
 
@@ -37,7 +37,7 @@ A suitable main programm skeleton may look like:
 use dimas::prelude::*;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), DimasError> {
 
 	// your code
 	// ...
@@ -73,12 +73,12 @@ struct AgentProps {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), DimasError> {
 	// create & initialize agents properties
 	let properties = AgentProps { counter: 0 };
 
 	// create an agent with the properties
-	let mut agent = Agent::new(Config::default(), properties);
+	let mut agent = Agent::new(Config::default(), properties)?;
 
 	// create publisher for topic "hello"
 	agent
@@ -96,10 +96,9 @@ async fn main() -> Result<()> {
 		.interval(Duration::from_secs(1))
 		// the timers callback function as a closure
 		.callback(
-			|ctx| {
+			|ctx| -> Result<(), DimasError> {
 				let counter = ctx
-					.read()
-					.unwrap()
+					.read()?
 					.counter
 					.to_string();
 				// the message to send
@@ -107,12 +106,12 @@ async fn main() -> Result<()> {
 				// just to see what will be sent
 				println!("Sending '{}'", &text);
 				// publishing with stored publisher for topic "hello"
-				let _ = ctx.put_with("hello", text);
+				ctx.put_with("hello", text)?;
 				// modify counter in properties
 				ctx
-					.write()
-					.unwrap()
+					.write()?
 					.counter += 1;
+				Ok(())
 			}
 		)
 		// finally add the timer to the agent
@@ -120,7 +119,7 @@ async fn main() -> Result<()> {
 		.add()?;
 
 	// run the agent
-	agent.start().await;
+	agent.start().await?;
 	Ok(())
 }
 ```
@@ -135,18 +134,19 @@ use dimas::prelude::*;
 #[derive(Debug)]
 pub struct AgentProps {}
 
-fn callback(_ctx: &ArcContext<AgentProps>, message: &Message) {
-	let message: String =	decode(message).unwrap();
-	println!("Received '{}'", &message);
+fn callback(_ctx: &ArcContext<AgentProps>, message: Message) -> Result<(), DimasError> {
+	let message: String =	message.decode()?;
+	println!("Received '{}'", message);
+	Ok(())
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), DimasError> {
 	// create & initialize agents properties
 	let properties = AgentProps {};
 
 	// create an agent with the properties
-	let mut agent = Agent::new(Config::default(), properties);
+	let mut agent = Agent::new(Config::default(), properties)?;
 
 	// subscribe to "hello" messages
 	agent
@@ -161,7 +161,7 @@ async fn main() -> Result<()> {
 		.add()?;
 
 	// run the agent
-	agent.start().await;
+	agent.start().await?;
 	Ok(())
 }
 ```

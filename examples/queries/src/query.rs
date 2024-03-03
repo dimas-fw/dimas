@@ -2,43 +2,30 @@
 //! Copyright © 2024 Stephan Kunz
 
 // region:		--- modules
-use clap::Parser;
 use dimas::prelude::*;
 use std::time::Duration;
 use tracing::info;
 // endregion:	--- modules
 
-// region:		--- Clap
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-struct Args {
-	/// prefix
-	#[arg(short, long, value_parser, default_value_t = String::from("examples"))]
-	prefix: String,
-}
-// endregion:	--- Clap
-
 #[derive(Debug)]
 struct AgentProps {}
 
-fn query_callback(_ctx: &ArcContext<AgentProps>, response: &Message) {
-	let message: String = decode(response).expect("should not happen");
-	println!("Response '{}'", &message);
+fn query_callback(_ctx: &ArcContext<AgentProps>, response: Response) -> Result<(), DimasError> {
+	let message: u128 = response.decode()?;
+	println!("Response is '{message}'");
+	Ok(())
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
+#[tokio::main(flavor = "current_thread")]
+async fn main() -> Result<(), DimasError> {
 	// a tracing subscriber writing logs
 	tracing_subscriber::fmt::init();
-
-	// parse arguments
-	let args = Args::parse();
 
 	// create & initialize agents properties
 	let properties = AgentProps {};
 
-	// create an agent with the properties
-	let mut agent = Agent::new_with_prefix(Config::default(), properties, &args.prefix);
+	// create an agent with the properties and the prefix 'examples'
+	let mut agent = Agent::new_with_prefix(Config::default(), properties, "examples")?;
 
 	// create publisher for topic "ping"
 	agent
@@ -54,17 +41,18 @@ async fn main() -> Result<()> {
 		.timer()
 		.name("timer")
 		.interval(duration)
-		.callback(move |ctx| {
+		.callback(move |ctx| -> Result<(), DimasError> {
 			info!("Querying [{counter}]");
 			// querying with stored query
-			ctx.get_with("query");
+			ctx.get_with("query")?;
 			counter += 1;
+			Ok(())
 		})
 		.add()?;
 
 	// activate liveliness
 	agent.liveliness(true);
-	agent.start().await;
+	agent.start().await?;
 
 	Ok(())
 }

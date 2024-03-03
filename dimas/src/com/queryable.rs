@@ -6,21 +6,28 @@
 use crate::prelude::*;
 use std::{fmt::Debug, sync::Mutex};
 use tokio::task::JoinHandle;
-use tracing::{span, Level};
+use tracing::{error, span, Level};
 use zenoh::prelude::r#async::AsyncResolve;
 // endregion:	--- modules
 
 // region:		--- types
 /// type defnition for the queryables callback function.
 #[allow(clippy::module_name_repetitions)]
-pub type QueryableCallback<P> =
-	Arc<Mutex<dyn FnMut(&ArcContext<P>, &Request) + Send + Sync + Unpin + 'static>>;
+pub type QueryableCallback<P> = Arc<
+	Mutex<
+		dyn FnMut(&ArcContext<P>, Request) -> Result<(), DimasError>
+			+ Send
+			+ Sync
+			+ Unpin
+			+ 'static,
+	>,
+>;
 // endregion:	--- types
 
 // region:		--- QueryableBuilder
 /// The builder fo a queryable.
 #[allow(clippy::module_name_repetitions)]
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct QueryableBuilder<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
@@ -54,7 +61,7 @@ where
 	#[must_use]
 	pub fn callback<F>(mut self, callback: F) -> Self
 	where
-		F: FnMut(&ArcContext<P>, &Request) + Send + Sync + Unpin + 'static,
+		F: FnMut(&ArcContext<P>, Request) -> Result<(), DimasError> + Send + Sync + Unpin + 'static,
 	{
 		self.callback
 			.replace(Arc::new(Mutex::new(callback)));
@@ -64,24 +71,18 @@ where
 	/// Build the queryable
 	/// # Errors
 	///
-	/// # Panics
-	///
-	pub fn build(mut self) -> Result<Queryable<P>> {
-		if self.key_expr.is_none() {
-			return Err(Error::NoKeyExpression);
-		}
-		let callback = if self.callback.is_none() {
-			return Err(Error::NoCallback);
+	pub fn build(self) -> Result<Queryable<P>, DimasError> {
+		let key_expr = if self.key_expr.is_none() {
+			return Err(DimasError::NoKeyExpression);
 		} else {
-			self.callback.expect("should never happen")
+			self.key_expr.ok_or(DimasError::ShouldNotHappen)?
 		};
-		let key_expr = if self.key_expr.is_some() {
-			self.key_expr.take().expect("should never happen")
+		let callback = if self.callback.is_none() {
+			return Err(DimasError::NoCallback);
 		} else {
-			String::new()
+			self.callback.ok_or(DimasError::ShouldNotHappen)?
 		};
 
-		//dbg!(&key_expr);
 		let q = Queryable {
 			key_expr,
 			callback,
@@ -95,17 +96,15 @@ where
 	/// Build and add the queryable to the agents context
 	/// # Errors
 	///
-	/// # Panics
-	///
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "queryable")))]
 	#[cfg(feature = "queryable")]
-	pub fn add(self) -> Result<()> {
+	pub fn add(self) -> Result<(), DimasError> {
 		let collection = self.context.queryables.clone();
 		let q = self.build()?;
 
 		collection
 			.write()
-			.expect("should never happen")
+			.map_err(|_| DimasError::ShouldNotHappen)?
 			.insert(q.key_expr.clone(), q);
 		Ok(())
 	}
@@ -140,31 +139,39 @@ where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// Start Queryable
-	/// # Panics
+	/// # Errors
 	///
-	pub fn start(&mut self) {
+	pub fn start(&mut self) -> Result<(), DimasError> {
 		let key_expr = self.key_expr.clone();
-		//dbg!(&key_expr);
 		let cb = self.callback.clone();
 		let ctx = self.context.clone();
+
 		self.handle.replace(tokio::spawn(async move {
-			run_queryable(key_expr, cb, ctx).await;
+			if let Err(error) = run_queryable(key_expr, cb, ctx).await {
+				error!("queryable failed with {error}");
+			};
 		}));
+		Ok(())
 	}
 
 	/// Stop Queryable
-	/// # Panics
+	/// # Errors
 	///
-	pub fn stop(&mut self) {
+	pub fn stop(&mut self) -> Result<(), DimasError> {
 		self.handle
 			.take()
-			.expect("should never happen")
+			.ok_or(DimasError::ShouldNotHappen)?
 			.abort();
+		Ok(())
 	}
 }
 
 //#[tracing::instrument(level = tracing::Level::DEBUG)]
-async fn run_queryable<P>(key_expr: String, cb: QueryableCallback<P>, ctx: ArcContext<P>)
+async fn run_queryable<P>(
+	key_expr: String,
+	cb: QueryableCallback<P>,
+	ctx: ArcContext<P>,
+) -> Result<(), DimasError>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
@@ -173,18 +180,28 @@ where
 		.declare_queryable(&key_expr)
 		.res_async()
 		.await
-		.expect("should never happen");
+		.map_err(|_| DimasError::ShouldNotHappen)?;
 
 	loop {
 		let query = subscriber
 			.recv_async()
 			.await
-			.expect("should never happen");
-		let request = Request { query };
+			.map_err(|_| DimasError::ShouldNotHappen)?;
+		let request = Request(query);
 
 		let span = span!(Level::DEBUG, "run_queryable");
 		let _guard = span.enter();
-		cb.lock().expect("should not happen")(&ctx, &request);
+		let guard = cb.lock();
+		match guard {
+			Ok(mut lock) => {
+				if let Err(error) = lock(&ctx, request) {
+					error!("queryable callback failed with {error}");
+				}
+			}
+			Err(err) => {
+				error!("queryable callback failed with {err}");
+			}
+		}
 	}
 }
 // endregion:	--- Queryable

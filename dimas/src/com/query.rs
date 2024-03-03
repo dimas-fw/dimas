@@ -16,8 +16,15 @@ use zenoh::{
 // region:		--- types
 /// type definition for the queries callback function
 #[allow(clippy::module_name_repetitions)]
-pub type QueryCallback<P> =
-	Arc<Mutex<dyn FnMut(&ArcContext<P>, &Message) + Send + Sync + Unpin + 'static>>;
+pub type QueryCallback<P> = Arc<
+	Mutex<
+		dyn FnMut(&ArcContext<P>, Response) -> Result<(), DimasError>
+			+ Send
+			+ Sync
+			+ Unpin
+			+ 'static,
+	>,
+>;
 // endregion:	--- types
 
 // region:		--- QueryBuilder
@@ -65,7 +72,11 @@ where
 	#[must_use]
 	pub fn callback<F>(mut self, callback: F) -> Self
 	where
-		F: FnMut(&ArcContext<P>, &Message) + Send + Sync + Unpin + 'static,
+		F: FnMut(&ArcContext<P>, Response) -> Result<(), DimasError>
+			+ Send
+			+ Sync
+			+ Unpin
+			+ 'static,
 	{
 		self.callback
 			.replace(Arc::new(Mutex::new(callback)));
@@ -75,24 +86,19 @@ where
 	/// Build the query
 	/// # Errors
 	///
-	/// # Panics
-	///
-	pub fn build(mut self) -> Result<Query<P>> {
-		if self.key_expr.is_none() {
-			return Err(Error::NoKeyExpression);
-		}
+	pub fn build(self) -> Result<Query<P>, DimasError> {
+		let key_expr = if self.key_expr.is_none() {
+			return Err(DimasError::NoKeyExpression);
+		} else {
+			self.key_expr.ok_or(DimasError::ShouldNotHappen)?
+		};
 		let callback = if self.callback.is_none() {
-			return Err(Error::NoCallback);
+			return Err(DimasError::NoCallback);
 		} else {
-			self.callback.expect("should never happen")
+			self.callback.ok_or(DimasError::ShouldNotHappen)?
 		};
-		let key_expr = if self.key_expr.is_some() {
-			self.key_expr.take().expect("should never happen")
-		} else {
-			String::new()
-		};
-		let mode = if self.key_expr.is_some() {
-			self.mode.take().expect("should never happen")
+		let mode = if self.mode.is_some() {
+			self.mode.ok_or(DimasError::ShouldNotHappen)?
 		} else {
 			ConsolidationMode::None
 		};
@@ -110,17 +116,15 @@ where
 	/// Build and add the query to the agents context
 	/// # Errors
 	///
-	/// # Panics
-	///
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "query")))]
 	#[cfg(feature = "query")]
-	pub fn add(self) -> Result<()> {
+	pub fn add(self) -> Result<(), DimasError> {
 		let collection = self.context.queries.clone();
 		let q = self.build()?;
 
 		collection
 			.write()
-			.expect("should never happen")
+			.map_err(|_| DimasError::ShouldNotHappen)?
 			.insert(q.key_expr.clone(), q);
 		Ok(())
 	}
@@ -156,10 +160,8 @@ where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// run a query
-	/// # Panics
-	///
 	#[tracing::instrument(level = tracing::Level::DEBUG)]
-	pub fn get(&self) {
+	pub fn get(&self) -> Result<(), DimasError> {
 		let cb = self.callback.clone();
 		let replies = self
 			.ctx
@@ -169,37 +171,33 @@ where
 			.consolidation(self.mode)
 			//.timeout(Duration::from_millis(1000))
 			.res_sync()
-			.expect("should never happen");
-		//dbg!(&replies);
+			.map_err(|_| DimasError::ShouldNotHappen)?;
 
 		while let Ok(reply) = replies.recv() {
-			//dbg!(&reply);
 			match reply.sample {
-				Ok(sample) => {
-					//dbg!(&sample);
-					let value: Vec<u8> = sample
-						.value
-						.try_into()
-						.expect("should not happen");
-					let msg = Message {
-						key_expr: sample.key_expr.to_string(),
-						value,
-					};
-					match sample.kind {
-						SampleKind::Put => {
-							cb.lock().expect("should not happen")(&self.ctx, &msg);
-						}
-						SampleKind::Delete => {
-							error!("Delete in Query");
+				Ok(sample) => match sample.kind {
+					SampleKind::Put => {
+						let msg = Response(sample);
+						let guard = cb.lock();
+						match guard {
+							Ok(mut lock) => {
+								if let Err(error) = lock(&self.ctx, msg) {
+									error!("query callback failed with {error}");
+								}
+							}
+							Err(err) => {
+								error!("query callback failed with {err}");
+							}
 						}
 					}
-				}
-				Err(err) => error!(
-					">> No data (ERROR: '{}')",
-					String::try_from(&err).expect("to be implemented")
-				),
+					SampleKind::Delete => {
+						error!("Delete in Query");
+					}
+				},
+				Err(err) => error!(">> query receive error: {err})"),
 			}
 		}
+		Ok(())
 	}
 }
 // endregion:	--- Query

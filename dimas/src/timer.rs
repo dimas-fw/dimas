@@ -7,19 +7,20 @@
 use crate::prelude::*;
 use std::{fmt::Debug, sync::Mutex, time::Duration};
 use tokio::{task::JoinHandle, time};
-use tracing::{span, Level};
+use tracing::{error, span, Level};
 // endregion:	--- modules
 
 // region:		--- types
 /// type definition for the functions called by a timer
 #[allow(clippy::module_name_repetitions)]
-pub type TimerCallback<P> = Arc<Mutex<dyn FnMut(&ArcContext<P>) + Send + Sync + Unpin + 'static>>;
+pub type TimerCallback<P> =
+	Arc<Mutex<dyn FnMut(&ArcContext<P>) -> Result<(), DimasError> + Send + Sync + Unpin + 'static>>;
 // endregion:	--- types
 
 // region:		--- TimerBuilder
 /// A builder for a timer
 #[allow(clippy::module_name_repetitions)]
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct TimerBuilder<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
@@ -60,7 +61,7 @@ where
 	#[must_use]
 	pub fn callback<F>(mut self, callback: F) -> Self
 	where
-		F: FnMut(&ArcContext<P>) + Send + Sync + Unpin + 'static,
+		F: FnMut(&ArcContext<P>) -> Result<(), DimasError> + Send + Sync + Unpin + 'static,
 	{
 		self.callback
 			.replace(Arc::new(Mutex::new(callback)));
@@ -70,18 +71,16 @@ where
 	/// Build a timer
 	/// # Errors
 	///
-	/// # Panics
-	///
-	pub fn build(self) -> Result<Timer<P>> {
+	pub fn build(self) -> Result<Timer<P>, DimasError> {
 		let interval = if self.interval.is_none() {
-			return Err(Error::NoInterval);
+			return Err(DimasError::NoInterval);
 		} else {
-			self.interval.expect("should never happen")
+			self.interval.ok_or(DimasError::ShouldNotHappen)?
 		};
 		let callback = if self.callback.is_none() {
-			return Err(Error::NoCallback);
+			return Err(DimasError::NoCallback);
 		} else {
-			self.callback.expect("should never happen")
+			self.callback.ok_or(DimasError::ShouldNotHappen)?
 		};
 
 		match self.delay {
@@ -101,23 +100,23 @@ where
 		}
 	}
 
-	/// add the timer to the agents context
+	/// Build and add the timer to the agents context
 	/// # Errors
-	///
-	/// # Panics
 	///
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "timer")))]
 	#[cfg(feature = "timer")]
-	pub fn add(self) -> Result<()> {
+	pub fn add(self) -> Result<(), DimasError> {
 		let name = if self.name.is_none() {
-			return Err(Error::NoName);
+			return Err(DimasError::NoName);
 		} else {
-			self.name.clone().expect("should never happen")
+			self.name
+				.clone()
+				.ok_or(DimasError::ShouldNotHappen)?
 		};
 		let c = self.context.timers.clone();
 		let timer = self.build()?;
 		c.write()
-			.expect("should never happen")
+			.map_err(|_| DimasError::ShouldNotHappen)?
 			.insert(name, timer);
 		Ok(())
 	}
@@ -182,9 +181,9 @@ where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// Start Timer
-	/// # Panics
+	/// # Errors
 	///
-	pub fn start(&mut self) {
+	pub fn start(&mut self) -> Result<(), DimasError> {
 		match self {
 			Self::Interval {
 				interval,
@@ -216,12 +215,13 @@ where
 				}));
 			}
 		}
+		Ok(())
 	}
 
 	/// Stop Timer
-	/// # Panics
+	/// # Errors
 	///
-	pub fn stop(&mut self) {
+	pub fn stop(&mut self) -> Result<(), DimasError> {
 		match self {
 			Self::Interval {
 				interval: _,
@@ -238,10 +238,11 @@ where
 			} => {
 				handle
 					.take()
-					.expect("should never happen")
+					.ok_or(DimasError::ShouldNotHappen)?
 					.abort();
 			}
 		}
+		Ok(())
 	}
 }
 
@@ -255,7 +256,17 @@ where
 
 		let span = span!(Level::DEBUG, "run_timer");
 		let _guard = span.enter();
-		cb.lock().expect("should nothappen")(&ctx);
+		let guard = cb.lock();
+		match guard {
+			Ok(mut lock) => {
+				if let Err(error) = lock(&ctx) {
+					error!("timer callback failed with {error}");
+				}
+			}
+			Err(err) => {
+				error!("timer callback failed with {err}");
+			}
+		}
 	}
 }
 // endregion:	--- Timer

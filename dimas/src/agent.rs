@@ -57,29 +57,33 @@ where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// Create an instance of an agent.
-	pub fn new(config: crate::config::Config, properties: P) -> Self {
-		Self {
-			context: Context::new(config, properties),
+	/// # Errors
+	///
+	pub fn new(config: crate::config::Config, properties: P) -> Result<Self, DimasError> {
+		Ok(Self {
+			context: Context::new(config, properties)?,
 			liveliness: false,
 			liveliness_token: RwLock::new(None),
 			#[cfg(feature = "liveliness")]
 			liveliness_subscriber: Arc::new(RwLock::new(None)),
-		}
+		})
 	}
 
 	/// Create an instance of an agent with a standard prefix for the topics.
+	/// # Errors
+	///
 	pub fn new_with_prefix(
 		config: crate::config::Config,
 		properties: P,
 		prefix: impl Into<String>,
-	) -> Self {
-		Self {
-			context: Context::new_with_prefix(config, properties, prefix),
+	) -> Result<Self, DimasError> {
+		Ok(Self {
+			context: Context::new_with_prefix(config, properties, prefix)?,
 			liveliness: false,
 			liveliness_token: RwLock::new(None),
 			#[cfg(feature = "liveliness")]
 			liveliness_subscriber: Arc::new(RwLock::new(None)),
-		}
+		})
 	}
 
 	/// get the agents uuid
@@ -172,43 +176,41 @@ where
 	}
 
 	/// start the agent
-	/// # Panics
-	///
 	#[tracing::instrument]
-	pub async fn start(&mut self) {
+	pub async fn start(&mut self) -> Result<(), DimasError> {
 		// start all registered queryables
 		#[cfg(feature = "queryable")]
 		self.context
 			.queryables
 			.write()
-			.expect("should never happen")
+			.map_err(|_| DimasError::ShouldNotHappen)?
 			.iter_mut()
 			.for_each(|queryable| {
-				queryable.1.start();
+				let _ = queryable.1.start();
 			});
 		// start all registered subscribers
 		#[cfg(feature = "subscriber")]
 		self.context
 			.subscribers
 			.write()
-			.expect("should never happen")
+			.map_err(|_| DimasError::ShouldNotHappen)?
 			.iter_mut()
 			.for_each(|subscriber| {
-				subscriber.1.start();
+				let _ = subscriber.1.start();
 			});
 		// start liveliness subscriber
 		#[cfg(feature = "liveliness")]
 		if self
 			.liveliness_subscriber
 			.read()
-			.expect("should never happen")
+			.map_err(|_| DimasError::ShouldNotHappen)?
 			.is_some()
 		{
 			self.liveliness_subscriber
 				.write()
-				.expect("should never happen")
+				.map_err(|_| DimasError::ShouldNotHappen)?
 				.as_mut()
-				.expect("should never happen")
+				.ok_or(DimasError::ShouldNotHappen)?
 				.start();
 		}
 
@@ -222,10 +224,10 @@ where
 				.context
 				.communicator
 				.send_liveliness(msg_type)
-				.await;
+				.await?;
 			self.liveliness_token
 				.write()
-				.expect("should never happen")
+				.map_err(|_| DimasError::ShouldNotHappen)?
 				.replace(token);
 		}
 
@@ -234,39 +236,40 @@ where
 		self.context
 			.timers
 			.write()
-			.expect("should never happen")
+			.map_err(|_| DimasError::ShouldNotHappen)?
 			.iter_mut()
 			.for_each(|timer| {
-				timer.1.start();
+				let _ = timer.1.start();
 			});
 
 		// wait for a shutdown signal
 		match signal::ctrl_c().await {
 			Ok(()) => {
-				self.stop();
+				self.stop()?;
 			}
 			Err(err) => {
 				tracing::error!("Unable to listen for 'Ctrl-C': {err}");
-				// we also shut down in case of error
-				self.stop();
+				// we also try to shut down the agent properly
+				self.stop()?;
+				return Err(DimasError::ShouldNotHappen);
 			}
 		}
+		Ok(())
 	}
 
 	/// stop the agent
-	/// # Panics
 	#[tracing::instrument]
-	pub fn stop(&mut self) {
+	pub fn stop(&mut self) -> Result<(), DimasError> {
 		// reverse order of start!
 		// stop all registered timers
 		#[cfg(feature = "timer")]
 		self.context
 			.timers
 			.write()
-			.expect("should never happen")
+			.map_err(|_| DimasError::ShouldNotHappen)?
 			.iter_mut()
 			.for_each(|timer| {
-				timer.1.stop();
+				let _ = timer.1.stop();
 			});
 
 		#[cfg(feature = "liveliness")]
@@ -274,7 +277,7 @@ where
 			// stop liveliness
 			self.liveliness_token
 				.write()
-				.expect("should never happen")
+				.map_err(|_| DimasError::ShouldNotHappen)?
 				.take();
 			self.liveliness = false;
 
@@ -283,15 +286,15 @@ where
 			if self
 				.liveliness_subscriber
 				.read()
-				.expect("should never happen")
+				.map_err(|_| DimasError::ShouldNotHappen)?
 				.is_some()
 			{
 				self.liveliness_subscriber
 					.write()
-					.expect("should never happen")
+					.map_err(|_| DimasError::ShouldNotHappen)?
 					.as_mut()
-					.expect("should never happen")
-					.stop();
+					.ok_or(DimasError::ShouldNotHappen)?
+					.stop()?;
 			}
 		}
 
@@ -300,21 +303,22 @@ where
 		self.context
 			.subscribers
 			.write()
-			.expect("should never happen")
+			.map_err(|_| DimasError::ShouldNotHappen)?
 			.iter_mut()
 			.for_each(|subscriber| {
-				subscriber.1.stop();
+				let _ = subscriber.1.stop();
 			});
 		// stop all registered queryables
 		#[cfg(feature = "queryable")]
 		self.context
 			.queryables
 			.write()
-			.expect("should never happen")
+			.map_err(|_| DimasError::ShouldNotHappen)?
 			.iter_mut()
 			.for_each(|queryable| {
-				queryable.1.stop();
+				let _ = queryable.1.stop();
 			});
+		Ok(())
 	}
 }
 // endregion:	--- Agent
@@ -337,32 +341,28 @@ mod tests {
 	#[tokio::test]
 	//#[serial]
 	async fn agent_create_default() {
-		let _agent1: Agent<Props> = Agent::new(crate::config::Config::local(), Props {});
-		let _agent2: Agent<Props> =
-			Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
+		let _agent1 = Agent::new(crate::config::Config::local(), Props {});
+		let _agent2 = Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
 	}
 
 	#[tokio::test(flavor = "current_thread")]
 	//#[serial]
 	async fn agent_create_current() {
-		let _agent1: Agent<Props> = Agent::new(crate::config::Config::local(), Props {});
-		let _agent2: Agent<Props> =
-			Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
+		let _agent1 = Agent::new(crate::config::Config::local(), Props {});
+		let _agent2 = Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
 	}
 
 	#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 	//#[serial]
 	async fn agent_create_restricted() {
-		let _agent1: Agent<Props> = Agent::new(crate::config::Config::local(), Props {});
-		let _agent2: Agent<Props> =
-			Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
+		let _agent1 = Agent::new(crate::config::Config::local(), Props {});
+		let _agent2 = Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
 	}
 
 	#[tokio::test(flavor = "multi_thread")]
 	//#[serial]
 	async fn agent_create_multi() {
-		let _agent1: Agent<Props> = Agent::new(crate::config::Config::local(), Props {});
-		let _agent2: Agent<Props> =
-			Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
+		let _agent1 = Agent::new(crate::config::Config::local(), Props {});
+		let _agent2 = Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
 	}
 }

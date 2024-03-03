@@ -11,7 +11,7 @@ use zenoh::prelude::sync::SyncResolve;
 // region:		--- PublisherBuilder
 /// The builder for a publisher
 #[allow(clippy::module_name_repetitions)]
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct PublisherBuilder<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
@@ -43,21 +43,14 @@ where
 	/// Build the publisher
 	/// # Errors
 	///
-	/// # Panics
-	///
-	pub fn build(mut self) -> Result<Publisher> {
-		if self.key_expr.is_none() {
-			return Err(Error::NoKeyExpression);
-		}
-
-		let key_expr = if self.key_expr.is_some() {
-			self.key_expr.take().expect("should never happen")
+	pub fn build(self) -> Result<Publisher, DimasError> {
+		let key_expr = if self.key_expr.is_none() {
+			return Err(DimasError::NoKeyExpression);
 		} else {
-			String::new()
+			self.key_expr.ok_or(DimasError::ShouldNotHappen)?
 		};
 
-		//dbg!(&key_expr);
-		let publ = self.context.create_publisher(key_expr);
+		let publ = self.context.create_publisher(key_expr)?;
 		let p = Publisher { publisher: publ };
 
 		Ok(p)
@@ -66,16 +59,14 @@ where
 	/// Build and add the publisher to the agents context
 	/// # Errors
 	///
-	/// # Panics
-	///
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "publisher")))]
 	#[cfg(feature = "publisher")]
-	pub fn add(self) -> Result<()> {
+	pub fn add(self) -> Result<(), DimasError> {
 		let collection = self.context.publishers.clone();
 		let p = self.build()?;
 		collection
 			.write()
-			.expect("should never happen")
+			.map_err(|_| DimasError::ShouldNotHappen)?
 			.insert(p.publisher.key_expr().to_string(), p);
 		Ok(())
 	}
@@ -103,17 +94,15 @@ impl Publisher
 	/// Send a "put" message
 	/// # Errors
 	///
-	/// # Panics
-	///
 	#[tracing::instrument(level = tracing::Level::DEBUG)]
-	pub fn put<T>(&self, message: T) -> Result<()>
+	pub fn put<T>(&self, message: T) -> Result<(), DimasError>
 	where
 		T: Debug + Encode,
 	{
-		let value: Vec<u8> = encode(&message).expect("should never happen");
+		let value: Vec<u8> = encode(&message).map_err(|_| DimasError::EncodingFailed)?;
 		match self.publisher.put(value).res_sync() {
 			Ok(()) => Ok(()),
-			Err(_) => Err(Error::PutFailed),
+			Err(_) => Err(DimasError::PutFailed),
 		}
 	}
 
@@ -121,13 +110,11 @@ impl Publisher
 	/// Send a "delete" message - method currently does not work!!
 	/// # Errors
 	///
-	/// # Panics
-	///
 	#[tracing::instrument(level = tracing::Level::DEBUG)]
-	pub fn delete(&self) -> Result<()> {
+	pub fn delete(&self) -> Result<(), DimasError> {
 		match self.publisher.delete().res_sync() {
 			Ok(()) => Ok(()),
-			Err(_) => Err(Error::DeleteFailed),
+			Err(_) => Err(DimasError::DeleteFailed),
 		}
 	}
 }

@@ -2,40 +2,26 @@
 //! Copyright © 2024 Stephan Kunz
 
 // region:		--- modules
-use clap::Parser;
 use dimas::prelude::*;
 use std::time::Duration;
 use tracing::info;
 // endregion:	--- modules
-
-// region:		--- Clap
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-struct Args {
-	/// prefix
-	#[arg(short, long, value_parser, default_value_t = String::from("examples"))]
-	prefix: String,
-}
-// endregion:	--- Clap
 
 #[derive(Debug)]
 struct AgentProps {
 	counter: u128,
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
+#[tokio::main(flavor = "current_thread")]
+async fn main() -> Result<(), DimasError> {
 	// a tracing subscriber writing logs
 	tracing_subscriber::fmt::init();
-
-	// parse arguments
-	let args = Args::parse();
 
 	// create & initialize agents properties
 	let properties = AgentProps { counter: 0 };
 
-	// create an agent with the properties and the prefix given by `args`
-	let mut agent = Agent::new_with_prefix(Config::default(), properties, &args.prefix);
+	// create an agent with the properties and the prefix 'examples'
+	let mut agent = Agent::new_with_prefix(Config::default(), properties, "examples")?;
 
 	// create publisher for topic "hello"
 	agent.publisher().msg_type("hello").add()?;
@@ -45,18 +31,15 @@ async fn main() -> Result<()> {
 		.timer()
 		.name("timer1")
 		.interval(Duration::from_secs(1))
-		.callback(|ctx| {
-			let counter = ctx
-				.read()
-				.expect("should never happen")
-				.counter
-				.to_string();
+		.callback(|ctx| -> Result<(), DimasError> {
+			let counter = ctx.read()?.counter.to_string();
 
 			let text = "Hello World! [".to_string() + &counter + "]";
 			info!("Sending '{}'", &text);
 			// publishing with stored publisher
 			let _ = ctx.put_with("hello", text);
-			ctx.write().expect("should never happen").counter += 1;
+			ctx.write()?.counter += 1;
+			Ok(())
 		})
 		.add()?;
 
@@ -66,16 +49,17 @@ async fn main() -> Result<()> {
 		.timer()
 		.name("timer2")
 		.interval(duration)
-		.callback(move |ctx| {
+		.callback(move |ctx| -> Result<(), DimasError> {
 			info!("Deleting");
 			// delete with ad-hoc publisher
-			let _ = ctx.delete("hello");
+			ctx.delete("hello")?;
+			Ok(())
 		})
 		.add()?;
 
 	// activate liveliness
 	agent.liveliness(true);
-	agent.start().await;
+	agent.start().await?;
 
 	Ok(())
 }

@@ -13,7 +13,7 @@ use crate::prelude::*;
 	feature = "timer",
 ))]
 use std::collections::HashMap;
-use std::{fmt::Debug, ops::Deref};
+use std::fmt::Debug;
 use zenoh::publication::Publisher;
 use zenoh::query::ConsolidationMode;
 // endregion:	--- modules
@@ -26,7 +26,7 @@ pub type ArcContext<P> = Arc<Context<P>>;
 
 // region:		--- Context
 /// Context makes all relevant data of the agent accessible via accessor methods.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct Context<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
@@ -49,25 +49,14 @@ where
 	pub(crate) timers: Arc<RwLock<HashMap<String, Timer<P>>>>,
 }
 
-impl<P> Deref for Context<P>
-where
-	P: Debug + Send + Sync + Unpin + 'static,
-{
-	type Target = Arc<RwLock<P>>;
-
-	fn deref(&self) -> &Self::Target {
-		&self.props
-	}
-}
-
 impl<P> Context<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// Constructor for the `Context`
-	pub(crate) fn new(config: Config, props: P) -> Arc<Self> {
-		let communicator = Arc::new(Communicator::new(config));
-		Arc::new(Self {
+	pub(crate) fn new(config: Config, props: P) -> Result<Arc<Self>, DimasError> {
+		let communicator = Arc::new(Communicator::new(config)?);
+		Ok(Arc::new(Self {
 			communicator,
 			props: Arc::new(RwLock::new(props)),
 			#[cfg(feature = "publisher")]
@@ -80,7 +69,7 @@ where
 			subscribers: Arc::new(RwLock::new(HashMap::new())),
 			#[cfg(feature = "timer")]
 			timers: Arc::new(RwLock::new(HashMap::new())),
-		})
+		}))
 	}
 
 	/// Constructor for the `Context` with a prefix
@@ -88,9 +77,9 @@ where
 		config: Config,
 		props: P,
 		prefix: impl Into<String>,
-	) -> Arc<Self> {
-		let communicator = Arc::new(Communicator::new_with_prefix(config, prefix));
-		Arc::new(Self {
+	) -> Result<Arc<Self>, DimasError> {
+		let communicator = Arc::new(Communicator::new_with_prefix(config, prefix)?);
+		Ok(Arc::new(Self {
 			communicator,
 			props: Arc::new(RwLock::new(props)),
 			#[cfg(feature = "publisher")]
@@ -103,7 +92,7 @@ where
 			subscribers: Arc::new(RwLock::new(HashMap::new())),
 			#[cfg(feature = "timer")]
 			timers: Arc::new(RwLock::new(HashMap::new())),
-		})
+		}))
 	}
 
 	/// Get the agents uuid
@@ -118,6 +107,7 @@ where
 		self.communicator.prefix()
 	}
 
+	#[must_use]
 	pub(crate) fn key_expr(&self, msg_name: impl Into<String>) -> String {
 		match self.prefix() {
 			Some(prefix) => prefix + "/" + &msg_name.into(),
@@ -125,17 +115,29 @@ where
 		}
 	}
 
+	pub fn read(&self) -> Result<std::sync::RwLockReadGuard<'_, P>, DimasError> {
+		self.props
+			.read()
+			.map_err(|_| DimasError::ReadPropertiesFailed)
+	}
+
+	pub fn write(&self) -> Result<std::sync::RwLockWriteGuard<'_, P>, DimasError> {
+		self.props
+			.write()
+			.map_err(|_| DimasError::WritePropertiesFailed)
+	}
+
 	pub(crate) fn create_publisher<'publisher>(
 		&self,
 		key_expr: impl Into<String> + Send,
-	) -> Publisher<'publisher> {
+	) -> Result<Publisher<'publisher>, DimasError> {
 		self.communicator.create_publisher(key_expr)
 	}
 
 	/// Method to do an ad hoc publishing
 	/// # Errors
 	///   Error is propagated from Communicator
-	pub fn put<M>(&self, msg_name: impl Into<String>, message: M) -> Result<()>
+	pub fn put<M>(&self, msg_name: impl Into<String>, message: M) -> Result<(), DimasError>
 	where
 		M: Encode,
 	{
@@ -145,10 +147,8 @@ where
 	/// Method to pubish data with a stored Publisher
 	/// # Errors
 	///
-	/// # Panics
-	///
 	#[cfg(feature = "publisher")]
-	pub fn put_with<M>(&self, msg_name: &str, message: M) -> Result<()>
+	pub fn put_with<M>(&self, msg_name: &str, message: M) -> Result<(), DimasError>
 	where
 		M: Debug + Encode,
 	{
@@ -156,15 +156,15 @@ where
 		if self
 			.publishers
 			.read()
-			.expect("should not happen")
+			.map_err(|_| DimasError::ShouldNotHappen)?
 			.get(&key_expr)
 			.is_some()
 		{
 			self.publishers
 				.read()
-				.expect("should not happen")
+				.map_err(|_| DimasError::ShouldNotHappen)?
 				.get(&key_expr)
-				.expect("should not happen")
+				.ok_or(DimasError::ShouldNotHappen)?
 				.put(message)?;
 		};
 		Ok(())
@@ -173,68 +173,70 @@ where
 	/// Method to do an ad hoc deletion
 	/// # Errors
 	///   Error is propagated from Communicator
-	pub fn delete(&self, msg_name: impl Into<String>) -> Result<()> {
+	pub fn delete(&self, msg_name: impl Into<String>) -> Result<(), DimasError> {
 		self.communicator.delete(msg_name)
 	}
 
 	/// Method to delete data with a stored Publisher
 	/// # Errors
 	///
-	/// # Panics
-	///
 	#[cfg(feature = "publisher")]
-	pub fn delete_with(&self, msg_name: &str) -> Result<()> {
+	pub fn delete_with(&self, msg_name: &str) -> Result<(), DimasError> {
 		let key_expr = self.key_expr(msg_name);
 		if self
 			.publishers
 			.read()
-			.expect("should not happen")
+			.map_err(|_| DimasError::ShouldNotHappen)?
 			.get(&key_expr)
 			.is_some()
 		{
 			self.publishers
 				.read()
-				.expect("should not happen")
+				.map_err(|_| DimasError::ShouldNotHappen)?
 				.get(&key_expr)
-				.expect("should not happen")
+				.ok_or(DimasError::ShouldNotHappen)?
 				.delete()?;
 		}
 		Ok(())
 	}
 
-	/// Method to do an ad hoc query without any consolodation of answers.
+	/// Method to do an ad hoc query without any consolidation of answers.
 	/// Multiple answers may be received for the same timestamp.
-	pub fn get<F>(&self, ctx: Arc<Self>, query_name: impl Into<String>, callback: F)
+	pub fn get<F>(
+		&self,
+		ctx: Arc<Self>,
+		query_name: impl Into<String>,
+		callback: F,
+	) -> Result<(), DimasError>
 	where
 		P: Debug + Send + Sync + Unpin + 'static,
-		F: Fn(&ArcContext<P>, &Message) + Send + Sync + Unpin + 'static,
+		F: Fn(&ArcContext<P>, Message) + Send + Sync + Unpin + 'static,
 	{
 		self.communicator
-			.get(ctx, query_name, ConsolidationMode::None, callback);
+			.get(ctx, query_name, ConsolidationMode::None, callback)
 	}
 
 	/// Method to query data with a stored Query
 	/// # Errors
 	///
-	/// # Panics
-	///
 	#[cfg(feature = "query")]
-	pub fn get_with(&self, msg_name: &str) {
+	pub fn get_with(&self, msg_name: &str) -> Result<(), DimasError> {
 		let key_expr = self.key_expr(msg_name);
 		if self
 			.queries
 			.read()
-			.expect("should not happen")
+			.map_err(|_| DimasError::ShouldNotHappen)?
 			.get(&key_expr)
 			.is_some()
 		{
 			self.queries
 				.read()
-				.expect("should not happen")
+				.map_err(|_| DimasError::ShouldNotHappen)?
 				.get(&key_expr)
-				.expect("should not happen")
-				.get();
+				.ok_or(DimasError::ShouldNotHappen)?
+				.get()?;
 		};
+		Ok(())
 	}
 }
 // endregion:	--- Context

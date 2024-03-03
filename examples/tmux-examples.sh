@@ -9,7 +9,7 @@ tmux new-session -d -s $session
 window=0
 tmux rename-window -t $session:$window 'examples'
 
-# split window into 10 panes according to following schema
+# split window into 9 panes according to following schema
 #
 #  +-------------+-------------+-------------+
 #  |             |             |             |

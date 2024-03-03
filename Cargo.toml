@@ -25,7 +25,7 @@ unwrap_used = "deny"
 [workspace.package]
 rust-version = "1.75.0"
 edition = "2021"
-version = "0.0.5"
+version = "0.0.6"
 authors = [
 	"stepkun <stephan.kunz@kabelbw.de>",
 ]
@@ -39,7 +39,6 @@ categories = [
 
 [workspace.dependencies]
 bitcode = "0.5"
-clap = "4"
 dimas = { path = "dimas" }
 thiserror = "1"
 tokio = "1"
