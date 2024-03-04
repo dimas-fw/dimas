@@ -14,6 +14,7 @@ use crate::prelude::*;
 ))]
 use std::collections::HashMap;
 use std::fmt::Debug;
+use tracing::{instrument, Level};
 use zenoh::publication::Publisher;
 use zenoh::query::ConsolidationMode;
 // endregion:	--- modules
@@ -137,6 +138,7 @@ where
 	/// Method to do an ad hoc publishing
 	/// # Errors
 	///   Error is propagated from Communicator
+	#[instrument(level = Level::ERROR, skip_all)]
 	pub fn put<M>(&self, msg_name: impl Into<String>, message: M) -> Result<(), DimasError>
 	where
 		M: Encode,
@@ -148,6 +150,7 @@ where
 	/// # Errors
 	///
 	#[cfg(feature = "publisher")]
+	#[instrument(level = Level::ERROR, skip_all)]
 	pub fn put_with<M>(&self, msg_name: &str, message: M) -> Result<(), DimasError>
 	where
 		M: Debug + Encode,
@@ -173,6 +176,7 @@ where
 	/// Method to do an ad hoc deletion
 	/// # Errors
 	///   Error is propagated from Communicator
+	#[instrument(level = Level::ERROR, skip_all)]
 	pub fn delete(&self, msg_name: impl Into<String>) -> Result<(), DimasError> {
 		self.communicator.delete(msg_name)
 	}
@@ -181,6 +185,7 @@ where
 	/// # Errors
 	///
 	#[cfg(feature = "publisher")]
+	#[instrument(level = Level::ERROR, skip_all)]
 	pub fn delete_with(&self, msg_name: &str) -> Result<(), DimasError> {
 		let key_expr = self.key_expr(msg_name);
 		if self
@@ -202,6 +207,7 @@ where
 
 	/// Method to do an ad hoc query without any consolidation of answers.
 	/// Multiple answers may be received for the same timestamp.
+	#[instrument(level = Level::ERROR, skip_all)]
 	pub fn get<F>(
 		&self,
 		ctx: Arc<Self>,
@@ -220,6 +226,7 @@ where
 	/// # Errors
 	///
 	#[cfg(feature = "query")]
+	#[instrument(level = Level::ERROR, skip_all)]
 	pub fn get_with(&self, msg_name: &str) -> Result<(), DimasError> {
 		let key_expr = self.key_expr(msg_name);
 		if self

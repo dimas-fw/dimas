@@ -7,7 +7,7 @@
 use crate::prelude::*;
 use std::{fmt::Debug, sync::Mutex, time::Duration};
 use tokio::{task::JoinHandle, time};
-use tracing::{error, span, Level};
+use tracing::{error, instrument, Level};
 // endregion:	--- modules
 
 // region:		--- types
@@ -183,6 +183,7 @@ where
 	/// Start Timer
 	/// # Errors
 	///
+	#[instrument(level = Level::TRACE, skip_all)]
 	pub fn start(&mut self) -> Result<(), DimasError> {
 		match self {
 			Self::Interval {
@@ -221,6 +222,7 @@ where
 	/// Stop Timer
 	/// # Errors
 	///
+	#[instrument(level = Level::TRACE, skip_all)]
 	pub fn stop(&mut self) -> Result<(), DimasError> {
 		match self {
 			Self::Interval {
@@ -246,6 +248,7 @@ where
 	}
 }
 
+#[instrument(name="timer", level = Level::ERROR, skip_all)]
 async fn run_timer<P>(interval: Duration, cb: TimerCallback<P>, ctx: ArcContext<P>)
 where
 	P: Debug + Send + Sync + Unpin + 'static,
@@ -254,17 +257,15 @@ where
 	loop {
 		interval.tick().await;
 
-		let span = span!(Level::DEBUG, "run_timer");
-		let _guard = span.enter();
-		let guard = cb.lock();
-		match guard {
+		let result = cb.lock();
+		match result {
 			Ok(mut lock) => {
 				if let Err(error) = lock(&ctx) {
-					error!("timer callback failed with {error}");
+					error!("callback failed with {error}");
 				}
 			}
 			Err(err) => {
-				error!("timer callback failed with {err}");
+				error!("callback lock failed with {err}");
 			}
 		}
 	}

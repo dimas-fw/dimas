@@ -5,7 +5,7 @@
 // region:		--- modules
 use crate::prelude::*;
 use std::{fmt::Debug, sync::Mutex};
-use tracing::error;
+use tracing::{error, instrument, Level};
 use zenoh::{
 	prelude::{sync::SyncResolve, SampleKind},
 	query::ConsolidationMode,
@@ -160,7 +160,7 @@ where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// run a query
-	#[tracing::instrument(level = tracing::Level::DEBUG)]
+	#[instrument(name="query", level = Level::ERROR, skip_all)]
 	pub fn get(&self) -> Result<(), DimasError> {
 		let cb = self.callback.clone();
 		let replies = self
@@ -182,11 +182,11 @@ where
 						match guard {
 							Ok(mut lock) => {
 								if let Err(error) = lock(&self.ctx, msg) {
-									error!("query callback failed with {error}");
+									error!("callback failed with {error}");
 								}
 							}
 							Err(err) => {
-								error!("query callback failed with {err}");
+								error!("callback lock failed with {err}");
 							}
 						}
 					}
@@ -194,7 +194,7 @@ where
 						error!("Delete in Query");
 					}
 				},
-				Err(err) => error!(">> query receive error: {err})"),
+				Err(err) => error!("receive error: {err})"),
 			}
 		}
 		Ok(())

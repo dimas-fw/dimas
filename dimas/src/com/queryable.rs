@@ -6,7 +6,7 @@
 use crate::prelude::*;
 use std::{fmt::Debug, sync::Mutex};
 use tokio::task::JoinHandle;
-use tracing::{error, span, Level};
+use tracing::{error, instrument, Level};
 use zenoh::prelude::r#async::AsyncResolve;
 // endregion:	--- modules
 
@@ -141,6 +141,7 @@ where
 	/// Start Queryable
 	/// # Errors
 	///
+	#[instrument(level = Level::TRACE)]
 	pub fn start(&mut self) -> Result<(), DimasError> {
 		let key_expr = self.key_expr.clone();
 		let cb = self.callback.clone();
@@ -157,6 +158,7 @@ where
 	/// Stop Queryable
 	/// # Errors
 	///
+	#[instrument(level = Level::TRACE)]
 	pub fn stop(&mut self) -> Result<(), DimasError> {
 		self.handle
 			.take()
@@ -166,7 +168,7 @@ where
 	}
 }
 
-//#[tracing::instrument(level = tracing::Level::DEBUG)]
+#[instrument(name="queryable", level = Level::ERROR, skip_all)]
 async fn run_queryable<P>(
 	key_expr: String,
 	cb: QueryableCallback<P>,
@@ -175,8 +177,9 @@ async fn run_queryable<P>(
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
-	let session = ctx.communicator.session.clone();
-	let subscriber = session
+	let subscriber = ctx
+		.communicator
+		.session
 		.declare_queryable(&key_expr)
 		.res_async()
 		.await
@@ -189,17 +192,15 @@ where
 			.map_err(|_| DimasError::ShouldNotHappen)?;
 		let request = Request(query);
 
-		let span = span!(Level::DEBUG, "run_queryable");
-		let _guard = span.enter();
-		let guard = cb.lock();
-		match guard {
+		let result = cb.lock();
+		match result {
 			Ok(mut lock) => {
 				if let Err(error) = lock(&ctx, request) {
-					error!("queryable callback failed with {error}");
+					error!("callback failed with {error}");
 				}
 			}
 			Err(err) => {
-				error!("queryable callback failed with {err}");
+				error!("callback lock failed with {err}");
 			}
 		}
 	}

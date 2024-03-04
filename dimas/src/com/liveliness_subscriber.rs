@@ -7,7 +7,7 @@
 use crate::prelude::*;
 use std::{fmt::Debug, sync::Mutex};
 use tokio::task::JoinHandle;
-use tracing::{error, span, Level};
+use tracing::{error, instrument, Level};
 use zenoh::prelude::{r#async::AsyncResolve, SampleKind};
 // endregion:	--- modules
 
@@ -153,6 +153,7 @@ impl<P> LivelinessSubscriber<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
+	#[instrument(level = Level::TRACE)]
 	pub fn start(&mut self) {
 		let key_expr = self.key_expr.clone();
 		let p_cb = self.put_callback.clone();
@@ -176,6 +177,7 @@ where
 		});
 	}
 
+	#[instrument(level = Level::TRACE)]
 	pub fn stop(&mut self) -> Result<(), DimasError> {
 		self.handle
 			.take()
@@ -185,7 +187,7 @@ where
 	}
 }
 
-//#[tracing::instrument(level = tracing::Level::DEBUG)]
+#[instrument(name="liveliness", level = Level::ERROR, skip_all)]
 async fn run_liveliness<P>(
 	mut key_expr: String,
 	p_cb: LivelinessCallback<P>,
@@ -195,8 +197,9 @@ async fn run_liveliness<P>(
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
-	let session = ctx.communicator.session.clone();
-	let subscriber = session
+	let subscriber = ctx
+		.communicator
+		.session
 		.liveliness()
 		.declare_subscriber(&key_expr)
 		.res_async()
@@ -208,37 +211,37 @@ where
 		.ok_or(DimasError::ShouldNotHappen)?;
 
 	loop {
-		let result = subscriber.recv_async().await;
-		let span = span!(Level::DEBUG, "run_liveliness");
-		let _guard = span.enter();
+		let result = subscriber
+			.recv_async()
+			.await;
 		match result {
 			Ok(sample) => {
 				let id = sample.key_expr.to_string().replace(&key_expr, "");
 				match sample.kind {
 					SampleKind::Put => {
-						let guard = p_cb.lock();
-						match guard {
+						let result = p_cb.lock();
+						match result {
 							Ok(mut lock) => {
 								if let Err(error) = lock(&ctx, &id) {
-									error!("liveliness put callback failed with {error}");
+									error!("put callback failed with {error}");
 								}
 							}
 							Err(err) => {
-								error!("liveliness put callback lock failed with {err}");
+								error!("put callback lock failed with {err}");
 							}
 						}
 					}
 					SampleKind::Delete => {
 						if let Some(cb) = d_cb.clone() {
-							let guard = cb.lock();
-							match guard {
+							let result = cb.lock();
+							match result {
 								Ok(mut lock) => {
 									if let Err(error) = lock(&ctx, &id) {
-										error!("liveliness delete callback failed with {error}");
+										error!("delete callback failed with {error}");
 									}
 								}
 								Err(err) => {
-									error!("liveliness delete callback lock failed with {err}");
+									error!("delete callback lock failed with {err}");
 								}
 							}
 						}
@@ -246,13 +249,13 @@ where
 				}
 			}
 			Err(error) => {
-				error!("livelieness subscriber failed with {error}");
+				error!("failed with {error}");
 			}
 		}
 	}
 }
 
-//#[tracing::instrument(level = tracing::Level::DEBUG)]
+#[instrument(name="initial liveliness", level = Level::ERROR, skip_all)]
 async fn run_initial<P>(
 	key_expr: String,
 	p_cb: LivelinessCallback<P>,
@@ -261,10 +264,9 @@ async fn run_initial<P>(
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
-	let span = span!(Level::DEBUG, "run_initial_liveliness");
-	let _guard = span.enter();
-	let session = ctx.communicator.session.clone();
-	let result = session
+	let result = ctx
+		.communicator
+		.session
 		.liveliness()
 		.get(&key_expr)
 		//.timeout(Duration::from_millis(500))
@@ -273,30 +275,31 @@ where
 
 	match result {
 		Ok(replies) => {
-			let span = span!(Level::DEBUG, "run_initial_liveliness");
-			let _guard = span.enter();
-			while let Ok(reply) = replies.recv_async().await {
+			while let Ok(reply) = replies
+				.recv_async()
+				.await
+			{
 				match reply.sample {
 					Ok(sample) => {
 						let id = sample.key_expr.to_string().replace(&key_expr, "");
-						let guard = p_cb.lock();
-						match guard {
+						let result = p_cb.lock();
+						match result {
 							Ok(mut lock) => {
 								if let Err(error) = lock(&ctx, &id) {
-									error!("lveliness put callback failed with {error}");
+									error!("callback failed with {error}");
 								}
 							}
 							Err(err) => {
-								error!("liveliness put callback failed with {err}");
+								error!("callback lock failed with {err}");
 							}
 						}
 					}
-					Err(err) => error!(">> liveliness subscriber delete error: {err})"),
+					Err(err) => error!("receive error: {err})"),
 				}
 			}
 		}
 		Err(error) => {
-			error!("livelieness subscriber failed with {error}");
+			error!("failed with {error}");
 		}
 	}
 	Ok(())

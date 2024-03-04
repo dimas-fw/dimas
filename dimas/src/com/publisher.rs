@@ -5,6 +5,7 @@
 // region:		--- modules
 use crate::prelude::*;
 use std::fmt::Debug;
+use tracing::{instrument, Level};
 use zenoh::prelude::sync::SyncResolve;
 // endregion:	--- modules
 
@@ -94,7 +95,7 @@ impl Publisher
 	/// Send a "put" message
 	/// # Errors
 	///
-	#[tracing::instrument(level = tracing::Level::DEBUG)]
+	#[instrument(name="publish", level = Level::ERROR, skip_all)]
 	pub fn put<T>(&self, message: T) -> Result<(), DimasError>
 	where
 		T: Debug + Encode,
@@ -110,7 +111,7 @@ impl Publisher
 	/// Send a "delete" message - method currently does not work!!
 	/// # Errors
 	///
-	#[tracing::instrument(level = tracing::Level::DEBUG)]
+	#[instrument(level = Level::ERROR, skip_all)]
 	pub fn delete(&self) -> Result<(), DimasError> {
 		match self.publisher.delete().res_sync() {
 			Ok(()) => Ok(()),

@@ -7,7 +7,7 @@
 use crate::prelude::*;
 use std::{fmt::Debug, sync::Mutex};
 use tokio::task::JoinHandle;
-use tracing::{error, span, Level};
+use tracing::{error, instrument, Level};
 use zenoh::prelude::{r#async::AsyncResolve, SampleKind};
 // endregion:	--- modules
 
@@ -161,6 +161,7 @@ where
 	/// Start Subscriber
 	/// # Errors
 	///
+	#[instrument(level = Level::TRACE, skip_all)]
 	pub fn start(&mut self) -> Result<(), DimasError> {
 		let key_expr = self.key_expr.clone();
 		let p_cb = self.put_callback.clone();
@@ -177,6 +178,7 @@ where
 	/// Stop Subscriber
 	/// # Errors
 	///
+	#[instrument(level = Level::TRACE, skip_all)]
 	pub fn stop(&mut self) -> Result<(), DimasError> {
 		self.handle
 			.take()
@@ -186,7 +188,7 @@ where
 	}
 }
 
-//#[tracing::instrument(level = tracing::Level::DEBUG)]
+#[instrument(name="subscriber", level = Level::ERROR, skip_all)]
 async fn run_subscriber<P>(
 	key_expr: String,
 	p_cb: SubscriberPutCallback<P>,
@@ -196,8 +198,9 @@ async fn run_subscriber<P>(
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
-	let session = ctx.communicator.session.clone();
-	let subscriber = session
+	let subscriber = ctx
+		.communicator
+		.session
 		.declare_subscriber(&key_expr)
 		.res_async()
 		.await
@@ -209,34 +212,32 @@ where
 			.await
 			.map_err(|_| DimasError::ShouldNotHappen)?;
 
-		let span = span!(Level::DEBUG, "run_subscriber");
-		let _guard = span.enter();
 		match sample.kind {
 			SampleKind::Put => {
 				let msg = Message(sample);
-				let guard = p_cb.lock();
-				match guard {
+				let result = p_cb.lock();
+				match result {
 					Ok(mut lock) => {
 						if let Err(error) = lock(&ctx, msg) {
-							error!("subscriber put callback failed with {error}");
+							error!("put callback failed with {error}");
 						}
 					}
 					Err(err) => {
-						error!("subscriber put callback lock failed with {err}");
+						error!("put callback lock failed with {err}");
 					}
 				}
 			}
 			SampleKind::Delete => {
 				if let Some(cb) = d_cb.clone() {
-					let guard = cb.lock();
-					match guard {
+					let result = cb.lock();
+					match result {
 						Ok(mut lock) => {
 							if let Err(error) = lock(&ctx) {
-								error!("subscriber delete callback failed with {error}");
+								error!("delete callback failed with {error}");
 							}
 						}
 						Err(err) => {
-							error!("subscriber delete callback lock failed with {err}");
+							error!("delete callback lock failed with {err}");
 						}
 					}
 				}
