@@ -51,8 +51,8 @@ async fn main() -> Result<(), DimasError> {
 		.interval(duration)
 		.callback(move |ctx| -> Result<(), DimasError> {
 			info!("Deleting");
-			// delete with ad-hoc publisher
-			ctx.delete("hello")?;
+			// delete with stored publisher
+			ctx.delete_with("hello")?;
 			Ok(())
 		})
 		.add()?;

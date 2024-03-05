@@ -4,6 +4,7 @@
 
 // region:    --- Error
 /// `DiMAS` Error type
+#[non_exhaustive]
 #[derive(thiserror::Error, Debug)]
 #[allow(clippy::module_name_repetitions)]
 pub enum DimasError {

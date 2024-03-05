@@ -149,7 +149,7 @@ version = "1.3.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.cc]]
-version = "1.0.88"
+version = "1.0.89"
 criteria = "safe-to-deploy"
 
 [[exemptions.chrono]]
@@ -158,14 +158,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.cipher]]
 version = "0.4.4"
-criteria = "safe-to-deploy"
-
-[[exemptions.clap]]
-version = "4.5.1"
-criteria = "safe-to-deploy"
-
-[[exemptions.clap_derive]]
-version = "4.5.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.concurrent-queue]]
@@ -476,10 +468,6 @@ criteria = "safe-to-deploy"
 version = "0.10.2"
 criteria = "safe-to-deploy"
 
-[[exemptions.pnet]]
-version = "0.34.0"
-criteria = "safe-to-deploy"
-
 [[exemptions.pnet_base]]
 version = "0.34.0"
 criteria = "safe-to-deploy"
@@ -488,23 +476,7 @@ criteria = "safe-to-deploy"
 version = "0.34.0"
 criteria = "safe-to-deploy"
 
-[[exemptions.pnet_macros]]
-version = "0.34.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.pnet_macros_support]]
-version = "0.34.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.pnet_packet]]
-version = "0.34.0"
-criteria = "safe-to-deploy"
-
 [[exemptions.pnet_sys]]
-version = "0.34.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.pnet_transport]]
 version = "0.34.0"
 criteria = "safe-to-deploy"
 
@@ -676,10 +648,6 @@ criteria = "safe-to-deploy"
 version = "0.7.0"
 criteria = "safe-to-deploy"
 
-[[exemptions.strsim]]
-version = "0.11.0"
-criteria = "safe-to-deploy"
-
 [[exemptions.token-cell]]
 version = "1.5.0"
 criteria = "safe-to-deploy"
@@ -846,98 +814,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.windows_x86_64_msvc]]
 version = "0.52.4"
-criteria = "safe-to-deploy"
-
-[[exemptions.zenoh]]
-version = "0.10.1-rc"
-criteria = "safe-to-deploy"
-
-[[exemptions.zenoh-buffers]]
-version = "0.10.1-rc"
-criteria = "safe-to-deploy"
-
-[[exemptions.zenoh-codec]]
-version = "0.10.1-rc"
-criteria = "safe-to-deploy"
-
-[[exemptions.zenoh-collections]]
-version = "0.10.1-rc"
-criteria = "safe-to-deploy"
-
-[[exemptions.zenoh-config]]
-version = "0.10.1-rc"
-criteria = "safe-to-deploy"
-
-[[exemptions.zenoh-core]]
-version = "0.10.1-rc"
-criteria = "safe-to-deploy"
-
-[[exemptions.zenoh-crypto]]
-version = "0.10.1-rc"
-criteria = "safe-to-deploy"
-
-[[exemptions.zenoh-keyexpr]]
-version = "0.10.1-rc"
-criteria = "safe-to-deploy"
-
-[[exemptions.zenoh-link]]
-version = "0.10.1-rc"
-criteria = "safe-to-deploy"
-
-[[exemptions.zenoh-link-commons]]
-version = "0.10.1-rc"
-criteria = "safe-to-deploy"
-
-[[exemptions.zenoh-link-quic]]
-version = "0.10.1-rc"
-criteria = "safe-to-deploy"
-
-[[exemptions.zenoh-link-tcp]]
-version = "0.10.1-rc"
-criteria = "safe-to-deploy"
-
-[[exemptions.zenoh-link-tls]]
-version = "0.10.1-rc"
-criteria = "safe-to-deploy"
-
-[[exemptions.zenoh-link-udp]]
-version = "0.10.1-rc"
-criteria = "safe-to-deploy"
-
-[[exemptions.zenoh-link-unixsock_stream]]
-version = "0.10.1-rc"
-criteria = "safe-to-deploy"
-
-[[exemptions.zenoh-link-ws]]
-version = "0.10.1-rc"
-criteria = "safe-to-deploy"
-
-[[exemptions.zenoh-macros]]
-version = "0.10.1-rc"
-criteria = "safe-to-deploy"
-
-[[exemptions.zenoh-plugin-trait]]
-version = "0.10.1-rc"
-criteria = "safe-to-deploy"
-
-[[exemptions.zenoh-protocol]]
-version = "0.10.1-rc"
-criteria = "safe-to-deploy"
-
-[[exemptions.zenoh-result]]
-version = "0.10.1-rc"
-criteria = "safe-to-deploy"
-
-[[exemptions.zenoh-sync]]
-version = "0.10.1-rc"
-criteria = "safe-to-deploy"
-
-[[exemptions.zenoh-transport]]
-version = "0.10.1-rc"
-criteria = "safe-to-deploy"
-
-[[exemptions.zenoh-util]]
-version = "0.10.1-rc"
 criteria = "safe-to-deploy"
 
 [[exemptions.zerocopy]]

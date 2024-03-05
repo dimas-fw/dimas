@@ -31,6 +31,7 @@ authors = [
 ]
 #license = "NGMC"
 license-file = "LICENSE"
+keywords = ["mas", "robot", "robotics"]
 categories = [
 	"development-tools",
 	"science::robotics",
@@ -44,7 +45,8 @@ thiserror = "1"
 tokio = "1"
 tracing = "0.1"
 tracing-subscriber = "0.3"
-zenoh = { version = "0.10.1-rc", features = ["unstable"] }
+#zenoh = { version = "0.10.1-rc", features = ["unstable"] }
+zenoh = { git = "https://github.com/eclipse-zenoh/zenoh", branch = "main", features = ["unstable"]}
 
 [profile.release]
 opt-level = 'z'   # Optimize for size.
