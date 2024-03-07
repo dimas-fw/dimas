@@ -26,7 +26,7 @@ impl Communicator {
 		let session = Arc::new(
 			zenoh::open(cfg.zenoh_config())
 				.res_sync()
-				.map_err(|_| DimasError::SessionCreationFailed)?,
+				.map_err(DimasError::SessionCreation)?,
 		);
 		Ok(Self {
 			session,
@@ -42,7 +42,7 @@ impl Communicator {
 		let session = Arc::new(
 			zenoh::open(cfg.zenoh_config())
 				.res_sync()
-				.map_err(|_| DimasError::SessionCreationFailed)?,
+				.map_err(DimasError::SessionCreation)?,
 		);
 		let prefix = Some(prefix.into());
 		Ok(Self { session, prefix })
@@ -164,30 +164,34 @@ mod tests {
 
 	#[tokio::test]
 	//#[serial]
-	async fn communicator_create_default() {
+	async fn communicator_create_default() -> Result<(), Box<dyn std::error::Error>> {
 		let _peer1 = Communicator::new(crate::config::Config::default());
-		let _peer2 = Communicator::new_with_prefix(crate::config::Config::local(), "peer2");
+		let _peer2 = Communicator::new_with_prefix(crate::config::Config::local()?, "peer2");
 		//let _peer3 = Communicator::new(config::client());
+		Ok(())
 	}
 
 	#[tokio::test(flavor = "current_thread")]
 	//#[serial]
-	async fn communicator_create_single() {
+	async fn communicator_create_single() -> Result<(), Box<dyn std::error::Error>> {
 		let _peer1 = Communicator::new(crate::config::Config::default());
-		let _peer2 = Communicator::new_with_prefix(crate::config::Config::local(), "peer2");
+		let _peer2 = Communicator::new_with_prefix(crate::config::Config::local()?, "peer2");
+		Ok(())
 	}
 
 	#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 	//#[serial]
-	async fn communicator_create_restricted() {
+	async fn communicator_create_restricted() -> Result<(), Box<dyn std::error::Error>> {
 		let _peer1 = Communicator::new(crate::config::Config::default());
-		let _peer2 = Communicator::new_with_prefix(crate::config::Config::local(), "peer2");
+		let _peer2 = Communicator::new_with_prefix(crate::config::Config::local()?, "peer2");
+		Ok(())
 	}
 
 	#[tokio::test(flavor = "multi_thread")]
 	//#[serial]
-	async fn communicator_create_multi() {
+	async fn communicator_create_multi() -> Result<(), Box<dyn std::error::Error>> {
 		let _peer1 = Communicator::new(crate::config::Config::default());
-		let _peer2 = Communicator::new_with_prefix(crate::config::Config::local(), "peer2");
+		let _peer2 = Communicator::new_with_prefix(crate::config::Config::local()?, "peer2");
+		Ok(())
 	}
 }

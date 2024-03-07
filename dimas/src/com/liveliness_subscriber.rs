@@ -8,7 +8,10 @@ use crate::prelude::*;
 use std::{fmt::Debug, sync::Mutex};
 use tokio::task::JoinHandle;
 use tracing::{error, instrument, Level};
-use zenoh::{prelude::{r#async::AsyncResolve, SampleKind}, SessionDeclarations};
+use zenoh::{
+	prelude::{r#async::AsyncResolve, SampleKind},
+	SessionDeclarations,
+};
 // endregion:	--- modules
 
 // region:		--- types
@@ -211,9 +214,7 @@ where
 		.ok_or(DimasError::ShouldNotHappen)?;
 
 	loop {
-		let result = subscriber
-			.recv_async()
-			.await;
+		let result = subscriber.recv_async().await;
 		match result {
 			Ok(sample) => {
 				let id = sample.key_expr.to_string().replace(&key_expr, "");
@@ -275,10 +276,7 @@ where
 
 	match result {
 		Ok(replies) => {
-			while let Ok(reply) = replies
-				.recv_async()
-				.await
-			{
+			while let Ok(reply) = replies.recv_async().await {
 				match reply.sample {
 					Ok(sample) => {
 						let id = sample.key_expr.to_string().replace(&key_expr, "");

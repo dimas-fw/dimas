@@ -8,7 +8,10 @@ use crate::prelude::*;
 use std::{fmt::Debug, sync::Mutex};
 use tokio::task::JoinHandle;
 use tracing::{error, instrument, Level};
-use zenoh::{prelude::{r#async::AsyncResolve, SampleKind}, SessionDeclarations};
+use zenoh::{
+	prelude::{r#async::AsyncResolve, SampleKind},
+	SessionDeclarations,
+};
 // endregion:	--- modules
 
 // region:		--- types

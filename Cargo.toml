@@ -41,12 +41,15 @@ categories = [
 [workspace.dependencies]
 bitcode = "0.5"
 dimas = { path = "dimas" }
+dirs = "5"
+json = "0.12"
+json5 = "0.4"
 thiserror = "1"
 tokio = "1"
 tracing = "0.1"
 tracing-subscriber = "0.3"
-#zenoh = { version = "0.10.1-rc", features = ["unstable"] }
-zenoh = { git = "https://github.com/eclipse-zenoh/zenoh", branch = "main", features = ["unstable"]}
+zenoh = { version = "0.10.1-rc", features = ["unstable"] } # "shared-memory" ,"transport_unixpipe",
+#zenoh = { git = "https://github.com/eclipse-zenoh/zenoh", branch = "main", features = ["unstable"]}
 
 [profile.release]
 opt-level = 'z'   # Optimize for size.

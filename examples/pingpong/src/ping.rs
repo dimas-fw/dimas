@@ -27,6 +27,7 @@ fn pong_received(_ctx: &ArcContext<AgentProps>, message: Message) -> Result<(), 
 	// get current timestamp
 	let received = Local::now()
 		.naive_utc()
+		.and_utc()
 		.timestamp_nanos_opt()
 		.unwrap_or(0);
 	// calculate & print traveltimes
@@ -68,6 +69,7 @@ async fn main() -> Result<(), DimasError> {
 				counter,
 				sent: Local::now()
 					.naive_utc()
+					.and_utc()
 					.timestamp_nanos_opt()
 					.unwrap_or(0),
 				received: None,

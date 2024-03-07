@@ -1,0 +1,8 @@
+{
+  "zenoh": {
+    "mode": "client",
+    "connect": {
+      "endpoints": ["tcp/localhost:7447", "tcp/192.168.0.???:7447"]
+    }
+  }
+}

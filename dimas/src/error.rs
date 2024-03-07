@@ -2,6 +2,9 @@
 
 //! Module `error` provides the DiMAS specific `Error`s.
 
+// region:		--- modules
+// endregion:	--- modules
+
 // region:    --- Error
 /// `DiMAS` Error type
 #[non_exhaustive]
@@ -11,12 +14,6 @@ pub enum DimasError {
 	/// this error should never happen
 	#[error("should not happen")]
 	ShouldNotHappen,
-	/// A custom error message
-	#[error("{0}")]
-	Custom(String),
-	/// `zenoh` session creation failed
-	#[error("could not create zenoh session")]
-	SessionCreationFailed,
 	/// The `put` of a `Publisher` failed
 	#[error("Publisher 'put' failed")]
 	PutFailed,
@@ -51,9 +48,18 @@ pub enum DimasError {
 	#[error("could not execute callback")]
 	CallbackFailed,
 
-	// should be last line
-	/// standard error for boxed `std::error::Error`
-	#[error(transparent)]
-	StdError(#[from] Box<dyn std::error::Error + 'static>),
+	/// File not found
+	#[error("Could not find file: {0}")]
+	FileNotFound(String),
+
+	/// No `zenoh` configuration
+	#[error("No zenoh configuration")]
+	NoZenohConfig,
+	/// Error in `zenoh` configuration
+	#[error("Cannot parse zenoh configuration: {0}")]
+	ParseConfig(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+	/// `zenoh` session creation failed
+	#[error("Creation of zenoh session failed: {0}")]
+	SessionCreation(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
 }
 // endregion: --- Error

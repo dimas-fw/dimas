@@ -340,29 +340,33 @@ mod tests {
 
 	#[tokio::test]
 	//#[serial]
-	async fn agent_create_default() {
-		let _agent1 = Agent::new(crate::config::Config::local(), Props {});
-		let _agent2 = Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
+	async fn agent_create_default() -> Result<(), Box<dyn std::error::Error>> {
+		let _agent1 = Agent::new(crate::config::Config::local()?, Props {});
+		let _agent2 = Agent::new_with_prefix(crate::config::Config::local()?, Props {}, "agent2");
+		Ok(())
 	}
 
 	#[tokio::test(flavor = "current_thread")]
 	//#[serial]
-	async fn agent_create_current() {
-		let _agent1 = Agent::new(crate::config::Config::local(), Props {});
-		let _agent2 = Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
+	async fn agent_create_current() -> Result<(), Box<dyn std::error::Error>> {
+		let _agent1 = Agent::new(crate::config::Config::local()?, Props {});
+		let _agent2 = Agent::new_with_prefix(crate::config::Config::local()?, Props {}, "agent2");
+		Ok(())
 	}
 
 	#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 	//#[serial]
-	async fn agent_create_restricted() {
-		let _agent1 = Agent::new(crate::config::Config::local(), Props {});
-		let _agent2 = Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
+	async fn agent_create_restricted() -> Result<(), Box<dyn std::error::Error>> {
+		let _agent1 = Agent::new(crate::config::Config::local()?, Props {});
+		let _agent2 = Agent::new_with_prefix(crate::config::Config::local()?, Props {}, "agent2");
+		Ok(())
 	}
 
 	#[tokio::test(flavor = "multi_thread")]
 	//#[serial]
-	async fn agent_create_multi() {
-		let _agent1 = Agent::new(crate::config::Config::local(), Props {});
-		let _agent2 = Agent::new_with_prefix(crate::config::Config::local(), Props {}, "agent2");
+	async fn agent_create_multi() -> Result<(), Box<dyn std::error::Error>> {
+		let _agent1 = Agent::new(crate::config::Config::local()?, Props {});
+		let _agent2 = Agent::new_with_prefix(crate::config::Config::local()?, Props {}, "agent2");
+		Ok(())
 	}
 }

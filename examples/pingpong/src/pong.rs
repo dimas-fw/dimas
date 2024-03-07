@@ -21,7 +21,10 @@ fn ping_received(ctx: &ArcContext<AgentProps>, message: Message) -> Result<(), D
 	let mut message: PingPongMessage = message.decode()?;
 
 	// set receive-timestamp
-	message.received = Local::now().naive_utc().timestamp_nanos_opt();
+	message.received = Local::now()
+		.naive_utc()
+		.and_utc()
+		.timestamp_nanos_opt();
 
 	let text = "pong! [".to_string() + &message.counter.to_string() + "]";
 

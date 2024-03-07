@@ -19,6 +19,9 @@ workspace = true
 
 [dependencies]
 bitcode = { workspace = true }
+dirs = { workspace = true }
+json = { workspace = true }
+json5 = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["signal", "time"]}
 tracing = { workspace = true }
