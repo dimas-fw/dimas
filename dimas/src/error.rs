@@ -52,14 +52,13 @@ pub enum DimasError {
 	#[error("Could not find file: {0}")]
 	FileNotFound(String),
 
-	/// No `zenoh` configuration
-	#[error("No zenoh configuration")]
-	NoZenohConfig,
-	/// Error in `zenoh` configuration
-	#[error("Cannot parse zenoh configuration: {0}")]
-	ParseConfig(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
 	/// `zenoh` session creation failed
 	#[error("Creation of zenoh session failed: {0}")]
 	SessionCreation(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+
+	// should be last line
+	/// auto conversion for boxed `std::error::Error`
+	#[error(transparent)]
+	StdError(#[from] Box<dyn std::error::Error + 'static>),
 }
 // endregion: --- Error
