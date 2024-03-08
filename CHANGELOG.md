@@ -16,11 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 
-## [0.0.7] - 2024-??-??
+## [0.0.7] - 2024-??-?? <br>_Has breaking changes!!_
 
 ### Added
+- Configuration via json5 file together with some new dedicated configuration methods
 
 ### Changed
+- _The dedicated configuration method `Config::local()` returns an Error now_
 
 ### Fixed
 

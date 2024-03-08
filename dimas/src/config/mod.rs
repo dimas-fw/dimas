@@ -5,9 +5,8 @@
 // region:		--- modules
 use crate::error::DimasError;
 use dirs::{config_dir, config_local_dir, home_dir};
-use json::JsonValue;
 use std::{env, path::PathBuf};
-use tracing::{error, warn};
+use tracing::{error, info, warn};
 // endregion:	--- modules
 
 // region:		--- utils
@@ -18,24 +17,25 @@ use tracing::{error, warn};
 ///  - .config directory below home directory
 ///  - local config directory (Linux: `$XDG_CONFIG_HOME` or $HOME/.config | `Windows: {FOLDERID_LocalAppData}` | `MacOS`: $HOME/Library/Application Support)
 ///  - config directory (Linux: `$XDG_CONFIG_HOME` or $HOME/.config | Windows: `{FOLDERID_RoamingAppData}` | `MacOS`: $HOME/Library/Application Support)
-fn find_file(filename: &str) -> Result<JsonValue, Box<dyn std::error::Error>> {
+fn find_file(filename: &str) -> Result<String, Box<dyn std::error::Error>> {
 	// handle environment path cwd
 	if let Ok(cwd) = env::current_dir() {
+		#[cfg(not(test))]
 		let path = cwd.join(filename);
-		if path.is_file() {
-			return read_file(path);
-		}
-		let path = cwd.join(".config").join(filename);
-		if path.is_file() {
-			return read_file(path);
-		}
 		#[cfg(test)]
-		{
-			let path = cwd.join("../.config").join(filename);
-			dbg!(&path);
-			if path.is_file() {
-				return read_file(path);
-			}	
+		let path = cwd.join("..").join(filename);
+		if path.is_file() {
+			info!("using file {:?}", &path);
+			return read_file(path);
+		}
+
+		#[cfg(not(test))]
+		let path = cwd.join(".config").join(filename);
+		#[cfg(test)]
+		let path = cwd.join("../.config").join(filename);
+		if path.is_file() {
+			info!("using file {:?}", &path);
+			return read_file(path);
 		}
 	};
 
@@ -46,6 +46,7 @@ fn find_file(filename: &str) -> Result<JsonValue, Box<dyn std::error::Error>> {
 	{
 		let file = path.join(filename);
 		if file.is_file() {
+			info!("using file {:?}", &path);
 			return read_file(file);
 		}
 	}
@@ -54,57 +55,43 @@ fn find_file(filename: &str) -> Result<JsonValue, Box<dyn std::error::Error>> {
 }
 
 /// read a config file given by filepath
-fn read_file(filepath: PathBuf) -> Result<JsonValue, Box<dyn std::error::Error>> {
+fn read_file(filepath: PathBuf) -> Result<String, Box<dyn std::error::Error>> {
 	let text = std::fs::read_to_string(filepath)?;
-	let json = json::parse(&text)?;
-	Ok(json)
-}
-
-/// read a config file given by filepath
-fn parse_content(content: &JsonValue) -> Result<Config, Box<dyn std::error::Error>> {
-	let cfg = content
-		.entries()
-		.find(|item| item.0 == "zenoh")
-		.map_or(Err(DimasError::NoZenohConfig), |result| {
-			//dbg!(result.1.dump());
-			match json5::Deserializer::from_str(&result.1.dump()) {
-				Ok(mut d) => match zenoh::config::Config::from_deserializer(&mut d) {
-					Ok(result) => Ok(result),
-					Err(error) => match error {
-						Ok(result) => Ok(result),
-						Err(error) => Err(DimasError::ParseConfig(Box::new(error))),
-					},
-				},
-				Err(error) => Err(DimasError::ParseConfig(Box::new(error))),
-			}
-		})?;
-	Ok(Config(cfg))
+	Ok(text)
 }
 // endregion:	--- utils
 
 // region:		--- Config
 /// Manages the agents configuration
 #[repr(transparent)]
-#[derive(Debug, Clone)]
-pub struct Config(zenoh::config::Config);
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct Config {
+	#[serde(deserialize_with ="zenoh::config::Config::deserialize")]
+	zenoh: zenoh::config::Config,
+}
 
 impl Default for Config {
 	/// create a default configuration that connects to agents in same subnet
 	#[allow(clippy::cognitive_complexity)]
 	fn default() -> Self {
 		match find_file("default.json5") {
-			Ok(json) => match parse_content(&json) {
+			Ok(content) => match json5::from_str(&content)
+			{
 				Ok(result) => result,
 				Err(error) => {
 					error!("{}", error);
 					warn!("using default zenoh peer configuration instead");
-					Self(zenoh::config::peer())
+					Self {
+						zenoh: zenoh::config::peer(),
+					}
 				}
 			},
 			Err(error) => {
 				error!("{}", error);
 				warn!("using default zenoh peer configuration instead");
-				Self(zenoh::config::peer())
+				Self {
+					zenoh: zenoh::config::peer(),
+				}
 			}
 		}
 	}
@@ -114,8 +101,8 @@ impl Config {
 	/// create a configuration that only connects to agents on same host
 	/// # Errors
 	pub fn local() -> Result<Self, Box<dyn std::error::Error>> {
-		let content = find_file("default.json5")?;
-		let cfg = parse_content(&content)?;
+		let content = find_file("local.json5")?;
+		let cfg = json5::from_str(&content)?;
 		Ok(cfg)
 	}
 
@@ -123,7 +110,7 @@ impl Config {
 	/// # Errors
 	pub fn low_latency() -> Result<Self, Box<dyn std::error::Error>> {
 		let content = find_file("low_latency.json5")?;
-		let cfg = parse_content(&content)?;
+		let cfg = json5::from_str(&content)?;
 		Ok(cfg)
 	}
 
@@ -131,7 +118,7 @@ impl Config {
 	/// # Errors
 	pub fn client() -> Result<Self, Box<dyn std::error::Error>> {
 		let content = find_file("client.json5")?;
-		let cfg = parse_content(&content)?;
+		let cfg = json5::from_str(&content)?;
 		Ok(cfg)
 	}
 
@@ -139,7 +126,7 @@ impl Config {
 	/// # Errors
 	pub fn peer() -> Result<Self, Box<dyn std::error::Error>> {
 		let content = find_file("peer.json5")?;
-		let cfg = parse_content(&content)?;
+		let cfg = json5::from_str(&content)?;
 		Ok(cfg)
 	}
 
@@ -147,13 +134,13 @@ impl Config {
 	/// # Errors
 	pub fn router() -> Result<Self, Box<dyn std::error::Error>> {
 		let content = find_file("router.json5")?;
-		let cfg = parse_content(&content)?;
+		let cfg = json5::from_str(&content)?;
 		Ok(cfg)
 	}
 
 	#[must_use]
 	pub(crate) fn zenoh_config(&self) -> zenoh::config::Config {
-		self.0.clone()
+		self.zenoh.clone()
 	}
 }
 // endregion:	--- Config
@@ -171,32 +158,32 @@ mod tests {
 	}
 
 	#[test]
-	fn default() {
+	fn config_default() {
 		Config::default();
 	}
 
 	#[test]
-	fn local() {
+	fn config_local() {
 		Config::local().expect("");
 	}
 
 	#[test]
-	fn router() {
+	fn config_router() {
 		Config::router().expect("");
 	}
 
 	#[test]
-	fn peer() {
+	fn config_peer() {
 		Config::peer().expect("");
 	}
 
 	#[test]
-	fn client() {
+	fn config_client() {
 		Config::client().expect("");
 	}
 
 	#[test]
-	fn low_latency() {
+	fn config_low_latency() {
 		Config::low_latency().expect("");
 	}
 }

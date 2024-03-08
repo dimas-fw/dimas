@@ -42,8 +42,8 @@ categories = [
 bitcode = "0.5"
 dimas = { path = "dimas" }
 dirs = "5"
-json = "0.12"
 json5 = "0.4"
+serde = { version = "1", features = ["derive"] }
 thiserror = "1"
 tokio = "1"
 tracing = "0.1"

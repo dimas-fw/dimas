@@ -1,22 +1,22 @@
 {
-  "zenoh": {
-    "mode": "router",
-    "connect": {
-      "endpoints": ["tcp/192.168.0.???:7447"]
+  zenoh: {
+    mode: "router",
+    connect: {
+      endpoints: ["tcp/192.168.0.???:7447"],
     },
-    "scouting": {
-      "multicast": {
-        "enabled": true,
-        "address": "224.0.0.224:7446",
-        "interface": "auto",
-        "autoconnect": { "router": "router|peer" },
-        "listen": true
+    scouting: {
+      multicast: {
+        enabled: true,
+        address: "224.0.0.224:7446",
+        interface: "auto",
+        autoconnect: { router: "router|peer" },
+        listen: true,
       },
-      "gossip": {
-        "enabled": true,
-        "multihop": false,
-        "autoconnect": { "router": "router|peer" }
-      }
-    }
-  }
+      gossip: {
+        enabled: true,
+        multihop: false,
+        autoconnect: { router: "router|peer" },
+      },
+    },
+  },
 }
