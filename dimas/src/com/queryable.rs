@@ -148,6 +148,9 @@ where
 		let ctx = self.context.clone();
 
 		self.handle.replace(tokio::spawn(async move {
+			std::panic::set_hook(Box::new(|reason| {
+				error!("queryable panic: {}", reason);
+			}));
 			if let Err(error) = run_queryable(key_expr, cb, ctx).await {
 				error!("queryable failed with {error}");
 			};

@@ -164,6 +164,9 @@ where
 		let ctx = self.context.clone();
 
 		self.handle.replace(tokio::spawn(async move {
+			std::panic::set_hook(Box::new(|reason| {
+				error!("liveliness subscriber panic: {}", reason);
+			}));
 			if let Err(error) = run_liveliness(key_expr, p_cb, d_cb, ctx).await {
 				error!("spawning liveliness subscriber failed with {error}");
 			};
@@ -174,6 +177,9 @@ where
 		let p_cb = self.put_callback.clone();
 		let ctx = self.context.clone();
 		tokio::spawn(async move {
+			std::panic::set_hook(Box::new(|reason| {
+				error!("initial liveliness panic: {}", reason);
+			}));
 			if let Err(error) = run_initial(key_expr, p_cb, ctx).await {
 				error!("spawning initial liveliness failed with {error}");
 			};

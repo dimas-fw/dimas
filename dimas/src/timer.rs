@@ -196,6 +196,9 @@ where
 				let cb = callback.clone();
 				let ctx = context.clone();
 				handle.replace(tokio::spawn(async move {
+					std::panic::set_hook(Box::new(|reason| {
+						error!("interval timer panic: {}", reason);
+					}));
 					run_timer(interval, cb, ctx).await;
 				}));
 			}
@@ -211,6 +214,9 @@ where
 				let cb = callback.clone();
 				let ctx = context.clone();
 				handle.replace(tokio::spawn(async move {
+					std::panic::set_hook(Box::new(|reason| {
+						error!("delayed timer panic: {}", reason);
+					}));
 					tokio::time::sleep(delay).await;
 					run_timer(interval, cb, ctx).await;
 				}));

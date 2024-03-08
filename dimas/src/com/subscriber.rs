@@ -171,6 +171,9 @@ where
 		let d_cb = self.delete_callback.clone();
 		let ctx = self.context.clone();
 		self.handle.replace(tokio::spawn(async move {
+			std::panic::set_hook(Box::new(|reason| {
+				error!("subscriber panic: {}", reason);
+			}));
 			if let Err(error) = run_subscriber(key_expr, p_cb, d_cb, ctx).await {
 				error!("subscriber failed with {error}");
 			};
