@@ -3,7 +3,7 @@
 //! Module `config` provides `Config`, the configuration data for an `Agent`.
 
 // region:		--- modules
-use crate::error::DimasError;
+use crate::error::{DimasError, Result};
 use dirs::{config_dir, config_local_dir, home_dir};
 use std::{env, path::PathBuf};
 use tracing::{error, info, warn};
@@ -17,7 +17,7 @@ use tracing::{error, info, warn};
 ///  - .config directory below home directory
 ///  - local config directory (Linux: `$XDG_CONFIG_HOME` or $HOME/.config | `Windows: {FOLDERID_LocalAppData}` | `MacOS`: $HOME/Library/Application Support)
 ///  - config directory (Linux: `$XDG_CONFIG_HOME` or $HOME/.config | Windows: `{FOLDERID_RoamingAppData}` | `MacOS`: $HOME/Library/Application Support)
-fn find_file(filename: &str) -> Result<String, Box<dyn std::error::Error>> {
+fn find_file(filename: &str) -> Result<String> {
 	// handle environment path cwd
 	if let Ok(cwd) = env::current_dir() {
 		#[cfg(not(test))]
@@ -51,11 +51,11 @@ fn find_file(filename: &str) -> Result<String, Box<dyn std::error::Error>> {
 		}
 	}
 
-	Err(Box::new(DimasError::FileNotFound(filename.to_string())))
+	Err(DimasError::FileNotFound(filename.to_string()).into())
 }
 
 /// read a config file given by filepath
-fn read_file(filepath: PathBuf) -> Result<String, Box<dyn std::error::Error>> {
+fn read_file(filepath: PathBuf) -> Result<String> {
 	let text = std::fs::read_to_string(filepath)?;
 	Ok(text)
 }
@@ -100,7 +100,7 @@ impl Default for Config {
 impl Config {
 	/// create a configuration that only connects to agents on same host
 	/// # Errors
-	pub fn local() -> Result<Self, Box<dyn std::error::Error>> {
+	pub fn local() -> Result<Self> {
 		let content = find_file("local.json5")?;
 		let cfg = json5::from_str(&content)?;
 		Ok(cfg)
@@ -108,7 +108,7 @@ impl Config {
 
 	/// create a low latency configuration
 	/// # Errors
-	pub fn low_latency() -> Result<Self, Box<dyn std::error::Error>> {
+	pub fn low_latency() -> Result<Self> {
 		let content = find_file("low_latency.json5")?;
 		let cfg = json5::from_str(&content)?;
 		Ok(cfg)
@@ -116,7 +116,7 @@ impl Config {
 
 	/// create a client configuration that connects to agents in same subnet
 	/// # Errors
-	pub fn client() -> Result<Self, Box<dyn std::error::Error>> {
+	pub fn client() -> Result<Self> {
 		let content = find_file("client.json5")?;
 		let cfg = json5::from_str(&content)?;
 		Ok(cfg)
@@ -124,7 +124,7 @@ impl Config {
 
 	/// create a peer configuration that connects to agents in same subnet
 	/// # Errors
-	pub fn peer() -> Result<Self, Box<dyn std::error::Error>> {
+	pub fn peer() -> Result<Self> {
 		let content = find_file("peer.json5")?;
 		let cfg = json5::from_str(&content)?;
 		Ok(cfg)
@@ -132,7 +132,7 @@ impl Config {
 
 	/// create a router configuration
 	/// # Errors
-	pub fn router() -> Result<Self, Box<dyn std::error::Error>> {
+	pub fn router() -> Result<Self> {
 		let content = find_file("router.json5")?;
 		let cfg = json5::from_str(&content)?;
 		Ok(cfg)

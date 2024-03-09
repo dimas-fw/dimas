@@ -14,7 +14,7 @@ use tracing::{error, instrument, Level};
 /// type definition for the functions called by a timer
 #[allow(clippy::module_name_repetitions)]
 pub type TimerCallback<P> =
-	Arc<Mutex<dyn FnMut(&ArcContext<P>) -> Result<(), DimasError> + Send + Sync + Unpin + 'static>>;
+	Arc<Mutex<dyn FnMut(&ArcContext<P>) -> Result<()> + Send + Sync + Unpin + 'static>>;
 // endregion:	--- types
 
 // region:		--- TimerBuilder
@@ -61,7 +61,7 @@ where
 	#[must_use]
 	pub fn callback<F>(mut self, callback: F) -> Self
 	where
-		F: FnMut(&ArcContext<P>) -> Result<(), DimasError> + Send + Sync + Unpin + 'static,
+		F: FnMut(&ArcContext<P>) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		self.callback
 			.replace(Arc::new(Mutex::new(callback)));
@@ -71,14 +71,14 @@ where
 	/// Build a timer
 	/// # Errors
 	///
-	pub fn build(self) -> Result<Timer<P>, DimasError> {
+	pub fn build(self) -> Result<Timer<P>> {
 		let interval = if self.interval.is_none() {
-			return Err(DimasError::NoInterval);
+			return Err(DimasError::NoInterval.into());
 		} else {
 			self.interval.ok_or(DimasError::ShouldNotHappen)?
 		};
 		let callback = if self.callback.is_none() {
-			return Err(DimasError::NoCallback);
+			return Err(DimasError::NoCallback.into());
 		} else {
 			self.callback.ok_or(DimasError::ShouldNotHappen)?
 		};
@@ -105,9 +105,9 @@ where
 	///
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "timer")))]
 	#[cfg(feature = "timer")]
-	pub fn add(self) -> Result<(), DimasError> {
+	pub fn add(self) -> Result<()> {
 		let name = if self.name.is_none() {
-			return Err(DimasError::NoName);
+			return Err(DimasError::NoName.into());
 		} else {
 			self.name
 				.clone()
@@ -184,7 +184,7 @@ where
 	/// # Errors
 	///
 	#[instrument(level = Level::TRACE, skip_all)]
-	pub fn start(&mut self) -> Result<(), DimasError> {
+	pub fn start(&mut self) -> Result<()> {
 		match self {
 			Self::Interval {
 				interval,
@@ -229,7 +229,7 @@ where
 	/// # Errors
 	///
 	#[instrument(level = Level::TRACE, skip_all)]
-	pub fn stop(&mut self) -> Result<(), DimasError> {
+	pub fn stop(&mut self) -> Result<()> {
 		match self {
 			Self::Interval {
 				interval: _,

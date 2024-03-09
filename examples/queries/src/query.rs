@@ -10,14 +10,14 @@ use tracing::info;
 #[derive(Debug)]
 struct AgentProps {}
 
-fn query_callback(_ctx: &ArcContext<AgentProps>, response: Response) -> Result<(), DimasError> {
+fn query_callback(_ctx: &ArcContext<AgentProps>, response: Response) -> Result<()> {
 	let message: u128 = response.decode()?;
 	println!("Response is '{message}'");
 	Ok(())
 }
 
 #[tokio::main(flavor = "current_thread")]
-async fn main() -> Result<(), DimasError> {
+async fn main() -> Result<()> {
 	// a tracing subscriber writing logs
 	tracing_subscriber::fmt::init();
 
@@ -41,7 +41,7 @@ async fn main() -> Result<(), DimasError> {
 		.timer()
 		.name("timer")
 		.interval(duration)
-		.callback(move |ctx| -> Result<(), DimasError> {
+		.callback(move |ctx| -> Result<()> {
 			info!("Querying [{counter}]");
 			// querying with stored query
 			ctx.get_with("query")?;

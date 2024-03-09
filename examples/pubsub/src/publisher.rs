@@ -13,7 +13,7 @@ struct AgentProps {
 }
 
 #[tokio::main(flavor = "current_thread")]
-async fn main() -> Result<(), DimasError> {
+async fn main() -> Result<()> {
 	// a tracing subscriber writing logs
 	tracing_subscriber::fmt::init();
 
@@ -31,7 +31,7 @@ async fn main() -> Result<(), DimasError> {
 		.timer()
 		.name("timer1")
 		.interval(Duration::from_secs(1))
-		.callback(|ctx| -> Result<(), DimasError> {
+		.callback(|ctx| -> Result<()> {
 			let counter = ctx.read()?.counter.to_string();
 
 			let text = "Hello World! [".to_string() + &counter + "]";
@@ -49,7 +49,7 @@ async fn main() -> Result<(), DimasError> {
 		.timer()
 		.name("timer2")
 		.interval(duration)
-		.callback(move |ctx| -> Result<(), DimasError> {
+		.callback(move |ctx| -> Result<()> {
 			info!("Deleting");
 			// delete with stored publisher
 			ctx.delete_with("hello")?;

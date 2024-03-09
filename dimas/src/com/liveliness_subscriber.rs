@@ -18,7 +18,7 @@ use zenoh::{
 /// Type definition for liveliness callback function
 pub type LivelinessCallback<P> = Arc<
 	Mutex<
-		dyn FnMut(&ArcContext<P>, &str) -> Result<(), DimasError> + Send + Sync + Unpin + 'static,
+		dyn FnMut(&ArcContext<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static,
 	>,
 >;
 // endregion:	--- types
@@ -67,7 +67,7 @@ where
 	#[must_use]
 	pub fn put_callback<F>(mut self, callback: F) -> Self
 	where
-		F: FnMut(&ArcContext<P>, &str) -> Result<(), DimasError> + Send + Sync + Unpin + 'static,
+		F: FnMut(&ArcContext<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		self.put_callback
 			.replace(Arc::new(Mutex::new(callback)));
@@ -78,7 +78,7 @@ where
 	#[must_use]
 	pub fn delete_callback<F>(mut self, callback: F) -> Self
 	where
-		F: FnMut(&ArcContext<P>, &str) -> Result<(), DimasError> + Send + Sync + Unpin + 'static,
+		F: FnMut(&ArcContext<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		self.delete_callback
 			.replace(Arc::new(Mutex::new(callback)));
@@ -88,14 +88,14 @@ where
 	/// Build the liveliness subscriber
 	/// # Errors
 	///
-	pub fn build(self) -> Result<LivelinessSubscriber<P>, DimasError> {
+	pub fn build(self) -> Result<LivelinessSubscriber<P>> {
 		let key_expr = if self.key_expr.is_none() {
-			return Err(DimasError::NoKeyExpression);
+			return Err(DimasError::NoKeyExpression.into());
 		} else {
 			self.key_expr.ok_or(DimasError::ShouldNotHappen)?
 		};
 		let put_callback = if self.put_callback.is_none() {
-			return Err(DimasError::NoCallback);
+			return Err(DimasError::NoCallback.into());
 		} else {
 			self.put_callback
 				.ok_or(DimasError::ShouldNotHappen)?
@@ -117,7 +117,7 @@ where
 	///
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "liveliness")))]
 	#[cfg(feature = "liveliness")]
-	pub fn add(self) -> Result<(), DimasError> {
+	pub fn add(self) -> Result<()> {
 		let c = self.subscriber.clone();
 		let s = self.build()?;
 
@@ -187,7 +187,7 @@ where
 	}
 
 	#[instrument(level = Level::TRACE)]
-	pub fn stop(&mut self) -> Result<(), DimasError> {
+	pub fn stop(&mut self) -> Result<()> {
 		self.handle
 			.take()
 			.ok_or(DimasError::ShouldNotHappen)?
@@ -202,7 +202,7 @@ async fn run_liveliness<P>(
 	p_cb: LivelinessCallback<P>,
 	d_cb: Option<LivelinessCallback<P>>,
 	ctx: ArcContext<P>,
-) -> Result<(), DimasError>
+) -> Result<()>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
@@ -267,7 +267,7 @@ async fn run_initial<P>(
 	key_expr: String,
 	p_cb: LivelinessCallback<P>,
 	ctx: ArcContext<P>,
-) -> Result<(), DimasError>
+) -> Result<()>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {

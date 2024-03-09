@@ -44,9 +44,9 @@ where
 	/// Build the publisher
 	/// # Errors
 	///
-	pub fn build(self) -> Result<Publisher, DimasError> {
+	pub fn build(self) -> Result<Publisher> {
 		let key_expr = if self.key_expr.is_none() {
-			return Err(DimasError::NoKeyExpression);
+			return Err(DimasError::NoKeyExpression.into());
 		} else {
 			self.key_expr.ok_or(DimasError::ShouldNotHappen)?
 		};
@@ -62,7 +62,7 @@ where
 	///
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "publisher")))]
 	#[cfg(feature = "publisher")]
-	pub fn add(self) -> Result<(), DimasError> {
+	pub fn add(self) -> Result<()> {
 		let collection = self.context.publishers.clone();
 		let p = self.build()?;
 		collection
@@ -96,14 +96,14 @@ impl Publisher
 	/// # Errors
 	///
 	#[instrument(name="publish", level = Level::ERROR, skip_all)]
-	pub fn put<T>(&self, message: T) -> Result<(), DimasError>
+	pub fn put<T>(&self, message: T) -> Result<()>
 	where
 		T: Debug + Encode,
 	{
 		let value: Vec<u8> = encode(&message).map_err(|_| DimasError::EncodingFailed)?;
 		match self.publisher.put(value).res_sync() {
 			Ok(()) => Ok(()),
-			Err(_) => Err(DimasError::PutFailed),
+			Err(_) => Err(DimasError::PutFailed.into()),
 		}
 	}
 
@@ -112,10 +112,10 @@ impl Publisher
 	/// # Errors
 	///
 	#[instrument(level = Level::ERROR, skip_all)]
-	pub fn delete(&self) -> Result<(), DimasError> {
+	pub fn delete(&self) -> Result<()> {
 		match self.publisher.delete().res_sync() {
 			Ok(()) => Ok(()),
-			Err(_) => Err(DimasError::DeleteFailed),
+			Err(_) => Err(DimasError::DeleteFailed.into()),
 		}
 	}
 }

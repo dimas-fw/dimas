@@ -17,7 +17,7 @@ struct PingPongMessage {
 	received: Option<i64>,
 }
 
-fn ping_received(ctx: &ArcContext<AgentProps>, message: Message) -> Result<(), DimasError> {
+fn ping_received(ctx: &ArcContext<AgentProps>, message: Message) -> Result<()> {
 	let mut message: PingPongMessage = message.decode()?;
 
 	// set receive-timestamp
@@ -37,7 +37,7 @@ fn ping_received(ctx: &ArcContext<AgentProps>, message: Message) -> Result<(), D
 }
 
 #[tokio::main(flavor = "current_thread")]
-async fn main() -> Result<(), DimasError> {
+async fn main() -> Result<()> {
 	// a tracing subscriber writing logs
 	tracing_subscriber::fmt::init();
 

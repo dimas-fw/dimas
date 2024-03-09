@@ -18,7 +18,7 @@ use zenoh::{
 #[allow(clippy::module_name_repetitions)]
 pub type QueryCallback<P> = Arc<
 	Mutex<
-		dyn FnMut(&ArcContext<P>, Response) -> Result<(), DimasError>
+		dyn FnMut(&ArcContext<P>, Response) -> Result<()>
 			+ Send
 			+ Sync
 			+ Unpin
@@ -72,7 +72,7 @@ where
 	#[must_use]
 	pub fn callback<F>(mut self, callback: F) -> Self
 	where
-		F: FnMut(&ArcContext<P>, Response) -> Result<(), DimasError>
+		F: FnMut(&ArcContext<P>, Response) -> Result<()>
 			+ Send
 			+ Sync
 			+ Unpin
@@ -86,14 +86,14 @@ where
 	/// Build the query
 	/// # Errors
 	///
-	pub fn build(self) -> Result<Query<P>, DimasError> {
+	pub fn build(self) -> Result<Query<P>> {
 		let key_expr = if self.key_expr.is_none() {
-			return Err(DimasError::NoKeyExpression);
+			return Err(DimasError::NoKeyExpression.into());
 		} else {
 			self.key_expr.ok_or(DimasError::ShouldNotHappen)?
 		};
 		let callback = if self.callback.is_none() {
-			return Err(DimasError::NoCallback);
+			return Err(DimasError::NoCallback.into());
 		} else {
 			self.callback.ok_or(DimasError::ShouldNotHappen)?
 		};
@@ -118,7 +118,7 @@ where
 	///
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "query")))]
 	#[cfg(feature = "query")]
-	pub fn add(self) -> Result<(), DimasError> {
+	pub fn add(self) -> Result<()> {
 		let collection = self.context.queries.clone();
 		let q = self.build()?;
 
@@ -161,7 +161,7 @@ where
 {
 	/// run a query
 	#[instrument(name="query", level = Level::ERROR, skip_all)]
-	pub fn get(&self) -> Result<(), DimasError> {
+	pub fn get(&self) -> Result<()> {
 		let cb = self.callback.clone();
 		let replies = self
 			.ctx

@@ -55,7 +55,7 @@ where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// Constructor for the `Context`
-	pub(crate) fn new(config: Config, props: P) -> Result<Arc<Self>, DimasError> {
+	pub(crate) fn new(config: Config, props: P) -> Result<Arc<Self>> {
 		let communicator = Arc::new(Communicator::new(config)?);
 		Ok(Arc::new(Self {
 			communicator,
@@ -78,7 +78,7 @@ where
 		config: Config,
 		props: P,
 		prefix: impl Into<String>,
-	) -> Result<Arc<Self>, DimasError> {
+	) -> Result<Arc<Self>> {
 		let communicator = Arc::new(Communicator::new_with_prefix(config, prefix)?);
 		Ok(Arc::new(Self {
 			communicator,
@@ -116,22 +116,22 @@ where
 		}
 	}
 
-	pub fn read(&self) -> Result<std::sync::RwLockReadGuard<'_, P>, DimasError> {
+	pub fn read(&self) -> Result<std::sync::RwLockReadGuard<'_, P>> {
 		self.props
 			.read()
-			.map_err(|_| DimasError::ReadPropertiesFailed)
+			.map_err(|_| DimasError::ReadPropertiesFailed.into())
 	}
 
-	pub fn write(&self) -> Result<std::sync::RwLockWriteGuard<'_, P>, DimasError> {
+	pub fn write(&self) -> Result<std::sync::RwLockWriteGuard<'_, P>> {
 		self.props
 			.write()
-			.map_err(|_| DimasError::WritePropertiesFailed)
+			.map_err(|_| DimasError::WritePropertiesFailed.into())
 	}
 
 	pub(crate) fn create_publisher<'publisher>(
 		&self,
 		key_expr: impl Into<String> + Send,
-	) -> Result<Publisher<'publisher>, DimasError> {
+	) -> Result<Publisher<'publisher>> {
 		self.communicator.create_publisher(key_expr)
 	}
 
@@ -139,7 +139,7 @@ where
 	/// # Errors
 	///   Error is propagated from Communicator
 	#[instrument(level = Level::ERROR, skip_all)]
-	pub fn put<M>(&self, msg_name: impl Into<String>, message: M) -> Result<(), DimasError>
+	pub fn put<M>(&self, msg_name: impl Into<String>, message: M) -> Result<()>
 	where
 		M: Encode,
 	{
@@ -151,7 +151,7 @@ where
 	///
 	#[cfg(feature = "publisher")]
 	#[instrument(level = Level::ERROR, skip_all)]
-	pub fn put_with<M>(&self, msg_name: &str, message: M) -> Result<(), DimasError>
+	pub fn put_with<M>(&self, msg_name: &str, message: M) -> Result<()>
 	where
 		M: Debug + Encode,
 	{
@@ -177,7 +177,7 @@ where
 	/// # Errors
 	///   Error is propagated from Communicator
 	#[instrument(level = Level::ERROR, skip_all)]
-	pub fn delete(&self, msg_name: impl Into<String>) -> Result<(), DimasError> {
+	pub fn delete(&self, msg_name: impl Into<String>) -> Result<()> {
 		self.communicator.delete(msg_name)
 	}
 
@@ -186,7 +186,7 @@ where
 	///
 	#[cfg(feature = "publisher")]
 	#[instrument(level = Level::ERROR, skip_all)]
-	pub fn delete_with(&self, msg_name: &str) -> Result<(), DimasError> {
+	pub fn delete_with(&self, msg_name: &str) -> Result<()> {
 		let key_expr = self.key_expr(msg_name);
 		if self
 			.publishers
@@ -213,7 +213,7 @@ where
 		ctx: Arc<Self>,
 		query_name: impl Into<String>,
 		callback: F,
-	) -> Result<(), DimasError>
+	) -> Result<()>
 	where
 		P: Debug + Send + Sync + Unpin + 'static,
 		F: Fn(&ArcContext<P>, Message) + Send + Sync + Unpin + 'static,
@@ -227,7 +227,7 @@ where
 	///
 	#[cfg(feature = "query")]
 	#[instrument(level = Level::ERROR, skip_all)]
-	pub fn get_with(&self, msg_name: &str) -> Result<(), DimasError> {
+	pub fn get_with(&self, msg_name: &str) -> Result<()> {
 		let key_expr = self.key_expr(msg_name);
 		if self
 			.queries

@@ -29,7 +29,9 @@ dimas = { version = "0.0.7", features = ["all"] }
 tokio = { version = "1", features = ["macros"] }
 ```
 
-It also makes sense to return a `Result` with a `DimasError`, as some functions may return one.
+It also makes sense to return a `Result`, as some functions may return one.
+DiMAS errors are always of type `Box<dyn std::error::Error>` and should be thread safe. 
+DiMAS provides a type definition `Result<T>` to make life easier
 
 A suitable main programm skeleton may look like:
 
@@ -37,7 +39,7 @@ A suitable main programm skeleton may look like:
 use dimas::prelude::*;
 
 #[tokio::main]
-async fn main() -> Result<(), DimasError> {
+async fn main() -> Result<()> {
 
 	// your code
 	// ...
@@ -73,7 +75,7 @@ struct AgentProps {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), DimasError> {
+async fn main() -> Result<()> {
 	// create & initialize agents properties
 	let properties = AgentProps { counter: 0 };
 
@@ -96,7 +98,7 @@ async fn main() -> Result<(), DimasError> {
 		.interval(Duration::from_secs(1))
 		// the timers callback function as a closure
 		.callback(
-			|ctx| -> Result<(), DimasError> {
+			|ctx| -> Result<()> {
 				let counter = ctx
 					.read()?
 					.counter
@@ -134,14 +136,14 @@ use dimas::prelude::*;
 #[derive(Debug)]
 pub struct AgentProps {}
 
-fn callback(_ctx: &ArcContext<AgentProps>, message: Message) -> Result<(), DimasError> {
+fn callback(_ctx: &ArcContext<AgentProps>, message: Message) -> Result<()> {
 	let message: String =	message.decode()?;
 	println!("Received '{}'", message);
 	Ok(())
 }
 
 #[tokio::main]
-async fn main() -> Result<(), DimasError> {
+async fn main() -> Result<()> {
 	// create & initialize agents properties
 	let properties = AgentProps {};
 
@@ -176,7 +178,7 @@ DiMAS uses a set of feature flags to minimize the size of an agent.
 It is necessary to enable all those features you want to use within your `Agent`.
 
 - `all`: Enables all the features listed below. It's a good point to start with.
-- `liveliness`: Enables liveliness features sending tokens and listening for them.
+- `liveliness`: Enables listening and reacting on liveliness tokens. Sending tokens is always possible.
 - `publisher`: Enables to store `Publisher`'s within the `Agent`'s `Context`.
 - `query`: Enables to store `Query`'s within the `Agent`'s `Context`.
 - `queryable`: Enables to store `Queryable`'s within the `Agent`'s `Context`.

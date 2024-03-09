@@ -5,6 +5,11 @@
 // region:		--- modules
 // endregion:	--- modules
 
+// region:		--- types
+/// type alias for `std::result::Result` to ease up implementation
+pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync + 'static>>;
+// endregion:	--- types
+
 // region:    --- Error
 /// `DiMAS` Error type
 #[non_exhaustive]
@@ -59,6 +64,5 @@ pub enum DimasError {
 	// should be last line
 	/// auto conversion for boxed `std::error::Error`
 	#[error(transparent)]
-	StdError(#[from] Box<dyn std::error::Error + 'static>),
-}
-// endregion: --- Error
+	StdError(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),
+}// endregion: --- Error

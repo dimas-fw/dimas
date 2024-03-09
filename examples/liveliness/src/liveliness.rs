@@ -11,20 +11,20 @@ struct AgentProps {
 	test: u32,
 }
 
-fn liveliness_subscription(ctx: &ArcContext<AgentProps>, id: &str) -> Result<(), DimasError> {
+fn liveliness_subscription(ctx: &ArcContext<AgentProps>, id: &str) -> Result<()> {
 	let _ = ctx.read()?.test;
 	info!("{id} is alive");
 	Ok(())
 }
 
-fn delete_subscription(ctx: &ArcContext<AgentProps>, id: &str) -> Result<(), DimasError> {
+fn delete_subscription(ctx: &ArcContext<AgentProps>, id: &str) -> Result<()> {
 	let _ = ctx.read()?.test;
 	info!("{id} died");
 	Ok(())
 }
 
 #[tokio::main(flavor = "current_thread")]
-async fn main() -> Result<(), DimasError> {
+async fn main() -> Result<()> {
 	// a tracing subscriber writing logs
 	tracing_subscriber::fmt::init();
 

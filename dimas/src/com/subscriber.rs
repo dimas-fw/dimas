@@ -19,7 +19,7 @@ use zenoh::{
 #[allow(clippy::module_name_repetitions)]
 pub type SubscriberPutCallback<P> = Arc<
 	Mutex<
-		dyn FnMut(&ArcContext<P>, Message) -> Result<(), DimasError>
+		dyn FnMut(&ArcContext<P>, Message) -> Result<()>
 			+ Send
 			+ Sync
 			+ Unpin
@@ -29,7 +29,7 @@ pub type SubscriberPutCallback<P> = Arc<
 /// Type definition for a subscribers `delete` callback function
 #[allow(clippy::module_name_repetitions)]
 pub type SubscriberDeleteCallback<P> =
-	Arc<Mutex<dyn FnMut(&ArcContext<P>) -> Result<(), DimasError> + Send + Sync + Unpin + 'static>>;
+	Arc<Mutex<dyn FnMut(&ArcContext<P>) -> Result<()> + Send + Sync + Unpin + 'static>>;
 // endregion:	--- types
 
 // region:		--- SubscriberBuilder
@@ -70,7 +70,7 @@ where
 	#[must_use]
 	pub fn put_callback<F>(mut self, callback: F) -> Self
 	where
-		F: FnMut(&ArcContext<P>, Message) -> Result<(), DimasError> + Send + Sync + Unpin + 'static,
+		F: FnMut(&ArcContext<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		self.put_callback
 			.replace(Arc::new(Mutex::new(callback)));
@@ -81,7 +81,7 @@ where
 	#[must_use]
 	pub fn delete_callback<F>(mut self, callback: F) -> Self
 	where
-		F: FnMut(&ArcContext<P>) -> Result<(), DimasError> + Send + Sync + Unpin + 'static,
+		F: FnMut(&ArcContext<P>) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		self.delete_callback
 			.replace(Arc::new(Mutex::new(callback)));
@@ -91,14 +91,14 @@ where
 	/// Build the subscriber
 	/// # Errors
 	///
-	pub fn build(self) -> Result<Subscriber<P>, DimasError> {
+	pub fn build(self) -> Result<Subscriber<P>> {
 		let key_expr = if self.key_expr.is_none() {
-			return Err(DimasError::NoKeyExpression);
+			return Err(DimasError::NoKeyExpression.into());
 		} else {
 			self.key_expr.ok_or(DimasError::ShouldNotHappen)?
 		};
 		let put_callback = if self.put_callback.is_none() {
-			return Err(DimasError::NoCallback);
+			return Err(DimasError::NoCallback.into());
 		} else {
 			self.put_callback
 				.ok_or(DimasError::ShouldNotHappen)?
@@ -120,7 +120,7 @@ where
 	///
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "subscriber")))]
 	#[cfg(feature = "subscriber")]
-	pub fn add(self) -> Result<(), DimasError> {
+	pub fn add(self) -> Result<()> {
 		let collection = self.context.subscribers.clone();
 		let s = self.build()?;
 
@@ -165,7 +165,7 @@ where
 	/// # Errors
 	///
 	#[instrument(level = Level::TRACE, skip_all)]
-	pub fn start(&mut self) -> Result<(), DimasError> {
+	pub fn start(&mut self) -> Result<()> {
 		let key_expr = self.key_expr.clone();
 		let p_cb = self.put_callback.clone();
 		let d_cb = self.delete_callback.clone();
@@ -185,7 +185,7 @@ where
 	/// # Errors
 	///
 	#[instrument(level = Level::TRACE, skip_all)]
-	pub fn stop(&mut self) -> Result<(), DimasError> {
+	pub fn stop(&mut self) -> Result<()> {
 		self.handle
 			.take()
 			.ok_or(DimasError::ShouldNotHappen)?
@@ -200,7 +200,7 @@ async fn run_subscriber<P>(
 	p_cb: SubscriberPutCallback<P>,
 	d_cb: Option<SubscriberDeleteCallback<P>>,
 	ctx: ArcContext<P>,
-) -> Result<(), DimasError>
+) -> Result<()>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {

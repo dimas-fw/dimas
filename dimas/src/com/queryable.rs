@@ -15,7 +15,7 @@ use zenoh::{prelude::r#async::AsyncResolve, SessionDeclarations};
 #[allow(clippy::module_name_repetitions)]
 pub type QueryableCallback<P> = Arc<
 	Mutex<
-		dyn FnMut(&ArcContext<P>, Request) -> Result<(), DimasError>
+		dyn FnMut(&ArcContext<P>, Request) -> Result<()>
 			+ Send
 			+ Sync
 			+ Unpin
@@ -61,7 +61,7 @@ where
 	#[must_use]
 	pub fn callback<F>(mut self, callback: F) -> Self
 	where
-		F: FnMut(&ArcContext<P>, Request) -> Result<(), DimasError> + Send + Sync + Unpin + 'static,
+		F: FnMut(&ArcContext<P>, Request) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		self.callback
 			.replace(Arc::new(Mutex::new(callback)));
@@ -71,14 +71,14 @@ where
 	/// Build the queryable
 	/// # Errors
 	///
-	pub fn build(self) -> Result<Queryable<P>, DimasError> {
+	pub fn build(self) -> Result<Queryable<P>> {
 		let key_expr = if self.key_expr.is_none() {
-			return Err(DimasError::NoKeyExpression);
+			return Err(DimasError::NoKeyExpression.into());
 		} else {
 			self.key_expr.ok_or(DimasError::ShouldNotHappen)?
 		};
 		let callback = if self.callback.is_none() {
-			return Err(DimasError::NoCallback);
+			return Err(DimasError::NoCallback.into());
 		} else {
 			self.callback.ok_or(DimasError::ShouldNotHappen)?
 		};
@@ -98,7 +98,7 @@ where
 	///
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "queryable")))]
 	#[cfg(feature = "queryable")]
-	pub fn add(self) -> Result<(), DimasError> {
+	pub fn add(self) -> Result<()> {
 		let collection = self.context.queryables.clone();
 		let q = self.build()?;
 
@@ -142,7 +142,7 @@ where
 	/// # Errors
 	///
 	#[instrument(level = Level::TRACE)]
-	pub fn start(&mut self) -> Result<(), DimasError> {
+	pub fn start(&mut self) -> Result<()> {
 		let key_expr = self.key_expr.clone();
 		let cb = self.callback.clone();
 		let ctx = self.context.clone();
@@ -162,7 +162,7 @@ where
 	/// # Errors
 	///
 	#[instrument(level = Level::TRACE)]
-	pub fn stop(&mut self) -> Result<(), DimasError> {
+	pub fn stop(&mut self) -> Result<()> {
 		self.handle
 			.take()
 			.ok_or(DimasError::ShouldNotHappen)?
@@ -176,7 +176,7 @@ async fn run_queryable<P>(
 	key_expr: String,
 	cb: QueryableCallback<P>,
 	ctx: ArcContext<P>,
-) -> Result<(), DimasError>
+) -> Result<()>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {

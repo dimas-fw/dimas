@@ -59,7 +59,7 @@ where
 	/// Create an instance of an agent.
 	/// # Errors
 	///
-	pub fn new(config: crate::config::Config, properties: P) -> Result<Self, DimasError> {
+	pub fn new(config: crate::config::Config, properties: P) -> Result<Self> {
 		Ok(Self {
 			context: Context::new(config, properties)?,
 			liveliness: false,
@@ -76,7 +76,7 @@ where
 		config: crate::config::Config,
 		properties: P,
 		prefix: impl Into<String>,
-	) -> Result<Self, DimasError> {
+	) -> Result<Self> {
 		Ok(Self {
 			context: Context::new_with_prefix(config, properties, prefix)?,
 			liveliness: false,
@@ -177,7 +177,7 @@ where
 
 	/// start the agent
 	#[tracing::instrument]
-	pub async fn start(&mut self) -> Result<(), DimasError> {
+	pub async fn start(&mut self) -> Result<()> {
 		// start all registered queryables
 		#[cfg(feature = "queryable")]
 		self.context
@@ -251,7 +251,7 @@ where
 				tracing::error!("Unable to listen for 'Ctrl-C': {err}");
 				// we also try to shut down the agent properly
 				self.stop()?;
-				return Err(DimasError::ShouldNotHappen);
+				return Err(DimasError::ShouldNotHappen.into());
 			}
 		}
 		Ok(())
@@ -259,7 +259,7 @@ where
 
 	/// stop the agent
 	#[tracing::instrument]
-	pub fn stop(&mut self) -> Result<(), DimasError> {
+	pub fn stop(&mut self) -> Result<()> {
 		// reverse order of start!
 		// stop all registered timers
 		#[cfg(feature = "timer")]
@@ -340,7 +340,7 @@ mod tests {
 
 	#[tokio::test]
 	//#[serial]
-	async fn agent_create_default() -> Result<(), Box<dyn std::error::Error>> {
+	async fn agent_create_default() -> Result<()> {
 		let _agent1 = Agent::new(crate::config::Config::local()?, Props {});
 		let _agent2 = Agent::new_with_prefix(crate::config::Config::local()?, Props {}, "agent2");
 		Ok(())
@@ -348,7 +348,7 @@ mod tests {
 
 	#[tokio::test(flavor = "current_thread")]
 	//#[serial]
-	async fn agent_create_current() -> Result<(), Box<dyn std::error::Error>> {
+	async fn agent_create_current() -> Result<()> {
 		let _agent1 = Agent::new(crate::config::Config::local()?, Props {});
 		let _agent2 = Agent::new_with_prefix(crate::config::Config::local()?, Props {}, "agent2");
 		Ok(())
@@ -356,7 +356,7 @@ mod tests {
 
 	#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 	//#[serial]
-	async fn agent_create_restricted() -> Result<(), Box<dyn std::error::Error>> {
+	async fn agent_create_restricted() -> Result<()> {
 		let _agent1 = Agent::new(crate::config::Config::local()?, Props {});
 		let _agent2 = Agent::new_with_prefix(crate::config::Config::local()?, Props {}, "agent2");
 		Ok(())
@@ -364,7 +364,7 @@ mod tests {
 
 	#[tokio::test(flavor = "multi_thread")]
 	//#[serial]
-	async fn agent_create_multi() -> Result<(), Box<dyn std::error::Error>> {
+	async fn agent_create_multi() -> Result<()> {
 		let _agent1 = Agent::new(crate::config::Config::local()?, Props {});
 		let _agent2 = Agent::new_with_prefix(crate::config::Config::local()?, Props {}, "agent2");
 		Ok(())

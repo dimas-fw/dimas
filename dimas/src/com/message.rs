@@ -3,10 +3,7 @@
 //! Module `message` provides the different types of `Message`s used in callbacks.
 
 // region:		--- modules
-use crate::{
-	error::DimasError,
-	prelude::{decode, encode, Decode, Encode},
-};
+use crate::prelude::{decode, encode, Decode, Encode, DimasError, Result};
 use std::ops::Deref;
 use zenoh::{prelude::sync::SyncResolve, queryable::Query, sample::Sample};
 // endregion:	--- modules
@@ -28,7 +25,7 @@ impl Message {
 	/// decode message
 	/// # Errors
 	///
-	pub fn decode<T>(self) -> Result<T, DimasError>
+	pub fn decode<T>(self) -> Result<T>
 	where
 		T: Decode,
 	{
@@ -37,7 +34,7 @@ impl Message {
 			.value
 			.try_into()
 			.map_err(|_| DimasError::DecodingFailed)?;
-		decode::<T>(value.as_slice()).map_err(|_| DimasError::DecodingFailed)
+		decode::<T>(value.as_slice()).map_err(|_| DimasError::DecodingFailed.into())
 	}
 }
 // endregion:	--- Message
@@ -59,7 +56,7 @@ impl Request {
 	/// Reply to the given request
 	/// # Errors
 	///
-	pub fn reply<T>(self, value: T) -> Result<(), DimasError>
+	pub fn reply<T>(self, value: T) -> Result<()>
 	where
 		T: Encode,
 	{
@@ -99,7 +96,7 @@ impl Response {
 	/// decode response
 	/// # Errors
 	///
-	pub fn decode<T>(self) -> Result<T, DimasError>
+	pub fn decode<T>(self) -> Result<T>
 	where
 		T: Decode,
 	{
@@ -108,7 +105,7 @@ impl Response {
 			.value
 			.try_into()
 			.map_err(|_| DimasError::DecodingFailed)?;
-		decode::<T>(value.as_slice()).map_err(|_| DimasError::DecodingFailed)
+		decode::<T>(value.as_slice()).map_err(|_| DimasError::DecodingFailed.into())
 	}
 }
 // endregion:	--- Response
