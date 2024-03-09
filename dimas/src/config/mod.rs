@@ -5,7 +5,7 @@
 // region:		--- modules
 use crate::error::{DimasError, Result};
 use dirs::{config_dir, config_local_dir, home_dir};
-use std::{env, path::PathBuf};
+use std::env;
 use tracing::{error, info, warn};
 // endregion:	--- modules
 
@@ -26,7 +26,7 @@ fn find_file(filename: &str) -> Result<String> {
 		let path = cwd.join("..").join(filename);
 		if path.is_file() {
 			info!("using file {:?}", &path);
-			return read_file(path);
+			return Ok(std::fs::read_to_string(path)?);
 		}
 
 		#[cfg(not(test))]
@@ -35,7 +35,7 @@ fn find_file(filename: &str) -> Result<String> {
 		let path = cwd.join("../.config").join(filename);
 		if path.is_file() {
 			info!("using file {:?}", &path);
-			return read_file(path);
+			return Ok(std::fs::read_to_string(path)?);
 		}
 	};
 
@@ -47,17 +47,11 @@ fn find_file(filename: &str) -> Result<String> {
 		let file = path.join(filename);
 		if file.is_file() {
 			info!("using file {:?}", &path);
-			return read_file(file);
+			return Ok(std::fs::read_to_string(path)?);
 		}
 	}
 
 	Err(DimasError::FileNotFound(filename.to_string()).into())
-}
-
-/// read a config file given by filepath
-fn read_file(filepath: PathBuf) -> Result<String> {
-	let text = std::fs::read_to_string(filepath)?;
-	Ok(text)
 }
 // endregion:	--- utils
 
@@ -138,6 +132,14 @@ impl Config {
 		Ok(cfg)
 	}
 
+	/// create a configuration from a configuration file
+	/// # Errors
+	pub fn from_file(filename: &str) -> Result<Self> {
+		let content = find_file(filename)?;
+		let cfg = json5::from_str(&content)?;
+		Ok(cfg)
+	}
+
 	#[must_use]
 	pub(crate) fn zenoh_config(&self) -> zenoh::config::Config {
 		self.zenoh.clone()
@@ -185,5 +187,16 @@ mod tests {
 	#[test]
 	fn config_low_latency() {
 		Config::low_latency().expect("");
+	}
+
+	#[test]
+	fn config_from_fle() {
+		Config::from_file("default.json5").expect("");
+	}
+
+	#[test]
+	#[should_panic = "non existent file"]
+	fn config_from_fle_panics() {
+		Config::from_file("non_existent.json5").expect("non existent file");
 	}
 }
