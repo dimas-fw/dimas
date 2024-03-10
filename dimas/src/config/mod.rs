@@ -60,7 +60,7 @@ fn find_file(filename: &str) -> Result<String> {
 #[repr(transparent)]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Config {
-	#[serde(deserialize_with ="zenoh::config::Config::deserialize")]
+	#[serde(deserialize_with = "zenoh::config::Config::deserialize")]
 	zenoh: zenoh::config::Config,
 }
 
@@ -69,8 +69,7 @@ impl Default for Config {
 	#[allow(clippy::cognitive_complexity)]
 	fn default() -> Self {
 		match find_file("default.json5") {
-			Ok(content) => match json5::from_str(&content)
-			{
+			Ok(content) => match json5::from_str(&content) {
 				Ok(result) => result,
 				Err(error) => {
 					error!("{}", error);

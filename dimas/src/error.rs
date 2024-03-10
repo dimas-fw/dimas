@@ -65,4 +65,4 @@ pub enum DimasError {
 	/// auto conversion for boxed `std::error::Error`
 	#[error(transparent)]
 	StdError(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),
-}// endregion: --- Error
+} // endregion: --- Error

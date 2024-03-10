@@ -17,15 +17,8 @@ use zenoh::{
 // region:		--- types
 /// Type definition for a subscribers `publish` callback function
 #[allow(clippy::module_name_repetitions)]
-pub type SubscriberPutCallback<P> = Arc<
-	Mutex<
-		dyn FnMut(&ArcContext<P>, Message) -> Result<()>
-			+ Send
-			+ Sync
-			+ Unpin
-			+ 'static,
-	>,
->;
+pub type SubscriberPutCallback<P> =
+	Arc<Mutex<dyn FnMut(&ArcContext<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static>>;
 /// Type definition for a subscribers `delete` callback function
 #[allow(clippy::module_name_repetitions)]
 pub type SubscriberDeleteCallback<P> =

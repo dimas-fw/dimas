@@ -8,18 +8,24 @@ use tracing::info;
 
 #[derive(Debug, Default)]
 struct AgentProps {
-	test: u32,
+	num: u32,
 }
 
 fn liveliness_subscription(ctx: &ArcContext<AgentProps>, id: &str) -> Result<()> {
-	let _ = ctx.read()?.test;
 	info!("{id} is alive");
+	let mut val = ctx.read()?.num;
+	val += 1;
+	ctx.write()?.num = val;
+	println!("Number of agents is {val}");
 	Ok(())
 }
 
 fn delete_subscription(ctx: &ArcContext<AgentProps>, id: &str) -> Result<()> {
-	let _ = ctx.read()?.test;
 	info!("{id} died");
+	let mut val = ctx.read()?.num;
+	val -= 1;
+	ctx.write()?.num = val;
+	println!("Number of agents is {val}");
 	Ok(())
 }
 
@@ -29,7 +35,7 @@ async fn main() -> Result<()> {
 	tracing_subscriber::fmt::init();
 
 	// create & initialize agents properties
-	let properties = AgentProps { test: 0 };
+	let properties = AgentProps { num: 1 };
 
 	// create an agent with the properties and the prefix 'examples'
 	let mut agent = Agent::new_with_prefix(Config::default(), properties, "examples")?;

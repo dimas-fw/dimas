@@ -7,10 +7,36 @@
 use crate::com::liveliness_subscriber::{LivelinessSubscriber, LivelinessSubscriberBuilder};
 use crate::context::Context;
 use crate::prelude::*;
-use std::{fmt::Debug, ops::Deref, time::Duration};
-use tokio::signal;
+use std::{
+	fmt::Debug,
+	ops::Deref,
+	sync::{
+		mpsc::{self, Receiver, Sender},
+		Mutex,
+	},
+	time::Duration,
+};
+use tokio::{select, signal};
+use tracing::{error, info};
 use zenoh::liveliness::LivelinessToken;
 // endregion:	--- modules
+
+// region:		--- Command
+#[derive(Debug, Clone)]
+pub enum Command {
+	RestartLivelinessSubscriber,
+}
+
+async fn commands(rx: &Mutex<Receiver<Command>>) -> Box<Command> {
+	loop {
+		if let Ok(cmd) = rx.lock().expect("").try_recv() {
+			return Box::new(cmd);
+		};
+
+		tokio::time::sleep(Duration::from_millis(1)).await;
+	}
+}
+// endregion:	--- Command
 
 // region:		--- Agent
 /// Agent
@@ -175,9 +201,7 @@ where
 		}
 	}
 
-	/// start the agent
-	#[tracing::instrument]
-	pub async fn start(&mut self) -> Result<()> {
+	async fn start_tasks(&mut self, tx: &Sender<Command>) -> Result<()> {
 		// start all registered queryables
 		#[cfg(feature = "queryable")]
 		self.context
@@ -211,11 +235,11 @@ where
 				.map_err(|_| DimasError::ShouldNotHappen)?
 				.as_mut()
 				.ok_or(DimasError::ShouldNotHappen)?
-				.start();
+				.start(tx.clone());
 		}
 
 		// wait a little bit before starting active part
-		tokio::time::sleep(Duration::from_millis(100)).await;
+		//tokio::time::sleep(Duration::from_millis(10)).await;
 
 		// activate liveliness
 		if self.liveliness {
@@ -242,23 +266,57 @@ where
 				let _ = timer.1.start();
 			});
 
-		// wait for a shutdown signal
-		match signal::ctrl_c().await {
-			Ok(()) => {
-				self.stop()?;
-			}
-			Err(err) => {
-				tracing::error!("Unable to listen for 'Ctrl-C': {err}");
-				// we also try to shut down the agent properly
-				self.stop()?;
-				return Err(DimasError::ShouldNotHappen.into());
-			}
-		}
 		Ok(())
 	}
 
+	/// start the agent
+	#[tracing::instrument(skip_all)]
+	pub async fn start(&mut self) -> Result<()> {
+		// we need an mpsc channel with a receiver behind a `Mutex`
+		let (tx, rx) = mpsc::channel();
+		let rx = Mutex::new(rx);
+
+		self.start_tasks(&tx).await?;
+
+		loop {
+			// different possibilities that can happen
+			select! {
+				// wait for commands
+				command = commands(&rx) => {
+					match *command {
+						Command::RestartLivelinessSubscriber => {
+							self.liveliness_subscriber
+								.write()
+								.map_err(|_| DimasError::WritePropertiesFailed)?
+								.as_mut()
+								.ok_or(DimasError::ReadPropertiesFailed)?
+								.restart(tx.clone());
+						},
+					};
+				}
+
+				// wait for a shutdown signal
+				signal = signal::ctrl_c() => {
+					match signal {
+						Ok(()) => {
+							info!("shutdown due to 'Ctrl-C'");
+							self.stop()?;
+							return Ok(());
+						}
+						Err(err) => {
+							error!("Unable to listen for 'Ctrl-C': {err}");
+							// we also try to shut down the agent properly
+							self.stop()?;
+							return Err(DimasError::ShouldNotHappen.into());
+						}
+					}
+				}
+			}
+		}
+	}
+
 	/// stop the agent
-	#[tracing::instrument]
+	#[tracing::instrument(skip_all)]
 	pub fn stop(&mut self) -> Result<()> {
 		// reverse order of start!
 		// stop all registered timers
@@ -336,6 +394,7 @@ mod tests {
 	#[test]
 	const fn normal_types() {
 		is_normal::<Agent<Props>>();
+		is_normal::<Command>();
 	}
 
 	#[tokio::test]

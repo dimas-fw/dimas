@@ -16,15 +16,8 @@ use zenoh::{
 // region:		--- types
 /// type definition for the queries callback function
 #[allow(clippy::module_name_repetitions)]
-pub type QueryCallback<P> = Arc<
-	Mutex<
-		dyn FnMut(&ArcContext<P>, Response) -> Result<()>
-			+ Send
-			+ Sync
-			+ Unpin
-			+ 'static,
-	>,
->;
+pub type QueryCallback<P> =
+	Arc<Mutex<dyn FnMut(&ArcContext<P>, Response) -> Result<()> + Send + Sync + Unpin + 'static>>;
 // endregion:	--- types
 
 // region:		--- QueryBuilder
@@ -72,11 +65,7 @@ where
 	#[must_use]
 	pub fn callback<F>(mut self, callback: F) -> Self
 	where
-		F: FnMut(&ArcContext<P>, Response) -> Result<()>
-			+ Send
-			+ Sync
-			+ Unpin
-			+ 'static,
+		F: FnMut(&ArcContext<P>, Response) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		self.callback
 			.replace(Arc::new(Mutex::new(callback)));

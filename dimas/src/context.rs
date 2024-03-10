@@ -208,12 +208,7 @@ where
 	/// Method to do an ad hoc query without any consolidation of answers.
 	/// Multiple answers may be received for the same timestamp.
 	#[instrument(level = Level::ERROR, skip_all)]
-	pub fn get<F>(
-		&self,
-		ctx: Arc<Self>,
-		query_name: impl Into<String>,
-		callback: F,
-	) -> Result<()>
+	pub fn get<F>(&self, ctx: Arc<Self>, query_name: impl Into<String>, callback: F) -> Result<()>
 	where
 		P: Debug + Send + Sync + Unpin + 'static,
 		F: Fn(&ArcContext<P>, Message) + Send + Sync + Unpin + 'static,

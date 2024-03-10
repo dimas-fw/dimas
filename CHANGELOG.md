@@ -10,7 +10,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 ### Changed
-- _Set on error handling: `Result`is always of type `std::result::Result<T, Box<dyn std::error::Error>>`_
 
 ### Fixed
 
@@ -25,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - _The dedicated configuration method `Config::local()` returns an Error now_
 - panic hooks in spawned tasks that they do not crash the application
+- _Set on error handling: `Result`is always of type `std::result::Result<T, Box<dyn std::error::Error>>`_
 
 ### Fixed
 
