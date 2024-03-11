@@ -116,20 +116,8 @@ criteria = "safe-to-deploy"
 version = "1.6.0"
 criteria = "safe-to-deploy"
 
-[[exemptions.bitcode]]
-version = "0.5.1"
-criteria = "safe-to-deploy"
-
-[[exemptions.bitcode_derive]]
-version = "0.5.0"
-criteria = "safe-to-deploy"
-
 [[exemptions.bitflags]]
 version = "1.3.2"
-criteria = "safe-to-deploy"
-
-[[exemptions.bitflags]]
-version = "2.4.2"
 criteria = "safe-to-deploy"
 
 [[exemptions.blocking]]
@@ -248,10 +236,6 @@ criteria = "safe-to-deploy"
 version = "0.11.0"
 criteria = "safe-to-deploy"
 
-[[exemptions.from_bytes_or_zeroed]]
-version = "0.1.0"
-criteria = "safe-to-deploy"
-
 [[exemptions.futures]]
 version = "0.3.30"
 criteria = "safe-to-deploy"
@@ -336,10 +320,6 @@ criteria = "safe-to-deploy"
 version = "0.20.0"
 criteria = "safe-to-deploy"
 
-[[exemptions.itertools]]
-version = "0.4.19"
-criteria = "safe-to-deploy"
-
 [[exemptions.js-sys]]
 version = "0.3.68"
 criteria = "safe-to-deploy"
@@ -422,10 +402,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.ordered-float]]
 version = "4.2.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.packagemerge]]
-version = "0.1.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.parking]]
@@ -514,10 +490,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.redox_users]]
 version = "0.4.4"
-criteria = "safe-to-deploy"
-
-[[exemptions.residua-zigzag]]
-version = "0.1.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.ring]]
@@ -612,10 +584,6 @@ criteria = "safe-to-deploy"
 version = "3.1.0"
 criteria = "safe-to-deploy"
 
-[[exemptions.simdutf8]]
-version = "0.1.4"
-criteria = "safe-to-deploy"
-
 [[exemptions.slab]]
 version = "0.4.9"
 criteria = "safe-to-deploy"
@@ -638,10 +606,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.spki]]
 version = "0.7.3"
-criteria = "safe-to-deploy"
-
-[[exemptions.static_assertions]]
-version = "1.1.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.stop-token]]

@@ -27,7 +27,7 @@ impl Message {
 	///
 	pub fn decode<T>(self) -> Result<T>
 	where
-		T: Decode,
+		T: for<'a> Decode<'a>,
 	{
 		let value: Vec<u8> = self
 			.0
@@ -56,12 +56,13 @@ impl Request {
 	/// Reply to the given request
 	/// # Errors
 	///
+	#[allow(clippy::needless_pass_by_value)]
 	pub fn reply<T>(self, value: T) -> Result<()>
 	where
 		T: Encode,
 	{
 		let key = self.0.selector().key_expr.to_string();
-		let encoded: Vec<u8> = encode(&value).map_err(|_| DimasError::ShouldNotHappen)?;
+		let encoded: Vec<u8> = encode(&value);
 		let sample = Sample::try_from(key, encoded).map_err(|_| DimasError::ShouldNotHappen)?;
 
 		self.0
@@ -98,7 +99,7 @@ impl Response {
 	///
 	pub fn decode<T>(self) -> Result<T>
 	where
-		T: Decode,
+		T: for<'a> Decode<'a>,
 	{
 		let value: Vec<u8> = self
 			.0

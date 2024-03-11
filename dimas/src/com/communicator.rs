@@ -88,11 +88,12 @@ impl Communicator {
 			.map_err(|_| DimasError::ShouldNotHappen.into())
 	}
 
+	#[allow(clippy::needless_pass_by_value)]
 	pub(crate) fn put<M>(&self, msg_name: impl Into<String>, message: M) -> Result<()>
 	where
 		M: Encode,
 	{
-		let value: Vec<u8> = encode(&message).map_err(|_| DimasError::ShouldNotHappen)?;
+		let value: Vec<u8> = encode(&message);
 		let key_expr = self.key_expr(msg_name);
 		match self.session.put(&key_expr, value).res_sync() {
 			Ok(()) => Ok(()),

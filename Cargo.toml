@@ -39,11 +39,11 @@ categories = [
 ]
 
 [workspace.dependencies]
-bitcode = "0.5"
+bitcode = "0.6.0-alpha.2"
 dimas = { path = "dimas" }
 dirs = "5"
 json5 = "0.4"
-serde = { version = "1", features = ["derive"] }
+serde = { version = "1", default-features = false, features = ["derive"] }
 thiserror = "1"
 tokio = "1"
 tracing = "0.1"

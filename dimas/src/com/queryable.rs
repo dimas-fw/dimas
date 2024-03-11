@@ -3,18 +3,26 @@
 //! Module `queryable` provides an information/compute provider `Queryable` which can be created using the `QueryableBuilder`.
 
 // region:		--- modules
-use crate::prelude::*;
-use std::{fmt::Debug, sync::Mutex};
+use crate::{agent::Command, prelude::*};
+use std::{
+	fmt::Debug,
+	sync::{mpsc::Sender, Mutex},
+};
 use tokio::task::JoinHandle;
-use tracing::{error, instrument, Level};
+use tracing::{error, info, instrument, warn, Level};
 use zenoh::{prelude::r#async::AsyncResolve, SessionDeclarations};
 // endregion:	--- modules
 
 // region:		--- types
 /// type defnition for the queryables callback function.
 #[allow(clippy::module_name_repetitions)]
-pub type QueryableCallback<P> =
-	Arc<Mutex<dyn FnMut(&ArcContext<P>, Request) -> Result<()> + Send + Sync + Unpin + 'static>>;
+pub type QueryableCallback<P> = Arc<
+	Mutex<
+		Option<
+			Box<dyn FnMut(&ArcContext<P>, Request) -> Result<()> + Send + Sync + Unpin + 'static>,
+		>,
+	>,
+>;
 // endregion:	--- types
 
 // region:		--- QueryableBuilder
@@ -57,7 +65,7 @@ where
 		F: FnMut(&ArcContext<P>, Request) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		self.callback
-			.replace(Arc::new(Mutex::new(callback)));
+			.replace(Arc::new(Mutex::new(Some(Box::new(callback)))));
 		self
 	}
 
@@ -70,15 +78,13 @@ where
 		} else {
 			self.key_expr.ok_or(DimasError::ShouldNotHappen)?
 		};
-		let callback = if self.callback.is_none() {
+		if self.callback.is_none() {
 			return Err(DimasError::NoCallback.into());
-		} else {
-			self.callback.ok_or(DimasError::ShouldNotHappen)?
 		};
 
 		let q = Queryable {
 			key_expr,
-			callback,
+			callback: self.callback,
 			handle: None,
 			context: self.context,
 		};
@@ -111,7 +117,7 @@ where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
 	key_expr: String,
-	callback: QueryableCallback<P>,
+	callback: Option<QueryableCallback<P>>,
 	handle: Option<JoinHandle<()>>,
 	context: ArcContext<P>,
 }
@@ -131,43 +137,55 @@ impl<P> Queryable<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
-	/// Start Queryable
-	/// # Errors
-	///
+	/// Start or restart the queryable.
+	/// An already running queryable will be stopped, eventually damaged Mutexes will be repaired
 	#[instrument(level = Level::TRACE)]
-	pub fn start(&mut self) -> Result<()> {
+	pub fn start(&mut self, tx: Sender<Command>) {
+		self.stop();
+
+		{
+			if let Some(cb) = self.callback.clone() {
+				if let Err(err) = cb.lock() {
+					warn!("found poisoned put Mutex");
+					self.callback
+						.replace(Arc::new(Mutex::new(err.into_inner().take())));
+				}
+			}
+		}
+
 		let key_expr = self.key_expr.clone();
 		let cb = self.callback.clone();
 		let ctx = self.context.clone();
 
 		self.handle.replace(tokio::spawn(async move {
-			std::panic::set_hook(Box::new(|reason| {
+			let key = key_expr.clone();
+			std::panic::set_hook(Box::new(move |reason| {
 				error!("queryable panic: {}", reason);
+				if let Err(reason) = tx.send(Command::RestartQueryable(key.clone())) {
+					error!("could not restart queryable: {}", reason);
+				} else {
+					info!("restarting queryable!");
+				};
 			}));
 			if let Err(error) = run_queryable(key_expr, cb, ctx).await {
 				error!("queryable failed with {error}");
 			};
 		}));
-		Ok(())
 	}
 
-	/// Stop Queryable
-	/// # Errors
-	///
+	/// Stop a running Queryable
 	#[instrument(level = Level::TRACE)]
-	pub fn stop(&mut self) -> Result<()> {
-		self.handle
-			.take()
-			.ok_or(DimasError::ShouldNotHappen)?
-			.abort();
-		Ok(())
+	pub fn stop(&mut self) {
+		if let Some(handle) = self.handle.take() {
+			handle.abort();
+		}
 	}
 }
 
 #[instrument(name="queryable", level = Level::ERROR, skip_all)]
 async fn run_queryable<P>(
 	key_expr: String,
-	cb: QueryableCallback<P>,
+	cb: Option<QueryableCallback<P>>,
 	ctx: ArcContext<P>,
 ) -> Result<()>
 where
@@ -188,15 +206,17 @@ where
 			.map_err(|_| DimasError::ShouldNotHappen)?;
 		let request = Request(query);
 
-		let result = cb.lock();
-		match result {
-			Ok(mut lock) => {
-				if let Err(error) = lock(&ctx, request) {
-					error!("callback failed with {error}");
+		if let Some(cb) = cb.clone() {
+			let result = cb.lock();
+			match result {
+				Ok(mut cb) => {
+					if let Err(error) = cb.as_deref_mut().expect("snh")(&ctx, request) {
+						error!("callback failed with {error}");
+					}
 				}
-			}
-			Err(err) => {
-				error!("callback lock failed with {err}");
+				Err(err) => {
+					error!("callback lock failed with {err}");
+				}
 			}
 		}
 	}

@@ -100,7 +100,7 @@ impl Publisher
 	where
 		T: Debug + Encode,
 	{
-		let value: Vec<u8> = encode(&message).map_err(|_| DimasError::EncodingFailed)?;
+		let value: Vec<u8> = encode(&message);
 		match self.publisher.put(value).res_sync() {
 			Ok(()) => Ok(()),
 			Err(_) => Err(DimasError::PutFailed.into()),

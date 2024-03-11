@@ -4,10 +4,13 @@
 //! A `Subscriber` can optional subscribe on a delete message.
 
 // region:		--- modules
-use crate::prelude::*;
-use std::{fmt::Debug, sync::Mutex};
+use crate::{agent::Command, prelude::*};
+use std::{
+	fmt::Debug,
+	sync::{mpsc::Sender, Mutex},
+};
 use tokio::task::JoinHandle;
-use tracing::{error, instrument, Level};
+use tracing::{error, info, instrument, warn, Level};
 use zenoh::{
 	prelude::{r#async::AsyncResolve, SampleKind},
 	SessionDeclarations,
@@ -17,12 +20,18 @@ use zenoh::{
 // region:		--- types
 /// Type definition for a subscribers `publish` callback function
 #[allow(clippy::module_name_repetitions)]
-pub type SubscriberPutCallback<P> =
-	Arc<Mutex<dyn FnMut(&ArcContext<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static>>;
+pub type SubscriberPutCallback<P> = Arc<
+	Mutex<
+		Option<
+			Box<dyn FnMut(&ArcContext<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static>,
+		>,
+	>,
+>;
 /// Type definition for a subscribers `delete` callback function
 #[allow(clippy::module_name_repetitions)]
-pub type SubscriberDeleteCallback<P> =
-	Arc<Mutex<dyn FnMut(&ArcContext<P>) -> Result<()> + Send + Sync + Unpin + 'static>>;
+pub type SubscriberDeleteCallback<P> = Arc<
+	Mutex<Option<Box<dyn FnMut(&ArcContext<P>) -> Result<()> + Send + Sync + Unpin + 'static>>>,
+>;
 // endregion:	--- types
 
 // region:		--- SubscriberBuilder
@@ -66,7 +75,7 @@ where
 		F: FnMut(&ArcContext<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		self.put_callback
-			.replace(Arc::new(Mutex::new(callback)));
+			.replace(Arc::new(Mutex::new(Some(Box::new(callback)))));
 		self
 	}
 
@@ -77,7 +86,7 @@ where
 		F: FnMut(&ArcContext<P>) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		self.delete_callback
-			.replace(Arc::new(Mutex::new(callback)));
+			.replace(Arc::new(Mutex::new(Some(Box::new(callback)))));
 		self
 	}
 
@@ -90,16 +99,13 @@ where
 		} else {
 			self.key_expr.ok_or(DimasError::ShouldNotHappen)?
 		};
-		let put_callback = if self.put_callback.is_none() {
+		if self.put_callback.is_none() {
 			return Err(DimasError::NoCallback.into());
-		} else {
-			self.put_callback
-				.ok_or(DimasError::ShouldNotHappen)?
 		};
 
 		let s = Subscriber {
 			key_expr,
-			put_callback,
+			put_callback: self.put_callback,
 			delete_callback: self.delete_callback,
 			handle: None,
 			context: self.context,
@@ -133,7 +139,7 @@ where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
 	key_expr: String,
-	put_callback: SubscriberPutCallback<P>,
+	put_callback: Option<SubscriberPutCallback<P>>,
 	delete_callback: Option<SubscriberDeleteCallback<P>>,
 	handle: Option<JoinHandle<()>>,
 	context: ArcContext<P>,
@@ -154,43 +160,65 @@ impl<P> Subscriber<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
-	/// Start Subscriber
-	/// # Errors
-	///
+	/// Start or restart the subscriber.
+	/// An already running subscriber will be stopped, eventually damaged Mutexes will be repaired
 	#[instrument(level = Level::TRACE, skip_all)]
-	pub fn start(&mut self) -> Result<()> {
+	pub fn start(&mut self, tx: Sender<Command>) {
+		self.stop();
+
+		{
+			if let Some(pcb) = self.put_callback.clone() {
+				if let Err(err) = pcb.lock() {
+					warn!("found poisoned put Mutex");
+					self.put_callback
+						.replace(Arc::new(Mutex::new(err.into_inner().take())));
+				}
+			}
+		}
+		{
+			if let Some(dcb) = self.delete_callback.clone() {
+				if let Err(err) = dcb.lock() {
+					warn!("found poisoned delete Mutex");
+					self.delete_callback
+						.replace(Arc::new(Mutex::new(err.into_inner().take())));
+				}
+			}
+		}
+
 		let key_expr = self.key_expr.clone();
 		let p_cb = self.put_callback.clone();
 		let d_cb = self.delete_callback.clone();
 		let ctx = self.context.clone();
+
 		self.handle.replace(tokio::spawn(async move {
-			std::panic::set_hook(Box::new(|reason| {
+			let key = key_expr.clone();
+			std::panic::set_hook(Box::new(move |reason| {
 				error!("subscriber panic: {}", reason);
+				if let Err(reason) = tx.send(Command::RestartSubscriber(key.clone())) {
+					error!("could not restart subscriber: {}", reason);
+				} else {
+					info!("restarting subscriber!");
+				};
 			}));
 			if let Err(error) = run_subscriber(key_expr, p_cb, d_cb, ctx).await {
-				error!("subscriber failed with {error}");
+				error!("spawning subscriber failed with {error}");
 			};
 		}));
-		Ok(())
 	}
 
-	/// Stop Subscriber
-	/// # Errors
-	///
+	/// Stop a running Subscriber
 	#[instrument(level = Level::TRACE, skip_all)]
-	pub fn stop(&mut self) -> Result<()> {
-		self.handle
-			.take()
-			.ok_or(DimasError::ShouldNotHappen)?
-			.abort();
-		Ok(())
+	pub fn stop(&mut self) {
+		if let Some(handle) = self.handle.take() {
+			handle.abort();
+		}
 	}
 }
 
 #[instrument(name="subscriber", level = Level::ERROR, skip_all)]
 async fn run_subscriber<P>(
 	key_expr: String,
-	p_cb: SubscriberPutCallback<P>,
+	p_cb: Option<SubscriberPutCallback<P>>,
 	d_cb: Option<SubscriberDeleteCallback<P>>,
 	ctx: ArcContext<P>,
 ) -> Result<()>
@@ -214,15 +242,17 @@ where
 		match sample.kind {
 			SampleKind::Put => {
 				let msg = Message(sample);
-				let result = p_cb.lock();
-				match result {
-					Ok(mut lock) => {
-						if let Err(error) = lock(&ctx, msg) {
-							error!("put callback failed with {error}");
+				if let Some(cb) = p_cb.clone() {
+					let result = cb.lock();
+					match result {
+						Ok(mut cb) => {
+							if let Err(error) = cb.as_deref_mut().expect("snh")(&ctx, msg) {
+								error!("put callback failed with {error}");
+							}
 						}
-					}
-					Err(err) => {
-						error!("put callback lock failed with {err}");
+						Err(err) => {
+							error!("put callback lock failed with {err}");
+						}
 					}
 				}
 			}
@@ -230,8 +260,8 @@ where
 				if let Some(cb) = d_cb.clone() {
 					let result = cb.lock();
 					match result {
-						Ok(mut lock) => {
-							if let Err(error) = lock(&ctx) {
+						Ok(mut cb) => {
+							if let Err(error) = cb.as_deref_mut().expect("snh")(&ctx) {
 								error!("delete callback failed with {error}");
 							}
 						}

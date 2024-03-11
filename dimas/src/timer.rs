@@ -4,17 +4,18 @@
 //! When fired, a `Timer` calls his assigned `TimerCallback`.
 
 // region:		--- modules
-use crate::prelude::*;
-use std::{fmt::Debug, sync::Mutex, time::Duration};
+use crate::{agent::Command, prelude::*};
+use std::{fmt::Debug, sync::{mpsc::Sender, Mutex}, time::Duration};
 use tokio::{task::JoinHandle, time};
-use tracing::{error, instrument, Level};
+use tracing::{error, info, instrument, warn, Level};
 // endregion:	--- modules
 
 // region:		--- types
 /// type definition for the functions called by a timer
 #[allow(clippy::module_name_repetitions)]
-pub type TimerCallback<P> =
-	Arc<Mutex<dyn FnMut(&ArcContext<P>) -> Result<()> + Send + Sync + Unpin + 'static>>;
+pub type TimerCallback<P> = Arc<
+	Mutex<Option<Box<dyn FnMut(&ArcContext<P>) -> Result<()> + Send + Sync + Unpin + 'static>>>,
+>;
 // endregion:	--- types
 
 // region:		--- TimerBuilder
@@ -64,7 +65,7 @@ where
 		F: FnMut(&ArcContext<P>) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		self.callback
-			.replace(Arc::new(Mutex::new(callback)));
+			.replace(Arc::new(Mutex::new(Some(Box::new(callback)))));
 		self
 	}
 
@@ -72,28 +73,33 @@ where
 	/// # Errors
 	///
 	pub fn build(self) -> Result<Timer<P>> {
+		let name = if self.name.is_none() {
+			return Err(DimasError::NoName.into());
+		} else {
+			self.name.ok_or(DimasError::ShouldNotHappen)?
+		};
 		let interval = if self.interval.is_none() {
 			return Err(DimasError::NoInterval.into());
 		} else {
 			self.interval.ok_or(DimasError::ShouldNotHappen)?
 		};
-		let callback = if self.callback.is_none() {
+		if self.callback.is_none() {
 			return Err(DimasError::NoCallback.into());
-		} else {
-			self.callback.ok_or(DimasError::ShouldNotHappen)?
 		};
 
 		match self.delay {
 			Some(delay) => Ok(Timer::DelayedInterval {
+				name,
 				delay,
 				interval,
-				callback,
+				callback: self.callback,
 				handle: None,
 				context: self.context,
 			}),
 			None => Ok(Timer::Interval {
+				name,
 				interval,
-				callback,
+				callback: self.callback,
 				handle: None,
 				context: self.context,
 			}),
@@ -109,9 +115,7 @@ where
 		let name = if self.name.is_none() {
 			return Err(DimasError::NoName.into());
 		} else {
-			self.name
-				.clone()
-				.ok_or(DimasError::ShouldNotHappen)?
+			self.name.clone().ok_or(DimasError::ShouldNotHappen)?
 		};
 		let c = self.context.timers.clone();
 		let timer = self.build()?;
@@ -131,10 +135,12 @@ where
 {
 	/// A Timer with an Interval
 	Interval {
+		/// The Timers ID
+		name: String,
 		/// The interval in which the Timer is fired
 		interval: Duration,
 		/// Timers Callback function called, when Timer is fired
-		callback: TimerCallback<P>,
+		callback: Option<TimerCallback<P>>,
 		/// The handle to stop the Timer
 		handle: Option<JoinHandle<()>>,
 		/// The agents Context available within the callback function
@@ -142,12 +148,14 @@ where
 	},
 	/// A delayed Timer with an Interval
 	DelayedInterval {
+		/// The Timers ID
+		name: String,
 		/// The delay after which the first firing of the Timer happenes
 		delay: Duration,
 		/// The interval in which the Timer is fired
 		interval: Duration,
 		/// Timers Callback function called, when Timer is fired
-		callback: TimerCallback<P>,
+		callback: Option<TimerCallback<P>>,
 		/// The handle to stop the Timer
 		handle: Option<JoinHandle<()>>,
 		/// The agents Context available within the callback function
@@ -180,82 +188,114 @@ impl<P> Timer<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
-	/// Start Timer
-	/// # Errors
-	///
+	/// Start or restart the timer
+	/// An already running timer will be stopped, eventually damaged Mutexes will be repaired
 	#[instrument(level = Level::TRACE, skip_all)]
-	pub fn start(&mut self) -> Result<()> {
+	pub fn start(&mut self, tx: Sender<Command>) {
+		self.stop();
+
 		match self {
 			Self::Interval {
+				name,
 				interval,
 				callback,
 				handle,
 				context,
 			} => {
+				{
+					if let Some(cb) = callback.clone() {
+						if let Err(err) = cb.lock() {
+							warn!("found poisoned put Mutex");
+							callback.replace(Arc::new(Mutex::new(err.into_inner().take())));
+						}
+					}
+				}
+
 				let interval = *interval;
 				let cb = callback.clone();
 				let ctx = context.clone();
+				let key = name.clone();
+
 				handle.replace(tokio::spawn(async move {
-					std::panic::set_hook(Box::new(|reason| {
+					std::panic::set_hook(Box::new(move |reason| {
 						error!("interval timer panic: {}", reason);
+						if let Err(reason) = tx.send(Command::RestartTimer(key.clone())) {
+							error!("could not restart timer: {}", reason);
+						} else {
+							info!("restarting timer!");
+						};
 					}));
 					run_timer(interval, cb, ctx).await;
 				}));
 			}
 			Self::DelayedInterval {
+				name,
 				delay,
 				interval,
 				callback,
 				handle,
 				context,
 			} => {
+				{
+					if let Some(cb) = callback.clone() {
+						if let Err(err) = cb.lock() {
+							warn!("found poisoned put Mutex");
+							callback.replace(Arc::new(Mutex::new(err.into_inner().take())));
+						}
+					}
+				}
+
 				let delay = *delay;
 				let interval = *interval;
 				let cb = callback.clone();
 				let ctx = context.clone();
+				let key = name.clone();
+
 				handle.replace(tokio::spawn(async move {
-					std::panic::set_hook(Box::new(|reason| {
+					std::panic::set_hook(Box::new(move |reason| {
 						error!("delayed timer panic: {}", reason);
+						if let Err(reason) = tx.send(Command::RestartTimer(key.clone())) {
+							error!("could not restart timer: {}", reason);
+						} else {
+							info!("restarting timer!");
+						};
 					}));
 					tokio::time::sleep(delay).await;
 					run_timer(interval, cb, ctx).await;
 				}));
 			}
 		}
-		Ok(())
 	}
 
-	/// Stop Timer
-	/// # Errors
-	///
+	/// Stop a running Timer
 	#[instrument(level = Level::TRACE, skip_all)]
-	pub fn stop(&mut self) -> Result<()> {
+	pub fn stop(&mut self) {
 		match self {
 			Self::Interval {
+				name: _,
 				interval: _,
 				callback: _,
 				handle,
 				context: _,
 			}
 			| Self::DelayedInterval {
+				name: _,
 				delay: _,
 				interval: _,
 				callback: _,
 				handle,
 				context: _,
 			} => {
-				handle
-					.take()
-					.ok_or(DimasError::ShouldNotHappen)?
-					.abort();
+				if let Some(handle) = handle.take() {
+					handle.abort();
+				}
 			}
 		}
-		Ok(())
 	}
 }
 
 #[instrument(name="timer", level = Level::ERROR, skip_all)]
-async fn run_timer<P>(interval: Duration, cb: TimerCallback<P>, ctx: ArcContext<P>)
+async fn run_timer<P>(interval: Duration, cb: Option<TimerCallback<P>>, ctx: ArcContext<P>)
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
@@ -263,15 +303,17 @@ where
 	loop {
 		interval.tick().await;
 
-		let result = cb.lock();
-		match result {
-			Ok(mut lock) => {
-				if let Err(error) = lock(&ctx) {
-					error!("callback failed with {error}");
+		if let Some(cb) = cb.clone() {
+			let result = cb.lock();
+			match result {
+				Ok(mut cb) => {
+					if let Err(error) = cb.as_deref_mut().expect("snh")(&ctx) {
+						error!("callback failed with {error}");
+					}
 				}
-			}
-			Err(err) => {
-				error!("callback lock failed with {err}");
+				Err(err) => {
+					error!("callback lock failed with {err}");
+				}
 			}
 		}
 	}

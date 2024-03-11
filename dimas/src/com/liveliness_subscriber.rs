@@ -20,9 +20,11 @@ use zenoh::{
 
 // region:		--- types
 /// Type definition for liveliness callback function
-pub type LivelinessCallback<P> =
-	Arc<Mutex<Option<Box<dyn FnMut(&ArcContext<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static>>>>;
-//	Arc<Mutex<dyn FnMut(&ArcContext<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static>>;
+pub type LivelinessCallback<P> = Arc<
+	Mutex<
+		Option<Box<dyn FnMut(&ArcContext<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static>>,
+	>,
+>;
 // endregion:	--- types
 
 // region:		--- LivelinessSubscriberBuilder
@@ -155,8 +157,31 @@ impl<P> LivelinessSubscriber<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
+	/// Start or restart the liveliness subscriber.
+	/// An already running subscriber will be stopped, eventually damaged Mutexes will be repaired
 	#[instrument(level = Level::TRACE, skip_all)]
-	pub fn start(&mut self, rx: Sender<Command>) {
+	pub fn start(&mut self, tx: Sender<Command>) {
+		self.stop();
+
+		{
+			if let Some(pcb) = self.put_callback.clone() {
+				if let Err(err) = pcb.lock() {
+					warn!("found poisoned put Mutex");
+					self.put_callback
+						.replace(Arc::new(Mutex::new(err.into_inner().take())));
+				}
+			}
+		}
+		{
+			if let Some(dcb) = self.delete_callback.clone() {
+				if let Err(err) = dcb.lock() {
+					warn!("found poisoned delete Mutex");
+					self.delete_callback
+						.replace(Arc::new(Mutex::new(err.into_inner().take())));
+				}
+			}
+		}
+
 		// the initial liveliness query
 		let key_expr = self.key_expr.clone();
 		let p_cb = self.put_callback.clone();
@@ -167,7 +192,7 @@ where
 			};
 		});
 
-		// the all time subscriber
+		// the liveliness subscriber
 		let key_expr = self.key_expr.clone();
 		let p_cb = self.put_callback.clone();
 		let d_cb = self.delete_callback.clone();
@@ -176,7 +201,7 @@ where
 		self.handle.replace(tokio::spawn(async move {
 			std::panic::set_hook(Box::new(move |reason| {
 				error!("liveliness subscriber panic: {}", reason);
-				if let Err(reason) = rx.send(Command::RestartLivelinessSubscriber) {
+				if let Err(reason) = tx.send(Command::RestartLivelinessSubscriber) {
 					error!("could not restart liveliness subscriber: {}", reason);
 				} else {
 					info!("restarting liveliness subscriber!");
@@ -188,55 +213,12 @@ where
 		}));
 	}
 
-	#[instrument(level = Level::TRACE, skip_all)]
-	pub fn restart(&mut self, rx: Sender<Command>) {
+	/// Stop a running LivelinessSubscriber
+	#[instrument(level = Level::TRACE)]
+	pub fn stop(&mut self) {
 		if let Some(handle) = self.handle.take() {
 			handle.abort();
-		};
-
-		let key_expr = self.key_expr.clone();
-		{
-			if let Some(pcb) = self.put_callback.clone() {
-				if let Err(err) = pcb.lock() {
-					warn!("found poisoned put Mutex");
-					self.put_callback.replace(Arc::new(Mutex::new(err.into_inner().take())));
-				}
-			}
 		}
-		{
-			if let Some(dcb) = self.delete_callback.clone() {
-				if let Err(err) = dcb.lock() {
-					warn!("found poisoned delete Mutex");
-					self.delete_callback.replace(Arc::new(Mutex::new(err.into_inner().take())));
-				}
-			}
-		}
-		let p_cb = self.put_callback.clone();
-		let d_cb = self.delete_callback.clone();
-		let ctx = self.context.clone();
-
-		self.handle.replace(tokio::spawn(async move {
-			std::panic::set_hook(Box::new(move |reason| {
-				error!("liveliness subscriber panic: {}", reason);
-				if let Err(reason) = rx.send(Command::RestartLivelinessSubscriber) {
-					error!("could not restart liveliness subscriber: {}", reason);
-				} else {
-					info!("restarting liveliness subscriber!");
-				};
-			}));
-			if let Err(error) = run_liveliness(key_expr, p_cb, d_cb, ctx).await {
-				error!("spawning liveliness subscriber failed with {error}");
-			};
-		}));
-	}
-
-	#[instrument(level = Level::TRACE)]
-	pub fn stop(&mut self) -> Result<()> {
-		self.handle
-			.take()
-			.ok_or(DimasError::ShouldNotHappen)?
-			.abort();
-		Ok(())
 	}
 }
 

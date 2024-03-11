@@ -25,6 +25,10 @@ use zenoh::liveliness::LivelinessToken;
 #[derive(Debug, Clone)]
 pub enum Command {
 	RestartLivelinessSubscriber,
+	RestartQueryable(String),
+	RestartSubscriber(String),
+	RestartTimer(String),
+	Dummy,
 }
 
 async fn commands(rx: &Mutex<Receiver<Command>>) -> Box<Command> {
@@ -112,31 +116,31 @@ where
 		})
 	}
 
-	/// get the agents uuid
+	/// Get the agents uuid
 	#[must_use]
 	pub fn uuid(&self) -> String {
 		self.context.uuid()
 	}
 
-	/// get the agents properties
+	/// Get the agents properties
 	#[must_use]
 	pub fn props(&self) -> Arc<RwLock<P>> {
 		self.context.props.clone()
 	}
 
-	/// activate sending liveliness information
+	/// Activate sending liveliness information
 	pub fn liveliness(&mut self, activate: bool) {
 		self.liveliness = activate;
 	}
 
-	/// get a `Context` of the `Agent`
+	/// Get a `Context` of the `Agent`
 	pub fn get_context(&self) -> ArcContext<P> {
 		self.context.clone()
 	}
 
-	//#[cfg_attr(doc, doc(cfg(feature = "liveliness")))]
-	/// get a builder for a subscriber for the liveliness information
+	/// Get a builder for a subscriber for the liveliness information
 	#[cfg(feature = "liveliness")]
+	#[cfg_attr(doc, doc(cfg(feature = "liveliness")))]
 	#[must_use]
 	pub fn liveliness_subscriber(&self) -> LivelinessSubscriberBuilder<P> {
 		LivelinessSubscriberBuilder {
@@ -148,7 +152,7 @@ where
 		}
 	}
 
-	/// get a builder for a Publisher
+	/// Get a builder for a Publisher
 	#[must_use]
 	pub fn publisher(&self) -> PublisherBuilder<P> {
 		PublisherBuilder {
@@ -157,7 +161,7 @@ where
 		}
 	}
 
-	/// get a builder for a Query
+	/// Get a builder for a Query
 	#[must_use]
 	pub fn query(&self) -> QueryBuilder<P> {
 		QueryBuilder {
@@ -168,7 +172,7 @@ where
 		}
 	}
 
-	/// get a builder for a Queryable
+	/// Get a builder for a Queryable
 	#[must_use]
 	pub fn queryable(&self) -> QueryableBuilder<P> {
 		QueryableBuilder {
@@ -178,7 +182,7 @@ where
 		}
 	}
 
-	/// get a builder for a Subscriber
+	/// Get a builder for a Subscriber
 	#[must_use]
 	pub fn subscriber(&self) -> SubscriberBuilder<P> {
 		SubscriberBuilder {
@@ -189,7 +193,7 @@ where
 		}
 	}
 
-	/// get a builder for a Timer
+	/// Get a builder for a Timer
 	#[must_use]
 	pub fn timer(&self) -> TimerBuilder<P> {
 		TimerBuilder {
@@ -201,6 +205,9 @@ where
 		}
 	}
 
+	/// Internal function for starting all registered tasks
+	/// # Errors
+	/// Currently none
 	async fn start_tasks(&mut self, tx: &Sender<Command>) -> Result<()> {
 		// start all registered queryables
 		#[cfg(feature = "queryable")]
@@ -210,8 +217,9 @@ where
 			.map_err(|_| DimasError::ShouldNotHappen)?
 			.iter_mut()
 			.for_each(|queryable| {
-				let _ = queryable.1.start();
+				queryable.1.start(tx.clone());
 			});
+
 		// start all registered subscribers
 		#[cfg(feature = "subscriber")]
 		self.context
@@ -220,8 +228,9 @@ where
 			.map_err(|_| DimasError::ShouldNotHappen)?
 			.iter_mut()
 			.for_each(|subscriber| {
-				let _ = subscriber.1.start();
+				subscriber.1.start(tx.clone());
 			});
+
 		// start liveliness subscriber
 		#[cfg(feature = "liveliness")]
 		if self
@@ -241,6 +250,17 @@ where
 		// wait a little bit before starting active part
 		//tokio::time::sleep(Duration::from_millis(10)).await;
 
+		// start all registered timers
+		#[cfg(feature = "timer")]
+		self.context
+			.timers
+			.write()
+			.map_err(|_| DimasError::ShouldNotHappen)?
+			.iter_mut()
+			.for_each(|timer| {
+				timer.1.start(tx.clone());
+			});
+
 		// activate liveliness
 		if self.liveliness {
 			let msg_type = "alive";
@@ -255,21 +275,12 @@ where
 				.replace(token);
 		}
 
-		// start all registered timers
-		#[cfg(feature = "timer")]
-		self.context
-			.timers
-			.write()
-			.map_err(|_| DimasError::ShouldNotHappen)?
-			.iter_mut()
-			.for_each(|timer| {
-				let _ = timer.1.start();
-			});
-
 		Ok(())
 	}
 
-	/// start the agent
+	/// Start the agent
+	/// # Errors
+	/// Currently none
 	#[tracing::instrument(skip_all)]
 	pub async fn start(&mut self) -> Result<()> {
 		// we need an mpsc channel with a receiver behind a `Mutex`
@@ -281,7 +292,7 @@ where
 		loop {
 			// different possibilities that can happen
 			select! {
-				// wait for commands
+				// Commands
 				command = commands(&rx) => {
 					match *command {
 						Command::RestartLivelinessSubscriber => {
@@ -290,12 +301,37 @@ where
 								.map_err(|_| DimasError::WritePropertiesFailed)?
 								.as_mut()
 								.ok_or(DimasError::ReadPropertiesFailed)?
-								.restart(tx.clone());
+								.start(tx.clone());
 						},
+						Command::RestartQueryable(key_expr) => {
+							self.context.queryables
+								.write()
+								.map_err(|_| DimasError::WritePropertiesFailed)?
+								.get_mut(&key_expr)
+								.ok_or(DimasError::ShouldNotHappen)?
+								.start(tx.clone());
+						},
+						Command::RestartSubscriber(key_expr) => {
+							self.context.subscribers
+								.write()
+								.map_err(|_| DimasError::WritePropertiesFailed)?
+								.get_mut(&key_expr)
+								.ok_or(DimasError::ShouldNotHappen)?
+								.start(tx.clone());
+						},
+						Command::RestartTimer(key_expr) => {
+							self.context.timers
+								.write()
+								.map_err(|_| DimasError::WritePropertiesFailed)?
+								.get_mut(&key_expr)
+								.ok_or(DimasError::ShouldNotHappen)?
+								.start(tx.clone());
+						},
+						Command::Dummy => {},
 					};
 				}
 
-				// wait for a shutdown signal
+				// shutdown signal "ctrl-c"
 				signal = signal::ctrl_c() => {
 					match signal {
 						Ok(()) => {
@@ -315,10 +351,20 @@ where
 		}
 	}
 
-	/// stop the agent
+	/// Stop the agent
+	/// # Errors
+	/// Currently none
 	#[tracing::instrument(skip_all)]
 	pub fn stop(&mut self) -> Result<()> {
 		// reverse order of start!
+		// stop liveliness
+		if self.liveliness {
+			self.liveliness_token
+				.write()
+				.map_err(|_| DimasError::ShouldNotHappen)?
+				.take();
+		}
+
 		// stop all registered timers
 		#[cfg(feature = "timer")]
 		self.context
@@ -327,18 +373,11 @@ where
 			.map_err(|_| DimasError::ShouldNotHappen)?
 			.iter_mut()
 			.for_each(|timer| {
-				let _ = timer.1.stop();
+				timer.1.stop();
 			});
 
 		#[cfg(feature = "liveliness")]
 		{
-			// stop liveliness
-			self.liveliness_token
-				.write()
-				.map_err(|_| DimasError::ShouldNotHappen)?
-				.take();
-			self.liveliness = false;
-
 			// stop liveliness subscriber
 			#[cfg(feature = "liveliness")]
 			if self
@@ -352,7 +391,7 @@ where
 					.map_err(|_| DimasError::ShouldNotHappen)?
 					.as_mut()
 					.ok_or(DimasError::ShouldNotHappen)?
-					.stop()?;
+					.stop();
 			}
 		}
 
@@ -364,8 +403,9 @@ where
 			.map_err(|_| DimasError::ShouldNotHappen)?
 			.iter_mut()
 			.for_each(|subscriber| {
-				let _ = subscriber.1.stop();
+				subscriber.1.stop();
 			});
+
 		// stop all registered queryables
 		#[cfg(feature = "queryable")]
 		self.context
@@ -374,7 +414,7 @@ where
 			.map_err(|_| DimasError::ShouldNotHappen)?
 			.iter_mut()
 			.for_each(|queryable| {
-				let _ = queryable.1.stop();
+				queryable.1.stop();
 			});
 		Ok(())
 	}
