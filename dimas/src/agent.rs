@@ -139,8 +139,8 @@ where
 	}
 
 	/// Get a builder for a subscriber for the liveliness information
+	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "liveliness")))]
 	#[cfg(feature = "liveliness")]
-	#[cfg_attr(doc, doc(cfg(feature = "liveliness")))]
 	#[must_use]
 	pub fn liveliness_subscriber(&self) -> LivelinessSubscriberBuilder<P> {
 		LivelinessSubscriberBuilder {
@@ -298,15 +298,15 @@ where
 						Command::RestartLivelinessSubscriber => {
 							self.liveliness_subscriber
 								.write()
-								.map_err(|_| DimasError::WritePropertiesFailed)?
+								.map_err(|_| DimasError::WriteProperties)?
 								.as_mut()
-								.ok_or(DimasError::ReadPropertiesFailed)?
+								.ok_or(DimasError::ReadProperties)?
 								.start(tx.clone());
 						},
 						Command::RestartQueryable(key_expr) => {
 							self.context.queryables
 								.write()
-								.map_err(|_| DimasError::WritePropertiesFailed)?
+								.map_err(|_| DimasError::WriteProperties)?
 								.get_mut(&key_expr)
 								.ok_or(DimasError::ShouldNotHappen)?
 								.start(tx.clone());
@@ -314,7 +314,7 @@ where
 						Command::RestartSubscriber(key_expr) => {
 							self.context.subscribers
 								.write()
-								.map_err(|_| DimasError::WritePropertiesFailed)?
+								.map_err(|_| DimasError::WriteProperties)?
 								.get_mut(&key_expr)
 								.ok_or(DimasError::ShouldNotHappen)?
 								.start(tx.clone());
@@ -322,7 +322,7 @@ where
 						Command::RestartTimer(key_expr) => {
 							self.context.timers
 								.write()
-								.map_err(|_| DimasError::WritePropertiesFailed)?
+								.map_err(|_| DimasError::WriteProperties)?
 								.get_mut(&key_expr)
 								.ok_or(DimasError::ShouldNotHappen)?
 								.start(tx.clone());

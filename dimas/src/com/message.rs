@@ -33,8 +33,8 @@ impl Message {
 			.0
 			.value
 			.try_into()
-			.map_err(|_| DimasError::DecodingFailed)?;
-		decode::<T>(value.as_slice()).map_err(|_| DimasError::DecodingFailed.into())
+			.map_err(|_| DimasError::DecodingMessage)?;
+		decode::<T>(value.as_slice()).map_err(|_| DimasError::DecodingMessage.into())
 	}
 }
 // endregion:	--- Message
@@ -105,8 +105,8 @@ impl Response {
 			.0
 			.value
 			.try_into()
-			.map_err(|_| DimasError::DecodingFailed)?;
-		decode::<T>(value.as_slice()).map_err(|_| DimasError::DecodingFailed.into())
+			.map_err(|_| DimasError::DecodingMessage)?;
+		decode::<T>(value.as_slice()).map_err(|_| DimasError::DecodingMessage.into())
 	}
 }
 // endregion:	--- Response

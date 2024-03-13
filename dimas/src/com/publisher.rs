@@ -103,7 +103,7 @@ impl Publisher
 		let value: Vec<u8> = encode(&message);
 		match self.publisher.put(value).res_sync() {
 			Ok(()) => Ok(()),
-			Err(_) => Err(DimasError::PutFailed.into()),
+			Err(_) => Err(DimasError::PutMessage.into()),
 		}
 	}
 
@@ -115,7 +115,7 @@ impl Publisher
 	pub fn delete(&self) -> Result<()> {
 		match self.publisher.delete().res_sync() {
 			Ok(()) => Ok(()),
-			Err(_) => Err(DimasError::DeleteFailed.into()),
+			Err(_) => Err(DimasError::DeleteMessage.into()),
 		}
 	}
 }

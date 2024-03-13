@@ -21,10 +21,10 @@ pub enum DimasError {
 	ShouldNotHappen,
 	/// The `put` of a `Publisher` failed
 	#[error("Publisher 'put' failed")]
-	PutFailed,
+	PutMessage,
 	/// The `delete` of a `Publisher` failed
 	#[error("Publisher 'delete' failed")]
-	DeleteFailed,
+	DeleteMessage,
 	/// There was no key expression given to the Builder
 	#[error("no key expression given")]
 	NoKeyExpression,
@@ -39,19 +39,19 @@ pub enum DimasError {
 	NoName,
 	/// Encoding of message failed
 	#[error("message encoding failed")]
-	EncodingFailed,
+	EncodingMessage,
 	/// Decoding of message failed
 	#[error("message decoding failed")]
-	DecodingFailed,
+	DecodingMessage,
 	/// Read access to properties failed
 	#[error("read  of properties failed")]
-	ReadPropertiesFailed,
+	ReadProperties,
 	/// Write access to properties failed
 	#[error("write  of properties failed")]
-	WritePropertiesFailed,
+	WriteProperties,
 	/// Lock on callback failed
 	#[error("could not execute callback")]
-	CallbackFailed,
+	ExecuteCallback,
 
 	/// File not found
 	#[error("Could not find file: {0}")]

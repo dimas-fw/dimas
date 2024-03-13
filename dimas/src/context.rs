@@ -119,13 +119,13 @@ where
 	pub fn read(&self) -> Result<std::sync::RwLockReadGuard<'_, P>> {
 		self.props
 			.read()
-			.map_err(|_| DimasError::ReadPropertiesFailed.into())
+			.map_err(|_| DimasError::ReadProperties.into())
 	}
 
 	pub fn write(&self) -> Result<std::sync::RwLockWriteGuard<'_, P>> {
 		self.props
 			.write()
-			.map_err(|_| DimasError::WritePropertiesFailed.into())
+			.map_err(|_| DimasError::WriteProperties.into())
 	}
 
 	pub(crate) fn create_publisher<'publisher>(

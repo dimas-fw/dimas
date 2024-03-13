@@ -97,7 +97,7 @@ impl Communicator {
 		let key_expr = self.key_expr(msg_name);
 		match self.session.put(&key_expr, value).res_sync() {
 			Ok(()) => Ok(()),
-			Err(_) => Err(DimasError::PutFailed.into()),
+			Err(_) => Err(DimasError::PutMessage.into()),
 		}
 	}
 
@@ -105,7 +105,7 @@ impl Communicator {
 		let key_expr = self.key_expr(msg_name);
 		match self.session.delete(&key_expr).res_sync() {
 			Ok(()) => Ok(()),
-			Err(_) => Err(DimasError::DeleteFailed.into()),
+			Err(_) => Err(DimasError::DeleteMessage.into()),
 		}
 	}
 
