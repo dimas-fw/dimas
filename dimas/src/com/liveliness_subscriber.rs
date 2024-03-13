@@ -11,7 +11,9 @@ use std::{
 	time::Duration,
 };
 use tokio::task::JoinHandle;
-use tracing::{error, info, instrument, warn, Level};
+use tracing::{error, instrument, warn, Level};
+#[cfg(feature = "liveliness")]
+use tracing::info;
 use zenoh::{
 	prelude::{r#async::AsyncResolve, SampleKind},
 	SessionDeclarations,
@@ -163,6 +165,9 @@ where
 	pub fn start(&mut self, tx: Sender<Command>) {
 		self.stop();
 
+		#[cfg(not(feature = "liveliness"))]
+		drop(tx);
+
 		{
 			if let Some(pcb) = self.put_callback.clone() {
 				if let Err(err) = pcb.lock() {
@@ -201,6 +206,7 @@ where
 		self.handle.replace(tokio::spawn(async move {
 			std::panic::set_hook(Box::new(move |reason| {
 				error!("liveliness subscriber panic: {}", reason);
+				#[cfg(feature = "liveliness")]
 				if let Err(reason) = tx.send(Command::RestartLivelinessSubscriber) {
 					error!("could not restart liveliness subscriber: {}", reason);
 				} else {

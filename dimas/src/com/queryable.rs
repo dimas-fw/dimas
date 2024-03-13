@@ -9,7 +9,9 @@ use std::{
 	sync::{mpsc::Sender, Mutex},
 };
 use tokio::task::JoinHandle;
-use tracing::{error, info, instrument, warn, Level};
+use tracing::{error, instrument, warn, Level};
+#[cfg(feature = "queryable")]
+use tracing::info;
 use zenoh::{prelude::r#async::AsyncResolve, SessionDeclarations};
 // endregion:	--- modules
 
@@ -143,6 +145,9 @@ where
 	pub fn start(&mut self, tx: Sender<Command>) {
 		self.stop();
 
+		#[cfg(not(feature = "queryable"))]
+		drop(tx);
+
 		{
 			if let Some(cb) = self.callback.clone() {
 				if let Err(err) = cb.lock() {
@@ -158,9 +163,11 @@ where
 		let ctx = self.context.clone();
 
 		self.handle.replace(tokio::spawn(async move {
+			#[cfg(feature = "queryable")]
 			let key = key_expr.clone();
 			std::panic::set_hook(Box::new(move |reason| {
 				error!("queryable panic: {}", reason);
+				#[cfg(feature = "queryable")]
 				if let Err(reason) = tx.send(Command::RestartQueryable(key.clone())) {
 					error!("could not restart queryable: {}", reason);
 				} else {

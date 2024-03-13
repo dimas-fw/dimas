@@ -7,7 +7,9 @@
 use crate::{agent::Command, prelude::*};
 use std::{fmt::Debug, sync::{mpsc::Sender, Mutex}, time::Duration};
 use tokio::{task::JoinHandle, time};
-use tracing::{error, info, instrument, warn, Level};
+use tracing::{error, instrument, warn, Level};
+#[cfg(feature = "timer")]
+use tracing::info;
 // endregion:	--- modules
 
 // region:		--- types
@@ -194,6 +196,9 @@ where
 	pub fn start(&mut self, tx: Sender<Command>) {
 		self.stop();
 
+		#[cfg(not(feature = "timer"))]
+		drop(tx);
+
 		match self {
 			Self::Interval {
 				name,
@@ -214,11 +219,15 @@ where
 				let interval = *interval;
 				let cb = callback.clone();
 				let ctx = context.clone();
-				let key = name.clone();
 
+				#[cfg(not(feature = "timer"))]
+				let _key = name.clone();
+				#[cfg(feature = "timer")]
+				let key = name.clone();
 				handle.replace(tokio::spawn(async move {
 					std::panic::set_hook(Box::new(move |reason| {
 						error!("interval timer panic: {}", reason);
+						#[cfg(feature = "timer")]
 						if let Err(reason) = tx.send(Command::RestartTimer(key.clone())) {
 							error!("could not restart timer: {}", reason);
 						} else {
@@ -249,11 +258,15 @@ where
 				let interval = *interval;
 				let cb = callback.clone();
 				let ctx = context.clone();
-				let key = name.clone();
 
+				#[cfg(not(feature = "timer"))]
+				let _key = name.clone();
+				#[cfg(feature = "timer")]
+				let key = name.clone();
 				handle.replace(tokio::spawn(async move {
 					std::panic::set_hook(Box::new(move |reason| {
 						error!("delayed timer panic: {}", reason);
+						#[cfg(feature = "timer")]
 						if let Err(reason) = tx.send(Command::RestartTimer(key.clone())) {
 							error!("could not restart timer: {}", reason);
 						} else {

@@ -24,9 +24,13 @@ use zenoh::liveliness::LivelinessToken;
 // region:		--- Command
 #[derive(Debug, Clone)]
 pub enum Command {
+	#[cfg(feature = "liveliness")]
 	RestartLivelinessSubscriber,
+	#[cfg(feature = "queryable")]
 	RestartQueryable(String),
+	#[cfg(feature = "subscriber")]
 	RestartSubscriber(String),
+	#[cfg(feature = "timer")]
 	RestartTimer(String),
 	Dummy,
 }
@@ -208,7 +212,9 @@ where
 	/// Internal function for starting all registered tasks
 	/// # Errors
 	/// Currently none
+	#[allow(unused_variables)]
 	async fn start_tasks(&mut self, tx: &Sender<Command>) -> Result<()> {
+
 		// start all registered queryables
 		#[cfg(feature = "queryable")]
 		self.context
@@ -295,6 +301,7 @@ where
 				// Commands
 				command = commands(&rx) => {
 					match *command {
+						#[cfg(feature = "liveliness")]
 						Command::RestartLivelinessSubscriber => {
 							self.liveliness_subscriber
 								.write()
@@ -303,6 +310,7 @@ where
 								.ok_or(DimasError::ReadProperties)?
 								.start(tx.clone());
 						},
+						#[cfg(feature = "queryable")]
 						Command::RestartQueryable(key_expr) => {
 							self.context.queryables
 								.write()
@@ -311,6 +319,7 @@ where
 								.ok_or(DimasError::ShouldNotHappen)?
 								.start(tx.clone());
 						},
+						#[cfg(feature = "subscriber")]
 						Command::RestartSubscriber(key_expr) => {
 							self.context.subscribers
 								.write()
@@ -319,6 +328,7 @@ where
 								.ok_or(DimasError::ShouldNotHappen)?
 								.start(tx.clone());
 						},
+						#[cfg(feature = "timer")]
 						Command::RestartTimer(key_expr) => {
 							self.context.timers
 								.write()

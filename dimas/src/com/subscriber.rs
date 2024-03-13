@@ -10,7 +10,9 @@ use std::{
 	sync::{mpsc::Sender, Mutex},
 };
 use tokio::task::JoinHandle;
-use tracing::{error, info, instrument, warn, Level};
+use tracing::{error, instrument, warn, Level};
+#[cfg(feature = "subscriber")]
+use tracing::info;
 use zenoh::{
 	prelude::{r#async::AsyncResolve, SampleKind},
 	SessionDeclarations,
@@ -166,6 +168,9 @@ where
 	pub fn start(&mut self, tx: Sender<Command>) {
 		self.stop();
 
+		#[cfg(not(feature = "subscriber"))]
+		drop(tx);
+
 		{
 			if let Some(pcb) = self.put_callback.clone() {
 				if let Err(err) = pcb.lock() {
@@ -191,9 +196,11 @@ where
 		let ctx = self.context.clone();
 
 		self.handle.replace(tokio::spawn(async move {
+			#[cfg(feature = "subscriber")]
 			let key = key_expr.clone();
 			std::panic::set_hook(Box::new(move |reason| {
 				error!("subscriber panic: {}", reason);
+				#[cfg(feature = "subscriber")]
 				if let Err(reason) = tx.send(Command::RestartSubscriber(key.clone())) {
 					error!("could not restart subscriber: {}", reason);
 				} else {
