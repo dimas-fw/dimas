@@ -4,11 +4,8 @@
 //! A `Subscriber` can optional subscribe on a delete message.
 
 // region:		--- modules
-use crate::{agent::Command, prelude::*};
-use std::{
-	fmt::Debug,
-	sync::{mpsc::Sender, Mutex},
-};
+use crate::{agent::TaskSignal, prelude::*};
+use std::sync::{mpsc::Sender, Mutex};
 use tokio::task::JoinHandle;
 use tracing::{error, instrument, warn, Level};
 #[cfg(feature = "subscriber")]
@@ -42,7 +39,7 @@ pub type SubscriberDeleteCallback<P> = Arc<
 #[derive(Clone)]
 pub struct SubscriberBuilder<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	pub(crate) context: ArcContext<P>,
 	pub(crate) key_expr: Option<String>,
@@ -52,11 +49,11 @@ where
 
 impl<P> SubscriberBuilder<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	/// Set the full expression to subscribe on.
 	#[must_use]
-	pub fn key_expr(mut self, key_expr: impl Into<String>) -> Self {
+	pub fn key_expr(mut self, key_expr: &str) -> Self {
 		self.key_expr.replace(key_expr.into());
 		self
 	}
@@ -64,7 +61,7 @@ where
 	/// Set only the message qualifying part of the expression to subscribe on.
 	/// Will be prefixed by the agents prefix.
 	#[must_use]
-	pub fn msg_type(mut self, msg_type: impl Into<String>) -> Self {
+	pub fn msg_type(mut self, msg_type: &str) -> Self {
 		let key_expr = self.context.key_expr(msg_type);
 		self.key_expr.replace(key_expr);
 		self
@@ -138,7 +135,7 @@ where
 /// Subscriber
 pub struct Subscriber<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	key_expr: String,
 	put_callback: Option<SubscriberPutCallback<P>>,
@@ -149,7 +146,7 @@ where
 
 impl<P> std::fmt::Debug for Subscriber<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Subscriber")
@@ -160,12 +157,12 @@ where
 
 impl<P> Subscriber<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	/// Start or restart the subscriber.
 	/// An already running subscriber will be stopped, eventually damaged Mutexes will be repaired
 	#[instrument(level = Level::TRACE, skip_all)]
-	pub fn start(&mut self, tx: Sender<Command>) {
+	pub fn start(&mut self, tx: Sender<TaskSignal>) {
 		self.stop();
 
 		#[cfg(not(feature = "subscriber"))]
@@ -201,7 +198,7 @@ where
 			std::panic::set_hook(Box::new(move |reason| {
 				error!("subscriber panic: {}", reason);
 				#[cfg(feature = "subscriber")]
-				if let Err(reason) = tx.send(Command::RestartSubscriber(key.clone())) {
+				if let Err(reason) = tx.send(TaskSignal::RestartSubscriber(key.clone())) {
 					error!("could not restart subscriber: {}", reason);
 				} else {
 					info!("restarting subscriber!");
@@ -230,7 +227,7 @@ async fn run_subscriber<P>(
 	ctx: ArcContext<P>,
 ) -> Result<()>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	let subscriber = ctx
 		.communicator

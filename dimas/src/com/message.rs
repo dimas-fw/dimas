@@ -33,7 +33,7 @@ impl Message {
 			.0
 			.value
 			.try_into()
-			.map_err(|_| DimasError::DecodingMessage)?;
+			.map_err(|_| DimasError::ConvertingValue)?;
 		decode::<T>(value.as_slice()).map_err(|_| DimasError::DecodingMessage.into())
 	}
 }
@@ -105,8 +105,24 @@ impl Response {
 			.0
 			.value
 			.try_into()
-			.map_err(|_| DimasError::DecodingMessage)?;
+			.map_err(|_| DimasError::ConvertingValue)?;
 		decode::<T>(value.as_slice()).map_err(|_| DimasError::DecodingMessage.into())
 	}
 }
 // endregion:	--- Response
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	// check, that the auto traits are available
+	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+
+	#[test]
+	const fn normal_types() {
+		is_normal::<Message>();
+		is_normal::<Request>();
+		is_normal::<Response>();
+	}
+}
+

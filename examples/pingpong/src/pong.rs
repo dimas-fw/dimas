@@ -26,7 +26,7 @@ fn ping_received(ctx: &ArcContext<AgentProps>, message: Message) -> Result<()> {
 		.and_utc()
 		.timestamp_nanos_opt();
 
-	let text = "pong! [".to_string() + &message.counter.to_string() + "]";
+	let text = format!("pong! [{}]", message.counter);
 
 	// publishing with ad-hoc publisher
 	ctx.put_with("pong", message)?;

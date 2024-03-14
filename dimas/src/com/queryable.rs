@@ -3,7 +3,7 @@
 //! Module `queryable` provides an information/compute provider `Queryable` which can be created using the `QueryableBuilder`.
 
 // region:		--- modules
-use crate::{agent::Command, prelude::*};
+use crate::{agent::TaskSignal, prelude::*};
 use std::{
 	fmt::Debug,
 	sync::{mpsc::Sender, Mutex},
@@ -33,7 +33,7 @@ pub type QueryableCallback<P> = Arc<
 #[derive(Clone)]
 pub struct QueryableBuilder<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	pub(crate) context: ArcContext<P>,
 	pub(crate) key_expr: Option<String>,
@@ -42,11 +42,11 @@ where
 
 impl<P> QueryableBuilder<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	/// Set the full expression for the queryable.
 	#[must_use]
-	pub fn key_expr(mut self, key_expr: impl Into<String>) -> Self {
+	pub fn key_expr(mut self, key_expr: &str) -> Self {
 		self.key_expr.replace(key_expr.into());
 		self
 	}
@@ -54,7 +54,7 @@ where
 	/// Set the message qualifying part only.
 	/// Will be prefixed by the agents prefix.
 	#[must_use]
-	pub fn msg_type(mut self, msg_type: impl Into<String>) -> Self {
+	pub fn msg_type(mut self, msg_type: &str) -> Self {
 		let key_expr = self.context.key_expr(msg_type);
 		self.key_expr.replace(key_expr);
 		self
@@ -116,7 +116,7 @@ where
 /// Queryable
 pub struct Queryable<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	key_expr: String,
 	callback: Option<QueryableCallback<P>>,
@@ -126,7 +126,7 @@ where
 
 impl<P> Debug for Queryable<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Queryable")
@@ -137,12 +137,12 @@ where
 
 impl<P> Queryable<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	/// Start or restart the queryable.
 	/// An already running queryable will be stopped, eventually damaged Mutexes will be repaired
 	#[instrument(level = Level::TRACE)]
-	pub fn start(&mut self, tx: Sender<Command>) {
+	pub fn start(&mut self, tx: Sender<TaskSignal>) {
 		self.stop();
 
 		#[cfg(not(feature = "queryable"))]
@@ -168,7 +168,7 @@ where
 			std::panic::set_hook(Box::new(move |reason| {
 				error!("queryable panic: {}", reason);
 				#[cfg(feature = "queryable")]
-				if let Err(reason) = tx.send(Command::RestartQueryable(key.clone())) {
+				if let Err(reason) = tx.send(TaskSignal::RestartQueryable(key.clone())) {
 					error!("could not restart queryable: {}", reason);
 				} else {
 					info!("restarting queryable!");
@@ -196,7 +196,7 @@ async fn run_queryable<P>(
 	ctx: ArcContext<P>,
 ) -> Result<()>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	let subscriber = ctx
 		.communicator

@@ -21,11 +21,11 @@ use tracing::{error, info};
 use zenoh::liveliness::LivelinessToken;
 // endregion:	--- modules
 
-// region:		--- Command
+// region:		--- TaskSignal
 #[derive(Debug, Clone)]
-pub enum Command {
+pub enum TaskSignal {
 	#[cfg(feature = "liveliness")]
-	RestartLivelinessSubscriber,
+	RestartLiveliness,
 	#[cfg(feature = "queryable")]
 	RestartQueryable(String),
 	#[cfg(feature = "subscriber")]
@@ -35,22 +35,22 @@ pub enum Command {
 	Dummy,
 }
 
-async fn commands(rx: &Mutex<Receiver<Command>>) -> Box<Command> {
+async fn handle_signals(rx: &Mutex<Receiver<TaskSignal>>) -> Box<TaskSignal> {
 	loop {
-		if let Ok(cmd) = rx.lock().expect("").try_recv() {
-			return Box::new(cmd);
+		if let Ok(signal) = rx.lock().expect("").try_recv() {
+			return Box::new(signal);
 		};
 
 		tokio::time::sleep(Duration::from_millis(1)).await;
 	}
 }
-// endregion:	--- Command
+// endregion:	--- TaskSignal
 
 // region:		--- Agent
 /// Agent
 pub struct Agent<'a, P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	// The agents context structure
 	context: ArcContext<P>,
@@ -65,7 +65,7 @@ where
 
 impl<'a, P> Debug for Agent<'a, P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Agent")
@@ -77,7 +77,7 @@ where
 
 impl<'a, P> Deref for Agent<'a, P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	type Target = Arc<RwLock<P>>;
 
@@ -88,7 +88,7 @@ where
 
 impl<'a, P> Agent<'a, P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	/// Create an instance of an agent.
 	/// # Errors
@@ -109,7 +109,7 @@ where
 	pub fn new_with_prefix(
 		config: crate::config::Config,
 		properties: P,
-		prefix: impl Into<String>,
+		prefix: &str,
 	) -> Result<Self> {
 		Ok(Self {
 			context: Context::new_with_prefix(config, properties, prefix)?,
@@ -213,7 +213,7 @@ where
 	/// # Errors
 	/// Currently none
 	#[allow(unused_variables)]
-	async fn start_tasks(&mut self, tx: &Sender<Command>) -> Result<()> {
+	async fn start_tasks(&mut self, tx: &Sender<TaskSignal>) -> Result<()> {
 
 		// start all registered queryables
 		#[cfg(feature = "queryable")]
@@ -299,10 +299,10 @@ where
 			// different possibilities that can happen
 			select! {
 				// Commands
-				command = commands(&rx) => {
+				command = handle_signals(&rx) => {
 					match *command {
 						#[cfg(feature = "liveliness")]
-						Command::RestartLivelinessSubscriber => {
+						TaskSignal::RestartLiveliness => {
 							self.liveliness_subscriber
 								.write()
 								.map_err(|_| DimasError::WriteProperties)?
@@ -311,7 +311,7 @@ where
 								.start(tx.clone());
 						},
 						#[cfg(feature = "queryable")]
-						Command::RestartQueryable(key_expr) => {
+						TaskSignal::RestartQueryable(key_expr) => {
 							self.context.queryables
 								.write()
 								.map_err(|_| DimasError::WriteProperties)?
@@ -320,7 +320,7 @@ where
 								.start(tx.clone());
 						},
 						#[cfg(feature = "subscriber")]
-						Command::RestartSubscriber(key_expr) => {
+						TaskSignal::RestartSubscriber(key_expr) => {
 							self.context.subscribers
 								.write()
 								.map_err(|_| DimasError::WriteProperties)?
@@ -329,7 +329,7 @@ where
 								.start(tx.clone());
 						},
 						#[cfg(feature = "timer")]
-						Command::RestartTimer(key_expr) => {
+						TaskSignal::RestartTimer(key_expr) => {
 							self.context.timers
 								.write()
 								.map_err(|_| DimasError::WriteProperties)?
@@ -337,7 +337,7 @@ where
 								.ok_or(DimasError::ShouldNotHappen)?
 								.start(tx.clone());
 						},
-						Command::Dummy => {},
+						TaskSignal::Dummy => {},
 					};
 				}
 
@@ -444,7 +444,7 @@ mod tests {
 	#[test]
 	const fn normal_types() {
 		is_normal::<Agent<Props>>();
-		is_normal::<Command>();
+		is_normal::<TaskSignal>();
 	}
 
 	#[tokio::test]

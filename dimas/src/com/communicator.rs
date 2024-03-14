@@ -36,7 +36,7 @@ impl Communicator {
 
 	pub(crate) fn new_with_prefix(
 		config: crate::config::Config,
-		prefix: impl Into<String>,
+		prefix: &str,
 	) -> Result<Self> {
 		let cfg = config;
 		let session = Arc::new(
@@ -56,19 +56,16 @@ impl Communicator {
 		self.prefix.clone()
 	}
 
-	pub(crate) fn key_expr(&self, msg_name: impl Into<String>) -> String {
-		match self.prefix.clone() {
-			Some(prefix) => prefix + "/" + &msg_name.into(),
-			None => msg_name.into(),
-		}
+	pub(crate) fn key_expr(&self, msg_name: &str) -> String {
+		self.prefix().map_or_else(|| msg_name.into(), |prefix| format!("{prefix}/{msg_name}"))
 	}
 
 	pub(crate) async fn send_liveliness<'a>(
 		&self,
-		msg_type: impl Into<String> + Send,
+		msg_type: &str,
 	) -> Result<LivelinessToken<'a>> {
 		let session = self.session.clone();
-		let uuid = self.key_expr(msg_type) + "/" + &session.zid().to_string();
+		let uuid = format!("{}/{}", self.key_expr(msg_type), session.zid());
 
 		session
 			.liveliness()
@@ -80,16 +77,16 @@ impl Communicator {
 
 	pub(crate) fn create_publisher<'a>(
 		&self,
-		key_expr: impl Into<String> + Send,
+		key_expr: &str,
 	) -> Result<Publisher<'a>> {
 		self.session
-			.declare_publisher(key_expr.into())
+			.declare_publisher(key_expr.to_owned())
 			.res_sync()
 			.map_err(|_| DimasError::ShouldNotHappen.into())
 	}
 
 	#[allow(clippy::needless_pass_by_value)]
-	pub(crate) fn put<M>(&self, msg_name: impl Into<String>, message: M) -> Result<()>
+	pub(crate) fn put<M>(&self, msg_name: &str, message: M) -> Result<()>
 	where
 		M: Encode,
 	{
@@ -101,7 +98,7 @@ impl Communicator {
 		}
 	}
 
-	pub(crate) fn delete(&self, msg_name: impl Into<String>) -> Result<()> {
+	pub(crate) fn delete(&self, msg_name: &str) -> Result<()> {
 		let key_expr = self.key_expr(msg_name);
 		match self.session.delete(&key_expr).res_sync() {
 			Ok(()) => Ok(()),
@@ -112,12 +109,12 @@ impl Communicator {
 	pub(crate) fn get<P, F>(
 		&self,
 		ctx: ArcContext<P>,
-		query_name: impl Into<String>,
+		query_name: &str,
 		mode: ConsolidationMode,
 		callback: F,
 	) -> Result<()>
 	where
-		P: Debug + Send + Sync + Unpin + 'static,
+		P: Send + Sync + Unpin + 'static,
 		F: Fn(&ArcContext<P>, Message) + Send + Sync + Unpin + 'static,
 	{
 		let key_expr = self.key_expr(query_name);

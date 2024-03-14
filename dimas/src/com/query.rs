@@ -26,7 +26,7 @@ pub type QueryCallback<P> =
 #[derive(Clone)]
 pub struct QueryBuilder<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	pub(crate) context: ArcContext<P>,
 	pub(crate) key_expr: Option<String>,
@@ -36,11 +36,11 @@ where
 
 impl<P> QueryBuilder<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	/// Set the full expression for the query
 	#[must_use]
-	pub fn key_expr(mut self, key_expr: impl Into<String>) -> Self {
+	pub fn key_expr(mut self, key_expr: &str) -> Self {
 		self.key_expr.replace(key_expr.into());
 		self
 	}
@@ -48,7 +48,7 @@ where
 	/// Set only the message qualifing part of the query.
 	/// Will be prefixed with agents prefix.
 	#[must_use]
-	pub fn msg_type(mut self, msg_type: impl Into<String>) -> Self {
+	pub fn msg_type(mut self, msg_type: &str) -> Self {
 		let key_expr = self.context.key_expr(msg_type);
 		self.key_expr.replace(key_expr);
 		self
@@ -124,7 +124,7 @@ where
 /// Query
 pub struct Query<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	key_expr: String,
 	mode: ConsolidationMode,
@@ -134,7 +134,7 @@ where
 
 impl<P> Debug for Query<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Query")
@@ -146,7 +146,7 @@ where
 
 impl<P> Query<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	/// run a query
 	#[instrument(name="query", level = Level::ERROR, skip_all)]

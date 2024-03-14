@@ -40,6 +40,9 @@ pub enum DimasError {
 	/// Encoding of message failed
 	#[error("message encoding failed")]
 	EncodingMessage,
+	/// Converting of message failed
+	#[error("converting value into 'Vec<u8>' failed")]
+	ConvertingValue,
 	/// Decoding of message failed
 	#[error("message decoding failed")]
 	DecodingMessage,
@@ -66,3 +69,17 @@ pub enum DimasError {
 	#[error(transparent)]
 	StdError(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),
 } // endregion: --- Error
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	// check, that the auto traits are available
+	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+
+	#[test]
+	const fn normal_types() {
+		is_normal::<DimasError>();
+	}
+}
+

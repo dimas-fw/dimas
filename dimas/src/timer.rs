@@ -4,7 +4,7 @@
 //! When fired, a `Timer` calls his assigned `TimerCallback`.
 
 // region:		--- modules
-use crate::{agent::Command, prelude::*};
+use crate::{agent::TaskSignal, prelude::*};
 use std::{fmt::Debug, sync::{mpsc::Sender, Mutex}, time::Duration};
 use tokio::{task::JoinHandle, time};
 use tracing::{error, instrument, warn, Level};
@@ -26,7 +26,7 @@ pub type TimerCallback<P> = Arc<
 #[derive(Clone)]
 pub struct TimerBuilder<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	pub(crate) context: ArcContext<P>,
 	pub(crate) name: Option<String>,
@@ -37,11 +37,11 @@ where
 
 impl<P> TimerBuilder<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	/// set timers name
 	#[must_use]
-	pub fn name(mut self, name: impl Into<String>) -> Self {
+	pub fn name(mut self, name: &str) -> Self {
 		self.name.replace(name.into());
 		self
 	}
@@ -133,7 +133,7 @@ where
 /// Timer
 pub enum Timer<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	/// A Timer with an Interval
 	Interval {
@@ -167,7 +167,7 @@ where
 
 impl<P> Debug for Timer<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
@@ -188,12 +188,12 @@ where
 
 impl<P> Timer<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	/// Start or restart the timer
 	/// An already running timer will be stopped, eventually damaged Mutexes will be repaired
 	#[instrument(level = Level::TRACE, skip_all)]
-	pub fn start(&mut self, tx: Sender<Command>) {
+	pub fn start(&mut self, tx: Sender<TaskSignal>) {
 		self.stop();
 
 		#[cfg(not(feature = "timer"))]
@@ -228,7 +228,7 @@ where
 					std::panic::set_hook(Box::new(move |reason| {
 						error!("interval timer panic: {}", reason);
 						#[cfg(feature = "timer")]
-						if let Err(reason) = tx.send(Command::RestartTimer(key.clone())) {
+						if let Err(reason) = tx.send(TaskSignal::RestartTimer(key.clone())) {
 							error!("could not restart timer: {}", reason);
 						} else {
 							info!("restarting timer!");
@@ -267,7 +267,7 @@ where
 					std::panic::set_hook(Box::new(move |reason| {
 						error!("delayed timer panic: {}", reason);
 						#[cfg(feature = "timer")]
-						if let Err(reason) = tx.send(Command::RestartTimer(key.clone())) {
+						if let Err(reason) = tx.send(TaskSignal::RestartTimer(key.clone())) {
 							error!("could not restart timer: {}", reason);
 						} else {
 							info!("restarting timer!");
@@ -310,7 +310,7 @@ where
 #[instrument(name="timer", level = Level::ERROR, skip_all)]
 async fn run_timer<P>(interval: Duration, cb: Option<TimerCallback<P>>, ctx: ArcContext<P>)
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	let mut interval = time::interval(interval);
 	loop {

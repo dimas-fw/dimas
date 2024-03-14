@@ -32,9 +32,9 @@ async fn main() -> Result<()> {
 		.name("timer1")
 		.interval(Duration::from_secs(1))
 		.callback(|ctx| -> Result<()> {
-			let counter = ctx.read()?.counter.to_string();
+			let counter = ctx.read()?.counter;
 
-			let text = "Hello World! [".to_string() + &counter + "]";
+			let text = format!("Hello World! [{counter}]");
 			info!("Sending '{}'", &text);
 			// publishing with stored publisher
 			let _ = ctx.put_with("hello", text);

@@ -51,7 +51,7 @@ fn find_file(filename: &str) -> Result<String> {
 		}
 	}
 
-	Err(DimasError::FileNotFound(filename.to_string()).into())
+	Err(DimasError::FileNotFound(filename.into()).into())
 }
 // endregion:	--- utils
 

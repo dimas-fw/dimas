@@ -4,9 +4,8 @@
 //! A `LivelinessSubscriber` can optional subscribe on a delete message.
 
 // region:		--- modules
-use crate::{agent::Command, prelude::*};
+use crate::{agent::TaskSignal, prelude::*};
 use std::{
-	fmt::Debug,
 	sync::{mpsc::Sender, Mutex},
 	time::Duration,
 };
@@ -35,7 +34,7 @@ pub type LivelinessCallback<P> = Arc<
 #[derive(Clone)]
 pub struct LivelinessSubscriberBuilder<P>
 where
-	P: std::fmt::Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	pub(crate) subscriber: Arc<RwLock<Option<LivelinessSubscriber<P>>>>,
 	pub(crate) context: ArcContext<P>,
@@ -46,11 +45,11 @@ where
 
 impl<P> LivelinessSubscriberBuilder<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	/// Set the full expression for the liveliness subscriber
 	#[must_use]
-	pub fn key_expr(mut self, key_expr: impl Into<String>) -> Self {
+	pub fn key_expr(mut self, key_expr: &str) -> Self {
 		self.key_expr.replace(key_expr.into());
 		self
 	}
@@ -58,7 +57,7 @@ where
 	/// Set only the message qualifing part of the liveliness subscriber.
 	/// Will be prefixed with agents prefix.
 	#[must_use]
-	pub fn msg_type(mut self, msg_type: impl Into<String>) -> Self {
+	pub fn msg_type(mut self, msg_type: &str) -> Self {
 		let key_expr = self
 			.context
 			.communicator
@@ -135,7 +134,7 @@ where
 // region:		--- LivelinessSubscriber
 pub struct LivelinessSubscriber<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	key_expr: String,
 	put_callback: Option<LivelinessCallback<P>>,
@@ -146,7 +145,7 @@ where
 
 impl<P> std::fmt::Debug for LivelinessSubscriber<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("LivelinessSubscriber")
@@ -157,12 +156,12 @@ where
 
 impl<P> LivelinessSubscriber<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	/// Start or restart the liveliness subscriber.
 	/// An already running subscriber will be stopped, eventually damaged Mutexes will be repaired
 	#[instrument(level = Level::TRACE, skip_all)]
-	pub fn start(&mut self, tx: Sender<Command>) {
+	pub fn start(&mut self, tx: Sender<TaskSignal>) {
 		self.stop();
 
 		#[cfg(not(feature = "liveliness"))]
@@ -207,7 +206,7 @@ where
 			std::panic::set_hook(Box::new(move |reason| {
 				error!("liveliness subscriber panic: {}", reason);
 				#[cfg(feature = "liveliness")]
-				if let Err(reason) = tx.send(Command::RestartLivelinessSubscriber) {
+				if let Err(reason) = tx.send(TaskSignal::RestartLiveliness) {
 					error!("could not restart liveliness subscriber: {}", reason);
 				} else {
 					info!("restarting liveliness subscriber!");
@@ -236,7 +235,7 @@ async fn run_liveliness<P>(
 	ctx: ArcContext<P>,
 ) -> Result<()>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	let subscriber = ctx
 		.communicator
@@ -307,7 +306,7 @@ async fn run_initial<P>(
 	ctx: ArcContext<P>,
 ) -> Result<()>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	let result = ctx
 		.communicator

@@ -101,10 +101,9 @@ async fn main() -> Result<()> {
 			|ctx| -> Result<()> {
 				let counter = ctx
 					.read()?
-					.counter
-					.to_string();
+					.counter;
 				// the message to send
-				let text = "Hello World! [".to_string() + &counter + "]";
+				let text = format!("Hello World! [{counter}]");
 				// just to see what will be sent
 				println!("Sending '{}'", &text);
 				// publishing with stored publisher for topic "hello"

@@ -78,7 +78,7 @@ async fn main() -> Result<()> {
 			// publishing with stored publisher
 			ctx.put_with("ping", message)?;
 
-			let text = "ping! [".to_string() + &counter.to_string() + "]";
+			let text = format!("ping! [{counter}]");
 			info!("Sent {} ", &text);
 
 			// increase counter

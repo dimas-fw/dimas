@@ -30,7 +30,7 @@ pub type ArcContext<P> = Arc<Context<P>>;
 #[derive(Debug, Clone)]
 pub struct Context<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	/// The agents property structure
 	pub(crate) props: Arc<RwLock<P>>,
@@ -52,7 +52,7 @@ where
 
 impl<P> Context<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	/// Constructor for the `Context`
 	pub(crate) fn new(config: Config, props: P) -> Result<Arc<Self>> {
@@ -77,7 +77,7 @@ where
 	pub(crate) fn new_with_prefix(
 		config: Config,
 		props: P,
-		prefix: impl Into<String>,
+		prefix: &str,
 	) -> Result<Arc<Self>> {
 		let communicator = Arc::new(Communicator::new_with_prefix(config, prefix)?);
 		Ok(Arc::new(Self {
@@ -109,11 +109,8 @@ where
 	}
 
 	#[must_use]
-	pub(crate) fn key_expr(&self, msg_name: impl Into<String>) -> String {
-		match self.prefix() {
-			Some(prefix) => prefix + "/" + &msg_name.into(),
-			None => msg_name.into(),
-		}
+	pub(crate) fn key_expr(&self, msg_name: &str) -> String {
+		self.communicator.key_expr(msg_name)
 	}
 
 	pub fn read(&self) -> Result<std::sync::RwLockReadGuard<'_, P>> {
@@ -130,7 +127,7 @@ where
 
 	pub(crate) fn create_publisher<'publisher>(
 		&self,
-		key_expr: impl Into<String> + Send,
+		key_expr: &str,
 	) -> Result<Publisher<'publisher>> {
 		self.communicator.create_publisher(key_expr)
 	}
@@ -139,7 +136,7 @@ where
 	/// # Errors
 	///   Error is propagated from Communicator
 	#[instrument(level = Level::ERROR, skip_all)]
-	pub fn put<M>(&self, msg_name: impl Into<String>, message: M) -> Result<()>
+	pub fn put<M>(&self, msg_name: &str, message: M) -> Result<()>
 	where
 		M: Encode,
 	{
@@ -177,7 +174,7 @@ where
 	/// # Errors
 	///   Error is propagated from Communicator
 	#[instrument(level = Level::ERROR, skip_all)]
-	pub fn delete(&self, msg_name: impl Into<String>) -> Result<()> {
+	pub fn delete(&self, msg_name: &str) -> Result<()> {
 		self.communicator.delete(msg_name)
 	}
 
@@ -208,9 +205,9 @@ where
 	/// Method to do an ad hoc query without any consolidation of answers.
 	/// Multiple answers may be received for the same timestamp.
 	#[instrument(level = Level::ERROR, skip_all)]
-	pub fn get<F>(&self, ctx: Arc<Self>, query_name: impl Into<String>, callback: F) -> Result<()>
+	pub fn get<F>(&self, ctx: Arc<Self>, query_name: &str, callback: F) -> Result<()>
 	where
-		P: Debug + Send + Sync + Unpin + 'static,
+		P: Send + Sync + Unpin + 'static,
 		F: Fn(&ArcContext<P>, Message) + Send + Sync + Unpin + 'static,
 	{
 		self.communicator
