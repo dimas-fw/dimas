@@ -4,7 +4,9 @@
 
 // region:		--- modules
 #[cfg(feature = "liveliness")]
-use crate::com::liveliness_subscriber::{LivelinessSubscriber, LivelinessSubscriberBuilder};
+use crate::com::liveliness_subscriber::{
+	LivelinessSubscriber, LivelinessSubscriberBuilder, NoPutCallback, Storage,
+};
 use crate::context::Context;
 use crate::prelude::*;
 use std::{
@@ -146,14 +148,11 @@ where
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "liveliness")))]
 	#[cfg(feature = "liveliness")]
 	#[must_use]
-	pub fn liveliness_subscriber(&self) -> LivelinessSubscriberBuilder<P> {
-		LivelinessSubscriberBuilder {
-			subscriber: self.liveliness_subscriber.clone(),
-			context: self.get_context(),
-			key_expr: None,
-			put_callback: None,
-			delete_callback: None,
-		}
+	pub fn liveliness_subscriber(
+		&self,
+	) -> LivelinessSubscriberBuilder<P, NoPutCallback, Storage<P>> {
+		let builder = LivelinessSubscriberBuilder::new(self.get_context());
+		builder.storage(self.liveliness_subscriber.clone())
 	}
 
 	/// Get a builder for a Publisher
@@ -268,11 +267,10 @@ where
 
 		// activate liveliness
 		if self.liveliness {
-			let msg_type = "alive";
 			let token: LivelinessToken<'a> = self
 				.context
 				.communicator
-				.send_liveliness(msg_type)
+				.send_liveliness("alive")
 				.await?;
 			self.liveliness_token
 				.write()

@@ -41,12 +41,10 @@ async fn main() -> Result<()> {
 	let mut agent = Agent::new_with_prefix(Config::default(), properties, "examples")?;
 
 	// add a liveliness subscriber to listen for other agents
-	// the subscriber will also get its own liveliness signal
 	agent
 		.liveliness_subscriber()
 		.put_callback(liveliness_subscription)
 		.delete_callback(delete_subscription)
-		.msg_type("alive")
 		.add()?;
 
 	// activate sending liveliness signal

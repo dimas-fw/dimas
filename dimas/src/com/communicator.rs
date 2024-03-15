@@ -152,12 +152,29 @@ mod tests {
 		is_normal::<Communicator>();
 	}
 
+	#[test]
+	//#[serial]
+	fn zenoh_create_default_sync() {
+		let _zenoh = zenoh::open(config::default()).res_sync();
+	}
+
+	#[tokio::test(flavor = "current_thread")]
+	//#[serial]
+	async fn zenoh_create_default_sync_in_async() {
+		let _zenoh = zenoh::open(config::default()).res_sync();
+	}
+
+	#[tokio::test(flavor = "current_thread")]
+	//#[serial]
+	async fn zenoh_create_default_async() {
+		let _zenoh = zenoh::open(config::default()).res_async().await;
+	}
+
 	#[tokio::test]
 	//#[serial]
 	async fn communicator_create_default() -> Result<()> {
 		let _peer1 = Communicator::new(crate::config::Config::default());
 		let _peer2 = Communicator::new_with_prefix(crate::config::Config::local()?, "peer2");
-		//let _peer3 = Communicator::new(config::client());
 		Ok(())
 	}
 
