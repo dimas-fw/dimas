@@ -82,4 +82,3 @@ mod tests {
 		is_normal::<DimasError>();
 	}
 }
-

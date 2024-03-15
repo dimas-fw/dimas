@@ -5,11 +5,15 @@
 
 // region:		--- modules
 use crate::{agent::TaskSignal, prelude::*};
-use std::{fmt::Debug, sync::{mpsc::Sender, Mutex}, time::Duration};
+use std::{
+	fmt::Debug,
+	sync::{mpsc::Sender, Mutex},
+	time::Duration,
+};
 use tokio::{task::JoinHandle, time};
-use tracing::{error, instrument, warn, Level};
 #[cfg(feature = "timer")]
 use tracing::info;
+use tracing::{error, instrument, warn, Level};
 // endregion:	--- modules
 
 // region:		--- types
@@ -117,7 +121,9 @@ where
 		let name = if self.name.is_none() {
 			return Err(DimasError::NoName.into());
 		} else {
-			self.name.clone().ok_or(DimasError::ShouldNotHappen)?
+			self.name
+				.clone()
+				.ok_or(DimasError::ShouldNotHappen)?
 		};
 		let c = self.context.timers.clone();
 		let timer = self.build()?;

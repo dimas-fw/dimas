@@ -9,9 +9,9 @@ use std::{
 	sync::{mpsc::Sender, Mutex},
 };
 use tokio::task::JoinHandle;
-use tracing::{error, instrument, warn, Level};
 #[cfg(feature = "queryable")]
 use tracing::info;
+use tracing::{error, instrument, warn, Level};
 use zenoh::{prelude::r#async::AsyncResolve, SessionDeclarations};
 // endregion:	--- modules
 

@@ -10,9 +10,9 @@ use std::{
 	time::Duration,
 };
 use tokio::task::JoinHandle;
-use tracing::{error, instrument, warn, Level};
 #[cfg(feature = "liveliness")]
 use tracing::info;
+use tracing::{error, instrument, warn, Level};
 use zenoh::{
 	prelude::{r#async::AsyncResolve, SampleKind},
 	SessionDeclarations,

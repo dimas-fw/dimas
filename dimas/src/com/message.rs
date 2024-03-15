@@ -125,4 +125,3 @@ mod tests {
 		is_normal::<Response>();
 	}
 }
-

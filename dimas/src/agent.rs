@@ -214,7 +214,6 @@ where
 	/// Currently none
 	#[allow(unused_variables)]
 	async fn start_tasks(&mut self, tx: &Sender<TaskSignal>) -> Result<()> {
-
 		// start all registered queryables
 		#[cfg(feature = "queryable")]
 		self.context

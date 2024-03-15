@@ -74,11 +74,7 @@ where
 	}
 
 	/// Constructor for the `Context` with a prefix
-	pub(crate) fn new_with_prefix(
-		config: Config,
-		props: P,
-		prefix: &str,
-	) -> Result<Arc<Self>> {
+	pub(crate) fn new_with_prefix(config: Config, props: P, prefix: &str) -> Result<Arc<Self>> {
 		let communicator = Arc::new(Communicator::new_with_prefix(config, prefix)?);
 		Ok(Arc::new(Self {
 			communicator,

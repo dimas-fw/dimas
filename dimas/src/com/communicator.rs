@@ -34,10 +34,7 @@ impl Communicator {
 		})
 	}
 
-	pub(crate) fn new_with_prefix(
-		config: crate::config::Config,
-		prefix: &str,
-	) -> Result<Self> {
+	pub(crate) fn new_with_prefix(config: crate::config::Config, prefix: &str) -> Result<Self> {
 		let cfg = config;
 		let session = Arc::new(
 			zenoh::open(cfg.zenoh_config())
@@ -57,13 +54,11 @@ impl Communicator {
 	}
 
 	pub(crate) fn key_expr(&self, msg_name: &str) -> String {
-		self.prefix().map_or_else(|| msg_name.into(), |prefix| format!("{prefix}/{msg_name}"))
+		self.prefix()
+			.map_or_else(|| msg_name.into(), |prefix| format!("{prefix}/{msg_name}"))
 	}
 
-	pub(crate) async fn send_liveliness<'a>(
-		&self,
-		msg_type: &str,
-	) -> Result<LivelinessToken<'a>> {
+	pub(crate) async fn send_liveliness<'a>(&self, msg_type: &str) -> Result<LivelinessToken<'a>> {
 		let session = self.session.clone();
 		let uuid = format!("{}/{}", self.key_expr(msg_type), session.zid());
 
@@ -75,10 +70,7 @@ impl Communicator {
 			.map_err(|_| DimasError::ShouldNotHappen.into())
 	}
 
-	pub(crate) fn create_publisher<'a>(
-		&self,
-		key_expr: &str,
-	) -> Result<Publisher<'a>> {
+	pub(crate) fn create_publisher<'a>(&self, key_expr: &str) -> Result<Publisher<'a>> {
 		self.session
 			.declare_publisher(key_expr.to_owned())
 			.res_sync()
