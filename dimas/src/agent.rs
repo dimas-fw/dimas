@@ -9,7 +9,7 @@ use std::{
 	fmt::Debug,
 	ops::Deref,
 	sync::{
-		mpsc::{self, Receiver, Sender},
+		mpsc::{self, Receiver},
 		Mutex,
 	},
 	time::Duration,
@@ -74,10 +74,10 @@ impl<'a, P> Deref for Agent<'a, P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	type Target = Arc<RwLock<P>>;
+	type Target = ArcContext<P>;
 
 	fn deref(&self) -> &Self::Target {
-		&self.context.props
+		&self.context
 	}
 }
 
@@ -133,211 +133,16 @@ where
 		self.context.clone()
 	}
 
-	/// Get a builder for a [`LivelinessSubscriber`]
-	#[cfg(feature = "liveliness")]
-	#[must_use]
-	pub fn liveliness_subscriber(
-		&self,
-	) -> LivelinessSubscriberBuilder<
-		P,
-		crate::com::liveliness_subscriber::NoPutCallback,
-		crate::com::liveliness_subscriber::Storage<P>,
-	> {
-		self.get_context().liveliness_subscriber()
-	}
-	/// Get a builder for a [`LivelinessSubscriber`]
-	#[cfg(not(feature = "liveliness"))]
-	#[must_use]
-	pub fn liveliness_subscriber(
-		&self,
-	) -> LivelinessSubscriberBuilder<
-		P,
-		crate::com::liveliness_subscriber::NoPutCallback,
-		crate::com::liveliness_subscriber::NoStorage,
-	> {
-		self.get_context().liveliness_subscriber()
-	}
-
-	/// Get a builder for a [`Publisher`]
-	#[cfg(feature = "publisher")]
-	#[must_use]
-	pub fn publisher(
-		&self,
-	) -> PublisherBuilder<P, crate::com::publisher::NoKeyExpression, crate::com::publisher::Storage>
-	{
-		self.get_context().publisher()
-	}
-	/// Get a builder for a [`Publisher`]
-	#[cfg(not(feature = "publisher"))]
-	#[must_use]
-	pub fn publisher(
-		&self,
-	) -> PublisherBuilder<P, crate::com::publisher::NoKeyExpression, crate::com::publisher::NoStorage>
-	{
-		self.get_context().publisher()
-	}
-
-	/// Get a builder for a [`Query`]
-	#[cfg(feature = "query")]
-	#[must_use]
-	pub fn query(
-		&self,
-	) -> QueryBuilder<
-		P,
-		crate::com::query::NoKeyExpression,
-		crate::com::query::NoResponseCallback,
-		crate::com::query::Storage<P>,
-	> {
-		self.get_context().query()
-	}
-	/// Get a builder for a [`Query`]
-	#[cfg(not(feature = "query"))]
-	#[must_use]
-	pub fn query(
-		&self,
-	) -> QueryBuilder<
-		P,
-		crate::com::query::NoKeyExpression,
-		crate::com::query::NoResponseCallback,
-		crate::com::query::NoStorage,
-	> {
-		self.get_context().query()
-	}
-
-	/// Get a builder for a [`Queryable`]
-	#[cfg(feature = "queryable")]
-	#[must_use]
-	pub fn queryable(
-		&self,
-	) -> QueryableBuilder<
-		P,
-		crate::com::queryable::NoKeyExpression,
-		crate::com::queryable::NoRequestCallback,
-		crate::com::queryable::Storage<P>,
-	> {
-		self.get_context().queryable()
-	}
-	/// Get a builder for a [`Queryable`]
-	#[cfg(not(feature = "queryable"))]
-	#[must_use]
-	pub fn queryable(
-		&self,
-	) -> QueryableBuilder<
-		P,
-		crate::com::queryable::NoKeyExpression,
-		crate::com::queryable::NoRequestCallback,
-		crate::com::queryable::NoStorage,
-	> {
-		self.get_context().queryable()
-	}
-
-	/// Get a builder for a [`Subscriber`]
-	#[cfg(feature = "subscriber")]
-	#[must_use]
-	pub fn subscriber(
-		&self,
-	) -> SubscriberBuilder<
-		P,
-		crate::com::subscriber::NoKeyExpression,
-		crate::com::subscriber::NoPutCallback,
-		crate::com::subscriber::Storage<P>,
-	> {
-		self.get_context().subscriber()
-	}
-	/// Get a builder for a [`Subscriber`]
-	#[cfg(not(feature = "subscriber"))]
-	#[must_use]
-	pub fn subscriber(
-		&self,
-	) -> SubscriberBuilder<
-		P,
-		crate::com::subscriber::NoKeyExpression,
-		crate::com::subscriber::NoPutCallback,
-		crate::com::subscriber::NoStorage,
-	> {
-		self.get_context().subscriber()
-	}
-
-	/// Get a builder for a [`Timer`]
-	#[cfg(feature = "timer")]
-	#[must_use]
-	pub fn timer(
-		&self,
-	) -> TimerBuilder<
-		P,
-		crate::timer::NoName,
-		crate::timer::NoInterval,
-		crate::timer::NoIntervalCallback,
-		crate::timer::Storage<P>,
-	> {
-		self.get_context().timer()
-	}
-	/// Get a builder for a [`Timer`]
-	#[cfg(not(feature = "timer"))]
-	#[must_use]
-	pub fn timer(
-		&self,
-	) -> TimerBuilder<
-		P,
-		crate::timer::NoName,
-		crate::timer::NoInterval,
-		crate::timer::NoIntervalCallback,
-		crate::timer::NoStorage,
-	> {
-		self.get_context().timer()
-	}
-
-	/// Internal function for starting all registered tasks
+	/// Start the agent
 	/// # Errors
 	/// Currently none
-	#[allow(unused_variables)]
-	async fn start_tasks(&mut self, tx: &Sender<TaskSignal>) -> Result<()> {
-		// start all registered queryables
-		#[cfg(feature = "queryable")]
-		self.context
-			.queryables
-			.write()
-			.map_err(|_| DimasError::ShouldNotHappen)?
-			.iter_mut()
-			.for_each(|queryable| {
-				queryable.1.start(tx.clone());
-			});
+	#[tracing::instrument(skip_all)]
+	pub async fn start(&mut self) -> Result<()> {
+		// we need an mpsc channel with a receiver behind a `Mutex`
+		let (tx, rx) = mpsc::channel();
+		let rx = Mutex::new(rx);
 
-		// start all registered subscribers
-		#[cfg(feature = "subscriber")]
-		self.context
-			.subscribers
-			.write()
-			.map_err(|_| DimasError::ShouldNotHappen)?
-			.iter_mut()
-			.for_each(|subscriber| {
-				subscriber.1.start(tx.clone());
-			});
-
-		// start liveliness subscriber
-		#[cfg(feature = "liveliness")]
-		self.context
-			.liveliness_subscribers
-			.write()
-			.map_err(|_| DimasError::ShouldNotHappen)?
-			.iter_mut()
-			.for_each(|subscriber| {
-				subscriber.1.start(tx.clone());
-			});
-
-		// wait a little bit before starting active part
-		//tokio::time::sleep(Duration::from_millis(10)).await;
-
-		// start all registered timers
-		#[cfg(feature = "timer")]
-		self.context
-			.timers
-			.write()
-			.map_err(|_| DimasError::ShouldNotHappen)?
-			.iter_mut()
-			.for_each(|timer| {
-				timer.1.start(tx.clone());
-			});
+		self.start_tasks(&tx)?;
 
 		// activate liveliness
 		if self.liveliness {
@@ -351,20 +156,6 @@ where
 				.map_err(|_| DimasError::ShouldNotHappen)?
 				.replace(token);
 		}
-
-		Ok(())
-	}
-
-	/// Start the agent
-	/// # Errors
-	/// Currently none
-	#[tracing::instrument(skip_all)]
-	pub async fn start(&mut self) -> Result<()> {
-		// we need an mpsc channel with a receiver behind a `Mutex`
-		let (tx, rx) = mpsc::channel();
-		let rx = Mutex::new(rx);
-
-		self.start_tasks(&tx).await?;
 
 		loop {
 			// different possibilities that can happen

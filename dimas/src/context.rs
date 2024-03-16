@@ -1,7 +1,9 @@
 // Copyright © 2023 Stephan Kunz
 
-//! The `Context` provides access to an `Agent`'s internal data and its defined properties.
+//! The [`ArcContext`] provides thread safe access to an [`Agent`]'s internal data and its defined properties.
+//! It internally uses the `Context`
 
+use crate::agent::TaskSignal;
 // region:		--- modules
 use crate::com::communicator::Communicator;
 use crate::prelude::*;
@@ -16,6 +18,7 @@ use crate::prelude::*;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::ops::Deref;
+use std::sync::mpsc::Sender;
 use tracing::{instrument, Level};
 use zenoh::publication::Publisher;
 use zenoh::query::ConsolidationMode;
@@ -35,7 +38,7 @@ const INITIAL_SIZE: usize = 9;
 // endregion:	--- types
 
 // region:		--- ArcContext
-/// `ArcContext` is a thread safe atomic reference counted [`Context`] and makes all relevant data of the agent accessible via accessor methods.
+/// `ArcContext` is a thread safe atomic reference counted `Context` and makes all relevant data of the agent accessible via accessor methods.
 #[derive(Debug)]
 #[allow(clippy::module_name_repetitions)]
 pub struct ArcContext<P>
@@ -82,6 +85,57 @@ impl<P> ArcContext<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// Internal function for starting all registered tasks
+	/// # Errors
+	/// Currently none
+	#[allow(unused_variables)]
+	pub(crate) fn start_tasks(&self, tx: &Sender<TaskSignal>) -> Result<()> {
+		// start all registered queryables
+		#[cfg(feature = "queryable")]
+		self.queryables
+			.write()
+			.map_err(|_| DimasError::ShouldNotHappen)?
+			.iter_mut()
+			.for_each(|queryable| {
+				queryable.1.start(tx.clone());
+			});
+
+		// start all registered subscribers
+		#[cfg(feature = "subscriber")]
+		self.subscribers
+			.write()
+			.map_err(|_| DimasError::ShouldNotHappen)?
+			.iter_mut()
+			.for_each(|subscriber| {
+				subscriber.1.start(tx.clone());
+			});
+
+		// start liveliness subscriber
+		#[cfg(feature = "liveliness")]
+		self.liveliness_subscribers
+			.write()
+			.map_err(|_| DimasError::ShouldNotHappen)?
+			.iter_mut()
+			.for_each(|subscriber| {
+				subscriber.1.start(tx.clone());
+			});
+
+		// wait a little bit before starting active part
+		//tokio::time::sleep(Duration::from_millis(10)).await;
+
+		// start all registered timers
+		#[cfg(feature = "timer")]
+		self.timers
+			.write()
+			.map_err(|_| DimasError::ShouldNotHappen)?
+			.iter_mut()
+			.for_each(|timer| {
+				timer.1.start(tx.clone());
+			});
+
+		Ok(())
+	}
+
 	/// Get a builder for a [`LivelinessSubscriber`]
 	#[cfg(feature = "liveliness")]
 	#[must_use]

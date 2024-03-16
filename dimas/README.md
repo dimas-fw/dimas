@@ -181,5 +181,5 @@ It is necessary to enable all those features you want to use within your `Agent`
 - `publisher`: Enables to store `Publisher`'s within the `Agent`'s `Context`.
 - `query`: Enables to store `Query`'s within the `Agent`'s `Context`.
 - `queryable`: Enables to store `Queryable`'s within the `Agent`'s `Context`.
-- `subscriber`: Enables to store `Subsciber`'s within the `Agent`'s `Context`.
+- `subscriber`: Enables to store `Subscriber`'s within the `Agent`'s `Context`.
 - `timer`: Enables to store `Timer`'s within the `Agent`'s `Context`.

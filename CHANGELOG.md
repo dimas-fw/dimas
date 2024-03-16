@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 
-## [0.0.7] - 2024-??-?? <br>_Has breaking changes!!_
+## [0.0.7] - 2024-03-17 <br>_Has breaking changes!!_
 
 ### Added
 - Configuration via json5 file together with some new dedicated configuration methods
@@ -24,14 +24,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - _The dedicated configuration method `Config::local()` returns an Error now_
-- panic hooks in spawned tasks that they do not crash the application
+- Panic hooks in spawned tasks that prevent tasks from crashing, they will be restarted instead
 - _Set on error handling: `Result`is always of type `std::result::Result<T, Box<dyn std::error::Error>>`_
 - All of the Builders are implemented with type state pattern
 - ArcContext is now a regular struct not only a type
-
-### Fixed
-
-### Removed
+- updated internal dependencies of zenoh & bitcode
 
 
 ## [0.0.6] - 2024-03-03 <br>_Has breaking changes!!_
@@ -43,8 +40,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - _Implemented error handling for callbacks which changes the signature of callbacks_
 - _Separated `Response` for `Query` from `Message` for `Subscriber`_
 - _Wrap zenoh `Sample` in messages which also changes the signature of callbacks_
-
-### Fixed
 
 ### Removed
 - Removed crate clap from examples
