@@ -15,6 +15,7 @@ pub use bitcode::{Decode, Encode};
 pub extern crate bitcode;
 
 pub use crate::agent::Agent;
+pub use crate::com::liveliness_subscriber::{LivelinessSubscriber, LivelinessSubscriberBuilder};
 pub use crate::com::message::{Message, Request, Response};
 pub use crate::com::publisher::{Publisher, PublisherBuilder};
 pub use crate::com::query::{Query, QueryBuilder};
@@ -22,7 +23,7 @@ pub use crate::com::queryable::{Queryable, QueryableBuilder};
 pub use crate::com::subscriber::{Subscriber, SubscriberBuilder};
 pub use crate::config::Config;
 pub use crate::context::ArcContext;
-pub use crate::error::DimasError;
+pub use crate::error::{DimasError, Result};
 pub use crate::timer::{Timer, TimerBuilder};
 // endregeion:  --- modules
 

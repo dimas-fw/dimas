@@ -3,11 +3,16 @@
 //! Module `queryable` provides an information/compute provider `Queryable` which can be created using the `QueryableBuilder`.
 
 // region:		--- modules
-use crate::prelude::*;
-use std::{fmt::Debug, sync::Mutex};
+use crate::{agent::TaskSignal, prelude::*};
+use std::{
+	fmt::Debug,
+	sync::{mpsc::Sender, Mutex},
+};
 use tokio::task::JoinHandle;
-use tracing::{error, span, Level};
-use zenoh::prelude::r#async::AsyncResolve;
+#[cfg(feature = "queryable")]
+use tracing::info;
+use tracing::{error, instrument, warn, Level};
+use zenoh::{prelude::r#async::AsyncResolve, SessionDeclarations};
 // endregion:	--- modules
 
 // region:		--- types
@@ -15,91 +20,196 @@ use zenoh::prelude::r#async::AsyncResolve;
 #[allow(clippy::module_name_repetitions)]
 pub type QueryableCallback<P> = Arc<
 	Mutex<
-		dyn FnMut(&ArcContext<P>, Request) -> Result<(), DimasError>
-			+ Send
-			+ Sync
-			+ Unpin
-			+ 'static,
+		Option<
+			Box<dyn FnMut(&ArcContext<P>, Request) -> Result<()> + Send + Sync + Unpin + 'static>,
+		>,
 	>,
 >;
 // endregion:	--- types
 
-// region:		--- QueryableBuilder
-/// The builder fo a queryable.
-#[allow(clippy::module_name_repetitions)]
-#[derive(Clone)]
-pub struct QueryableBuilder<P>
+// region:		--- states
+pub struct NoStorage;
+#[cfg(feature = "queryable")]
+pub struct Storage<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
-	pub(crate) context: ArcContext<P>,
-	pub(crate) key_expr: Option<String>,
-	pub(crate) callback: Option<QueryableCallback<P>>,
+	pub storage: Arc<RwLock<std::collections::HashMap<String, Queryable<P>>>>,
 }
 
-impl<P> QueryableBuilder<P>
+pub struct NoKeyExpression;
+pub struct KeyExpression {
+	key_expr: String,
+}
+
+pub struct NoRequestCallback;
+pub struct RequestCallback<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
-	/// Set the full expression for the queryable.
+	pub request: QueryableCallback<P>,
+}
+
+// region:		--- QueryableBuilder
+/// The builder for a queryable.
+#[allow(clippy::module_name_repetitions)]
+#[derive(Clone)]
+pub struct QueryableBuilder<P, K, C, S>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	pub(crate) context: ArcContext<P>,
+	pub(crate) key_expr: K,
+	pub(crate) callback: C,
+	pub(crate) storage: S,
+}
+
+impl<P> QueryableBuilder<P, NoKeyExpression, NoRequestCallback, NoStorage>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	/// Construct a `QueryableBuilder` in initial state
 	#[must_use]
-	pub fn key_expr(mut self, key_expr: impl Into<String>) -> Self {
-		self.key_expr.replace(key_expr.into());
-		self
+	pub const fn new(context: ArcContext<P>) -> Self {
+		Self {
+			context,
+			key_expr: NoKeyExpression,
+			callback: NoRequestCallback,
+			storage: NoStorage,
+		}
+	}
+}
+
+impl<P, C, S> QueryableBuilder<P, NoKeyExpression, C, S>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	/// Set the full expression for the queryable
+	#[must_use]
+	pub fn key_expr(self, key_expr: &str) -> QueryableBuilder<P, KeyExpression, C, S> {
+		let Self {
+			context,
+			storage,
+			callback,
+			..
+		} = self;
+		QueryableBuilder {
+			context,
+			key_expr: KeyExpression {
+				key_expr: key_expr.into(),
+			},
+			callback,
+			storage,
+		}
 	}
 
-	/// Set the message qualifying part only.
-	/// Will be prefixed by the agents prefix.
+	/// Set only the message qualifing part of the queryable.
+	/// Will be prefixed with agents prefix.
 	#[must_use]
-	pub fn msg_type(mut self, msg_type: impl Into<String>) -> Self {
+	pub fn msg_type(self, msg_type: &str) -> QueryableBuilder<P, KeyExpression, C, S> {
 		let key_expr = self.context.key_expr(msg_type);
-		self.key_expr.replace(key_expr);
-		self
+		let Self {
+			context,
+			storage,
+			callback,
+			..
+		} = self;
+		QueryableBuilder {
+			context,
+			key_expr: KeyExpression { key_expr },
+			callback,
+			storage,
+		}
 	}
+}
 
-	/// Set the queryables callback function.
+impl<P, K, S> QueryableBuilder<P, K, NoRequestCallback, S>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	/// Set callback for request messages
 	#[must_use]
-	pub fn callback<F>(mut self, callback: F) -> Self
+	pub fn callback<F>(self, callback: F) -> QueryableBuilder<P, K, RequestCallback<P>, S>
 	where
-		F: FnMut(&ArcContext<P>, Request) -> Result<(), DimasError> + Send + Sync + Unpin + 'static,
+		F: FnMut(&ArcContext<P>, Request) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
-		self.callback
-			.replace(Arc::new(Mutex::new(callback)));
-		self
+		let Self {
+			context,
+			key_expr,
+			storage,
+			..
+		} = self;
+		let request: QueryableCallback<P> = Arc::new(Mutex::new(Some(Box::new(callback))));
+		QueryableBuilder {
+			context,
+			key_expr,
+			callback: RequestCallback { request },
+			storage,
+		}
 	}
+}
 
+#[cfg(feature = "queryable")]
+impl<P, K, C> QueryableBuilder<P, K, C, NoStorage>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	/// Provide agents storage for the queryable
+	#[must_use]
+	pub fn storage(
+		self,
+		storage: Arc<RwLock<std::collections::HashMap<String, Queryable<P>>>>,
+	) -> QueryableBuilder<P, K, C, Storage<P>> {
+		let Self {
+			context,
+			key_expr,
+			callback,
+			..
+		} = self;
+		QueryableBuilder {
+			context,
+			key_expr,
+			callback,
+			storage: Storage { storage },
+		}
+	}
+}
+
+impl<P, S> QueryableBuilder<P, KeyExpression, RequestCallback<P>, S>
+where
+	P: Send + Sync + Unpin + 'static,
+{
 	/// Build the queryable
 	/// # Errors
 	///
-	pub fn build(self) -> Result<Queryable<P>, DimasError> {
-		let key_expr = if self.key_expr.is_none() {
-			return Err(DimasError::NoKeyExpression);
-		} else {
-			self.key_expr.ok_or(DimasError::ShouldNotHappen)?
-		};
-		let callback = if self.callback.is_none() {
-			return Err(DimasError::NoCallback);
-		} else {
-			self.callback.ok_or(DimasError::ShouldNotHappen)?
-		};
-
-		let q = Queryable {
+	pub fn build(self) -> Result<Queryable<P>> {
+		let Self {
+			context,
 			key_expr,
 			callback,
+			..
+		} = self;
+		let key_expr = key_expr.key_expr;
+		Ok(Queryable {
+			context,
+			key_expr,
+			callback: Some(callback.request),
 			handle: None,
-			context: self.context,
-		};
-
-		Ok(q)
+		})
 	}
+}
 
+#[cfg(feature = "queryable")]
+impl<P> QueryableBuilder<P, KeyExpression, RequestCallback<P>, Storage<P>>
+where
+	P: Send + Sync + Unpin + 'static,
+{
 	/// Build and add the queryable to the agents context
 	/// # Errors
 	///
-	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "queryable")))]
-	#[cfg(feature = "queryable")]
-	pub fn add(self) -> Result<(), DimasError> {
-		let collection = self.context.queryables.clone();
+	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "query")))]
+	pub fn add(self) -> Result<()> {
+		let collection = self.storage.storage.clone();
 		let q = self.build()?;
 
 		collection
@@ -115,17 +225,17 @@ where
 /// Queryable
 pub struct Queryable<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	key_expr: String,
-	callback: QueryableCallback<P>,
+	callback: Option<QueryableCallback<P>>,
 	handle: Option<JoinHandle<()>>,
 	context: ArcContext<P>,
 }
 
 impl<P> Debug for Queryable<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Queryable")
@@ -136,47 +246,70 @@ where
 
 impl<P> Queryable<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
-	/// Start Queryable
-	/// # Errors
-	///
-	pub fn start(&mut self) -> Result<(), DimasError> {
+	/// Start or restart the queryable.
+	/// An already running queryable will be stopped, eventually damaged Mutexes will be repaired
+	#[instrument(level = Level::TRACE)]
+	pub fn start(&mut self, tx: Sender<TaskSignal>) {
+		self.stop();
+
+		#[cfg(not(feature = "queryable"))]
+		drop(tx);
+
+		{
+			if let Some(cb) = self.callback.clone() {
+				if let Err(err) = cb.lock() {
+					warn!("found poisoned put Mutex");
+					self.callback
+						.replace(Arc::new(Mutex::new(err.into_inner().take())));
+				}
+			}
+		}
+
 		let key_expr = self.key_expr.clone();
 		let cb = self.callback.clone();
 		let ctx = self.context.clone();
 
 		self.handle.replace(tokio::spawn(async move {
+			#[cfg(feature = "queryable")]
+			let key = key_expr.clone();
+			std::panic::set_hook(Box::new(move |reason| {
+				error!("queryable panic: {}", reason);
+				#[cfg(feature = "queryable")]
+				if let Err(reason) = tx.send(TaskSignal::RestartQueryable(key.clone())) {
+					error!("could not restart queryable: {}", reason);
+				} else {
+					info!("restarting queryable!");
+				};
+			}));
 			if let Err(error) = run_queryable(key_expr, cb, ctx).await {
 				error!("queryable failed with {error}");
 			};
 		}));
-		Ok(())
 	}
 
-	/// Stop Queryable
-	/// # Errors
-	///
-	pub fn stop(&mut self) -> Result<(), DimasError> {
-		self.handle
-			.take()
-			.ok_or(DimasError::ShouldNotHappen)?
-			.abort();
-		Ok(())
+	/// Stop a running Queryable
+	#[instrument(level = Level::TRACE)]
+	pub fn stop(&mut self) {
+		if let Some(handle) = self.handle.take() {
+			handle.abort();
+		}
 	}
 }
 
-//#[tracing::instrument(level = tracing::Level::DEBUG)]
+#[instrument(name="queryable", level = Level::ERROR, skip_all)]
 async fn run_queryable<P>(
 	key_expr: String,
-	cb: QueryableCallback<P>,
+	cb: Option<QueryableCallback<P>>,
 	ctx: ArcContext<P>,
-) -> Result<(), DimasError>
+) -> Result<()>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
-	let session = ctx.communicator.session.clone();
-	let subscriber = session
+	let subscriber = ctx
+		.communicator
+		.session
 		.declare_queryable(&key_expr)
 		.res_async()
 		.await
@@ -189,17 +322,17 @@ where
 			.map_err(|_| DimasError::ShouldNotHappen)?;
 		let request = Request(query);
 
-		let span = span!(Level::DEBUG, "run_queryable");
-		let _guard = span.enter();
-		let guard = cb.lock();
-		match guard {
-			Ok(mut lock) => {
-				if let Err(error) = lock(&ctx, request) {
-					error!("queryable callback failed with {error}");
+		if let Some(cb) = cb.clone() {
+			let result = cb.lock();
+			match result {
+				Ok(mut cb) => {
+					if let Err(error) = cb.as_deref_mut().expect("snh")(&ctx, request) {
+						error!("callback failed with {error}");
+					}
 				}
-			}
-			Err(err) => {
-				error!("queryable callback failed with {err}");
+				Err(err) => {
+					error!("callback lock failed with {err}");
+				}
 			}
 		}
 	}
@@ -219,6 +352,6 @@ mod tests {
 	#[test]
 	const fn normal_types() {
 		is_normal::<Queryable<Props>>();
-		is_normal::<QueryableBuilder<Props>>();
+		is_normal::<QueryableBuilder<Props, NoKeyExpression, NoRequestCallback, NoStorage>>();
 	}
 }

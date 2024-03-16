@@ -4,11 +4,16 @@
 //! A `Subscriber` can optional subscribe on a delete message.
 
 // region:		--- modules
-use crate::prelude::*;
-use std::{fmt::Debug, sync::Mutex};
+use crate::{agent::TaskSignal, prelude::*};
+use std::sync::{mpsc::Sender, Mutex};
 use tokio::task::JoinHandle;
-use tracing::{error, span, Level};
-use zenoh::prelude::{r#async::AsyncResolve, SampleKind};
+#[cfg(feature = "subscriber")]
+use tracing::info;
+use tracing::{error, instrument, warn, Level};
+use zenoh::{
+	prelude::{r#async::AsyncResolve, SampleKind},
+	SessionDeclarations,
+};
 // endregion:	--- modules
 
 // region:		--- types
@@ -16,113 +21,245 @@ use zenoh::prelude::{r#async::AsyncResolve, SampleKind};
 #[allow(clippy::module_name_repetitions)]
 pub type SubscriberPutCallback<P> = Arc<
 	Mutex<
-		dyn FnMut(&ArcContext<P>, Message) -> Result<(), DimasError>
-			+ Send
-			+ Sync
-			+ Unpin
-			+ 'static,
+		Option<
+			Box<dyn FnMut(&ArcContext<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static>,
+		>,
 	>,
 >;
 /// Type definition for a subscribers `delete` callback function
 #[allow(clippy::module_name_repetitions)]
-pub type SubscriberDeleteCallback<P> =
-	Arc<Mutex<dyn FnMut(&ArcContext<P>) -> Result<(), DimasError> + Send + Sync + Unpin + 'static>>;
+pub type SubscriberDeleteCallback<P> = Arc<
+	Mutex<Option<Box<dyn FnMut(&ArcContext<P>) -> Result<()> + Send + Sync + Unpin + 'static>>>,
+>;
 // endregion:	--- types
+
+// region:		--- states
+pub struct NoStorage;
+#[cfg(feature = "subscriber")]
+pub struct Storage<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	pub storage: Arc<RwLock<std::collections::HashMap<String, Subscriber<P>>>>,
+}
+
+pub struct NoKeyExpression;
+pub struct KeyExpression {
+	key_expr: String,
+}
+
+pub struct NoPutCallback;
+pub struct PutCallback<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	pub callback: SubscriberPutCallback<P>,
+}
+// endregion:	--- states
 
 // region:		--- SubscriberBuilder
 /// A builder for a subscriber
 #[allow(clippy::module_name_repetitions)]
 #[derive(Clone)]
-pub struct SubscriberBuilder<P>
+pub struct SubscriberBuilder<P, K, C, S>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	pub(crate) context: ArcContext<P>,
-	pub(crate) key_expr: Option<String>,
-	pub(crate) put_callback: Option<SubscriberPutCallback<P>>,
+	pub(crate) key_expr: K,
+	pub(crate) put_callback: C,
+	pub(crate) storage: S,
 	pub(crate) delete_callback: Option<SubscriberDeleteCallback<P>>,
 }
 
-impl<P> SubscriberBuilder<P>
+impl<P> SubscriberBuilder<P, NoKeyExpression, NoPutCallback, NoStorage>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
-	/// Set the full expression to subscribe on.
+	/// Construct a `SubscriberBuilder` in initial state
 	#[must_use]
-	pub fn key_expr(mut self, key_expr: impl Into<String>) -> Self {
-		self.key_expr.replace(key_expr.into());
-		self
+	pub const fn new(context: ArcContext<P>) -> Self {
+		Self {
+			context,
+			key_expr: NoKeyExpression,
+			put_callback: NoPutCallback,
+			storage: NoStorage,
+			delete_callback: None,
+		}
+	}
+}
+
+impl<P, K, C, S> SubscriberBuilder<P, K, C, S>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	/// Set liveliness subscribers callback for `delete` messages
+	#[must_use]
+	pub fn delete_callback<F>(self, callback: F) -> Self
+	where
+		F: FnMut(&ArcContext<P>) -> Result<()> + Send + Sync + Unpin + 'static,
+	{
+		let Self {
+			context,
+			key_expr,
+			put_callback,
+			storage,
+			..
+		} = self;
+		let delete_callback: Option<SubscriberDeleteCallback<P>> =
+			Some(Arc::new(Mutex::new(Some(Box::new(callback)))));
+		Self {
+			context,
+			key_expr,
+			put_callback,
+			storage,
+			delete_callback,
+		}
+	}
+}
+
+impl<P, C, S> SubscriberBuilder<P, NoKeyExpression, C, S>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	/// Set the full expression for the subscriber
+	#[must_use]
+	pub fn key_expr(self, key_expr: &str) -> SubscriberBuilder<P, KeyExpression, C, S> {
+		let Self {
+			context,
+			storage,
+			put_callback,
+			delete_callback,
+			..
+		} = self;
+		SubscriberBuilder {
+			context,
+			key_expr: KeyExpression {
+				key_expr: key_expr.into(),
+			},
+			put_callback,
+			storage,
+			delete_callback,
+		}
 	}
 
-	/// Set only the message qualifying part of the expression to subscribe on.
-	/// Will be prefixed by the agents prefix.
+	/// Set only the message qualifing part of the subscriber.
+	/// Will be prefixed with agents prefix.
 	#[must_use]
-	pub fn msg_type(mut self, msg_type: impl Into<String>) -> Self {
+	pub fn msg_type(self, msg_type: &str) -> SubscriberBuilder<P, KeyExpression, C, S> {
 		let key_expr = self.context.key_expr(msg_type);
-		self.key_expr.replace(key_expr);
-		self
+		let Self {
+			context,
+			storage,
+			put_callback,
+			delete_callback,
+			..
+		} = self;
+		SubscriberBuilder {
+			context,
+			key_expr: KeyExpression { key_expr },
+			put_callback,
+			storage,
+			delete_callback,
+		}
 	}
+}
 
-	/// Set subscribers callback for `put` messages
+impl<P, K, S> SubscriberBuilder<P, K, NoPutCallback, S>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	/// Set callback for put messages
 	#[must_use]
-	pub fn put_callback<F>(mut self, callback: F) -> Self
+	pub fn put_callback<F>(self, callback: F) -> SubscriberBuilder<P, K, PutCallback<P>, S>
 	where
-		F: FnMut(&ArcContext<P>, Message) -> Result<(), DimasError> + Send + Sync + Unpin + 'static,
+		F: FnMut(&ArcContext<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
-		self.put_callback
-			.replace(Arc::new(Mutex::new(callback)));
-		self
+		let Self {
+			context,
+			key_expr,
+			storage,
+			delete_callback,
+			..
+		} = self;
+		let callback: SubscriberPutCallback<P> = Arc::new(Mutex::new(Some(Box::new(callback))));
+		SubscriberBuilder {
+			context,
+			key_expr,
+			put_callback: PutCallback { callback },
+			storage,
+			delete_callback,
+		}
 	}
+}
 
-	/// Set subscribers callback for `delete` messages
+#[cfg(feature = "subscriber")]
+impl<P, K, C> SubscriberBuilder<P, K, C, NoStorage>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	/// Provide agents storage for the subscriber
 	#[must_use]
-	pub fn delete_callback<F>(mut self, callback: F) -> Self
-	where
-		F: FnMut(&ArcContext<P>) -> Result<(), DimasError> + Send + Sync + Unpin + 'static,
-	{
-		self.delete_callback
-			.replace(Arc::new(Mutex::new(callback)));
-		self
+	pub fn storage(
+		self,
+		storage: Arc<RwLock<std::collections::HashMap<String, Subscriber<P>>>>,
+	) -> SubscriberBuilder<P, K, C, Storage<P>> {
+		let Self {
+			context,
+			key_expr,
+			put_callback,
+			delete_callback,
+			..
+		} = self;
+		SubscriberBuilder {
+			context,
+			key_expr,
+			put_callback,
+			storage: Storage { storage },
+			delete_callback,
+		}
 	}
+}
 
+impl<P, S> SubscriberBuilder<P, KeyExpression, PutCallback<P>, S>
+where
+	P: Send + Sync + Unpin + 'static,
+{
 	/// Build the subscriber
 	/// # Errors
 	///
-	pub fn build(self) -> Result<Subscriber<P>, DimasError> {
-		let key_expr = if self.key_expr.is_none() {
-			return Err(DimasError::NoKeyExpression);
-		} else {
-			self.key_expr.ok_or(DimasError::ShouldNotHappen)?
-		};
-		let put_callback = if self.put_callback.is_none() {
-			return Err(DimasError::NoCallback);
-		} else {
-			self.put_callback
-				.ok_or(DimasError::ShouldNotHappen)?
-		};
-
-		let s = Subscriber {
+	pub fn build(self) -> Result<Subscriber<P>> {
+		let Self {
+			context,
 			key_expr,
 			put_callback,
-			delete_callback: self.delete_callback,
+			delete_callback,
+			..
+		} = self;
+		Ok(Subscriber {
+			context,
+			key_expr: key_expr.key_expr,
+			put_callback: Some(put_callback.callback),
+			delete_callback,
 			handle: None,
-			context: self.context,
-		};
-
-		Ok(s)
+		})
 	}
+}
 
-	/// Build and add the subscriber to the agents context
+#[cfg(feature = "subscriber")]
+impl<P> SubscriberBuilder<P, KeyExpression, PutCallback<P>, Storage<P>>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	/// Build and add the subscriber to the agent
 	/// # Errors
 	///
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "subscriber")))]
-	#[cfg(feature = "subscriber")]
-	pub fn add(self) -> Result<(), DimasError> {
-		let collection = self.context.subscribers.clone();
+	pub fn add(self) -> Result<()> {
+		let c = self.storage.storage.clone();
 		let s = self.build()?;
 
-		collection
-			.write()
+		c.write()
 			.map_err(|_| DimasError::ShouldNotHappen)?
 			.insert(s.key_expr.clone(), s);
 		Ok(())
@@ -134,10 +271,10 @@ where
 /// Subscriber
 pub struct Subscriber<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	key_expr: String,
-	put_callback: SubscriberPutCallback<P>,
+	put_callback: Option<SubscriberPutCallback<P>>,
 	delete_callback: Option<SubscriberDeleteCallback<P>>,
 	handle: Option<JoinHandle<()>>,
 	context: ArcContext<P>,
@@ -145,7 +282,7 @@ where
 
 impl<P> std::fmt::Debug for Subscriber<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Subscriber")
@@ -156,48 +293,81 @@ where
 
 impl<P> Subscriber<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
-	/// Start Subscriber
-	/// # Errors
-	///
-	pub fn start(&mut self) -> Result<(), DimasError> {
+	/// Start or restart the subscriber.
+	/// An already running subscriber will be stopped, eventually damaged Mutexes will be repaired
+	#[instrument(level = Level::TRACE, skip_all)]
+	pub fn start(&mut self, tx: Sender<TaskSignal>) {
+		self.stop();
+
+		#[cfg(not(feature = "subscriber"))]
+		drop(tx);
+
+		{
+			if let Some(pcb) = self.put_callback.clone() {
+				if let Err(err) = pcb.lock() {
+					warn!("found poisoned put Mutex");
+					self.put_callback
+						.replace(Arc::new(Mutex::new(err.into_inner().take())));
+				}
+			}
+		}
+		{
+			if let Some(dcb) = self.delete_callback.clone() {
+				if let Err(err) = dcb.lock() {
+					warn!("found poisoned delete Mutex");
+					self.delete_callback
+						.replace(Arc::new(Mutex::new(err.into_inner().take())));
+				}
+			}
+		}
+
 		let key_expr = self.key_expr.clone();
 		let p_cb = self.put_callback.clone();
 		let d_cb = self.delete_callback.clone();
 		let ctx = self.context.clone();
+
 		self.handle.replace(tokio::spawn(async move {
+			#[cfg(feature = "subscriber")]
+			let key = key_expr.clone();
+			std::panic::set_hook(Box::new(move |reason| {
+				error!("subscriber panic: {}", reason);
+				#[cfg(feature = "subscriber")]
+				if let Err(reason) = tx.send(TaskSignal::RestartSubscriber(key.clone())) {
+					error!("could not restart subscriber: {}", reason);
+				} else {
+					info!("restarting subscriber!");
+				};
+			}));
 			if let Err(error) = run_subscriber(key_expr, p_cb, d_cb, ctx).await {
-				error!("subscriber failed with {error}");
+				error!("spawning subscriber failed with {error}");
 			};
 		}));
-		Ok(())
 	}
 
-	/// Stop Subscriber
-	/// # Errors
-	///
-	pub fn stop(&mut self) -> Result<(), DimasError> {
-		self.handle
-			.take()
-			.ok_or(DimasError::ShouldNotHappen)?
-			.abort();
-		Ok(())
+	/// Stop a running Subscriber
+	#[instrument(level = Level::TRACE, skip_all)]
+	pub fn stop(&mut self) {
+		if let Some(handle) = self.handle.take() {
+			handle.abort();
+		}
 	}
 }
 
-//#[tracing::instrument(level = tracing::Level::DEBUG)]
+#[instrument(name="subscriber", level = Level::ERROR, skip_all)]
 async fn run_subscriber<P>(
 	key_expr: String,
-	p_cb: SubscriberPutCallback<P>,
+	p_cb: Option<SubscriberPutCallback<P>>,
 	d_cb: Option<SubscriberDeleteCallback<P>>,
 	ctx: ArcContext<P>,
-) -> Result<(), DimasError>
+) -> Result<()>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
-	let session = ctx.communicator.session.clone();
-	let subscriber = session
+	let subscriber = ctx
+		.communicator
+		.session
 		.declare_subscriber(&key_expr)
 		.res_async()
 		.await
@@ -209,34 +379,34 @@ where
 			.await
 			.map_err(|_| DimasError::ShouldNotHappen)?;
 
-		let span = span!(Level::DEBUG, "run_subscriber");
-		let _guard = span.enter();
 		match sample.kind {
 			SampleKind::Put => {
 				let msg = Message(sample);
-				let guard = p_cb.lock();
-				match guard {
-					Ok(mut lock) => {
-						if let Err(error) = lock(&ctx, msg) {
-							error!("subscriber put callback failed with {error}");
+				if let Some(cb) = p_cb.clone() {
+					let result = cb.lock();
+					match result {
+						Ok(mut cb) => {
+							if let Err(error) = cb.as_deref_mut().expect("snh")(&ctx, msg) {
+								error!("put callback failed with {error}");
+							}
 						}
-					}
-					Err(err) => {
-						error!("subscriber put callback lock failed with {err}");
+						Err(err) => {
+							error!("put callback lock failed with {err}");
+						}
 					}
 				}
 			}
 			SampleKind::Delete => {
 				if let Some(cb) = d_cb.clone() {
-					let guard = cb.lock();
-					match guard {
-						Ok(mut lock) => {
-							if let Err(error) = lock(&ctx) {
-								error!("subscriber delete callback failed with {error}");
+					let result = cb.lock();
+					match result {
+						Ok(mut cb) => {
+							if let Err(error) = cb.as_deref_mut().expect("snh")(&ctx) {
+								error!("delete callback failed with {error}");
 							}
 						}
 						Err(err) => {
-							error!("subscriber delete callback lock failed with {err}");
+							error!("delete callback lock failed with {err}");
 						}
 					}
 				}
@@ -259,6 +429,6 @@ mod tests {
 	#[test]
 	const fn normal_types() {
 		is_normal::<Subscriber<Props>>();
-		is_normal::<SubscriberBuilder<Props>>();
+		is_normal::<SubscriberBuilder<Props, NoKeyExpression, NoPutCallback, NoStorage>>();
 	}
 }

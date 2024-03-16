@@ -21,12 +21,13 @@ struct PingPongMessage {
 }
 
 #[allow(clippy::cast_precision_loss)]
-fn pong_received(_ctx: &ArcContext<AgentProps>, message: Message) -> Result<(), DimasError> {
+fn pong_received(_ctx: &ArcContext<AgentProps>, message: Message) -> Result<()> {
 	let message: PingPongMessage = message.decode()?;
 
 	// get current timestamp
 	let received = Local::now()
 		.naive_utc()
+		.and_utc()
 		.timestamp_nanos_opt()
 		.unwrap_or(0);
 	// calculate & print traveltimes
@@ -43,7 +44,7 @@ fn pong_received(_ctx: &ArcContext<AgentProps>, message: Message) -> Result<(), 
 }
 
 #[tokio::main(flavor = "current_thread")]
-async fn main() -> Result<(), DimasError> {
+async fn main() -> Result<()> {
 	// a tracing subscriber writing logs
 	tracing_subscriber::fmt::init();
 
@@ -61,13 +62,14 @@ async fn main() -> Result<(), DimasError> {
 		.timer()
 		.name("timer")
 		.interval(Duration::from_secs(1))
-		.callback(|ctx| -> Result<(), DimasError> {
+		.callback(|ctx| -> Result<()> {
 			let counter = ctx.read()?.counter;
 
 			let message = PingPongMessage {
 				counter,
 				sent: Local::now()
 					.naive_utc()
+					.and_utc()
 					.timestamp_nanos_opt()
 					.unwrap_or(0),
 				received: None,
@@ -76,7 +78,7 @@ async fn main() -> Result<(), DimasError> {
 			// publishing with stored publisher
 			ctx.put_with("ping", message)?;
 
-			let text = "ping! [".to_string() + &counter.to_string() + "]";
+			let text = format!("ping! [{counter}]");
 			info!("Sent {} ", &text);
 
 			// increase counter

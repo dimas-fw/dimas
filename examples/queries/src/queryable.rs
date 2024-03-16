@@ -11,7 +11,7 @@ struct AgentProps {
 	counter: u128,
 }
 
-fn queryable(ctx: &ArcContext<AgentProps>, request: Request) -> Result<(), DimasError> {
+fn queryable(ctx: &ArcContext<AgentProps>, request: Request) -> Result<()> {
 	let value = ctx.read()?.counter;
 	let query = request.key_expr();
 	info!("Received query for {}, responding with {}", &query, &value);
@@ -22,7 +22,7 @@ fn queryable(ctx: &ArcContext<AgentProps>, request: Request) -> Result<(), Dimas
 }
 
 #[tokio::main(flavor = "current_thread")]
-async fn main() -> Result<(), DimasError> {
+async fn main() -> Result<()> {
 	// a tracing subscriber writing logs
 	tracing_subscriber::fmt::init();
 

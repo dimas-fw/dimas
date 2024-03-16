@@ -21,12 +21,12 @@ pub struct Communicator {
 }
 
 impl Communicator {
-	pub(crate) fn new(config: crate::config::Config) -> Result<Self, DimasError> {
+	pub(crate) fn new(config: crate::config::Config) -> Result<Self> {
 		let cfg = config;
 		let session = Arc::new(
 			zenoh::open(cfg.zenoh_config())
 				.res_sync()
-				.map_err(|_| DimasError::SessionCreationFailed)?,
+				.map_err(DimasError::SessionCreation)?,
 		);
 		Ok(Self {
 			session,
@@ -34,15 +34,12 @@ impl Communicator {
 		})
 	}
 
-	pub(crate) fn new_with_prefix(
-		config: crate::config::Config,
-		prefix: impl Into<String>,
-	) -> Result<Self, DimasError> {
+	pub(crate) fn new_with_prefix(config: crate::config::Config, prefix: &str) -> Result<Self> {
 		let cfg = config;
 		let session = Arc::new(
 			zenoh::open(cfg.zenoh_config())
 				.res_sync()
-				.map_err(|_| DimasError::SessionCreationFailed)?,
+				.map_err(DimasError::SessionCreation)?,
 		);
 		let prefix = Some(prefix.into());
 		Ok(Self { session, prefix })
@@ -56,67 +53,60 @@ impl Communicator {
 		self.prefix.clone()
 	}
 
-	pub(crate) fn key_expr(&self, msg_name: impl Into<String>) -> String {
-		match self.prefix.clone() {
-			Some(prefix) => prefix + "/" + &msg_name.into(),
-			None => msg_name.into(),
-		}
+	pub(crate) fn key_expr(&self, msg_name: &str) -> String {
+		self.prefix()
+			.map_or_else(|| msg_name.into(), |prefix| format!("{prefix}/{msg_name}"))
 	}
 
-	pub(crate) async fn send_liveliness<'a>(
-		&self,
-		msg_type: impl Into<String> + Send,
-	) -> Result<LivelinessToken<'a>, DimasError> {
+	pub(crate) async fn send_liveliness<'a>(&self, msg_type: &str) -> Result<LivelinessToken<'a>> {
 		let session = self.session.clone();
-		let uuid = self.key_expr(msg_type) + "/" + &session.zid().to_string();
+		let uuid = format!("{}/{}", self.key_expr(msg_type), session.zid());
 
 		session
 			.liveliness()
 			.declare_token(&uuid)
 			.res_async()
 			.await
-			.map_err(|_| DimasError::ShouldNotHappen)
+			.map_err(|_| DimasError::ShouldNotHappen.into())
 	}
 
-	pub(crate) fn create_publisher<'a>(
-		&self,
-		key_expr: impl Into<String> + Send,
-	) -> Result<Publisher<'a>, DimasError> {
+	pub(crate) fn create_publisher<'a>(&self, key_expr: &str) -> Result<Publisher<'a>> {
 		self.session
-			.declare_publisher(key_expr.into())
+			.declare_publisher(key_expr.to_owned())
 			.res_sync()
-			.map_err(|_| DimasError::ShouldNotHappen)
+			.map_err(|_| DimasError::ShouldNotHappen.into())
 	}
 
-	pub(crate) fn put<M>(&self, msg_name: impl Into<String>, message: M) -> Result<(), DimasError>
+	#[allow(clippy::needless_pass_by_value)]
+	pub(crate) fn put<M>(&self, msg_name: &str, message: M) -> Result<()>
 	where
 		M: Encode,
 	{
-		let value: Vec<u8> = encode(&message).map_err(|_| DimasError::ShouldNotHappen)?;
+		let value: Vec<u8> = encode(&message);
 		let key_expr = self.key_expr(msg_name);
 		match self.session.put(&key_expr, value).res_sync() {
 			Ok(()) => Ok(()),
-			Err(_) => Err(DimasError::PutFailed),
+			Err(_) => Err(DimasError::PutMessage.into()),
 		}
 	}
 
-	pub(crate) fn delete(&self, msg_name: impl Into<String>) -> Result<(), DimasError> {
+	pub(crate) fn delete(&self, msg_name: &str) -> Result<()> {
 		let key_expr = self.key_expr(msg_name);
 		match self.session.delete(&key_expr).res_sync() {
 			Ok(()) => Ok(()),
-			Err(_) => Err(DimasError::DeleteFailed),
+			Err(_) => Err(DimasError::DeleteMessage.into()),
 		}
 	}
 
 	pub(crate) fn get<P, F>(
 		&self,
 		ctx: ArcContext<P>,
-		query_name: impl Into<String>,
+		query_name: &str,
 		mode: ConsolidationMode,
 		callback: F,
-	) -> Result<(), DimasError>
+	) -> Result<()>
 	where
-		P: Debug + Send + Sync + Unpin + 'static,
+		P: Send + Sync + Unpin + 'static,
 		F: Fn(&ArcContext<P>, Message) + Send + Sync + Unpin + 'static,
 	{
 		let key_expr = self.key_expr(query_name);
@@ -162,32 +152,53 @@ mod tests {
 		is_normal::<Communicator>();
 	}
 
-	#[tokio::test]
+	#[test]
 	//#[serial]
-	async fn communicator_create_default() {
-		let _peer1 = Communicator::new(crate::config::Config::default());
-		let _peer2 = Communicator::new_with_prefix(crate::config::Config::local(), "peer2");
-		//let _peer3 = Communicator::new(config::client());
+	fn zenoh_create_default_sync() {
+		let _zenoh = zenoh::open(config::default()).res_sync();
 	}
 
 	#[tokio::test(flavor = "current_thread")]
 	//#[serial]
-	async fn communicator_create_single() {
+	async fn zenoh_create_default_sync_in_async() {
+		let _zenoh = zenoh::open(config::default()).res_sync();
+	}
+
+	#[tokio::test(flavor = "current_thread")]
+	//#[serial]
+	async fn zenoh_create_default_async() {
+		let _zenoh = zenoh::open(config::default()).res_async().await;
+	}
+
+	#[tokio::test]
+	//#[serial]
+	async fn communicator_create_default() -> Result<()> {
 		let _peer1 = Communicator::new(crate::config::Config::default());
-		let _peer2 = Communicator::new_with_prefix(crate::config::Config::local(), "peer2");
+		let _peer2 = Communicator::new_with_prefix(crate::config::Config::local()?, "peer2");
+		Ok(())
+	}
+
+	#[tokio::test(flavor = "current_thread")]
+	//#[serial]
+	async fn communicator_create_single() -> Result<()> {
+		let _peer1 = Communicator::new(crate::config::Config::default());
+		let _peer2 = Communicator::new_with_prefix(crate::config::Config::local()?, "peer2");
+		Ok(())
 	}
 
 	#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 	//#[serial]
-	async fn communicator_create_restricted() {
+	async fn communicator_create_restricted() -> Result<()> {
 		let _peer1 = Communicator::new(crate::config::Config::default());
-		let _peer2 = Communicator::new_with_prefix(crate::config::Config::local(), "peer2");
+		let _peer2 = Communicator::new_with_prefix(crate::config::Config::local()?, "peer2");
+		Ok(())
 	}
 
 	#[tokio::test(flavor = "multi_thread")]
 	//#[serial]
-	async fn communicator_create_multi() {
+	async fn communicator_create_multi() -> Result<()> {
 		let _peer1 = Communicator::new(crate::config::Config::default());
-		let _peer2 = Communicator::new_with_prefix(crate::config::Config::local(), "peer2");
+		let _peer2 = Communicator::new_with_prefix(crate::config::Config::local()?, "peer2");
+		Ok(())
 	}
 }

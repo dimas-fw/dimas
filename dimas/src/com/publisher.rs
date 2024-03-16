@@ -5,64 +5,135 @@
 // region:		--- modules
 use crate::prelude::*;
 use std::fmt::Debug;
+use tracing::{instrument, Level};
 use zenoh::prelude::sync::SyncResolve;
 // endregion:	--- modules
+
+// region:		--- states
+pub struct NoStorage;
+#[cfg(feature = "publisher")]
+pub struct Storage {
+	pub storage: Arc<RwLock<std::collections::HashMap<String, Publisher>>>,
+}
+
+pub struct NoKeyExpression;
+pub struct KeyExpression {
+	key_expr: String,
+}
+// endregion:	--- states
 
 // region:		--- PublisherBuilder
 /// The builder for a publisher
 #[allow(clippy::module_name_repetitions)]
 #[derive(Clone)]
-pub struct PublisherBuilder<P>
+pub struct PublisherBuilder<P, K, S>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	pub(crate) context: ArcContext<P>,
-	pub(crate) key_expr: Option<String>,
+	pub(crate) key_expr: K,
+	pub(crate) storage: S,
 }
 
-impl<P> PublisherBuilder<P>
+impl<P> PublisherBuilder<P, NoKeyExpression, NoStorage>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
+{
+	/// Construct a `PublisherBuilder` in initial state
+	#[must_use]
+	pub const fn new(context: ArcContext<P>) -> Self {
+		Self {
+			context,
+			key_expr: NoKeyExpression,
+			storage: NoStorage,
+		}
+	}
+}
+
+#[cfg(feature = "publisher")]
+impl<P, K> PublisherBuilder<P, K, NoStorage>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	/// Provide agents storage for the publisher
+	#[must_use]
+	pub fn storage(
+		self,
+		storage: Arc<RwLock<std::collections::HashMap<String, Publisher>>>,
+	) -> PublisherBuilder<P, K, Storage> {
+		let Self {
+			context, key_expr, ..
+		} = self;
+		PublisherBuilder {
+			context,
+			key_expr,
+			storage: Storage { storage },
+		}
+	}
+}
+
+impl<P, S> PublisherBuilder<P, NoKeyExpression, S>
+where
+	P: Send + Sync + Unpin + 'static,
 {
 	/// Set the full expression for the publisher
 	#[must_use]
-	pub fn key_expr(mut self, key_expr: impl Into<String>) -> Self {
-		self.key_expr.replace(key_expr.into());
-		self
+	pub fn key_expr(self, key_expr: &str) -> PublisherBuilder<P, KeyExpression, S> {
+		let Self {
+			context, storage, ..
+		} = self;
+		PublisherBuilder {
+			context,
+			key_expr: KeyExpression {
+				key_expr: key_expr.into(),
+			},
+			storage,
+		}
 	}
 
-	/// Set only the message qualifing part of the query.
+	/// Set only the message qualifing part of the publisher.
 	/// Will be prefixed with agents prefix.
 	#[must_use]
-	pub fn msg_type(mut self, msg_type: impl Into<String>) -> Self {
+	pub fn msg_type(self, msg_type: &str) -> PublisherBuilder<P, KeyExpression, S> {
 		let key_expr = self.context.key_expr(msg_type);
-		self.key_expr.replace(key_expr);
-		self
+		let Self {
+			context, storage, ..
+		} = self;
+		PublisherBuilder {
+			context,
+			key_expr: KeyExpression { key_expr },
+			storage,
+		}
 	}
+}
 
+impl<P, S> PublisherBuilder<P, KeyExpression, S>
+where
+	P: Send + Sync + Unpin + 'static,
+{
 	/// Build the publisher
 	/// # Errors
 	///
-	pub fn build(self) -> Result<Publisher, DimasError> {
-		let key_expr = if self.key_expr.is_none() {
-			return Err(DimasError::NoKeyExpression);
-		} else {
-			self.key_expr.ok_or(DimasError::ShouldNotHappen)?
-		};
-
-		let publ = self.context.create_publisher(key_expr)?;
-		let p = Publisher { publisher: publ };
-
-		Ok(p)
+	pub fn build(self) -> Result<Publisher> {
+		let publ = self
+			.context
+			.create_publisher(&self.key_expr.key_expr)?;
+		Ok(Publisher { publisher: publ })
 	}
+}
 
+#[cfg(feature = "publisher")]
+impl<P> PublisherBuilder<P, KeyExpression, Storage>
+where
+	P: Send + Sync + Unpin + 'static,
+{
 	/// Build and add the publisher to the agents context
 	/// # Errors
 	///
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "publisher")))]
 	#[cfg(feature = "publisher")]
-	pub fn add(self) -> Result<(), DimasError> {
-		let collection = self.context.publishers.clone();
+	pub fn add(self) -> Result<()> {
+		let collection = self.storage.storage.clone();
 		let p = self.build()?;
 		collection
 			.write()
@@ -94,15 +165,15 @@ impl Publisher
 	/// Send a "put" message
 	/// # Errors
 	///
-	#[tracing::instrument(level = tracing::Level::DEBUG)]
-	pub fn put<T>(&self, message: T) -> Result<(), DimasError>
+	#[instrument(name="publish", level = Level::ERROR, skip_all)]
+	pub fn put<T>(&self, message: T) -> Result<()>
 	where
 		T: Debug + Encode,
 	{
-		let value: Vec<u8> = encode(&message).map_err(|_| DimasError::EncodingFailed)?;
+		let value: Vec<u8> = encode(&message);
 		match self.publisher.put(value).res_sync() {
 			Ok(()) => Ok(()),
-			Err(_) => Err(DimasError::PutFailed),
+			Err(_) => Err(DimasError::PutMessage.into()),
 		}
 	}
 
@@ -110,11 +181,11 @@ impl Publisher
 	/// Send a "delete" message - method currently does not work!!
 	/// # Errors
 	///
-	#[tracing::instrument(level = tracing::Level::DEBUG)]
-	pub fn delete(&self) -> Result<(), DimasError> {
+	#[instrument(level = Level::ERROR, skip_all)]
+	pub fn delete(&self) -> Result<()> {
 		match self.publisher.delete().res_sync() {
 			Ok(()) => Ok(()),
-			Err(_) => Err(DimasError::DeleteFailed),
+			Err(_) => Err(DimasError::DeleteMessage.into()),
 		}
 	}
 }
@@ -133,6 +204,6 @@ mod tests {
 	#[test]
 	const fn normal_types() {
 		is_normal::<Publisher>();
-		is_normal::<PublisherBuilder<Props>>();
+		is_normal::<PublisherBuilder<Props, NoKeyExpression, NoStorage>>();
 	}
 }

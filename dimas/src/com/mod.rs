@@ -4,7 +4,6 @@
 /// Communicator
 pub mod communicator;
 /// Liveliness
-#[cfg(feature = "liveliness")]
 pub mod liveliness_subscriber;
 /// Message
 pub mod message;

@@ -5,7 +5,7 @@
 // region:		--- modules
 use crate::prelude::*;
 use std::{fmt::Debug, sync::Mutex};
-use tracing::error;
+use tracing::{error, instrument, Level};
 use zenoh::{
 	prelude::{sync::SyncResolve, SampleKind},
 	query::ConsolidationMode,
@@ -16,110 +16,217 @@ use zenoh::{
 // region:		--- types
 /// type definition for the queries callback function
 #[allow(clippy::module_name_repetitions)]
-pub type QueryCallback<P> = Arc<
-	Mutex<
-		dyn FnMut(&ArcContext<P>, Response) -> Result<(), DimasError>
-			+ Send
-			+ Sync
-			+ Unpin
-			+ 'static,
-	>,
->;
+pub type QueryCallback<P> =
+	Arc<Mutex<dyn FnMut(&ArcContext<P>, Response) -> Result<()> + Send + Sync + Unpin + 'static>>;
 // endregion:	--- types
+
+// region:		--- states
+pub struct NoStorage;
+#[cfg(feature = "query")]
+pub struct Storage<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	pub storage: Arc<RwLock<std::collections::HashMap<String, Query<P>>>>,
+}
+
+pub struct NoKeyExpression;
+pub struct KeyExpression {
+	key_expr: String,
+}
+
+pub struct NoResponseCallback;
+pub struct ResponseCallback<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	pub response: QueryCallback<P>,
+}
+// endregion:	--- states
 
 // region:		--- QueryBuilder
 /// The builder for a query
 #[allow(clippy::module_name_repetitions)]
 #[derive(Clone)]
-pub struct QueryBuilder<P>
+pub struct QueryBuilder<P, K, C, S>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	pub(crate) context: ArcContext<P>,
-	pub(crate) key_expr: Option<String>,
-	pub(crate) mode: Option<ConsolidationMode>,
-	pub(crate) callback: Option<QueryCallback<P>>,
+	pub(crate) key_expr: K,
+	pub(crate) callback: C,
+	pub(crate) storage: S,
+	pub(crate) mode: ConsolidationMode,
 }
 
-impl<P> QueryBuilder<P>
+impl<P> QueryBuilder<P, NoKeyExpression, NoResponseCallback, NoStorage>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
+{
+	/// Construct a `QueryBuilder` in initial state
+	#[must_use]
+	pub const fn new(context: ArcContext<P>) -> Self {
+		Self {
+			context,
+			key_expr: NoKeyExpression,
+			callback: NoResponseCallback,
+			storage: NoStorage,
+			mode: ConsolidationMode::None,
+		}
+	}
+}
+
+impl<P, K, C, S> QueryBuilder<P, K, C, S>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	/// Set the consolidation mode
+	#[must_use]
+	pub const fn mode(mut self, mode: ConsolidationMode) -> Self {
+		self.mode = mode;
+		self
+	}
+}
+
+impl<P, C, S> QueryBuilder<P, NoKeyExpression, C, S>
+where
+	P: Send + Sync + Unpin + 'static,
 {
 	/// Set the full expression for the query
 	#[must_use]
-	pub fn key_expr(mut self, key_expr: impl Into<String>) -> Self {
-		self.key_expr.replace(key_expr.into());
-		self
+	pub fn key_expr(self, key_expr: &str) -> QueryBuilder<P, KeyExpression, C, S> {
+		let Self {
+			context,
+			storage,
+			callback,
+			mode,
+			..
+		} = self;
+		QueryBuilder {
+			context,
+			key_expr: KeyExpression {
+				key_expr: key_expr.into(),
+			},
+			callback,
+			storage,
+			mode,
+		}
 	}
 
 	/// Set only the message qualifing part of the query.
 	/// Will be prefixed with agents prefix.
 	#[must_use]
-	pub fn msg_type(mut self, msg_type: impl Into<String>) -> Self {
+	pub fn msg_type(self, msg_type: &str) -> QueryBuilder<P, KeyExpression, C, S> {
 		let key_expr = self.context.key_expr(msg_type);
-		self.key_expr.replace(key_expr);
-		self
+		let Self {
+			context,
+			storage,
+			callback,
+			mode,
+			..
+		} = self;
+		QueryBuilder {
+			context,
+			key_expr: KeyExpression { key_expr },
+			callback,
+			storage,
+			mode,
+		}
 	}
+}
 
-	/// Set the consolidation mode
+impl<P, K, S> QueryBuilder<P, K, NoResponseCallback, S>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	/// Set query callback for response messages
 	#[must_use]
-	pub fn mode(mut self, mode: ConsolidationMode) -> Self {
-		self.mode.replace(mode);
-		self
-	}
-
-	/// Set the queries callback function
-	#[must_use]
-	pub fn callback<F>(mut self, callback: F) -> Self
+	pub fn callback<F>(self, callback: F) -> QueryBuilder<P, K, ResponseCallback<P>, S>
 	where
-		F: FnMut(&ArcContext<P>, Response) -> Result<(), DimasError>
-			+ Send
-			+ Sync
-			+ Unpin
-			+ 'static,
+		F: FnMut(&ArcContext<P>, Response) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
-		self.callback
-			.replace(Arc::new(Mutex::new(callback)));
-		self
+		let Self {
+			context,
+			key_expr,
+			storage,
+			mode,
+			..
+		} = self;
+		let callback: QueryCallback<P> = Arc::new(Mutex::new(callback));
+		QueryBuilder {
+			context,
+			key_expr,
+			callback: ResponseCallback { response: callback },
+			storage,
+			mode,
+		}
 	}
+}
 
+#[cfg(feature = "query")]
+impl<P, K, C> QueryBuilder<P, K, C, NoStorage>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	/// Provide agents storage for the query
+	#[must_use]
+	pub fn storage(
+		self,
+		storage: Arc<RwLock<std::collections::HashMap<String, Query<P>>>>,
+	) -> QueryBuilder<P, K, C, Storage<P>> {
+		let Self {
+			context,
+			key_expr,
+			callback,
+			mode,
+			..
+		} = self;
+		QueryBuilder {
+			context,
+			key_expr,
+			callback,
+			storage: Storage { storage },
+			mode,
+		}
+	}
+}
+
+impl<P, S> QueryBuilder<P, KeyExpression, ResponseCallback<P>, S>
+where
+	P: Send + Sync + Unpin + 'static,
+{
 	/// Build the query
 	/// # Errors
 	///
-	pub fn build(self) -> Result<Query<P>, DimasError> {
-		let key_expr = if self.key_expr.is_none() {
-			return Err(DimasError::NoKeyExpression);
-		} else {
-			self.key_expr.ok_or(DimasError::ShouldNotHappen)?
-		};
-		let callback = if self.callback.is_none() {
-			return Err(DimasError::NoCallback);
-		} else {
-			self.callback.ok_or(DimasError::ShouldNotHappen)?
-		};
-		let mode = if self.mode.is_some() {
-			self.mode.ok_or(DimasError::ShouldNotHappen)?
-		} else {
-			ConsolidationMode::None
-		};
-
-		let q = Query {
+	pub fn build(self) -> Result<Query<P>> {
+		let Self {
+			context,
+			key_expr,
+			callback,
+			mode,
+			..
+		} = self;
+		let key_expr = key_expr.key_expr;
+		Ok(Query {
+			context,
 			key_expr,
 			mode,
-			ctx: self.context,
-			callback,
-		};
-
-		Ok(q)
+			callback: callback.response,
+		})
 	}
+}
 
+#[cfg(feature = "query")]
+impl<P> QueryBuilder<P, KeyExpression, ResponseCallback<P>, Storage<P>>
+where
+	P: Send + Sync + Unpin + 'static,
+{
 	/// Build and add the query to the agents context
 	/// # Errors
 	///
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "query")))]
-	#[cfg(feature = "query")]
-	pub fn add(self) -> Result<(), DimasError> {
-		let collection = self.context.queries.clone();
+	pub fn add(self) -> Result<()> {
+		let collection = self.storage.storage.clone();
 		let q = self.build()?;
 
 		collection
@@ -135,17 +242,17 @@ where
 /// Query
 pub struct Query<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
+	context: ArcContext<P>,
 	key_expr: String,
 	mode: ConsolidationMode,
-	ctx: ArcContext<P>,
 	callback: QueryCallback<P>,
 }
 
 impl<P> Debug for Query<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Query")
@@ -157,14 +264,14 @@ where
 
 impl<P> Query<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	/// run a query
-	#[tracing::instrument(level = tracing::Level::DEBUG)]
-	pub fn get(&self) -> Result<(), DimasError> {
+	#[instrument(name="query", level = Level::ERROR, skip_all)]
+	pub fn get(&self) -> Result<()> {
 		let cb = self.callback.clone();
 		let replies = self
-			.ctx
+			.context
 			.communicator
 			.session
 			.get(&self.key_expr)
@@ -181,12 +288,12 @@ where
 						let guard = cb.lock();
 						match guard {
 							Ok(mut lock) => {
-								if let Err(error) = lock(&self.ctx, msg) {
-									error!("query callback failed with {error}");
+								if let Err(error) = lock(&self.context, msg) {
+									error!("callback failed with {error}");
 								}
 							}
 							Err(err) => {
-								error!("query callback failed with {err}");
+								error!("callback lock failed with {err}");
 							}
 						}
 					}
@@ -194,7 +301,7 @@ where
 						error!("Delete in Query");
 					}
 				},
-				Err(err) => error!(">> query receive error: {err})"),
+				Err(err) => error!("receive error: {err})"),
 			}
 		}
 		Ok(())
@@ -215,6 +322,6 @@ mod tests {
 	#[test]
 	const fn normal_types() {
 		is_normal::<Query<Props>>();
-		is_normal::<QueryBuilder<Props>>();
+		is_normal::<QueryBuilder<Props, NoKeyExpression, NoResponseCallback, NoStorage>>();
 	}
 }
