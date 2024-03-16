@@ -3,10 +3,7 @@
 //! Module `message` provides the different types of `Message`s used in callbacks.
 
 // region:		--- modules
-use crate::{
-	error::DimasError,
-	prelude::{decode, encode, Decode, Encode},
-};
+use crate::prelude::{decode, encode, Decode, DimasError, Encode, Result};
 use std::ops::Deref;
 use zenoh::{prelude::sync::SyncResolve, queryable::Query, sample::Sample};
 // endregion:	--- modules
@@ -28,16 +25,16 @@ impl Message {
 	/// decode message
 	/// # Errors
 	///
-	pub fn decode<T>(self) -> Result<T, DimasError>
+	pub fn decode<T>(self) -> Result<T>
 	where
-		T: Decode,
+		T: for<'a> Decode<'a>,
 	{
 		let value: Vec<u8> = self
 			.0
 			.value
 			.try_into()
-			.map_err(|_| DimasError::DecodingFailed)?;
-		decode::<T>(value.as_slice()).map_err(|_| DimasError::DecodingFailed)
+			.map_err(|_| DimasError::ConvertingValue)?;
+		decode::<T>(value.as_slice()).map_err(|_| DimasError::DecodingMessage.into())
 	}
 }
 // endregion:	--- Message
@@ -59,12 +56,13 @@ impl Request {
 	/// Reply to the given request
 	/// # Errors
 	///
-	pub fn reply<T>(self, value: T) -> Result<(), DimasError>
+	#[allow(clippy::needless_pass_by_value)]
+	pub fn reply<T>(self, value: T) -> Result<()>
 	where
 		T: Encode,
 	{
 		let key = self.0.selector().key_expr.to_string();
-		let encoded: Vec<u8> = encode(&value).map_err(|_| DimasError::ShouldNotHappen)?;
+		let encoded: Vec<u8> = encode(&value);
 		let sample = Sample::try_from(key, encoded).map_err(|_| DimasError::ShouldNotHappen)?;
 
 		self.0
@@ -99,16 +97,31 @@ impl Response {
 	/// decode response
 	/// # Errors
 	///
-	pub fn decode<T>(self) -> Result<T, DimasError>
+	pub fn decode<T>(self) -> Result<T>
 	where
-		T: Decode,
+		T: for<'a> Decode<'a>,
 	{
 		let value: Vec<u8> = self
 			.0
 			.value
 			.try_into()
-			.map_err(|_| DimasError::DecodingFailed)?;
-		decode::<T>(value.as_slice()).map_err(|_| DimasError::DecodingFailed)
+			.map_err(|_| DimasError::ConvertingValue)?;
+		decode::<T>(value.as_slice()).map_err(|_| DimasError::DecodingMessage.into())
 	}
 }
 // endregion:	--- Response
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	// check, that the auto traits are available
+	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+
+	#[test]
+	const fn normal_types() {
+		is_normal::<Message>();
+		is_normal::<Request>();
+		is_normal::<Response>();
+	}
+}

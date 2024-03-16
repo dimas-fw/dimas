@@ -1,0 +1,27 @@
+{
+  zenoh: {
+    mode: "peer",
+    scouting: {
+      multicast: {
+        enabled: true,
+        address: "224.0.0.224:7446",
+        interface: "auto",
+        autoconnect: { peer: "router|peer" },
+        listen: true,
+      },
+      gossip: {
+        enabled: true,
+        multihop: false,
+        autoconnect: { peer: "router|peer" },
+      },
+    },
+    transport: {
+      unicast: {
+        lowlatency: true,
+        qos: {
+          enabled: false,
+        },
+      },
+    },
+  },
+}

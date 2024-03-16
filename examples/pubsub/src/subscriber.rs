@@ -11,21 +11,21 @@ struct AgentProps {
 	test: u8,
 }
 
-fn hello_publishing(_ctx: &ArcContext<AgentProps>, message: Message) -> Result<(), DimasError> {
+fn hello_publishing(_ctx: &ArcContext<AgentProps>, message: Message) -> Result<()> {
 	let message: String = message.decode()?;
 	info!("Received '{message}'");
 
 	Ok(())
 }
 
-fn hello_deletion(ctx: &ArcContext<AgentProps>) -> Result<(), DimasError> {
+fn hello_deletion(ctx: &ArcContext<AgentProps>) -> Result<()> {
 	let _value = ctx.read()?.test;
 	info!("Shall delete 'hello' message");
 	Ok(())
 }
 
 #[tokio::main(flavor = "current_thread")]
-async fn main() -> Result<(), DimasError> {
+async fn main() -> Result<()> {
 	// a tracing subscriber writing logs
 	tracing_subscriber::fmt::init();
 

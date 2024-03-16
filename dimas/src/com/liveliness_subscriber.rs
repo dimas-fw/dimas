@@ -4,241 +4,387 @@
 //! A `LivelinessSubscriber` can optional subscribe on a delete message.
 
 // region:		--- modules
-use crate::prelude::*;
-use std::{fmt::Debug, sync::Mutex};
+use crate::{agent::TaskSignal, prelude::*};
+use std::{
+	sync::{mpsc::Sender, Mutex},
+	time::Duration,
+};
 use tokio::task::JoinHandle;
-use tracing::{error, span, Level};
-use zenoh::prelude::{r#async::AsyncResolve, SampleKind};
+#[cfg(feature = "liveliness")]
+use tracing::info;
+use tracing::{error, instrument, warn, Level};
+use zenoh::{
+	prelude::{r#async::AsyncResolve, SampleKind},
+	SessionDeclarations,
+};
 // endregion:	--- modules
 
 // region:		--- types
 /// Type definition for liveliness callback function
 pub type LivelinessCallback<P> = Arc<
 	Mutex<
-		dyn FnMut(&ArcContext<P>, &str) -> Result<(), DimasError> + Send + Sync + Unpin + 'static,
+		Option<Box<dyn FnMut(&ArcContext<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static>>,
 	>,
 >;
 // endregion:	--- types
+
+// region:		--- states
+pub struct NoStorage;
+#[cfg(feature = "liveliness")]
+pub struct Storage<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	pub storage: Arc<RwLock<std::collections::HashMap<String, LivelinessSubscriber<P>>>>,
+}
+
+pub struct NoPutCallback;
+pub struct PutCallback<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	pub callback: LivelinessCallback<P>,
+}
+// endregion:	--- states
 
 // region:		--- LivelinessSubscriberBuilder
 /// The builder for the liveliness subscriber
 #[allow(clippy::module_name_repetitions)]
 #[derive(Clone)]
-pub struct LivelinessSubscriberBuilder<P>
+pub struct LivelinessSubscriberBuilder<P, C, S>
 where
-	P: std::fmt::Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
-	pub(crate) subscriber: Arc<RwLock<Option<LivelinessSubscriber<P>>>>,
 	pub(crate) context: ArcContext<P>,
-	pub(crate) key_expr: Option<String>,
-	pub(crate) put_callback: Option<LivelinessCallback<P>>,
+	key_expr: String,
+	pub(crate) put_callback: C,
+	pub(crate) storage: S,
 	pub(crate) delete_callback: Option<LivelinessCallback<P>>,
 }
 
-impl<P> LivelinessSubscriberBuilder<P>
+impl<P> LivelinessSubscriberBuilder<P, NoPutCallback, NoStorage>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
-	/// Set the full expression for the liveliness subscriber
+	/// Construct a `LivelinessSubscriberBuilder` in initial state
 	#[must_use]
-	pub fn key_expr(mut self, key_expr: impl Into<String>) -> Self {
-		self.key_expr.replace(key_expr.into());
-		self
+	pub fn new(context: ArcContext<P>) -> Self {
+		let key_expr = context.key_expr("alive/*");
+		Self {
+			context,
+			key_expr,
+			put_callback: NoPutCallback,
+			storage: NoStorage,
+			delete_callback: None,
+		}
 	}
+}
 
-	/// Set only the message qualifing part of the liveliness subscriber.
-	/// Will be prefixed with agents prefix.
+impl<P, C, S> LivelinessSubscriberBuilder<P, C, S>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	/// Set a different prefix for the liveliness subscriber.
 	#[must_use]
-	pub fn msg_type(mut self, msg_type: impl Into<String>) -> Self {
-		let key_expr = self
-			.context
-			.communicator
-			.clone()
-			.key_expr(msg_type)
-			+ "/*";
-		self.key_expr.replace(key_expr);
-		self
+	pub fn prefix(self, prefix: &str) -> Self {
+		let key_expr = format!("{prefix}/alive/*");
+		let Self {
+			context,
+			put_callback,
+			storage,
+			delete_callback,
+			..
+		} = self;
+		Self {
+			context,
+			key_expr,
+			put_callback,
+			storage,
+			delete_callback,
+		}
 	}
-
-	/// Set liveliness subscribers callback for `put` messages
-	#[must_use]
-	pub fn put_callback<F>(mut self, callback: F) -> Self
-	where
-		F: FnMut(&ArcContext<P>, &str) -> Result<(), DimasError> + Send + Sync + Unpin + 'static,
-	{
-		self.put_callback
-			.replace(Arc::new(Mutex::new(callback)));
-		self
-	}
-
 	/// Set liveliness subscribers callback for `delete` messages
 	#[must_use]
-	pub fn delete_callback<F>(mut self, callback: F) -> Self
+	pub fn delete_callback<F>(self, callback: F) -> Self
 	where
-		F: FnMut(&ArcContext<P>, &str) -> Result<(), DimasError> + Send + Sync + Unpin + 'static,
+		F: FnMut(&ArcContext<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
-		self.delete_callback
-			.replace(Arc::new(Mutex::new(callback)));
-		self
+		let Self {
+			context,
+			key_expr,
+			put_callback,
+			storage,
+			..
+		} = self;
+		let delete_callback: Option<LivelinessCallback<P>> =
+			Some(Arc::new(Mutex::new(Some(Box::new(callback)))));
+		Self {
+			context,
+			key_expr,
+			put_callback,
+			storage,
+			delete_callback,
+		}
 	}
+}
 
+impl<P, S> LivelinessSubscriberBuilder<P, NoPutCallback, S>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	/// Set liveliness subscribers callback for `put` messages
+	#[must_use]
+	pub fn put_callback<F>(self, callback: F) -> LivelinessSubscriberBuilder<P, PutCallback<P>, S>
+	where
+		F: FnMut(&ArcContext<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static,
+	{
+		let Self {
+			context,
+			key_expr,
+			storage,
+			delete_callback,
+			..
+		} = self;
+		let put_callback: LivelinessCallback<P> = Arc::new(Mutex::new(Some(Box::new(callback))));
+		LivelinessSubscriberBuilder {
+			context,
+			key_expr,
+			put_callback: PutCallback {
+				callback: put_callback,
+			},
+			storage,
+			delete_callback,
+		}
+	}
+}
+
+#[cfg(feature = "liveliness")]
+impl<P, C> LivelinessSubscriberBuilder<P, C, NoStorage>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	/// Provide agents storage for the liveliness subscriber
+	#[must_use]
+	pub fn storage(
+		self,
+		storage: Arc<RwLock<std::collections::HashMap<String, LivelinessSubscriber<P>>>>,
+	) -> LivelinessSubscriberBuilder<P, C, Storage<P>> {
+		let Self {
+			context,
+			key_expr,
+			put_callback,
+			delete_callback,
+			..
+		} = self;
+		LivelinessSubscriberBuilder {
+			context,
+			key_expr,
+			put_callback,
+			storage: Storage { storage },
+			delete_callback,
+		}
+	}
+}
+
+impl<P, S> LivelinessSubscriberBuilder<P, PutCallback<P>, S>
+where
+	P: Send + Sync + Unpin + 'static,
+{
 	/// Build the liveliness subscriber
 	/// # Errors
 	///
-	pub fn build(self) -> Result<LivelinessSubscriber<P>, DimasError> {
-		let key_expr = if self.key_expr.is_none() {
-			return Err(DimasError::NoKeyExpression);
-		} else {
-			self.key_expr.ok_or(DimasError::ShouldNotHappen)?
-		};
-		let put_callback = if self.put_callback.is_none() {
-			return Err(DimasError::NoCallback);
-		} else {
-			self.put_callback
-				.ok_or(DimasError::ShouldNotHappen)?
-		};
-
-		let s = LivelinessSubscriber {
+	pub fn build(self) -> Result<LivelinessSubscriber<P>> {
+		let Self {
+			context,
 			key_expr,
 			put_callback,
-			delete_callback: self.delete_callback,
+			delete_callback,
+			..
+		} = self;
+		Ok(LivelinessSubscriber {
+			context,
+			key_expr,
+			put_callback: Some(put_callback.callback),
+			delete_callback,
 			handle: None,
-			context: self.context,
-		};
-
-		Ok(s)
+		})
 	}
+}
 
+#[cfg(feature = "liveliness")]
+impl<P> LivelinessSubscriberBuilder<P, PutCallback<P>, Storage<P>>
+where
+	P: Send + Sync + Unpin + 'static,
+{
 	/// Build and add the liveliness subscriber to the agent
 	/// # Errors
 	///
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "liveliness")))]
-	#[cfg(feature = "liveliness")]
-	pub fn add(self) -> Result<(), DimasError> {
-		let c = self.subscriber.clone();
+	pub fn add(self) -> Result<()> {
+		let c = self.storage.storage.clone();
 		let s = self.build()?;
 
 		c.write()
 			.map_err(|_| DimasError::ShouldNotHappen)?
-			.replace(s);
+			.insert(s.key_expr.clone(), s);
 		Ok(())
 	}
 }
 // endregion:	--- LivelinessSubscriberBuilder
 
 // region:		--- LivelinessSubscriber
+/// Liveliness Subscriber
 pub struct LivelinessSubscriber<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
+	context: ArcContext<P>,
 	key_expr: String,
-	put_callback: LivelinessCallback<P>,
+	put_callback: Option<LivelinessCallback<P>>,
 	delete_callback: Option<LivelinessCallback<P>>,
 	handle: Option<JoinHandle<()>>,
-	context: ArcContext<P>,
 }
 
 impl<P> std::fmt::Debug for LivelinessSubscriber<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("LivelinessSubscriber")
-			.field("key_expr", &self.key_expr)
 			.finish_non_exhaustive()
 	}
 }
 
 impl<P> LivelinessSubscriber<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
-	pub fn start(&mut self) {
-		let key_expr = self.key_expr.clone();
-		let p_cb = self.put_callback.clone();
-		let d_cb = self.delete_callback.clone();
-		let ctx = self.context.clone();
+	/// Start or restart the liveliness subscriber.
+	/// An already running subscriber will be stopped, eventually damaged Mutexes will be repaired
+	#[instrument(level = Level::TRACE, skip_all)]
+	pub fn start(&mut self, tx: Sender<TaskSignal>) {
+		self.stop();
 
-		self.handle.replace(tokio::spawn(async move {
-			if let Err(error) = run_liveliness(key_expr, p_cb, d_cb, ctx).await {
-				error!("spawning liveliness subscriber failed with {error}");
-			};
-		}));
+		#[cfg(not(feature = "liveliness"))]
+		drop(tx);
+
+		{
+			if let Some(pcb) = self.put_callback.clone() {
+				if let Err(err) = pcb.lock() {
+					warn!("found poisoned put Mutex");
+					self.put_callback
+						.replace(Arc::new(Mutex::new(err.into_inner().take())));
+				}
+			}
+		}
+		{
+			if let Some(dcb) = self.delete_callback.clone() {
+				if let Err(err) = dcb.lock() {
+					warn!("found poisoned delete Mutex");
+					self.delete_callback
+						.replace(Arc::new(Mutex::new(err.into_inner().take())));
+				}
+			}
+		}
 
 		// the initial liveliness query
-		let key_expr = self.key_expr.clone();
 		let p_cb = self.put_callback.clone();
 		let ctx = self.context.clone();
+		let key_expr = self.key_expr.clone();
 		tokio::spawn(async move {
 			if let Err(error) = run_initial(key_expr, p_cb, ctx).await {
 				error!("spawning initial liveliness failed with {error}");
 			};
 		});
+
+		// the liveliness subscriber
+		let p_cb = self.put_callback.clone();
+		let d_cb = self.delete_callback.clone();
+		let ctx = self.context.clone();
+		let key_expr = self.key_expr.clone();
+
+		self.handle.replace(tokio::spawn(async move {
+			#[cfg(feature = "liveliness")]
+			let key = key_expr.clone();
+			std::panic::set_hook(Box::new(move |reason| {
+				error!("liveliness subscriber panic: {}", reason);
+				#[cfg(feature = "liveliness")]
+				if let Err(reason) = tx.send(TaskSignal::RestartLiveliness(key.clone())) {
+					error!("could not restart liveliness subscriber: {}", reason);
+				} else {
+					info!("restarting liveliness subscriber!");
+				};
+			}));
+			if let Err(error) = run_liveliness(key_expr, p_cb, d_cb, ctx).await {
+				error!("spawning liveliness subscriber failed with {error}");
+			};
+		}));
 	}
 
-	pub fn stop(&mut self) -> Result<(), DimasError> {
-		self.handle
-			.take()
-			.ok_or(DimasError::ShouldNotHappen)?
-			.abort();
-		Ok(())
+	/// Stop a running LivelinessSubscriber
+	#[instrument(level = Level::TRACE)]
+	pub fn stop(&mut self) {
+		if let Some(handle) = self.handle.take() {
+			handle.abort();
+		}
 	}
 }
 
-//#[tracing::instrument(level = tracing::Level::DEBUG)]
+#[instrument(name="liveliness", level = Level::ERROR, skip_all)]
 async fn run_liveliness<P>(
-	mut key_expr: String,
-	p_cb: LivelinessCallback<P>,
+	key_expr: String,
+	p_cb: Option<LivelinessCallback<P>>,
 	d_cb: Option<LivelinessCallback<P>>,
 	ctx: ArcContext<P>,
-) -> Result<(), DimasError>
+) -> Result<()>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
-	let session = ctx.communicator.session.clone();
-	let subscriber = session
+	let subscriber = ctx
+		.communicator
+		.session
 		.liveliness()
 		.declare_subscriber(&key_expr)
 		.res_async()
 		.await
 		.map_err(|_| DimasError::ShouldNotHappen)?;
 
-	key_expr
-		.pop()
-		.ok_or(DimasError::ShouldNotHappen)?;
-
 	loop {
 		let result = subscriber.recv_async().await;
-		let span = span!(Level::DEBUG, "run_liveliness");
-		let _guard = span.enter();
 		match result {
 			Ok(sample) => {
-				let id = sample.key_expr.to_string().replace(&key_expr, "");
+				let id = sample.key_expr.split('/').last().unwrap_or("");
+				// skip own live message
+				if id == ctx.uuid() {
+					continue;
+				};
 				match sample.kind {
 					SampleKind::Put => {
-						let guard = p_cb.lock();
-						match guard {
-							Ok(mut lock) => {
-								if let Err(error) = lock(&ctx, &id) {
-									error!("liveliness put callback failed with {error}");
+						if let Some(cb) = p_cb.clone() {
+							let result = cb.lock();
+							match result {
+								Ok(mut cb) => {
+									if let Err(error) = cb.as_deref_mut().expect("snh")(&ctx, id) {
+										error!("put callback failed with {error}");
+									}
 								}
-							}
-							Err(err) => {
-								error!("liveliness put callback lock failed with {err}");
+								Err(err) => {
+									error!("put callback lock failed with {err}");
+								}
 							}
 						}
 					}
 					SampleKind::Delete => {
 						if let Some(cb) = d_cb.clone() {
-							let guard = cb.lock();
-							match guard {
-								Ok(mut lock) => {
-									if let Err(error) = lock(&ctx, &id) {
-										error!("liveliness delete callback failed with {error}");
+							let result = cb.lock();
+							match result {
+								Ok(mut cb) => {
+									if let Err(error) = cb.as_deref_mut().expect("snh")(&ctx, id) {
+										error!("delete callback failed with {error}");
 									}
 								}
 								Err(err) => {
-									error!("liveliness delete callback lock failed with {err}");
+									error!("delete callback lock failed with {err}");
 								}
 							}
 						}
@@ -246,57 +392,60 @@ where
 				}
 			}
 			Err(error) => {
-				error!("livelieness subscriber failed with {error}");
+				error!("receive failed with {error}");
 			}
 		}
 	}
 }
 
-//#[tracing::instrument(level = tracing::Level::DEBUG)]
+#[instrument(name="initial liveliness", level = Level::ERROR, skip_all)]
 async fn run_initial<P>(
 	key_expr: String,
-	p_cb: LivelinessCallback<P>,
+	p_cb: Option<LivelinessCallback<P>>,
 	ctx: ArcContext<P>,
-) -> Result<(), DimasError>
+) -> Result<()>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Send + Sync + Unpin + 'static,
 {
-	let span = span!(Level::DEBUG, "run_initial_liveliness");
-	let _guard = span.enter();
-	let session = ctx.communicator.session.clone();
-	let result = session
+	let result = ctx
+		.communicator
+		.session
 		.liveliness()
 		.get(&key_expr)
-		//.timeout(Duration::from_millis(500))
+		.timeout(Duration::from_millis(100))
 		.res()
 		.await;
 
 	match result {
 		Ok(replies) => {
-			let span = span!(Level::DEBUG, "run_initial_liveliness");
-			let _guard = span.enter();
 			while let Ok(reply) = replies.recv_async().await {
 				match reply.sample {
 					Ok(sample) => {
-						let id = sample.key_expr.to_string().replace(&key_expr, "");
-						let guard = p_cb.lock();
-						match guard {
-							Ok(mut lock) => {
-								if let Err(error) = lock(&ctx, &id) {
-									error!("lveliness put callback failed with {error}");
+						let id = sample.key_expr.split('/').last().unwrap_or("");
+						// skip own live message
+						if id == ctx.uuid() {
+							continue;
+						};
+						if let Some(cb) = p_cb.clone() {
+							let result = cb.lock();
+							match result {
+								Ok(mut cb) => {
+									if let Err(error) = cb.as_deref_mut().expect("snh")(&ctx, id) {
+										error!("callback failed with {error}");
+									}
 								}
-							}
-							Err(err) => {
-								error!("liveliness put callback failed with {err}");
+								Err(err) => {
+									error!("callback lock failed with {err}");
+								}
 							}
 						}
 					}
-					Err(err) => error!(">> liveliness subscriber delete error: {err})"),
+					Err(err) => error!("receive error: {err})"),
 				}
 			}
 		}
 		Err(error) => {
-			error!("livelieness subscriber failed with {error}");
+			error!("failed with {error}");
 		}
 	}
 	Ok(())
@@ -316,6 +465,6 @@ mod tests {
 	#[test]
 	const fn normal_types() {
 		is_normal::<LivelinessSubscriber<Props>>();
-		is_normal::<LivelinessSubscriberBuilder<Props>>();
+		is_normal::<LivelinessSubscriberBuilder<Props, NoPutCallback, NoStorage>>();
 	}
 }
