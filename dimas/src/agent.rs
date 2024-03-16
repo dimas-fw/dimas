@@ -3,10 +3,6 @@
 //! Module `agent` provides the `Agent`.
 
 // region:		--- modules
-#[cfg(feature = "liveliness")]
-use crate::com::liveliness_subscriber::{
-	LivelinessSubscriber, LivelinessSubscriberBuilder, NoPutCallback, Storage,
-};
 use crate::context::Context;
 use crate::prelude::*;
 use std::{
@@ -27,7 +23,7 @@ use zenoh::liveliness::LivelinessToken;
 #[derive(Debug, Clone)]
 pub enum TaskSignal {
 	#[cfg(feature = "liveliness")]
-	RestartLiveliness,
+	RestartLiveliness(String),
 	#[cfg(feature = "queryable")]
 	RestartQueryable(String),
 	#[cfg(feature = "subscriber")]
@@ -60,9 +56,6 @@ where
 	liveliness: bool,
 	// the liveliness token
 	liveliness_token: RwLock<Option<LivelinessToken<'a>>>,
-	// an optional liveliness subscriber
-	#[cfg(feature = "liveliness")]
-	liveliness_subscriber: Arc<RwLock<Option<LivelinessSubscriber<P>>>>,
 }
 
 impl<'a, P> Debug for Agent<'a, P>
@@ -100,8 +93,6 @@ where
 			context: Context::new(config, properties)?,
 			liveliness: false,
 			liveliness_token: RwLock::new(None),
-			#[cfg(feature = "liveliness")]
-			liveliness_subscriber: Arc::new(RwLock::new(None)),
 		})
 	}
 
@@ -117,8 +108,6 @@ where
 			context: Context::new_with_prefix(config, properties, prefix)?,
 			liveliness: false,
 			liveliness_token: RwLock::new(None),
-			#[cfg(feature = "liveliness")]
-			liveliness_subscriber: Arc::new(RwLock::new(None)),
 		})
 	}
 
@@ -144,68 +133,159 @@ where
 		self.context.clone()
 	}
 
-	/// Get a builder for a subscriber for the liveliness information
-	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "liveliness")))]
+	/// Get a builder for a [`LivelinessSubscriber`]
 	#[cfg(feature = "liveliness")]
 	#[must_use]
 	pub fn liveliness_subscriber(
 		&self,
-	) -> LivelinessSubscriberBuilder<P, NoPutCallback, Storage<P>> {
-		let builder = LivelinessSubscriberBuilder::new(self.get_context());
-		builder.storage(self.liveliness_subscriber.clone())
+	) -> LivelinessSubscriberBuilder<
+		P,
+		crate::com::liveliness_subscriber::NoPutCallback,
+		crate::com::liveliness_subscriber::Storage<P>,
+	> {
+		LivelinessSubscriberBuilder::new(self.get_context())
+			.storage(self.context.liveliness_subscribers.clone())
+	}
+	/// Get a builder for a [`LivelinessSubscriber`]
+	#[cfg(not(feature = "liveliness"))]
+	#[must_use]
+	pub fn liveliness_subscriber(
+		&self,
+	) -> LivelinessSubscriberBuilder<
+		P,
+		crate::com::liveliness_subscriber::NoPutCallback,
+		crate::com::liveliness_subscriber::NoStorage,
+	> {
+		LivelinessSubscriberBuilder::new(self.get_context())
 	}
 
-	/// Get a builder for a Publisher
+	/// Get a builder for a [`Publisher`]
+	#[cfg(feature = "publisher")]
 	#[must_use]
-	pub fn publisher(&self) -> PublisherBuilder<P> {
-		PublisherBuilder {
-			context: self.get_context(),
-			key_expr: None,
-		}
+	pub fn publisher(
+		&self,
+	) -> PublisherBuilder<P, crate::com::publisher::NoKeyExpression, crate::com::publisher::Storage>
+	{
+		PublisherBuilder::new(self.get_context()).storage(self.context.publishers.clone())
+	}
+	/// Get a builder for a [`Publisher`]
+	#[cfg(not(feature = "publisher"))]
+	#[must_use]
+	pub fn publisher(
+		&self,
+	) -> PublisherBuilder<P, crate::com::publisher::NoKeyExpression, crate::com::publisher::NoStorage>
+	{
+		PublisherBuilder::new(self.get_context())
 	}
 
-	/// Get a builder for a Query
+	/// Get a builder for a [`Query`]
+	#[cfg(feature = "query")]
 	#[must_use]
-	pub fn query(&self) -> QueryBuilder<P> {
-		QueryBuilder {
-			context: self.get_context(),
-			key_expr: None,
-			mode: None,
-			callback: None,
-		}
+	pub fn query(
+		&self,
+	) -> QueryBuilder<
+		P,
+		crate::com::query::NoKeyExpression,
+		crate::com::query::NoResponseCallback,
+		crate::com::query::Storage<P>,
+	> {
+		QueryBuilder::new(self.get_context()).storage(self.context.queries.clone())
+	}
+	/// Get a builder for a [`Query`]
+	#[cfg(not(feature = "query"))]
+	#[must_use]
+	pub fn query(
+		&self,
+	) -> QueryBuilder<
+		P,
+		crate::com::query::NoKeyExpression,
+		crate::com::query::NoResponseCallback,
+		crate::com::query::NoStorage,
+	> {
+		QueryBuilder::new(self.get_context())
 	}
 
-	/// Get a builder for a Queryable
+	/// Get a builder for a [`Queryable`]
+	#[cfg(feature = "queryable")]
 	#[must_use]
-	pub fn queryable(&self) -> QueryableBuilder<P> {
-		QueryableBuilder {
-			context: self.get_context(),
-			key_expr: None,
-			callback: None,
-		}
+	pub fn queryable(
+		&self,
+	) -> QueryableBuilder<
+		P,
+		crate::com::queryable::NoKeyExpression,
+		crate::com::queryable::NoRequestCallback,
+		crate::com::queryable::Storage<P>,
+	> {
+		QueryableBuilder::new(self.get_context()).storage(self.context.queryables.clone())
+	}
+	/// Get a builder for a [`Queryable`]
+	#[cfg(not(feature = "queryable"))]
+	#[must_use]
+	pub fn queryable(
+		&self,
+	) -> QueryableBuilder<
+		P,
+		crate::com::queryable::NoKeyExpression,
+		crate::com::queryable::NoRequestCallback,
+		crate::com::queryable::NoStorage,
+	> {
+		QueryableBuilder::new(self.get_context())
 	}
 
-	/// Get a builder for a Subscriber
+	/// Get a builder for a [`Subscriber`]
+	#[cfg(feature = "subscriber")]
 	#[must_use]
-	pub fn subscriber(&self) -> SubscriberBuilder<P> {
-		SubscriberBuilder {
-			context: self.get_context(),
-			key_expr: None,
-			put_callback: None,
-			delete_callback: None,
-		}
+	pub fn subscriber(
+		&self,
+	) -> SubscriberBuilder<
+		P,
+		crate::com::subscriber::NoKeyExpression,
+		crate::com::subscriber::NoPutCallback,
+		crate::com::subscriber::Storage<P>,
+	> {
+		SubscriberBuilder::new(self.get_context()).storage(self.context.subscribers.clone())
+	}
+	/// Get a builder for a [`Subscriber`]
+	#[cfg(not(feature = "subscriber"))]
+	#[must_use]
+	pub fn subscriber(
+		&self,
+	) -> SubscriberBuilder<
+		P,
+		crate::com::subscriber::NoKeyExpression,
+		crate::com::subscriber::NoPutCallback,
+		crate::com::subscriber::NoStorage,
+	> {
+		SubscriberBuilder::new(self.get_context())
 	}
 
-	/// Get a builder for a Timer
+	/// Get a builder for a [`Timer`]
+	#[cfg(feature = "timer")]
 	#[must_use]
-	pub fn timer(&self) -> TimerBuilder<P> {
-		TimerBuilder {
-			context: self.get_context(),
-			name: None,
-			delay: None,
-			interval: None,
-			callback: None,
-		}
+	pub fn timer(
+		&self,
+	) -> TimerBuilder<
+		P,
+		crate::timer::NoName,
+		crate::timer::NoInterval,
+		crate::timer::NoIntervalCallback,
+		crate::timer::Storage<P>,
+	> {
+		TimerBuilder::new(self.get_context()).storage(self.context.timers.clone())
+	}
+	/// Get a builder for a [`Timer`]
+	#[cfg(not(feature = "timer"))]
+	#[must_use]
+	pub fn timer(
+		&self,
+	) -> TimerBuilder<
+		P,
+		crate::timer::NoName,
+		crate::timer::NoInterval,
+		crate::timer::NoIntervalCallback,
+		crate::timer::NoStorage,
+	> {
+		TimerBuilder::new(self.get_context())
 	}
 
 	/// Internal function for starting all registered tasks
@@ -237,19 +317,14 @@ where
 
 		// start liveliness subscriber
 		#[cfg(feature = "liveliness")]
-		if self
-			.liveliness_subscriber
-			.read()
+		self.context
+			.liveliness_subscribers
+			.write()
 			.map_err(|_| DimasError::ShouldNotHappen)?
-			.is_some()
-		{
-			self.liveliness_subscriber
-				.write()
-				.map_err(|_| DimasError::ShouldNotHappen)?
-				.as_mut()
-				.ok_or(DimasError::ShouldNotHappen)?
-				.start(tx.clone());
-		}
+			.iter_mut()
+			.for_each(|subscriber| {
+				subscriber.1.start(tx.clone());
+			});
 
 		// wait a little bit before starting active part
 		//tokio::time::sleep(Duration::from_millis(10)).await;
@@ -299,12 +374,12 @@ where
 				command = handle_signals(&rx) => {
 					match *command {
 						#[cfg(feature = "liveliness")]
-						TaskSignal::RestartLiveliness => {
-							self.liveliness_subscriber
+						TaskSignal::RestartLiveliness(key_expr) => {
+							self.context.liveliness_subscribers
 								.write()
 								.map_err(|_| DimasError::WriteProperties)?
-								.as_mut()
-								.ok_or(DimasError::ReadProperties)?
+								.get_mut(&key_expr)
+								.ok_or(DimasError::ShouldNotHappen)?
 								.start(tx.clone());
 						},
 						#[cfg(feature = "queryable")]
@@ -385,21 +460,16 @@ where
 
 		#[cfg(feature = "liveliness")]
 		{
-			// stop liveliness subscriber
+			// stop all registered liveliness subscribers
 			#[cfg(feature = "liveliness")]
-			if self
-				.liveliness_subscriber
-				.read()
+			self.context
+				.liveliness_subscribers
+				.write()
 				.map_err(|_| DimasError::ShouldNotHappen)?
-				.is_some()
-			{
-				self.liveliness_subscriber
-					.write()
-					.map_err(|_| DimasError::ShouldNotHappen)?
-					.as_mut()
-					.ok_or(DimasError::ShouldNotHappen)?
-					.stop();
-			}
+				.iter_mut()
+				.for_each(|subscriber| {
+					subscriber.1.stop();
+				});
 		}
 
 		// stop all registered subscribers

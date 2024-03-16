@@ -30,11 +30,12 @@ pub type LivelinessCallback<P> = Arc<
 
 // region:		--- states
 pub struct NoStorage;
+#[cfg(feature = "liveliness")]
 pub struct Storage<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	pub storage: Arc<RwLock<Option<LivelinessSubscriber<P>>>>,
+	pub storage: Arc<RwLock<std::collections::HashMap<String, LivelinessSubscriber<P>>>>,
 }
 
 pub struct NoPutCallback;
@@ -66,13 +67,14 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// Construct a `LivelinessSubscriberBuilder` in initial state
+	#[must_use]
 	pub fn new(context: ArcContext<P>) -> Self {
 		let key_expr = context.key_expr("alive/*");
 		Self {
 			context,
 			key_expr,
-			put_callback: NoPutCallback {},
-			storage: NoStorage {},
+			put_callback: NoPutCallback,
+			storage: NoStorage,
 			delete_callback: None,
 		}
 	}
@@ -146,7 +148,7 @@ where
 	#[must_use]
 	pub fn storage(
 		self,
-		storage: Arc<RwLock<Option<LivelinessSubscriber<P>>>>,
+		storage: Arc<RwLock<std::collections::HashMap<String, LivelinessSubscriber<P>>>>,
 	) -> LivelinessSubscriberBuilder<P, C, Storage<P>> {
 		let Self {
 			context,
@@ -172,7 +174,7 @@ where
 	/// Build the liveliness subscriber
 	/// # Errors
 	///
-	pub fn build(self) -> LivelinessSubscriber<P> {
+	pub fn build(self) -> Result<LivelinessSubscriber<P>> {
 		let Self {
 			context,
 			key_expr,
@@ -180,13 +182,13 @@ where
 			delete_callback,
 			..
 		} = self;
-		LivelinessSubscriber {
+		Ok(LivelinessSubscriber {
 			context,
 			key_expr,
 			put_callback: Some(put_callback.callback),
 			delete_callback,
 			handle: None,
-		}
+		})
 	}
 }
 
@@ -201,17 +203,18 @@ where
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "liveliness")))]
 	pub fn add(self) -> Result<()> {
 		let c = self.storage.storage.clone();
-		let s = self.build();
+		let s = self.build()?;
 
 		c.write()
 			.map_err(|_| DimasError::ShouldNotHappen)?
-			.replace(s);
+			.insert(s.key_expr.clone(), s);
 		Ok(())
 	}
 }
 // endregion:	--- LivelinessSubscriberBuilder
 
 // region:		--- LivelinessSubscriber
+/// Liveliness Subscriber
 pub struct LivelinessSubscriber<P>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -282,10 +285,12 @@ where
 		let key_expr = self.key_expr.clone();
 
 		self.handle.replace(tokio::spawn(async move {
+			#[cfg(feature = "liveliness")]
+			let key = key_expr.clone();
 			std::panic::set_hook(Box::new(move |reason| {
 				error!("liveliness subscriber panic: {}", reason);
 				#[cfg(feature = "liveliness")]
-				if let Err(reason) = tx.send(TaskSignal::RestartLiveliness) {
+				if let Err(reason) = tx.send(TaskSignal::RestartLiveliness(key.clone())) {
 					error!("could not restart liveliness subscriber: {}", reason);
 				} else {
 					info!("restarting liveliness subscriber!");
@@ -308,7 +313,7 @@ where
 
 #[instrument(name="liveliness", level = Level::ERROR, skip_all)]
 async fn run_liveliness<P>(
-	mut key_expr: String,
+	key_expr: String,
 	p_cb: Option<LivelinessCallback<P>>,
 	d_cb: Option<LivelinessCallback<P>>,
 	ctx: ArcContext<P>,
@@ -325,15 +330,11 @@ where
 		.await
 		.map_err(|_| DimasError::ShouldNotHappen)?;
 
-	key_expr
-		.pop()
-		.ok_or(DimasError::ShouldNotHappen)?;
-
-		loop {
+	loop {
 		let result = subscriber.recv_async().await;
 		match result {
 			Ok(sample) => {
-				let id = sample.key_expr.to_string().replace(&key_expr, "");
+				let id = sample.key_expr.split('/').last().unwrap_or("");
 				// skip own live message
 				if id == ctx.uuid() {
 					continue;
@@ -344,7 +345,7 @@ where
 							let result = cb.lock();
 							match result {
 								Ok(mut cb) => {
-									if let Err(error) = cb.as_deref_mut().expect("snh")(&ctx, &id) {
+									if let Err(error) = cb.as_deref_mut().expect("snh")(&ctx, id) {
 										error!("put callback failed with {error}");
 									}
 								}
@@ -359,7 +360,7 @@ where
 							let result = cb.lock();
 							match result {
 								Ok(mut cb) => {
-									if let Err(error) = cb.as_deref_mut().expect("snh")(&ctx, &id) {
+									if let Err(error) = cb.as_deref_mut().expect("snh")(&ctx, id) {
 										error!("delete callback failed with {error}");
 									}
 								}
@@ -380,7 +381,7 @@ where
 
 #[instrument(name="initial liveliness", level = Level::ERROR, skip_all)]
 async fn run_initial<P>(
-	mut key_expr: String,
+	key_expr: String,
 	p_cb: Option<LivelinessCallback<P>>,
 	ctx: ArcContext<P>,
 ) -> Result<()>
@@ -396,16 +397,12 @@ where
 		.res()
 		.await;
 
-	key_expr
-		.pop()
-		.ok_or(DimasError::ShouldNotHappen)?;
-
 	match result {
 		Ok(replies) => {
 			while let Ok(reply) = replies.recv_async().await {
 				match reply.sample {
 					Ok(sample) => {
-						let id = sample.key_expr.to_string().replace(&key_expr, "");
+						let id = sample.key_expr.split('/').last().unwrap_or("");
 						// skip own live message
 						if id == ctx.uuid() {
 							continue;
@@ -414,7 +411,7 @@ where
 							let result = cb.lock();
 							match result {
 								Ok(mut cb) => {
-									if let Err(error) = cb.as_deref_mut().expect("snh")(&ctx, &id) {
+									if let Err(error) = cb.as_deref_mut().expect("snh")(&ctx, id) {
 										error!("callback failed with {error}");
 									}
 								}

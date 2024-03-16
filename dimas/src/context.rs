@@ -6,6 +6,7 @@
 use crate::com::communicator::Communicator;
 use crate::prelude::*;
 #[cfg(any(
+	feature = "liveliness",
 	feature = "publisher",
 	feature = "query",
 	feature = "queryable",
@@ -20,6 +21,17 @@ use zenoh::query::ConsolidationMode;
 // endregion:	--- modules
 
 // region:		--- types
+// the initial size of the HashMaps
+#[cfg(any(
+	feature = "liveliness",
+	feature = "publisher",
+	feature = "query",
+	feature = "queryable",
+	feature = "subscriber",
+	feature = "timer",
+))]
+const INITIAL_SIZE: usize = 9;
+
 /// Type definition for a thread safe `Context`
 #[allow(clippy::module_name_repetitions)]
 pub type ArcContext<P> = Arc<Context<P>>;
@@ -35,6 +47,9 @@ where
 	/// The agents property structure
 	pub(crate) props: Arc<RwLock<P>>,
 	pub(crate) communicator: Arc<Communicator>,
+	// registered liveliness subscribers
+	#[cfg(feature = "liveliness")]
+	pub(crate) liveliness_subscribers: Arc<RwLock<HashMap<String, LivelinessSubscriber<P>>>>,
 	#[cfg(feature = "publisher")]
 	pub(crate) publishers: Arc<RwLock<HashMap<String, crate::com::publisher::Publisher>>>,
 	#[cfg(feature = "query")]
@@ -60,16 +75,18 @@ where
 		Ok(Arc::new(Self {
 			communicator,
 			props: Arc::new(RwLock::new(props)),
+			#[cfg(feature = "liveliness")]
+			liveliness_subscribers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 			#[cfg(feature = "publisher")]
-			publishers: Arc::new(RwLock::new(HashMap::new())),
+			publishers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 			#[cfg(feature = "query")]
-			queries: Arc::new(RwLock::new(HashMap::new())),
+			queries: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 			#[cfg(feature = "query")]
-			queryables: Arc::new(RwLock::new(HashMap::new())),
+			queryables: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 			#[cfg(feature = "subscriber")]
-			subscribers: Arc::new(RwLock::new(HashMap::new())),
+			subscribers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 			#[cfg(feature = "timer")]
-			timers: Arc::new(RwLock::new(HashMap::new())),
+			timers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 		}))
 	}
 
@@ -79,16 +96,18 @@ where
 		Ok(Arc::new(Self {
 			communicator,
 			props: Arc::new(RwLock::new(props)),
+			#[cfg(feature = "liveliness")]
+			liveliness_subscribers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 			#[cfg(feature = "publisher")]
-			publishers: Arc::new(RwLock::new(HashMap::new())),
+			publishers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 			#[cfg(feature = "query")]
-			queries: Arc::new(RwLock::new(HashMap::new())),
+			queries: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 			#[cfg(feature = "query")]
-			queryables: Arc::new(RwLock::new(HashMap::new())),
+			queryables: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 			#[cfg(feature = "subscriber")]
-			subscribers: Arc::new(RwLock::new(HashMap::new())),
+			subscribers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 			#[cfg(feature = "timer")]
-			timers: Arc::new(RwLock::new(HashMap::new())),
+			timers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 		}))
 	}
 

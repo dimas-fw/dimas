@@ -33,97 +33,233 @@ pub type SubscriberDeleteCallback<P> = Arc<
 >;
 // endregion:	--- types
 
+// region:		--- states
+pub struct NoStorage;
+#[cfg(feature = "subscriber")]
+pub struct Storage<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	pub storage: Arc<RwLock<std::collections::HashMap<String, Subscriber<P>>>>,
+}
+
+pub struct NoKeyExpression;
+pub struct KeyExpression {
+	key_expr: String,
+}
+
+pub struct NoPutCallback;
+pub struct PutCallback<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	pub callback: SubscriberPutCallback<P>,
+}
+// endregion:	--- states
+
 // region:		--- SubscriberBuilder
 /// A builder for a subscriber
 #[allow(clippy::module_name_repetitions)]
 #[derive(Clone)]
-pub struct SubscriberBuilder<P>
+pub struct SubscriberBuilder<P, K, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
 	pub(crate) context: ArcContext<P>,
-	pub(crate) key_expr: Option<String>,
-	pub(crate) put_callback: Option<SubscriberPutCallback<P>>,
+	pub(crate) key_expr: K,
+	pub(crate) put_callback: C,
+	pub(crate) storage: S,
 	pub(crate) delete_callback: Option<SubscriberDeleteCallback<P>>,
 }
 
-impl<P> SubscriberBuilder<P>
+impl<P> SubscriberBuilder<P, NoKeyExpression, NoPutCallback, NoStorage>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	/// Set the full expression to subscribe on.
+	/// Construct a `SubscriberBuilder` in initial state
 	#[must_use]
-	pub fn key_expr(mut self, key_expr: &str) -> Self {
-		self.key_expr.replace(key_expr.into());
-		self
+	pub fn new(context: ArcContext<P>) -> Self {
+		Self {
+			context,
+			key_expr: NoKeyExpression,
+			put_callback: NoPutCallback,
+			storage: NoStorage,
+			delete_callback: None,
+		}
 	}
+}
 
-	/// Set only the message qualifying part of the expression to subscribe on.
-	/// Will be prefixed by the agents prefix.
+impl<P, K, C, S> SubscriberBuilder<P, K, C, S>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	/// Set liveliness subscribers callback for `delete` messages
 	#[must_use]
-	pub fn msg_type(mut self, msg_type: &str) -> Self {
-		let key_expr = self.context.key_expr(msg_type);
-		self.key_expr.replace(key_expr);
-		self
-	}
-
-	/// Set subscribers callback for `put` messages
-	#[must_use]
-	pub fn put_callback<F>(mut self, callback: F) -> Self
-	where
-		F: FnMut(&ArcContext<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static,
-	{
-		self.put_callback
-			.replace(Arc::new(Mutex::new(Some(Box::new(callback)))));
-		self
-	}
-
-	/// Set subscribers callback for `delete` messages
-	#[must_use]
-	pub fn delete_callback<F>(mut self, callback: F) -> Self
+	pub fn delete_callback<F>(self, callback: F) -> Self
 	where
 		F: FnMut(&ArcContext<P>) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
-		self.delete_callback
-			.replace(Arc::new(Mutex::new(Some(Box::new(callback)))));
-		self
+		let Self {
+			context,
+			key_expr,
+			put_callback,
+			storage,
+			..
+		} = self;
+		let delete_callback: Option<SubscriberDeleteCallback<P>> =
+			Some(Arc::new(Mutex::new(Some(Box::new(callback)))));
+		Self {
+			context,
+			key_expr,
+			put_callback,
+			storage,
+			delete_callback,
+		}
+	}
+}
+
+impl<P, C, S> SubscriberBuilder<P, NoKeyExpression, C, S>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	/// Set the full expression for the subscriber
+	#[must_use]
+	pub fn key_expr(self, key_expr: &str) -> SubscriberBuilder<P, KeyExpression, C, S> {
+		let Self {
+			context,
+			storage,
+			put_callback,
+			delete_callback,
+			..
+		} = self;
+		SubscriberBuilder {
+			context,
+			key_expr: KeyExpression {
+				key_expr: key_expr.into(),
+			},
+			put_callback,
+			storage,
+			delete_callback,
+		}
 	}
 
+	/// Set only the message qualifing part of the subscriber.
+	/// Will be prefixed with agents prefix.
+	#[must_use]
+	pub fn msg_type(self, msg_type: &str) -> SubscriberBuilder<P, KeyExpression, C, S> {
+		let key_expr = self.context.key_expr(msg_type);
+		let Self {
+			context,
+			storage,
+			put_callback,
+			delete_callback,
+			..
+		} = self;
+		SubscriberBuilder {
+			context,
+			key_expr: KeyExpression { key_expr },
+			put_callback,
+			storage,
+			delete_callback,
+		}
+	}
+}
+
+impl<P, K, S> SubscriberBuilder<P, K, NoPutCallback, S>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	/// Set callback for put messages
+	#[must_use]
+	pub fn put_callback<F>(self, callback: F) -> SubscriberBuilder<P, K, PutCallback<P>, S>
+	where
+		F: FnMut(&ArcContext<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static,
+	{
+		let Self {
+			context,
+			key_expr,
+			storage,
+			delete_callback,
+			..
+		} = self;
+		let callback: SubscriberPutCallback<P> = Arc::new(Mutex::new(Some(Box::new(callback))));
+		SubscriberBuilder {
+			context,
+			key_expr,
+			put_callback: PutCallback { callback },
+			storage,
+			delete_callback,
+		}
+	}
+}
+
+#[cfg(feature = "subscriber")]
+impl<P, K, C> SubscriberBuilder<P, K, C, NoStorage>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	/// Provide agents storage for the subscriber
+	#[must_use]
+	pub fn storage(
+		self,
+		storage: Arc<RwLock<std::collections::HashMap<String, Subscriber<P>>>>,
+	) -> SubscriberBuilder<P, K, C, Storage<P>> {
+		let Self {
+			context,
+			key_expr,
+			put_callback,
+			delete_callback,
+			..
+		} = self;
+		SubscriberBuilder {
+			context,
+			key_expr,
+			put_callback,
+			storage: Storage { storage },
+			delete_callback,
+		}
+	}
+}
+
+impl<P, S> SubscriberBuilder<P, KeyExpression, PutCallback<P>, S>
+where
+	P: Send + Sync + Unpin + 'static,
+{
 	/// Build the subscriber
 	/// # Errors
 	///
 	pub fn build(self) -> Result<Subscriber<P>> {
-		let key_expr = if self.key_expr.is_none() {
-			return Err(DimasError::NoKeyExpression.into());
-		} else {
-			self.key_expr.ok_or(DimasError::ShouldNotHappen)?
-		};
-		if self.put_callback.is_none() {
-			return Err(DimasError::NoCallback.into());
-		};
-
-		let s = Subscriber {
+		let Self {
+			context,
 			key_expr,
-			put_callback: self.put_callback,
-			delete_callback: self.delete_callback,
+			put_callback,
+			delete_callback,
+			..
+		} = self;
+		Ok(Subscriber {
+			context,
+			key_expr: key_expr.key_expr,
+			put_callback: Some(put_callback.callback),
+			delete_callback,
 			handle: None,
-			context: self.context,
-		};
-
-		Ok(s)
+		})
 	}
+}
 
-	/// Build and add the subscriber to the agents context
+#[cfg(feature = "subscriber")]
+impl<P> SubscriberBuilder<P, KeyExpression, PutCallback<P>, Storage<P>>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	/// Build and add the subscriber to the agent
 	/// # Errors
 	///
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "subscriber")))]
-	#[cfg(feature = "subscriber")]
 	pub fn add(self) -> Result<()> {
-		let collection = self.context.subscribers.clone();
+		let c = self.storage.storage.clone();
 		let s = self.build()?;
 
-		collection
-			.write()
+		c.write()
 			.map_err(|_| DimasError::ShouldNotHappen)?
 			.insert(s.key_expr.clone(), s);
 		Ok(())
@@ -293,6 +429,6 @@ mod tests {
 	#[test]
 	const fn normal_types() {
 		is_normal::<Subscriber<Props>>();
-		is_normal::<SubscriberBuilder<Props>>();
+		is_normal::<SubscriberBuilder<Props, NoKeyExpression, NoPutCallback, NoStorage>>();
 	}
 }
