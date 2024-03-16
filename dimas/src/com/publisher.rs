@@ -41,7 +41,7 @@ where
 {
 	/// Construct a `PublisherBuilder` in initial state
 	#[must_use]
-	pub fn new(context: ArcContext<P>) -> Self {
+	pub const fn new(context: ArcContext<P>) -> Self {
 		Self {
 			context,
 			key_expr: NoKeyExpression,

@@ -76,7 +76,7 @@ where
 {
 	/// Construct a `TimerBuilder` in initial state
 	#[must_use]
-	pub fn new(context: ArcContext<P>) -> Self {
+	pub const fn new(context: ArcContext<P>) -> Self {
 		Self {
 			context,
 			name: NoName,

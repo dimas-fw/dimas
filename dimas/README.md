@@ -155,7 +155,7 @@ async fn main() -> Result<()> {
 		.subscriber()
     	//set wanted message topic (corresponding to publishers topic!)
 		.msg_type("hello")
-    	// set the callback function
+    	// set the callback function for put messages
 		.put_callback(callback)
     	// finally add the subscriber to the agent
     	// errors will be propagated to main

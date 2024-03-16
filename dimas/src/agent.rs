@@ -90,7 +90,7 @@ where
 	///
 	pub fn new(config: crate::config::Config, properties: P) -> Result<Self> {
 		Ok(Self {
-			context: Context::new(config, properties)?,
+			context: Context::new(config, properties)?.into(),
 			liveliness: false,
 			liveliness_token: RwLock::new(None),
 		})
@@ -105,7 +105,7 @@ where
 		prefix: &str,
 	) -> Result<Self> {
 		Ok(Self {
-			context: Context::new_with_prefix(config, properties, prefix)?,
+			context: Context::new_with_prefix(config, properties, prefix)?.into(),
 			liveliness: false,
 			liveliness_token: RwLock::new(None),
 		})
@@ -143,8 +143,7 @@ where
 		crate::com::liveliness_subscriber::NoPutCallback,
 		crate::com::liveliness_subscriber::Storage<P>,
 	> {
-		LivelinessSubscriberBuilder::new(self.get_context())
-			.storage(self.context.liveliness_subscribers.clone())
+		self.get_context().liveliness_subscriber()
 	}
 	/// Get a builder for a [`LivelinessSubscriber`]
 	#[cfg(not(feature = "liveliness"))]
@@ -156,7 +155,7 @@ where
 		crate::com::liveliness_subscriber::NoPutCallback,
 		crate::com::liveliness_subscriber::NoStorage,
 	> {
-		LivelinessSubscriberBuilder::new(self.get_context())
+		self.get_context().liveliness_subscriber()
 	}
 
 	/// Get a builder for a [`Publisher`]
@@ -166,7 +165,7 @@ where
 		&self,
 	) -> PublisherBuilder<P, crate::com::publisher::NoKeyExpression, crate::com::publisher::Storage>
 	{
-		PublisherBuilder::new(self.get_context()).storage(self.context.publishers.clone())
+		self.get_context().publisher()
 	}
 	/// Get a builder for a [`Publisher`]
 	#[cfg(not(feature = "publisher"))]
@@ -175,7 +174,7 @@ where
 		&self,
 	) -> PublisherBuilder<P, crate::com::publisher::NoKeyExpression, crate::com::publisher::NoStorage>
 	{
-		PublisherBuilder::new(self.get_context())
+		self.get_context().publisher()
 	}
 
 	/// Get a builder for a [`Query`]
@@ -189,7 +188,7 @@ where
 		crate::com::query::NoResponseCallback,
 		crate::com::query::Storage<P>,
 	> {
-		QueryBuilder::new(self.get_context()).storage(self.context.queries.clone())
+		self.get_context().query()
 	}
 	/// Get a builder for a [`Query`]
 	#[cfg(not(feature = "query"))]
@@ -202,7 +201,7 @@ where
 		crate::com::query::NoResponseCallback,
 		crate::com::query::NoStorage,
 	> {
-		QueryBuilder::new(self.get_context())
+		self.get_context().query()
 	}
 
 	/// Get a builder for a [`Queryable`]
@@ -216,7 +215,7 @@ where
 		crate::com::queryable::NoRequestCallback,
 		crate::com::queryable::Storage<P>,
 	> {
-		QueryableBuilder::new(self.get_context()).storage(self.context.queryables.clone())
+		self.get_context().queryable()
 	}
 	/// Get a builder for a [`Queryable`]
 	#[cfg(not(feature = "queryable"))]
@@ -229,7 +228,7 @@ where
 		crate::com::queryable::NoRequestCallback,
 		crate::com::queryable::NoStorage,
 	> {
-		QueryableBuilder::new(self.get_context())
+		self.get_context().queryable()
 	}
 
 	/// Get a builder for a [`Subscriber`]
@@ -243,7 +242,7 @@ where
 		crate::com::subscriber::NoPutCallback,
 		crate::com::subscriber::Storage<P>,
 	> {
-		SubscriberBuilder::new(self.get_context()).storage(self.context.subscribers.clone())
+		self.get_context().subscriber()
 	}
 	/// Get a builder for a [`Subscriber`]
 	#[cfg(not(feature = "subscriber"))]
@@ -256,7 +255,7 @@ where
 		crate::com::subscriber::NoPutCallback,
 		crate::com::subscriber::NoStorage,
 	> {
-		SubscriberBuilder::new(self.get_context())
+		self.get_context().subscriber()
 	}
 
 	/// Get a builder for a [`Timer`]
@@ -271,7 +270,7 @@ where
 		crate::timer::NoIntervalCallback,
 		crate::timer::Storage<P>,
 	> {
-		TimerBuilder::new(self.get_context()).storage(self.context.timers.clone())
+		self.get_context().timer()
 	}
 	/// Get a builder for a [`Timer`]
 	#[cfg(not(feature = "timer"))]
@@ -285,7 +284,7 @@ where
 		crate::timer::NoIntervalCallback,
 		crate::timer::NoStorage,
 	> {
-		TimerBuilder::new(self.get_context())
+		self.get_context().timer()
 	}
 
 	/// Internal function for starting all registered tasks

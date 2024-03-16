@@ -84,6 +84,25 @@ impl<P, C, S> LivelinessSubscriberBuilder<P, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// Set a different prefix for the liveliness subscriber.
+	#[must_use]
+	pub fn prefix(self, prefix: &str) -> Self {
+		let key_expr = format!("{prefix}/alive/*");
+		let Self {
+			context,
+			put_callback,
+			storage,
+			delete_callback,
+			..
+		} = self;
+		Self {
+			context,
+			key_expr,
+			put_callback,
+			storage,
+			delete_callback,
+		}
+	}
 	/// Set liveliness subscribers callback for `delete` messages
 	#[must_use]
 	pub fn delete_callback<F>(self, callback: F) -> Self
@@ -219,11 +238,11 @@ pub struct LivelinessSubscriber<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	context: ArcContext<P>,
 	key_expr: String,
 	put_callback: Option<LivelinessCallback<P>>,
 	delete_callback: Option<LivelinessCallback<P>>,
 	handle: Option<JoinHandle<()>>,
-	context: ArcContext<P>,
 }
 
 impl<P> std::fmt::Debug for LivelinessSubscriber<P>

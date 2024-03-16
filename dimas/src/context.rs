@@ -15,6 +15,7 @@ use crate::prelude::*;
 ))]
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::ops::Deref;
 use tracing::{instrument, Level};
 use zenoh::publication::Publisher;
 use zenoh::query::ConsolidationMode;
@@ -31,11 +32,211 @@ use zenoh::query::ConsolidationMode;
 	feature = "timer",
 ))]
 const INITIAL_SIZE: usize = 9;
-
-/// Type definition for a thread safe `Context`
-#[allow(clippy::module_name_repetitions)]
-pub type ArcContext<P> = Arc<Context<P>>;
 // endregion:	--- types
+
+// region:		--- ArcContext
+/// `ArcContext` is a thread safe atomic reference counted [`Context`] and makes all relevant data of the agent accessible via accessor methods.
+#[derive(Debug)]
+#[allow(clippy::module_name_repetitions)]
+pub struct ArcContext<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	inner: Arc<Context<P>>,
+}
+
+impl<P> Clone for ArcContext<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	fn clone(&self) -> Self {
+		Self {
+			inner: self.inner.clone(),
+		}
+	}
+}
+
+impl<P> Deref for ArcContext<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	type Target = Context<P>;
+
+	fn deref(&self) -> &Self::Target {
+		&self.inner
+	}
+}
+
+impl<P> From<Context<P>> for ArcContext<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	fn from(value: Context<P>) -> Self {
+		Self {
+			inner: Arc::new(value),
+		}
+	}
+}
+
+impl<P> ArcContext<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	/// Get a builder for a [`LivelinessSubscriber`]
+	#[cfg(feature = "liveliness")]
+	#[must_use]
+	pub fn liveliness_subscriber(
+		&self,
+	) -> LivelinessSubscriberBuilder<
+		P,
+		crate::com::liveliness_subscriber::NoPutCallback,
+		crate::com::liveliness_subscriber::Storage<P>,
+	> {
+		LivelinessSubscriberBuilder::new(self.clone()).storage(self.liveliness_subscribers.clone())
+	}
+	/// Get a builder for a [`LivelinessSubscriber`]
+	#[cfg(not(feature = "liveliness"))]
+	#[must_use]
+	pub fn liveliness_subscriber(
+		&self,
+	) -> LivelinessSubscriberBuilder<
+		P,
+		crate::com::liveliness_subscriber::NoPutCallback,
+		crate::com::liveliness_subscriber::NoStorage,
+	> {
+		LivelinessSubscriberBuilder::new(self.clone())
+	}
+
+	/// Get a builder for a [`Publisher`]
+	#[cfg(feature = "publisher")]
+	#[must_use]
+	pub fn publisher(
+		&self,
+	) -> PublisherBuilder<P, crate::com::publisher::NoKeyExpression, crate::com::publisher::Storage>
+	{
+		PublisherBuilder::new(self.clone()).storage(self.publishers.clone())
+	}
+	/// Get a builder for a [`Publisher`]
+	#[cfg(not(feature = "publisher"))]
+	#[must_use]
+	pub fn publisher(
+		&self,
+	) -> PublisherBuilder<P, crate::com::publisher::NoKeyExpression, crate::com::publisher::NoStorage>
+	{
+		PublisherBuilder::new(self.clone())
+	}
+
+	/// Get a builder for a [`Query`]
+	#[cfg(feature = "query")]
+	#[must_use]
+	pub fn query(
+		&self,
+	) -> QueryBuilder<
+		P,
+		crate::com::query::NoKeyExpression,
+		crate::com::query::NoResponseCallback,
+		crate::com::query::Storage<P>,
+	> {
+		QueryBuilder::new(self.clone()).storage(self.queries.clone())
+	}
+	/// Get a builder for a [`Query`]
+	#[cfg(not(feature = "query"))]
+	#[must_use]
+	pub fn query(
+		&self,
+	) -> QueryBuilder<
+		P,
+		crate::com::query::NoKeyExpression,
+		crate::com::query::NoResponseCallback,
+		crate::com::query::NoStorage,
+	> {
+		QueryBuilder::new(self.clone())
+	}
+
+	/// Get a builder for a [`Queryable`]
+	#[cfg(feature = "queryable")]
+	#[must_use]
+	pub fn queryable(
+		&self,
+	) -> QueryableBuilder<
+		P,
+		crate::com::queryable::NoKeyExpression,
+		crate::com::queryable::NoRequestCallback,
+		crate::com::queryable::Storage<P>,
+	> {
+		QueryableBuilder::new(self.clone()).storage(self.queryables.clone())
+	}
+	/// Get a builder for a [`Queryable`]
+	#[cfg(not(feature = "queryable"))]
+	#[must_use]
+	pub fn queryable(
+		&self,
+	) -> QueryableBuilder<
+		P,
+		crate::com::queryable::NoKeyExpression,
+		crate::com::queryable::NoRequestCallback,
+		crate::com::queryable::NoStorage,
+	> {
+		QueryableBuilder::new(self.clone())
+	}
+
+	/// Get a builder for a [`Subscriber`]
+	#[cfg(feature = "subscriber")]
+	#[must_use]
+	pub fn subscriber(
+		&self,
+	) -> SubscriberBuilder<
+		P,
+		crate::com::subscriber::NoKeyExpression,
+		crate::com::subscriber::NoPutCallback,
+		crate::com::subscriber::Storage<P>,
+	> {
+		SubscriberBuilder::new(self.clone()).storage(self.subscribers.clone())
+	}
+	/// Get a builder for a [`Subscriber`]
+	#[cfg(not(feature = "subscriber"))]
+	#[must_use]
+	pub fn subscriber(
+		&self,
+	) -> SubscriberBuilder<
+		P,
+		crate::com::subscriber::NoKeyExpression,
+		crate::com::subscriber::NoPutCallback,
+		crate::com::subscriber::NoStorage,
+	> {
+		SubscriberBuilder::new(self.clone())
+	}
+
+	/// Get a builder for a [`Timer`]
+	#[cfg(feature = "timer")]
+	#[must_use]
+	pub fn timer(
+		&self,
+	) -> TimerBuilder<
+		P,
+		crate::timer::NoName,
+		crate::timer::NoInterval,
+		crate::timer::NoIntervalCallback,
+		crate::timer::Storage<P>,
+	> {
+		TimerBuilder::new(self.clone()).storage(self.timers.clone())
+	}
+	/// Get a builder for a [`Timer`]
+	#[cfg(not(feature = "timer"))]
+	#[must_use]
+	pub fn timer(
+		&self,
+	) -> TimerBuilder<
+		P,
+		crate::timer::NoName,
+		crate::timer::NoInterval,
+		crate::timer::NoIntervalCallback,
+		crate::timer::NoStorage,
+	> {
+		TimerBuilder::new(self.clone())
+	}
+}
+// endregion:	--- ArcContext
 
 // region:		--- Context
 /// Context makes all relevant data of the agent accessible via accessor methods.
@@ -70,9 +271,9 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// Constructor for the `Context`
-	pub(crate) fn new(config: Config, props: P) -> Result<Arc<Self>> {
+	pub(crate) fn new(config: Config, props: P) -> Result<Self> {
 		let communicator = Arc::new(Communicator::new(config)?);
-		Ok(Arc::new(Self {
+		Ok(Self {
 			communicator,
 			props: Arc::new(RwLock::new(props)),
 			#[cfg(feature = "liveliness")]
@@ -87,13 +288,13 @@ where
 			subscribers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 			#[cfg(feature = "timer")]
 			timers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
-		}))
+		})
 	}
 
 	/// Constructor for the `Context` with a prefix
-	pub(crate) fn new_with_prefix(config: Config, props: P, prefix: &str) -> Result<Arc<Self>> {
+	pub(crate) fn new_with_prefix(config: Config, props: P, prefix: &str) -> Result<Self> {
 		let communicator = Arc::new(Communicator::new_with_prefix(config, prefix)?);
-		Ok(Arc::new(Self {
+		Ok(Self {
 			communicator,
 			props: Arc::new(RwLock::new(props)),
 			#[cfg(feature = "liveliness")]
@@ -108,7 +309,7 @@ where
 			subscribers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 			#[cfg(feature = "timer")]
 			timers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
-		}))
+		})
 	}
 
 	/// Get the agents uuid
@@ -220,7 +421,7 @@ where
 	/// Method to do an ad hoc query without any consolidation of answers.
 	/// Multiple answers may be received for the same timestamp.
 	#[instrument(level = Level::ERROR, skip_all)]
-	pub fn get<F>(&self, ctx: Arc<Self>, query_name: &str, callback: F) -> Result<()>
+	pub fn get<F>(&self, ctx: ArcContext<P>, query_name: &str, callback: F) -> Result<()>
 	where
 		P: Send + Sync + Unpin + 'static,
 		F: Fn(&ArcContext<P>, Message) + Send + Sync + Unpin + 'static,

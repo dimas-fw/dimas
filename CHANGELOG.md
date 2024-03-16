@@ -20,11 +20,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Configuration via json5 file together with some new dedicated configuration methods
+- ArcContext gives access to Builders
 
 ### Changed
 - _The dedicated configuration method `Config::local()` returns an Error now_
 - panic hooks in spawned tasks that they do not crash the application
 - _Set on error handling: `Result`is always of type `std::result::Result<T, Box<dyn std::error::Error>>`_
+- All of the Builders are implemented with type state pattern
+- ArcContext is now a regular struct not only a type
 
 ### Fixed
 
