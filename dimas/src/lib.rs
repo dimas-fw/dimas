@@ -10,24 +10,21 @@
 doc_comment::doctest!("../README.md");
 
 // region:    --- modules
-/// Primary module of `DiMAS` containing the Agent
-mod agent;
-/// Communication
+// Primary module of `DiMAS` containing the Agent
+pub mod agent;
+// Internal module handling communication
 mod com;
-/// Configuration
-mod config;
-/// Context
-mod context;
-/// Error handling
-mod error;
-/// Timer
+// Configuration for an Agent
+pub mod config;
+// Context of an Agent
+pub mod context;
+// Error handling
+pub mod error;
+// Timer
 mod timer;
 // Helper functions
 //mod utils;
 
-/// Public interface of dimas.
-/// Typically it is sufficient to include the prelude with
-/// `use dimas::prelude::*;`
+// Public interface of dimas.
 pub mod prelude;
-
 // endregion: --- modules

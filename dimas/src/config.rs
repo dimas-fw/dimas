@@ -1,6 +1,11 @@
 // Copyright © 2024 Stephan Kunz
 
-//! Module `config` provides `Config`, the configuration data for an `Agent`.
+//! The [`Config`]uration data for an [`Agent`].
+
+// region:		--- modules
+#[allow(unused_imports)]
+use crate::agent::Agent;
+// endregion:	--- modules
 
 // region:		--- modules
 use crate::error::{DimasError, Result};
@@ -56,7 +61,7 @@ fn find_file(filename: &str) -> Result<String> {
 // endregion:	--- utils
 
 // region:		--- Config
-/// Manages the agents configuration
+/// Manages the [`Agent`]s configuration
 #[repr(transparent)]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Config {
@@ -65,7 +70,7 @@ pub struct Config {
 }
 
 impl Default for Config {
-	/// create a default configuration that connects to agents in same subnet
+	/// Create a default configuration that connects to [`Agent`]s in same subnet
 	#[allow(clippy::cognitive_complexity)]
 	fn default() -> Self {
 		match find_file("default.json5") {
@@ -91,7 +96,7 @@ impl Default for Config {
 }
 
 impl Config {
-	/// create a configuration that only connects to agents on same host
+	/// Create a configuration that only connects to [`Agent`]s on same host
 	/// # Errors
 	pub fn local() -> Result<Self> {
 		let content = find_file("local.json5")?;
@@ -99,7 +104,7 @@ impl Config {
 		Ok(cfg)
 	}
 
-	/// create a low latency configuration
+	/// Create a low latency configuration
 	/// # Errors
 	pub fn low_latency() -> Result<Self> {
 		let content = find_file("low_latency.json5")?;
@@ -107,7 +112,7 @@ impl Config {
 		Ok(cfg)
 	}
 
-	/// create a client configuration that connects to agents in same subnet
+	/// Create a client configuration that connects to agents in same subnet
 	/// # Errors
 	pub fn client() -> Result<Self> {
 		let content = find_file("client.json5")?;
@@ -115,7 +120,7 @@ impl Config {
 		Ok(cfg)
 	}
 
-	/// create a peer configuration that connects to agents in same subnet
+	/// Create a peer configuration that connects to agents in same subnet
 	/// # Errors
 	pub fn peer() -> Result<Self> {
 		let content = find_file("peer.json5")?;
@@ -123,7 +128,7 @@ impl Config {
 		Ok(cfg)
 	}
 
-	/// create a router configuration
+	/// Create a router configuration
 	/// # Errors
 	pub fn router() -> Result<Self> {
 		let content = find_file("router.json5")?;
@@ -131,7 +136,7 @@ impl Config {
 		Ok(cfg)
 	}
 
-	/// create a configuration from a configuration file
+	/// Create a configuration from a configuration file
 	/// # Errors
 	pub fn from_file(filename: &str) -> Result<Self> {
 		let content = find_file(filename)?;
@@ -139,6 +144,7 @@ impl Config {
 		Ok(cfg)
 	}
 
+	/// Create a zenoh configuration from [`Config`]
 	#[must_use]
 	pub(crate) fn zenoh_config(&self) -> zenoh::config::Config {
 		self.zenoh.clone()

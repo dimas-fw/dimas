@@ -1,6 +1,8 @@
 // Copyright © 2023 Stephan Kunz
 
-//! Module `agent` provides the `Agent`.
+//! Primary module of `DiMAS` implementing [`Agent`]
+//! 
+//! ToDo
 
 // region:		--- modules
 use crate::context::Context;
@@ -21,19 +23,28 @@ use zenoh::liveliness::LivelinessToken;
 
 // region:		--- TaskSignal
 #[derive(Debug, Clone)]
-pub enum TaskSignal {
+/// Internal signals, used by panic hooks to inform the Agent that someting has happened
+pub(crate) enum TaskSignal {
+	/// Restart a certain liveliness subscriber, identified by its key expression
 	#[cfg(feature = "liveliness")]
 	RestartLiveliness(String),
+	/// Restart a certain queryable, identified by its key expression
 	#[cfg(feature = "queryable")]
 	RestartQueryable(String),
+	/// Restart a certain lsubscriber, identified by its key expression
 	#[cfg(feature = "subscriber")]
 	RestartSubscriber(String),
+	/// Restart a certain timer, identified by its key expression
 	#[cfg(feature = "timer")]
 	RestartTimer(String),
+	/// just to avoid warning messages when no feature is selected
+	#[allow(dead_code)]
 	Dummy,
 }
 
-async fn handle_signals(rx: &Mutex<Receiver<TaskSignal>>) -> Box<TaskSignal> {
+/// Wait for [`TaskSignal`]s.
+/// Necessary for the `select!` macro within the [`Agent`]s main loop 
+async fn wait_for_signals(rx: &Mutex<Receiver<TaskSignal>>) -> Box<TaskSignal> {
 	loop {
 		if let Ok(signal) = rx.lock().expect("").try_recv() {
 			return Box::new(signal);
@@ -45,7 +56,7 @@ async fn handle_signals(rx: &Mutex<Receiver<TaskSignal>>) -> Box<TaskSignal> {
 // endregion:	--- TaskSignal
 
 // region:		--- Agent
-/// Agent
+/// `Agent`
 pub struct Agent<'a, P>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -160,9 +171,9 @@ where
 		loop {
 			// different possibilities that can happen
 			select! {
-				// Commands
-				command = handle_signals(&rx) => {
-					match *command {
+				// `TaskSignal`s 
+				signal = wait_for_signals(&rx) => {
+					match *signal {
 						#[cfg(feature = "liveliness")]
 						TaskSignal::RestartLiveliness(key_expr) => {
 							self.context.liveliness_subscribers

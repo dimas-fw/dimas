@@ -1,7 +1,8 @@
 // Copyright © 2023 Stephan Kunz
 
-//! The [`ArcContext`] provides thread safe access to an [`Agent`]'s internal data and its defined properties.
-//! It internally uses the `Context`
+//! [`ArcContext`] provides thread safe access to an [`Agent`]'s internal properties and its user defined properties.
+//!
+//! Internally uses the `Context` structure to store data.
 
 use crate::agent::TaskSignal;
 // region:		--- modules
@@ -383,12 +384,14 @@ where
 		self.communicator.key_expr(msg_name)
 	}
 
+	/// Gives read access to the `Agent`s properties
 	pub fn read(&self) -> Result<std::sync::RwLockReadGuard<'_, P>> {
 		self.props
 			.read()
 			.map_err(|_| DimasError::ReadProperties.into())
 	}
 
+	/// Gives write access to the `Agent`s properties
 	pub fn write(&self) -> Result<std::sync::RwLockWriteGuard<'_, P>> {
 		self.props
 			.write()

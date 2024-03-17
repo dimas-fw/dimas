@@ -1,12 +1,9 @@
 // Copyright © 2023 Stephan Kunz
 
-//! Module `error` provides the DiMAS specific `Error`s.
-
-// region:		--- modules
-// endregion:	--- modules
+//! The DiMAS specific error enum [`DimasError`] togehter with a type alias for [`std::result::Result`] to write only `Result<T>`.
 
 // region:		--- types
-/// type alias for `std::result::Result` to ease up implementation
+/// Type alias for `std::result::Result` to ease up implementation
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync + 'static>>;
 // endregion:	--- types
 
