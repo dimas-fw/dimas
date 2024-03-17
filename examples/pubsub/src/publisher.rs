@@ -24,7 +24,7 @@ async fn main() -> Result<()> {
 	let mut agent = Agent::new_with_prefix(Config::default(), properties, "examples")?;
 
 	// create publisher for topic "hello"
-	agent.publisher().msg_type("hello").add()?;
+	agent.publisher().topic("hello").add()?;
 
 	// use timer for regular publishing
 	agent

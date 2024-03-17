@@ -130,8 +130,8 @@ where
 	/// Set only the name of the timer.
 	/// Will be prefixed with agents prefix.
 	#[must_use]
-	pub fn name(self, msg_type: &str) -> TimerBuilder<P, KeyExpression, I, C, S> {
-		let key_expr = self.context.key_expr(msg_type);
+	pub fn name(self, topic: &str) -> TimerBuilder<P, KeyExpression, I, C, S> {
+		let key_expr = self.context.key_expr(topic);
 		let Self {
 			context,
 			interval,

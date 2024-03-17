@@ -48,12 +48,12 @@ async fn main() -> Result<()> {
 	let mut agent = Agent::new_with_prefix(Config::default(), properties, "examples")?;
 
 	// create publisher for topic "ping"
-	agent.publisher().msg_type("pong").add()?;
+	agent.publisher().topic("pong").add()?;
 
 	// listen for 'ping' messages
 	agent
 		.subscriber()
-		.msg_type("ping")
+		.topic("ping")
 		.put_callback(ping_received)
 		.add()?;
 

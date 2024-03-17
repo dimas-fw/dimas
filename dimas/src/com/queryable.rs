@@ -106,8 +106,8 @@ where
 	/// Set only the message qualifing part of the queryable.
 	/// Will be prefixed with agents prefix.
 	#[must_use]
-	pub fn msg_type(self, msg_type: &str) -> QueryableBuilder<P, KeyExpression, C, S> {
-		let key_expr = self.context.key_expr(msg_type);
+	pub fn topic(self, topic: &str) -> QueryableBuilder<P, KeyExpression, C, S> {
+		let key_expr = self.context.key_expr(topic);
 		let Self {
 			context,
 			storage,
