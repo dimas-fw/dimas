@@ -90,7 +90,7 @@ where
 	/// # Errors
 	/// Currently none
 	#[allow(unused_variables)]
-	pub(crate) fn start_tasks(&self, tx: &Sender<TaskSignal>) -> Result<()> {
+	pub(crate) fn start_registered_tasks(&self, tx: &Sender<TaskSignal>) -> Result<()> {
 		// start all registered queryables
 		#[cfg(feature = "queryable")]
 		self.queryables
