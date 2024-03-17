@@ -1,8 +1,20 @@
 // Copyright © 2023 Stephan Kunz
 
 //! Primary module of `DiMAS` implementing [`Agent`]
-//! 
-//! ToDo
+//!
+//! An agent is a physical or virtual unit that
+//! - can act in an environment
+//! - communicates directly with other units/agents
+//! - is driven by a set of tendecies (individual goals or satisfaction-/survival-mechanisms)
+//! - has own resources
+//! - can perceive its environment to a limited extent
+//! - has no or only a partial representation of its environment
+//! - has  capabilities and offers services
+//! - can possibly reproduce itself
+//! - whose behaviour is aimed at fulfilling its objectives,
+//!   taking into account the resources and capabilities available to it and
+//!   depending on its perception, representations and abilities
+//!
 
 // region:		--- modules
 use crate::context::Context;
@@ -23,7 +35,7 @@ use zenoh::liveliness::LivelinessToken;
 
 // region:		--- TaskSignal
 #[derive(Debug, Clone)]
-/// Internal signals, used by panic hooks to inform the Agent that someting has happened
+/// Internal signals, used by panic hooks to inform the [`Agent`] that someting has happened
 pub(crate) enum TaskSignal {
 	/// Restart a certain liveliness subscriber, identified by its key expression
 	#[cfg(feature = "liveliness")]
@@ -43,7 +55,7 @@ pub(crate) enum TaskSignal {
 }
 
 /// Wait for [`TaskSignal`]s.
-/// Necessary for the `select!` macro within the [`Agent`]s main loop 
+/// Necessary for the `select!` macro within the [`Agent`]s main loop
 async fn wait_for_signals(rx: &Mutex<Receiver<TaskSignal>>) -> Box<TaskSignal> {
 	loop {
 		if let Ok(signal) = rx.lock().expect("").try_recv() {
@@ -171,7 +183,7 @@ where
 		loop {
 			// different possibilities that can happen
 			select! {
-				// `TaskSignal`s 
+				// `TaskSignal`s
 				signal = wait_for_signals(&rx) => {
 					match *signal {
 						#[cfg(feature = "liveliness")]

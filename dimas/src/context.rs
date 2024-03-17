@@ -385,6 +385,7 @@ where
 	}
 
 	/// Gives read access to the `Agent`s properties
+	/// # Errors
 	pub fn read(&self) -> Result<std::sync::RwLockReadGuard<'_, P>> {
 		self.props
 			.read()
@@ -392,6 +393,7 @@ where
 	}
 
 	/// Gives write access to the `Agent`s properties
+	/// # Errors
 	pub fn write(&self) -> Result<std::sync::RwLockWriteGuard<'_, P>> {
 		self.props
 			.write()
@@ -407,7 +409,7 @@ where
 
 	/// Method to do an ad hoc publishing
 	/// # Errors
-	///   Error is propagated from Communicator
+	///   Error is propagated from [`Communicator::put`]
 	#[instrument(level = Level::ERROR, skip_all)]
 	pub fn put<M>(&self, msg_name: &str, message: M) -> Result<()>
 	where

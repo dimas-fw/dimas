@@ -1,12 +1,24 @@
 # dimas
 
-[DiMAS](https://github.com/dimas-fw/dimas/dimas) - A framework for building **Di**stributed **M**ulti **A**gent **S**ystems
+[DiMAS](https://github.com/dimas-fw/dimas/tree/main/dimas) - A framework for building **Di**stributed **M**ulti **A**gent **S**ystems
 
-A Distributed Multi Agent Systems is a system of independant working programs, interchanging information,
-that are running on several somehow connected computers (e.g. an ethernet network).
+⚠️ WARNING ⚠️ : DiMAS is under active development, so expect gaps between implementation and documentation. 
 
-This crate is on [crates.io](https://crates.io/crates/dimas).
-`DiMAS` is tested on Windows (Version 10) and Linux (Debian flavours, AMD64 & aarch64) but should also run on `MacOS`.
+A distributed multi agent system is a set of independant agents that are widely distributed but somehow connected.
+They are designed in a way that they can solve complex tasks by working together.
+
+The system is characterised by
+- a somewhat large and complex environment
+- containing a set of (non agent) objects that can be perceived, created, moved, modified or destroyed by the agents
+- that changes over time due to external rules
+
+with multiple agents operating in that environment which
+- can percieve the environment to a limited extent
+- have the possibility to communicate with some or all of the other agents
+- have certain capabilities to influence the environment
+
+
+This crate is available on [crates.io](https://crates.io/crates/dimas).
 
 [DiMAS](https://github.com/dimas-fw/dimas/tree/main/dimas) follows the semantic versioning principle with the enhancement,
 that until version 1.0.0 each new version may include breaking changes, which will be noticed in the changelog.

@@ -117,7 +117,9 @@ where
 		} = self;
 		TimerBuilder {
 			context,
-			key_expr: KeyExpression { key_expr: key_expr.into() },
+			key_expr: KeyExpression {
+				key_expr: key_expr.into(),
+			},
 			interval,
 			callback,
 			storage,
@@ -512,6 +514,7 @@ mod tests {
 	#[test]
 	const fn normal_types() {
 		is_normal::<Timer<Props>>();
-		is_normal::<TimerBuilder<Props, NoKeyExpression, NoInterval, NoIntervalCallback, NoStorage>>();
+		is_normal::<TimerBuilder<Props, NoKeyExpression, NoInterval, NoIntervalCallback, NoStorage>>(
+		);
 	}
 }

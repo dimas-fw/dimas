@@ -1,6 +1,6 @@
 // Copyright © 2023 Stephan Kunz
 
-//! The DiMAS specific error enum [`DimasError`] togehter with a type alias for [`std::result::Result`] to write only `Result<T>`.
+//! The `DiMAS` specific error enum [`DimasError`] togehter with a type alias for [`std::result::Result`] to write only `Result<T>`.
 
 // region:		--- types
 /// Type alias for `std::result::Result` to ease up implementation

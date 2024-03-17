@@ -224,7 +224,8 @@ where
 		let c = self.storage.storage.clone();
 		let s = self.build()?;
 
-		let r = c.write()
+		let r = c
+			.write()
 			.map_err(|_| DimasError::ShouldNotHappen)?
 			.insert(s.key_expr.clone(), s);
 		Ok(r)
