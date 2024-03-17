@@ -268,7 +268,7 @@ where
 		&self,
 	) -> TimerBuilder<
 		P,
-		crate::timer::NoName,
+		crate::timer::NoKeyExpression,
 		crate::timer::NoInterval,
 		crate::timer::NoIntervalCallback,
 		crate::timer::Storage<P>,
@@ -282,7 +282,7 @@ where
 		&self,
 	) -> TimerBuilder<
 		P,
-		crate::timer::NoName,
+		crate::timer::NoKeyExpression,
 		crate::timer::NoInterval,
 		crate::timer::NoIntervalCallback,
 		crate::timer::NoStorage,

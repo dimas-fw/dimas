@@ -220,14 +220,14 @@ where
 	/// # Errors
 	///
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "liveliness")))]
-	pub fn add(self) -> Result<()> {
+	pub fn add(self) -> Result<Option<LivelinessSubscriber<P>>> {
 		let c = self.storage.storage.clone();
 		let s = self.build()?;
 
-		c.write()
+		let r = c.write()
 			.map_err(|_| DimasError::ShouldNotHappen)?
 			.insert(s.key_expr.clone(), s);
-		Ok(())
+		Ok(r)
 	}
 }
 // endregion:	--- LivelinessSubscriberBuilder

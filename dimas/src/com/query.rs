@@ -225,15 +225,15 @@ where
 	/// # Errors
 	///
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "query")))]
-	pub fn add(self) -> Result<()> {
+	pub fn add(self) -> Result<Option<Query<P>>> {
 		let collection = self.storage.storage.clone();
 		let q = self.build()?;
 
-		collection
+		let r = collection
 			.write()
 			.map_err(|_| DimasError::ShouldNotHappen)?
 			.insert(q.key_expr.clone(), q);
-		Ok(())
+		Ok(r)
 	}
 }
 // endregion:	--- QueryBuilder

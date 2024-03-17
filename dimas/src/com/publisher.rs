@@ -132,14 +132,14 @@ where
 	///
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "publisher")))]
 	#[cfg(feature = "publisher")]
-	pub fn add(self) -> Result<()> {
+	pub fn add(self) -> Result<Option<Publisher>> {
 		let collection = self.storage.storage.clone();
 		let p = self.build()?;
-		collection
+		let r = collection
 			.write()
 			.map_err(|_| DimasError::ShouldNotHappen)?
 			.insert(p.publisher.key_expr().to_string(), p);
-		Ok(())
+		Ok(r)
 	}
 }
 // endregion:	--- PublisherBuilder

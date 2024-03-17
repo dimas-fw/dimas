@@ -25,13 +25,13 @@ unwrap_used = "deny"
 [workspace.package]
 rust-version = "1.75.0"
 edition = "2021"
-version = "0.0.7"
+version = "0.0.8"
 authors = [
 	"stepkun <stephan.kunz@kabelbw.de>",
 ]
 #license = "NGMC"
 license-file = "LICENSE"
-keywords = ["automation", "mas", "robot", "robotics"]
+keywords = ["automation", "mas", "robots", "robotics"]
 categories = [
 	"development-tools",
 	"science::robotics",
@@ -48,9 +48,9 @@ thiserror = "1"
 tokio = "1"
 tracing = "0.1"
 tracing-subscriber = "0.3"
-zenoh = { version = "0.10.1-rc", features = ["unstable"] } # "shared-memory" ,"transport_unixpipe",
+#zenoh = { version = "0.10.1-rc", features = ["unstable"] } # "shared-memory" ,"transport_unixpipe",
 #zenoh = { git = "https://github.com/eclipse-zenoh/zenoh", rev = "ba50eec2", features = ["unstable"]}
-#zenoh = { git = "https://github.com/eclipse-zenoh/zenoh", branch = "main", features = ["unstable"]}
+zenoh = { git = "https://github.com/eclipse-zenoh/zenoh", branch = "main", features = ["unstable"]}
 
 [profile.release]
 opt-level = 'z'   # Optimize for size.

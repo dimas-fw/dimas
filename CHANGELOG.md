@@ -16,6 +16,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 
+## [0.0.8] - 2024-03-??
+
+### Added
+- Builders add methods now return the possibly previously added item for that key expression  
+
+### Changed
+
+### Fixed
+- Broken documentaton on docs.rs
+- Same naming scheme for TimerBuilder as for other builders
+
+### Removed
+
+
 ## [0.0.7] - 2024-03-17 <br>_Has breaking changes!!_
 
 ### Added
