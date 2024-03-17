@@ -30,7 +30,7 @@ async fn main() -> Result<()> {
 	// create publisher for topic "ping"
 	agent
 		.query()
-		.msg_type("query")
+		.topic("query")
 		.callback(query_callback)
 		.add()?;
 

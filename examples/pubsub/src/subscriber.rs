@@ -38,7 +38,7 @@ async fn main() -> Result<()> {
 	// listen for 'hello' messages
 	agent
 		.subscriber()
-		.msg_type("hello")
+		.topic("hello")
 		.put_callback(hello_publishing)
 		.delete_callback(hello_deletion)
 		.add()?;

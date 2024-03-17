@@ -35,7 +35,7 @@ async fn main() -> Result<()> {
 	// add a queryable
 	agent
 		.queryable()
-		.msg_type("query")
+		.topic("query")
 		.callback(queryable)
 		.add()?;
 

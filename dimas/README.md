@@ -97,7 +97,7 @@ async fn main() -> Result<()> {
 	// create publisher for topic "hello"
 	agent
 		.publisher()
-		.msg_type("hello")
+		.topic("hello")
 		.add()?;
 
 	// use a timer for regular publishing of "hello" topic
@@ -166,7 +166,7 @@ async fn main() -> Result<()> {
 		// get the SubscriberBuilder from the agent
 		.subscriber()
     	//set wanted message topic (corresponding to publishers topic!)
-		.msg_type("hello")
+		.topic("hello")
     	// set the callback function for put messages
 		.put_callback(callback)
     	// finally add the subscriber to the agent

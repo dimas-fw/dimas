@@ -12,8 +12,8 @@
 //! ```
 //!
 
-use crate::agent::TaskSignal;
 // region:		--- modules
+use crate::agent::TaskSignal;
 use crate::com::communicator::Communicator;
 use crate::prelude::*;
 #[cfg(any(
@@ -388,8 +388,8 @@ where
 	}
 
 	#[must_use]
-	pub(crate) fn key_expr(&self, msg_name: &str) -> String {
-		self.communicator.key_expr(msg_name)
+	pub(crate) fn key_expr(&self, topic: &str) -> String {
+		self.communicator.key_expr(topic)
 	}
 
 	/// Gives read access to the `Agent`s properties
@@ -419,11 +419,11 @@ where
 	/// # Errors
 	///   Error is propagated from [`Communicator::put`]
 	#[instrument(level = Level::ERROR, skip_all)]
-	pub fn put<M>(&self, msg_name: &str, message: M) -> Result<()>
+	pub fn put<M>(&self, topic: &str, message: M) -> Result<()>
 	where
 		M: Encode,
 	{
-		self.communicator.put(msg_name, message)
+		self.communicator.put(topic, message)
 	}
 
 	/// Method to pubish data with a stored Publisher
@@ -431,11 +431,11 @@ where
 	///
 	#[cfg(feature = "publisher")]
 	#[instrument(level = Level::ERROR, skip_all)]
-	pub fn put_with<M>(&self, msg_name: &str, message: M) -> Result<()>
+	pub fn put_with<M>(&self, topic: &str, message: M) -> Result<()>
 	where
 		M: Debug + Encode,
 	{
-		let key_expr = self.key_expr(msg_name);
+		let key_expr = self.key_expr(topic);
 		if self
 			.publishers
 			.read()
@@ -457,8 +457,8 @@ where
 	/// # Errors
 	///   Error is propagated from Communicator
 	#[instrument(level = Level::ERROR, skip_all)]
-	pub fn delete(&self, msg_name: &str) -> Result<()> {
-		self.communicator.delete(msg_name)
+	pub fn delete(&self, topic: &str) -> Result<()> {
+		self.communicator.delete(topic)
 	}
 
 	/// Method to delete data with a stored Publisher
@@ -466,8 +466,8 @@ where
 	///
 	#[cfg(feature = "publisher")]
 	#[instrument(level = Level::ERROR, skip_all)]
-	pub fn delete_with(&self, msg_name: &str) -> Result<()> {
-		let key_expr = self.key_expr(msg_name);
+	pub fn delete_with(&self, topic: &str) -> Result<()> {
+		let key_expr = self.key_expr(topic);
 		if self
 			.publishers
 			.read()
@@ -502,8 +502,8 @@ where
 	///
 	#[cfg(feature = "query")]
 	#[instrument(level = Level::ERROR, skip_all)]
-	pub fn get_with(&self, msg_name: &str) -> Result<()> {
-		let key_expr = self.key_expr(msg_name);
+	pub fn get_with(&self, topic: &str) -> Result<()> {
+		let key_expr = self.key_expr(topic);
 		if self
 			.queries
 			.read()
