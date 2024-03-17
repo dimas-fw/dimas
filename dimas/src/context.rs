@@ -3,6 +3,14 @@
 //! [`ArcContext`] provides thread safe access to an [`Agent`]'s internal properties and its user defined properties.
 //!
 //! Internally uses the `Context` structure to store data.
+//!
+//! # Example
+//! ```rust,no_run
+//! # use dimas::prelude::*;
+//! # main() {
+//! # }
+//! ```
+//!
 
 use crate::agent::TaskSignal;
 // region:		--- modules

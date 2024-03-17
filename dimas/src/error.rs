@@ -1,6 +1,14 @@
 // Copyright © 2023 Stephan Kunz
 
 //! The `DiMAS` specific error enum [`DimasError`] togehter with a type alias for [`std::result::Result`] to write only `Result<T>`.
+//!
+//! # Example
+//! ```rust,no_run
+//! # use dimas::prelude::*;
+//! # main() {
+//! # }
+//! ```
+//!
 
 // region:		--- types
 /// Type alias for `std::result::Result` to ease up implementation
