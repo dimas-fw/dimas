@@ -19,26 +19,26 @@
 //! ```rust,no_run
 //! use dimas::prelude::*;
 //! use std::time::Duration;
-//! 
+//!
 //! #[derive(Debug)]
 //! struct AgentProps {}
-//! 
+//!
 //! // we need an async runtime, preferably tokio
 //! #[tokio::main]
 //! async fn main() -> Result<()> {
-//! 	// create & initialize agents properties
-//! 	let properties = AgentProps {};
-//! 
-//! 	// create an agent with the properties and a default configuration
-//! 	let mut agent = Agent::new(Config::default(), properties)?;
+//!   // create & initialize agents properties
+//!   let properties = AgentProps {};
+//!
+//!   // create an agent with the properties and a default configuration
+//!   let mut agent = Agent::new(Config::default(), properties)?;
 //!
 //!   // configuration of the agent
 //!   // ...
 //!
-//! 	// run the agent
-//! 	agent.start().await?;
-//! 	Ok(())
-//! } 
+//!   // run the agent
+//!   agent.start().await?;
+//!   Ok(())
+//! }
 //! ```
 //!
 //! A running agent can be properly stopped with `ctrl-c`
@@ -47,57 +47,20 @@
 // region:		--- modules
 use crate::context::Context;
 use crate::prelude::*;
+use crate::utils::{wait_for_task_signals, TaskSignal};
 use std::{
 	fmt::Debug,
 	ops::Deref,
-	sync::{
-		mpsc::{self, Receiver},
-		Mutex,
-	},
-	time::Duration,
+	sync::{mpsc, Mutex},
 };
 use tokio::{select, signal};
 use tracing::{error, info};
 use zenoh::liveliness::LivelinessToken;
 // endregion:	--- modules
 
-// region:		--- TaskSignal
-#[derive(Debug, Clone)]
-/// Internal signals, used by panic hooks to inform the [`Agent`] that someting has happened.
-pub(crate) enum TaskSignal {
-	/// Restart a certain liveliness subscriber, identified by its key expression.
-	#[cfg(feature = "liveliness")]
-	RestartLiveliness(String),
-	/// Restart a certain queryable, identified by its key expression.
-	#[cfg(feature = "queryable")]
-	RestartQueryable(String),
-	/// Restart a certain lsubscriber, identified by its key expression.
-	#[cfg(feature = "subscriber")]
-	RestartSubscriber(String),
-	/// Restart a certain timer, identified by its key expression.
-	#[cfg(feature = "timer")]
-	RestartTimer(String),
-	/// just to avoid warning messages when no feature is selected.
-	#[allow(dead_code)]
-	Dummy,
-}
-
-/// Wait non-blocking for [`TaskSignal`]s.<br>
-/// Used by the `select!` macro within the [`Agent`]s main loop in [`Agent::start`].
-async fn wait_for_signals(rx: &Mutex<Receiver<TaskSignal>>) -> Box<TaskSignal> {
-	loop {
-		if let Ok(signal) = rx.lock().expect("snh").try_recv() {
-			return Box::new(signal);
-		};
-		// TODO: maybe there is a better solution than sleep
-		tokio::time::sleep(Duration::from_millis(1)).await;
-	}
-}
-// endregion:	--- TaskSignal
-
 // region:		--- Agent
 /// Representation of an [`Agent`].<br>
-/// Available constructors: [`Agent::new`] and [`Agent::new_with_prefix`] 
+/// Available constructors: [`Agent::new`] and [`Agent::new_with_prefix`]
 pub struct Agent<'a, P>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -205,7 +168,7 @@ where
 			// different possibilities that can happen
 			select! {
 				// `TaskSignal`s
-				signal = wait_for_signals(&rx) => {
+				signal = wait_for_task_signals(&rx) => {
 					match *signal {
 						#[cfg(feature = "liveliness")]
 						TaskSignal::RestartLiveliness(key_expr) => {

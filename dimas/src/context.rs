@@ -2,7 +2,7 @@
 
 //! [`ArcContext`] provides thread safe access to an [`Agent`]'s internal properties and its user defined properties.
 //!
-//! Internally uses the `Context` structure to store data.
+//! Internally uses the `Context` structure to store the data.
 //!
 //! # Example
 //! ```rust,no_run
@@ -13,9 +13,9 @@
 //!
 
 // region:		--- modules
-use crate::agent::TaskSignal;
 use crate::com::communicator::Communicator;
 use crate::prelude::*;
+use crate::utils::TaskSignal;
 #[cfg(any(
 	feature = "liveliness",
 	feature = "publisher",

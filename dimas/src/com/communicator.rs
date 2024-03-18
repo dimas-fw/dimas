@@ -12,6 +12,7 @@ use zenoh::publication::Publisher;
 // endregion:	--- modules
 
 // region:		--- Communicator
+/// Communicator
 #[derive(Debug)]
 pub struct Communicator {
 	/// the zenoh session

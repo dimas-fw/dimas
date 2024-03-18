@@ -4,7 +4,7 @@
 //! A `Subscriber` can optional subscribe on a delete message.
 
 // region:		--- modules
-use crate::{agent::TaskSignal, prelude::*};
+use crate::{utils::TaskSignal, prelude::*};
 use std::sync::{mpsc::Sender, Mutex};
 use tokio::task::JoinHandle;
 #[cfg(feature = "subscriber")]

@@ -4,7 +4,7 @@
 //! When fired, a `Timer` calls his assigned `TimerCallback`.
 
 // region:		--- modules
-use crate::{agent::TaskSignal, prelude::*};
+use crate::{utils::TaskSignal, prelude::*};
 use std::{
 	fmt::Debug,
 	sync::{mpsc::Sender, Mutex},

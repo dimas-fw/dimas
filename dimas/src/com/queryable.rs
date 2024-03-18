@@ -3,7 +3,7 @@
 //! Module `queryable` provides an information/compute provider `Queryable` which can be created using the `QueryableBuilder`.
 
 // region:		--- modules
-use crate::{agent::TaskSignal, prelude::*};
+use crate::{utils::TaskSignal, prelude::*};
 use std::{
 	fmt::Debug,
 	sync::{mpsc::Sender, Mutex},
