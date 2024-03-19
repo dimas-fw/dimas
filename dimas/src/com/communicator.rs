@@ -159,15 +159,21 @@ mod tests {
 		let _zenoh = zenoh::open(config::default()).res_sync();
 	}
 
-	#[tokio::test(flavor = "current_thread")]
+	#[tokio::test(flavor = "multi_thread")]
 	//#[serial]
-	async fn zenoh_create_default_sync_in_async() {
-		let _zenoh = zenoh::open(config::default()).res_sync();
+	async fn zenoh_create_default_multi1() {
+		let _zenoh = zenoh::open(config::default()).res_async().await;
 	}
 
-	#[tokio::test(flavor = "current_thread")]
+	#[tokio::test(flavor = "multi_thread")]
 	//#[serial]
-	async fn zenoh_create_default_async() {
+	async fn zenoh_create_default_multi2() {
+		let _zenoh = zenoh::open(config::default()).res_async().await;
+	}
+
+	#[tokio::test(flavor = "multi_thread")]
+	//#[serial]
+	async fn zenoh_create_default_multi3() {
 		let _zenoh = zenoh::open(config::default()).res_async().await;
 	}
 
@@ -179,7 +185,7 @@ mod tests {
 		Ok(())
 	}
 
-	#[tokio::test(flavor = "current_thread")]
+	#[tokio::test]
 	//#[serial]
 	async fn communicator_create_single() -> Result<()> {
 		let _peer1 = Communicator::new(crate::config::Config::default());

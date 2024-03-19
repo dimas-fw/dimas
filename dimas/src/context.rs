@@ -47,7 +47,8 @@ const INITIAL_SIZE: usize = 9;
 // endregion:	--- types
 
 // region:		--- ArcContext
-/// `ArcContext` is a thread safe atomic reference counted `Context` and makes all relevant data of the agent accessible via accessor methods.
+/// `ArcContext` is a thread safe atomic reference counted [`Context`]. <br>
+/// It makes all relevant data of the agent accessible in a thread safe way via accessor methods.
 #[derive(Debug)]
 #[allow(clippy::module_name_repetitions)]
 pub struct ArcContext<P>

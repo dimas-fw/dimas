@@ -311,22 +311,6 @@ mod tests {
 		is_normal::<TaskSignal>();
 	}
 
-	#[tokio::test]
-	//#[serial]
-	async fn agent_create_default() -> Result<()> {
-		let _agent1 = Agent::new(crate::config::Config::local()?, Props {});
-		let _agent2 = Agent::new_with_prefix(crate::config::Config::local()?, Props {}, "agent2");
-		Ok(())
-	}
-
-	#[tokio::test(flavor = "current_thread")]
-	//#[serial]
-	async fn agent_create_current() -> Result<()> {
-		let _agent1 = Agent::new(crate::config::Config::local()?, Props {});
-		let _agent2 = Agent::new_with_prefix(crate::config::Config::local()?, Props {}, "agent2");
-		Ok(())
-	}
-
 	#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 	//#[serial]
 	async fn agent_create_restricted() -> Result<()> {

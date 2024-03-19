@@ -28,7 +28,8 @@ that until version 1.0.0 each new version may include breaking changes, which wi
 DiMAS needs an `async` runtime. So you have to define your `main` function as an `async` function.
 
 So include `dimas` together with an async runtime in the dependencies section of your `Cargo.toml`.
-As DiMAS uses `tokio` as async runtime, so preferably use `tokio` for your application.
+As DiMAS uses `tokio` as async runtime, so preferably use `tokio` for your application. 
+Ensure that you use a multi-threaded runtime, otherwise dimas will panic.
 
 DiMAS uses features to have some control over compile time and the size of the binary. 
 The feature `all`, including all available features, is a good point to start with.
