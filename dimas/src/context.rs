@@ -1,13 +1,14 @@
 // Copyright © 2023 Stephan Kunz
 
-//! [`ArcContext`] provides thread safe access to an [`Agent`]'s internal properties and its user defined properties.
-//!
-//! Internally uses the `Context` structure to store the data.
-//!
-//! # Example
+//! [`Context`] is the representation of an [`Agent`]'s internal and user defined properties.
+//! Never use it directly but through [`ArcContext`], which provides thread safe access.
+//! 
+//! # Examples
 //! ```rust,no_run
 //! # use dimas::prelude::*;
-//! # main() {
+//! # #[tokio::main(flavor = "multi_thread")]
+//! # async fn main() -> Result<()> {
+//! # Ok(())
 //! # }
 //! ```
 //!

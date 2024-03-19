@@ -292,7 +292,7 @@ where
 		let p_cb = self.put_callback.clone();
 		let ctx = self.context.clone();
 		let key_expr = self.key_expr.clone();
-		tokio::spawn(async move {
+		tokio::task::spawn(async move {
 			if let Err(error) = run_initial(key_expr, p_cb, ctx).await {
 				error!("spawning initial liveliness failed with {error}");
 			};
@@ -304,7 +304,7 @@ where
 		let ctx = self.context.clone();
 		let key_expr = self.key_expr.clone();
 
-		self.handle.replace(tokio::spawn(async move {
+		self.handle.replace(tokio::task::spawn(async move {
 			#[cfg(feature = "liveliness")]
 			let key = key_expr.clone();
 			std::panic::set_hook(Box::new(move |reason| {

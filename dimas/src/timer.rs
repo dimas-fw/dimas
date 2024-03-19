@@ -392,7 +392,7 @@ where
 				let _key = name.clone();
 				#[cfg(feature = "timer")]
 				let key = name.clone();
-				handle.replace(tokio::spawn(async move {
+				handle.replace(tokio::task::spawn(async move {
 					std::panic::set_hook(Box::new(move |reason| {
 						error!("interval timer panic: {}", reason);
 						#[cfg(feature = "timer")]
@@ -431,7 +431,7 @@ where
 				let _key = name.clone();
 				#[cfg(feature = "timer")]
 				let key = name.clone();
-				handle.replace(tokio::spawn(async move {
+				handle.replace(tokio::task::spawn(async move {
 					std::panic::set_hook(Box::new(move |reason| {
 						error!("delayed timer panic: {}", reason);
 						#[cfg(feature = "timer")]

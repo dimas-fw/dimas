@@ -2,10 +2,12 @@
 
 //! The `DiMAS` specific error enum [`DimasError`] togehter with a type alias for [`std::result::Result`] to write only `Result<T>`.
 //!
-//! # Example
+//! # Examples
 //! ```rust,no_run
 //! # use dimas::prelude::*;
-//! # main() {
+//! # #[tokio::main(flavor = "multi_thread")]
+//! # async fn main() -> Result<()> {
+//! # Ok(())
 //! # }
 //! ```
 //!

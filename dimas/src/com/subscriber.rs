@@ -329,7 +329,7 @@ where
 		let d_cb = self.delete_callback.clone();
 		let ctx = self.context.clone();
 
-		self.handle.replace(tokio::spawn(async move {
+		self.handle.replace(tokio::task::spawn(async move {
 			#[cfg(feature = "subscriber")]
 			let key = key_expr.clone();
 			std::panic::set_hook(Box::new(move |reason| {

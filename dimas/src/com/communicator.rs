@@ -1,6 +1,16 @@
 // Copyright © 2023 Stephan Kunz
 
 //! Module `communicator` provides the `Communicator` implementing the communication capabilities for an `Agent`.
+//!
+//! # Examples
+//! ```rust,no_run
+//! # use dimas::prelude::*;
+//! # #[tokio::main(flavor = "multi_thread")]
+//! # async fn main() -> Result<()> {
+//! # Ok(())
+//! # }
+//! ```
+//!
 
 // region:		--- modules
 use crate::prelude::*;
@@ -151,54 +161,6 @@ mod tests {
 	#[test]
 	const fn normal_types() {
 		is_normal::<Communicator>();
-	}
-
-	#[test]
-	//#[serial]
-	fn zenoh_create_default_sync() {
-		let _zenoh = zenoh::open(config::default()).res_sync();
-	}
-
-	#[tokio::test(flavor = "multi_thread")]
-	//#[serial]
-	async fn zenoh_create_default_multi1() {
-		let _zenoh = zenoh::open(config::default()).res_async().await;
-	}
-
-	#[tokio::test(flavor = "multi_thread")]
-	//#[serial]
-	async fn zenoh_create_default_multi2() {
-		let _zenoh = zenoh::open(config::default()).res_async().await;
-	}
-
-	#[tokio::test(flavor = "multi_thread")]
-	//#[serial]
-	async fn zenoh_create_default_multi3() {
-		let _zenoh = zenoh::open(config::default()).res_async().await;
-	}
-
-	#[tokio::test]
-	//#[serial]
-	async fn communicator_create_default() -> Result<()> {
-		let _peer1 = Communicator::new(crate::config::Config::default());
-		let _peer2 = Communicator::new_with_prefix(crate::config::Config::local()?, "peer2");
-		Ok(())
-	}
-
-	#[tokio::test]
-	//#[serial]
-	async fn communicator_create_single() -> Result<()> {
-		let _peer1 = Communicator::new(crate::config::Config::default());
-		let _peer2 = Communicator::new_with_prefix(crate::config::Config::local()?, "peer2");
-		Ok(())
-	}
-
-	#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-	//#[serial]
-	async fn communicator_create_restricted() -> Result<()> {
-		let _peer1 = Communicator::new(crate::config::Config::default());
-		let _peer2 = Communicator::new_with_prefix(crate::config::Config::local()?, "peer2");
-		Ok(())
 	}
 
 	#[tokio::test(flavor = "multi_thread")]

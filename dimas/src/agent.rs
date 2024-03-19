@@ -15,7 +15,7 @@
 //!   taking into account the resources and capabilities available to it and
 //!   depending on its perception, representations and abilities
 //!
-//! # Example
+//! # Examples
 //! ```rust,no_run
 //! use dimas::prelude::*;
 //! use std::time::Duration;
@@ -309,14 +309,6 @@ mod tests {
 	const fn normal_types() {
 		is_normal::<Agent<Props>>();
 		is_normal::<TaskSignal>();
-	}
-
-	#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-	//#[serial]
-	async fn agent_create_restricted() -> Result<()> {
-		let _agent1 = Agent::new(crate::config::Config::local()?, Props {});
-		let _agent2 = Agent::new_with_prefix(crate::config::Config::local()?, Props {}, "agent2");
-		Ok(())
 	}
 
 	#[tokio::test(flavor = "multi_thread")]

@@ -5,23 +5,26 @@
 //! # Examples
 //! ```rust,no_run
 //! # use dimas::prelude::*;
-//! # main() {
+//! # #[tokio::main(flavor = "multi_thread")]
+//! # async fn main() -> Result<()> {
 //! // create a configuration from a file named `default.json5`
 //! // located in one of the directories listed below
+//! // if that file does not exit, a default config will be created
 //! let config = Config::default();
 //!
-//! let config = Config::from_file("filename.sfx");    // use file named `filename.sfx`
+//! let config = Config::from_file("filename.sfx")?;    // use file named `filename.sfx`
 //!
-//! // a few more methods for standard filenames
+//! // a few more methods with standard filenames
 //! // [example files](https://github.com/dimas-fw/dimas/tree/main/.config)
-//! let config = Config::local();   // use file named `local.json5`
-//! let config = Config::peer();    // use file named `peer.json5`
-//! let config = Config::client();  // use file named `client.json5`
-//! let config = Config::router();  // use file named `router.json5`
-//! let config = Config::low_latency();  // use file named `low_latency.json5`
+//! let config = Config::local()?;        // use file named `local.json5`
+//! let config = Config::peer()?;         // use file named `peer.json5`
+//! let config = Config::client()?;       // use file named `client.json5`
+//! let config = Config::router()?;       // use file named `router.json5`
+//! let config = Config::low_latency()?;  // use file named `low_latency.json5`
 //!
 //! // Configuration is handed over to the Agent
-//! let agent = Agent::new(configuration, {});
+//! let agent = Agent::new(config, {});
+//! # Ok(())
 //! # }
 //! ```
 //!
