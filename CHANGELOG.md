@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - _Name of Builder methods to set only topics name chanched to 'topic(..)'_
 - _Removed tokio 'flavor=current_thread' due to changes in zenoh_
+- _Creation of Agent now uses a builder pattern_
 
 ### Fixed
 - Broken documentaton on docs.rs

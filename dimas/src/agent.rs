@@ -30,12 +30,12 @@
 //!   let properties = AgentProps {};
 //!
 //!   // create an agent with the properties and a default configuration
-//!   let mut agent = Agent::builder(properties).config(Config::default())?;
+//!   let mut agent = Agent::new(properties).config(Config::default())?;
 //!
 //!   // configuration of the agent
 //!   // ...
 //!
-//!   // run the agent
+//!   // start the agent
 //!   agent.start().await?;
 //!   Ok(())
 //! }
@@ -87,6 +87,7 @@ where
 		self.prefix = Some(prefix.into());
 		self
 	}
+
 	/// Set the [`Config`]uration.
 	/// # Errors
 	pub fn config(self, config: Config) -> Result<Agent<'a, P>> {
@@ -136,7 +137,8 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// Builder
-	pub const fn builder(properties: P) -> UnconfiguredAgent<P> {
+	#[allow(clippy::new_ret_no_self)]
+	pub const fn new(properties: P) -> UnconfiguredAgent<P> {
 		UnconfiguredAgent::new(properties)
 	}
 
@@ -306,7 +308,7 @@ where
 	/// [`Context::start_registered_tasks`] and
 	/// [`Communicator::send_liveliness`].
 	#[tracing::instrument(skip_all)]
-	pub async fn start(&mut self) -> Result<()> {
+	pub async fn start(self) -> Result<Agent<'a, P>> {
 		// we need an mpsc channel with a receiver behind a mutex guard
 		let (tx, rx) = mpsc::channel();
 		let rx = Mutex::new(rx);
@@ -324,13 +326,50 @@ where
 				.write()
 				.map_err(|_| DimasError::ShouldNotHappen)?
 				.replace(token);
-		}
+		};
 
+		RunningAgent {
+			rx,
+			tx,
+			context: self.context,
+			liveliness: self.liveliness,
+			liveliness_token: self.liveliness_token,
+		}
+		.run()
+		.await
+	}
+}
+// endregion:   --- Agent
+
+// region:	   --- RunningAgent
+/// This is the running Agent
+#[allow(clippy::module_name_repetitions)]
+pub struct RunningAgent<'a, P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	rx: Mutex<mpsc::Receiver<TaskSignal>>,
+	tx: mpsc::Sender<TaskSignal>,
+	/// The agents context structure
+	context: ArcContext<P>,
+	/// Flag to control whether sending liveliness or not
+	liveliness: bool,
+	/// The liveliness token - typically the uuid sent to other participants<br>
+	/// Is available in the [`LivelinessSubscriber`] callback
+	liveliness_token: RwLock<Option<LivelinessToken<'a>>>,
+}
+
+impl<'a, P> RunningAgent<'a, P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	/// run
+	async fn run(mut self) -> Result<Agent<'a, P>> {
 		loop {
 			// different possibilities that can happen
 			select! {
 				// `TaskSignal`s
-				signal = wait_for_task_signals(&rx) => {
+				signal = wait_for_task_signals(&self.rx) => {
 					match *signal {
 						#[cfg(feature = "liveliness")]
 						TaskSignal::RestartLiveliness(key_expr) => {
@@ -339,7 +378,7 @@ where
 								.map_err(|_| DimasError::WriteProperties)?
 								.get_mut(&key_expr)
 								.ok_or(DimasError::ShouldNotHappen)?
-								.start(tx.clone());
+								.start(self.tx.clone());
 						},
 						#[cfg(feature = "queryable")]
 						TaskSignal::RestartQueryable(key_expr) => {
@@ -348,7 +387,7 @@ where
 								.map_err(|_| DimasError::WriteProperties)?
 								.get_mut(&key_expr)
 								.ok_or(DimasError::ShouldNotHappen)?
-								.start(tx.clone());
+								.start(self.tx.clone());
 						},
 						#[cfg(feature = "subscriber")]
 						TaskSignal::RestartSubscriber(key_expr) => {
@@ -357,7 +396,7 @@ where
 								.map_err(|_| DimasError::WriteProperties)?
 								.get_mut(&key_expr)
 								.ok_or(DimasError::ShouldNotHappen)?
-								.start(tx.clone());
+								.start(self.tx.clone());
 						},
 						#[cfg(feature = "timer")]
 						TaskSignal::RestartTimer(key_expr) => {
@@ -366,7 +405,7 @@ where
 								.map_err(|_| DimasError::WriteProperties)?
 								.get_mut(&key_expr)
 								.ok_or(DimasError::ShouldNotHappen)?
-								.start(tx.clone());
+								.start(self.tx.clone());
 						},
 						TaskSignal::Dummy => {},
 					};
@@ -385,7 +424,12 @@ where
 									.map_err(|_| DimasError::ShouldNotHappen)?
 									.take();
 							}
-							return Ok(());
+							let r = Agent {
+								context: self.context,
+								liveliness: self.liveliness,
+								liveliness_token: self.liveliness_token,
+							};
+							return Ok(r);
 						}
 						Err(err) => {
 							error!("Unable to listen for 'Ctrl-C': {err}");
@@ -405,29 +449,7 @@ where
 			}
 		}
 	}
-}
-// endregion:   --- Agent
 
-// region:	   --- RunningAgent
-/// This is a new Agent without the necessary configuration input
-#[allow(clippy::module_name_repetitions)]
-pub struct RunningAgent<'a, P>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-	/// The agents context structure
-	context: ArcContext<P>,
-	/// Flag to control whether sending liveliness or not
-	liveliness: bool,
-	/// The liveliness token - typically the uuid sent to other participants<br>
-	/// Is available in the [`LivelinessSubscriber`] callback
-	liveliness_token: RwLock<Option<LivelinessToken<'a>>>,
-}
-
-impl<'a, P> RunningAgent<'a, P>
-where
-	P: Send + Sync + Unpin + 'static,
-{
 	/// Stop the agent
 	/// # Errors
 	/// Currently none
@@ -471,7 +493,7 @@ mod tests {
 	#[tokio::test(flavor = "multi_thread")]
 	//#[serial]
 	async fn agent_build() -> Result<()> {
-		let agent_u = Agent::builder(Props {});
+		let agent_u = Agent::new(Props {});
 		let config = crate::config::Config::local()?;
 		let _agent_c = agent_u.prefix("test").config(config)?;
 		Ok(())
