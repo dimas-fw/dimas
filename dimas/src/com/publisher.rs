@@ -26,24 +26,18 @@ pub struct KeyExpression {
 /// The builder for a publisher
 #[allow(clippy::module_name_repetitions)]
 #[derive(Clone)]
-pub struct PublisherBuilder<P, K, S>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-	pub(crate) context: ArcContext<P>,
+pub struct PublisherBuilder<K, S> {
+	prefix: Option<String>,
 	pub(crate) key_expr: K,
 	pub(crate) storage: S,
 }
 
-impl<P> PublisherBuilder<P, NoKeyExpression, NoStorage>
-where
-	P: Send + Sync + Unpin + 'static,
-{
+impl PublisherBuilder<NoKeyExpression, NoStorage> {
 	/// Construct a `PublisherBuilder` in initial state
 	#[must_use]
-	pub const fn new(context: ArcContext<P>) -> Self {
+	pub const fn new(prefix: Option<String>) -> Self {
 		Self {
-			context,
+			prefix,
 			key_expr: NoKeyExpression,
 			storage: NoStorage,
 		}
@@ -51,39 +45,33 @@ where
 }
 
 #[cfg(feature = "publisher")]
-impl<P, K> PublisherBuilder<P, K, NoStorage>
-where
-	P: Send + Sync + Unpin + 'static,
-{
+impl<K> PublisherBuilder<K, NoStorage> {
 	/// Provide agents storage for the publisher
 	#[must_use]
 	pub fn storage(
 		self,
 		storage: Arc<RwLock<std::collections::HashMap<String, Publisher>>>,
-	) -> PublisherBuilder<P, K, Storage> {
+	) -> PublisherBuilder<K, Storage> {
 		let Self {
-			context, key_expr, ..
+			prefix, key_expr, ..
 		} = self;
 		PublisherBuilder {
-			context,
+			prefix,
 			key_expr,
 			storage: Storage { storage },
 		}
 	}
 }
 
-impl<P, S> PublisherBuilder<P, NoKeyExpression, S>
-where
-	P: Send + Sync + Unpin + 'static,
-{
+impl<S> PublisherBuilder<NoKeyExpression, S> {
 	/// Set the full expression for the publisher
 	#[must_use]
-	pub fn key_expr(self, key_expr: &str) -> PublisherBuilder<P, KeyExpression, S> {
+	pub fn key_expr(self, key_expr: &str) -> PublisherBuilder<KeyExpression, S> {
 		let Self {
-			context, storage, ..
+			prefix, storage, ..
 		} = self;
 		PublisherBuilder {
-			context,
+			prefix,
 			key_expr: KeyExpression {
 				key_expr: key_expr.into(),
 			},
@@ -94,39 +82,37 @@ where
 	/// Set only the message qualifing part of the publisher.
 	/// Will be prefixed with agents prefix.
 	#[must_use]
-	pub fn topic(self, topic: &str) -> PublisherBuilder<P, KeyExpression, S> {
-		let key_expr = self.context.key_expr(topic);
+	pub fn topic(mut self, topic: &str) -> PublisherBuilder<KeyExpression, S> {
+		let key_expr = self
+			.prefix
+			.take()
+			.unwrap_or_else(|| String::from(topic))
+			+ "/" + topic;
 		let Self {
-			context, storage, ..
+			prefix, storage, ..
 		} = self;
 		PublisherBuilder {
-			context,
+			prefix,
 			key_expr: KeyExpression { key_expr },
 			storage,
 		}
 	}
 }
 
-impl<P, S> PublisherBuilder<P, KeyExpression, S>
-where
-	P: Send + Sync + Unpin + 'static,
-{
+impl<S> PublisherBuilder<KeyExpression, S> {
 	/// Build the publisher
 	/// # Errors
 	///
 	pub fn build(self) -> Result<Publisher> {
-		let publ = self
-			.context
-			.create_publisher(&self.key_expr.key_expr)?;
-		Ok(Publisher { publisher: publ })
+		Ok(Publisher {
+			key_expr: self.key_expr.key_expr,
+			publisher: None,
+		})
 	}
 }
 
 #[cfg(feature = "publisher")]
-impl<P> PublisherBuilder<P, KeyExpression, Storage>
-where
-	P: Send + Sync + Unpin + 'static,
-{
+impl PublisherBuilder<KeyExpression, Storage> {
 	/// Build and add the publisher to the agents context
 	/// # Errors
 	///
@@ -138,7 +124,7 @@ where
 		let r = collection
 			.write()
 			.map_err(|_| DimasError::ShouldNotHappen)?
-			.insert(p.publisher.key_expr().to_string(), p);
+			.insert(p.key_expr.to_string(), p);
 		Ok(r)
 	}
 }
@@ -147,13 +133,15 @@ where
 // region:		--- Publisher
 /// Publisher
 pub struct Publisher {
-	publisher: zenoh::publication::Publisher<'static>,
+	pub(crate) key_expr: String,
+	publisher: Option<zenoh::publication::Publisher<'static>>,
 }
 
 impl Debug for Publisher {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Publisher")
-			.field("key_expr", &self.publisher.key_expr())
+			.field("key_expr", &self.key_expr)
+			.field("initialized", &self.publisher.is_some())
 			.finish_non_exhaustive()
 	}
 }
@@ -162,6 +150,24 @@ impl Publisher
 //where
 //	P: Send + Sync + Unpin + 'a,
 {
+	/// Initialize
+	/// # Errors
+	pub fn init<P>(&mut self, context: &ArcContext<P>) -> Result<()>
+	where
+		P: Send + Sync + Unpin + 'static,
+	{
+		let publ = context.create_publisher(&self.key_expr)?;
+		self.publisher.replace(publ);
+		Ok(())
+	}
+
+	/// De-Initialize
+	/// # Errors
+	pub fn de_init(&mut self) -> Result<()> {
+		self.publisher.take();
+		Ok(())
+	}
+
 	/// Send a "put" message
 	/// # Errors
 	///
@@ -171,19 +177,30 @@ impl Publisher
 		T: Debug + Encode,
 	{
 		let value: Vec<u8> = encode(&message);
-		match self.publisher.put(value).res_sync() {
+		match self
+			.publisher
+			.clone()
+			.expect("snh")
+			.put(value)
+			.res_sync()
+		{
 			Ok(()) => Ok(()),
 			Err(_) => Err(DimasError::PutMessage.into()),
 		}
 	}
 
-	// TODO! This currently does not work - it sends a put message
 	/// Send a "delete" message - method currently does not work!!
 	/// # Errors
 	///
 	#[instrument(level = Level::ERROR, skip_all)]
 	pub fn delete(&self) -> Result<()> {
-		match self.publisher.delete().res_sync() {
+		match self
+			.publisher
+			.clone()
+			.expect("snh")
+			.delete()
+			.res_sync()
+		{
 			Ok(()) => Ok(()),
 			Err(_) => Err(DimasError::DeleteMessage.into()),
 		}
@@ -204,6 +221,6 @@ mod tests {
 	#[test]
 	const fn normal_types() {
 		is_normal::<Publisher>();
-		is_normal::<PublisherBuilder<Props, NoKeyExpression, NoStorage>>();
+		is_normal::<PublisherBuilder<NoKeyExpression, NoStorage>>();
 	}
 }

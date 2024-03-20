@@ -2,7 +2,7 @@
 
 //! [`Context`] is the representation of an [`Agent`]'s internal and user defined properties.
 //! Never use it directly but through [`ArcContext`], which provides thread safe access.
-//! 
+//!
 //! # Examples
 //! ```rust,no_run
 //! # use dimas::prelude::*;
@@ -29,7 +29,7 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::ops::Deref;
 use std::sync::mpsc::Sender;
-use tracing::{instrument, Level};
+use tracing::{error, instrument, Level};
 use zenoh::publication::Publisher;
 use zenoh::query::ConsolidationMode;
 // endregion:	--- modules
@@ -108,7 +108,7 @@ where
 			.map_err(|_| DimasError::ShouldNotHappen)?
 			.iter_mut()
 			.for_each(|queryable| {
-				queryable.1.start(tx.clone());
+				queryable.1.start(self.clone(), tx.clone());
 			});
 
 		// start all registered subscribers
@@ -118,7 +118,7 @@ where
 			.map_err(|_| DimasError::ShouldNotHappen)?
 			.iter_mut()
 			.for_each(|subscriber| {
-				subscriber.1.start(tx.clone());
+				subscriber.1.start(self.clone(), tx.clone());
 			});
 
 		// start liveliness subscriber
@@ -128,11 +128,41 @@ where
 			.map_err(|_| DimasError::ShouldNotHappen)?
 			.iter_mut()
 			.for_each(|subscriber| {
-				subscriber.1.start(tx.clone());
+				subscriber.1.start(self.clone(), tx.clone());
 			});
 
 		// wait a little bit before starting active part
 		//tokio::time::sleep(Duration::from_millis(10)).await;
+
+		// init all registered publishers
+		#[cfg(feature = "publisher")]
+		self.publishers
+			.write()
+			.map_err(|_| DimasError::ShouldNotHappen)?
+			.iter_mut()
+			.for_each(|publisher| {
+				if let Err(reason) = publisher.1.init(self) {
+					error!(
+						"could not initialize publisher for {}, reason: {}",
+						publisher.1.key_expr, reason
+					);
+				};
+			});
+
+		// init all registered queries
+		#[cfg(feature = "query")]
+		self.queries
+			.write()
+			.map_err(|_| DimasError::ShouldNotHappen)?
+			.iter_mut()
+			.for_each(|query| {
+				if let Err(reason) = query.1.init(self) {
+					error!(
+						"could not initialize query for {}, reason: {}",
+						query.1.key_expr, reason
+					);
+				};
+			});
 
 		// start all registered timers
 		#[cfg(feature = "timer")]
@@ -147,6 +177,86 @@ where
 		Ok(())
 	}
 
+	/// Internal function for stopping all registered tasks
+	/// # Errors
+	/// Currently none
+	pub fn stop_registered_tasks(&mut self) -> Result<()> {
+		// reverse order of start!
+		// stop all registered timers
+		#[cfg(feature = "timer")]
+		self.timers
+			.write()
+			.map_err(|_| DimasError::ShouldNotHappen)?
+			.iter_mut()
+			.for_each(|timer| {
+				timer.1.stop();
+			});
+
+		// de-init all registered queries
+		#[cfg(feature = "query")]
+		self.queries
+			.write()
+			.map_err(|_| DimasError::ShouldNotHappen)?
+			.iter_mut()
+			.for_each(|query| {
+				if let Err(reason) = query.1.de_init() {
+					error!(
+						"could not de-initialize query for {}, reason: {}",
+						query.1.key_expr, reason
+					);
+				};
+			});
+
+		// init all registered publishers
+		#[cfg(feature = "publisher")]
+		self.publishers
+			.write()
+			.map_err(|_| DimasError::ShouldNotHappen)?
+			.iter_mut()
+			.for_each(|publisher| {
+				if let Err(reason) = publisher.1.de_init() {
+					error!(
+						"could not de-initialize publisher for {}, reason: {}",
+						publisher.1.key_expr, reason
+					);
+				};
+			});
+
+		#[cfg(feature = "liveliness")]
+		{
+			// stop all registered liveliness subscribers
+			#[cfg(feature = "liveliness")]
+			self.liveliness_subscribers
+				.write()
+				.map_err(|_| DimasError::ShouldNotHappen)?
+				.iter_mut()
+				.for_each(|subscriber| {
+					subscriber.1.stop();
+				});
+		}
+
+		// stop all registered subscribers
+		#[cfg(feature = "subscriber")]
+		self.subscribers
+			.write()
+			.map_err(|_| DimasError::ShouldNotHappen)?
+			.iter_mut()
+			.for_each(|subscriber| {
+				subscriber.1.stop();
+			});
+
+		// stop all registered queryables
+		#[cfg(feature = "queryable")]
+		self.queryables
+			.write()
+			.map_err(|_| DimasError::ShouldNotHappen)?
+			.iter_mut()
+			.for_each(|queryable| {
+				queryable.1.stop();
+			});
+		Ok(())
+	}
+
 	/// Get a builder for a [`LivelinessSubscriber`]
 	#[cfg(feature = "liveliness")]
 	#[must_use]
@@ -157,7 +267,7 @@ where
 		crate::com::liveliness_subscriber::NoPutCallback,
 		crate::com::liveliness_subscriber::Storage<P>,
 	> {
-		LivelinessSubscriberBuilder::new(self.clone()).storage(self.liveliness_subscribers.clone())
+		LivelinessSubscriberBuilder::new(self.prefix()).storage(self.liveliness_subscribers.clone())
 	}
 	/// Get a builder for a [`LivelinessSubscriber`]
 	#[cfg(not(feature = "liveliness"))]
@@ -169,7 +279,7 @@ where
 		crate::com::liveliness_subscriber::NoPutCallback,
 		crate::com::liveliness_subscriber::NoStorage,
 	> {
-		LivelinessSubscriberBuilder::new(self.clone())
+		LivelinessSubscriberBuilder::new(self.prefix())
 	}
 
 	/// Get a builder for a [`Publisher`]
@@ -177,18 +287,17 @@ where
 	#[must_use]
 	pub fn publisher(
 		&self,
-	) -> PublisherBuilder<P, crate::com::publisher::NoKeyExpression, crate::com::publisher::Storage>
-	{
-		PublisherBuilder::new(self.clone()).storage(self.publishers.clone())
+	) -> PublisherBuilder<crate::com::publisher::NoKeyExpression, crate::com::publisher::Storage> {
+		PublisherBuilder::new(self.prefix()).storage(self.publishers.clone())
 	}
 	/// Get a builder for a [`Publisher`]
 	#[cfg(not(feature = "publisher"))]
 	#[must_use]
 	pub fn publisher(
 		&self,
-	) -> PublisherBuilder<P, crate::com::publisher::NoKeyExpression, crate::com::publisher::NoStorage>
+	) -> PublisherBuilder<crate::com::publisher::NoKeyExpression, crate::com::publisher::NoStorage>
 	{
-		PublisherBuilder::new(self.clone())
+		PublisherBuilder::new(self.prefix())
 	}
 
 	/// Get a builder for a [`Query`]
@@ -202,7 +311,7 @@ where
 		crate::com::query::NoResponseCallback,
 		crate::com::query::Storage<P>,
 	> {
-		QueryBuilder::new(self.clone()).storage(self.queries.clone())
+		QueryBuilder::new(self.prefix()).storage(self.queries.clone())
 	}
 	/// Get a builder for a [`Query`]
 	#[cfg(not(feature = "query"))]
@@ -215,7 +324,7 @@ where
 		crate::com::query::NoResponseCallback,
 		crate::com::query::NoStorage,
 	> {
-		QueryBuilder::new(self.clone())
+		QueryBuilder::new(self.prefix())
 	}
 
 	/// Get a builder for a [`Queryable`]
@@ -229,7 +338,7 @@ where
 		crate::com::queryable::NoRequestCallback,
 		crate::com::queryable::Storage<P>,
 	> {
-		QueryableBuilder::new(self.clone()).storage(self.queryables.clone())
+		QueryableBuilder::new(self.prefix()).storage(self.queryables.clone())
 	}
 	/// Get a builder for a [`Queryable`]
 	#[cfg(not(feature = "queryable"))]
@@ -242,7 +351,7 @@ where
 		crate::com::queryable::NoRequestCallback,
 		crate::com::queryable::NoStorage,
 	> {
-		QueryableBuilder::new(self.clone())
+		QueryableBuilder::new(self.prefix())
 	}
 
 	/// Get a builder for a [`Subscriber`]
@@ -256,7 +365,7 @@ where
 		crate::com::subscriber::NoPutCallback,
 		crate::com::subscriber::Storage<P>,
 	> {
-		SubscriberBuilder::new(self.clone()).storage(self.subscribers.clone())
+		SubscriberBuilder::new(self.prefix()).storage(self.subscribers.clone())
 	}
 	/// Get a builder for a [`Subscriber`]
 	#[cfg(not(feature = "subscriber"))]
@@ -269,7 +378,7 @@ where
 		crate::com::subscriber::NoPutCallback,
 		crate::com::subscriber::NoStorage,
 	> {
-		SubscriberBuilder::new(self.clone())
+		SubscriberBuilder::new(self.prefix())
 	}
 
 	/// Get a builder for a [`Timer`]
@@ -357,7 +466,11 @@ where
 	}
 
 	/// Constructor for the `Context` with a prefix
-	pub(crate) fn new_with_prefix(config: Config, props: P, prefix: &str) -> Result<Self> {
+	pub(crate) fn new_with_prefix(
+		config: Config,
+		props: P,
+		prefix: impl Into<String>,
+	) -> Result<Self> {
 		let communicator = Arc::new(Communicator::new_with_prefix(config, prefix)?);
 		Ok(Self {
 			communicator,

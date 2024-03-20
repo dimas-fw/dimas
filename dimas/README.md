@@ -92,8 +92,9 @@ async fn main() -> Result<()> {
 	// create & initialize agents properties
 	let properties = AgentProps { counter: 0 };
 
-	// create an agent with the properties
-	let mut agent = Agent::new(Config::default(), properties)?;
+	// create an agent with the properties and default configuration
+	let mut agent = Agent::new(properties)
+		.config(Config::default())?;
 
 	// create publisher for topic "hello"
 	agent
@@ -132,7 +133,7 @@ async fn main() -> Result<()> {
 		// errors will be propagated to main
 		.add()?;
 
-	// run the agent
+	// start the agent
 	agent.start().await?;
 	Ok(())
 }
@@ -159,8 +160,9 @@ async fn main() -> Result<()> {
 	// create & initialize agents properties
 	let properties = AgentProps {};
 
-	// create an agent with the properties
-	let mut agent = Agent::new(Config::default(), properties)?;
+	// create an agent with the properties and default configuration
+	let mut agent = Agent::new(properties)
+		.config(Config::default())?;
 
 	// subscribe to "hello" messages
 	agent
@@ -174,7 +176,7 @@ async fn main() -> Result<()> {
     	// errors will be propagated to main
 		.add()?;
 
-	// run the agent
+	// start the agent
 	agent.start().await?;
 	Ok(())
 }

@@ -22,8 +22,8 @@
 //! let config = Config::router()?;       // use file named `router.json5`
 //! let config = Config::low_latency()?;  // use file named `low_latency.json5`
 //!
-//! // Configuration is handed over to the Agent
-//! let agent = Agent::new(config, {});
+//! // Hand over Configuration to the Agent
+//! let agent = Agent::new({}).config(config)?;
 //! # Ok(())
 //! # }
 //! ```
@@ -37,8 +37,8 @@
 //!
 
 // region:		--- modules
-#[allow(unused_imports)]
-use crate::agent::Agent;
+//#[allow(unused_imports)]
+//use crate::agent::ConfiguredAgent;
 // endregion:	--- modules
 
 // region:		--- modules
