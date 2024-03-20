@@ -55,7 +55,6 @@ pub struct LivelinessSubscriberBuilder<P, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	pub(crate) context: ArcContext<P>,
 	key_expr: String,
 	pub(crate) put_callback: C,
 	pub(crate) storage: S,
@@ -68,10 +67,9 @@ where
 {
 	/// Construct a `LivelinessSubscriberBuilder` in initial state
 	#[must_use]
-	pub fn new(context: ArcContext<P>) -> Self {
-		let key_expr = context.key_expr("alive/*");
+	pub fn new(prefix: Option<String>) -> Self {
+		let key_expr = prefix.unwrap_or_else(|| String::from("alive/*")) + "/alive/*";
 		Self {
-			context,
 			key_expr,
 			put_callback: NoPutCallback,
 			storage: NoStorage,
@@ -89,14 +87,12 @@ where
 	pub fn prefix(self, prefix: &str) -> Self {
 		let key_expr = format!("{prefix}/alive/*");
 		let Self {
-			context,
 			put_callback,
 			storage,
 			delete_callback,
 			..
 		} = self;
 		Self {
-			context,
 			key_expr,
 			put_callback,
 			storage,
@@ -110,7 +106,6 @@ where
 		F: FnMut(&ArcContext<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
-			context,
 			key_expr,
 			put_callback,
 			storage,
@@ -119,7 +114,6 @@ where
 		let delete_callback: Option<LivelinessCallback<P>> =
 			Some(Arc::new(Mutex::new(Some(Box::new(callback)))));
 		Self {
-			context,
 			key_expr,
 			put_callback,
 			storage,
@@ -139,7 +133,6 @@ where
 		F: FnMut(&ArcContext<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
-			context,
 			key_expr,
 			storage,
 			delete_callback,
@@ -147,7 +140,6 @@ where
 		} = self;
 		let put_callback: LivelinessCallback<P> = Arc::new(Mutex::new(Some(Box::new(callback))));
 		LivelinessSubscriberBuilder {
-			context,
 			key_expr,
 			put_callback: PutCallback {
 				callback: put_callback,
@@ -170,14 +162,12 @@ where
 		storage: Arc<RwLock<std::collections::HashMap<String, LivelinessSubscriber<P>>>>,
 	) -> LivelinessSubscriberBuilder<P, C, Storage<P>> {
 		let Self {
-			context,
 			key_expr,
 			put_callback,
 			delete_callback,
 			..
 		} = self;
 		LivelinessSubscriberBuilder {
-			context,
 			key_expr,
 			put_callback,
 			storage: Storage { storage },
@@ -195,14 +185,12 @@ where
 	///
 	pub fn build(self) -> Result<LivelinessSubscriber<P>> {
 		let Self {
-			context,
 			key_expr,
 			put_callback,
 			delete_callback,
 			..
 		} = self;
 		Ok(LivelinessSubscriber {
-			context,
 			key_expr,
 			put_callback: Some(put_callback.callback),
 			delete_callback,
@@ -239,7 +227,6 @@ pub struct LivelinessSubscriber<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	context: ArcContext<P>,
 	key_expr: String,
 	put_callback: Option<LivelinessCallback<P>>,
 	delete_callback: Option<LivelinessCallback<P>>,
@@ -263,7 +250,7 @@ where
 	/// Start or restart the liveliness subscriber.
 	/// An already running subscriber will be stopped, eventually damaged Mutexes will be repaired
 	#[instrument(level = Level::TRACE, skip_all)]
-	pub fn start(&mut self, tx: Sender<TaskSignal>) {
+	pub fn start(&mut self, context: ArcContext<P>, tx: Sender<TaskSignal>) {
 		self.stop();
 
 		#[cfg(not(feature = "liveliness"))]
@@ -290,7 +277,7 @@ where
 
 		// the initial liveliness query
 		let p_cb = self.put_callback.clone();
-		let ctx = self.context.clone();
+		let ctx = context.clone();
 		let key_expr = self.key_expr.clone();
 		tokio::task::spawn(async move {
 			if let Err(error) = run_initial(key_expr, p_cb, ctx).await {
@@ -301,7 +288,7 @@ where
 		// the liveliness subscriber
 		let p_cb = self.put_callback.clone();
 		let d_cb = self.delete_callback.clone();
-		let ctx = self.context.clone();
+		let ctx = context;
 		let key_expr = self.key_expr.clone();
 
 		self.handle

@@ -4,7 +4,7 @@
 
 // region:		--- modules
 use crate::prelude::*;
-use std::{fmt::Debug, sync::Mutex};
+use std::{fmt::Debug, marker::PhantomData, sync::Mutex};
 use tracing::{error, instrument, Level};
 use zenoh::{
 	prelude::{sync::SyncResolve, SampleKind},
@@ -52,11 +52,12 @@ pub struct QueryBuilder<P, K, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	pub(crate) context: ArcContext<P>,
+	pub(crate) prefix: Option<String>,
 	pub(crate) key_expr: K,
 	pub(crate) callback: C,
 	pub(crate) storage: S,
 	pub(crate) mode: ConsolidationMode,
+	phantom: PhantomData<P>,
 }
 
 impl<P> QueryBuilder<P, NoKeyExpression, NoResponseCallback, NoStorage>
@@ -65,13 +66,14 @@ where
 {
 	/// Construct a `QueryBuilder` in initial state
 	#[must_use]
-	pub const fn new(context: ArcContext<P>) -> Self {
+	pub const fn new(prefix: Option<String>) -> Self {
 		Self {
-			context,
+			prefix,
 			key_expr: NoKeyExpression,
 			callback: NoResponseCallback,
 			storage: NoStorage,
 			mode: ConsolidationMode::None,
+			phantom: PhantomData,
 		}
 	}
 }
@@ -96,41 +98,49 @@ where
 	#[must_use]
 	pub fn key_expr(self, key_expr: &str) -> QueryBuilder<P, KeyExpression, C, S> {
 		let Self {
-			context,
+			prefix,
 			storage,
 			callback,
 			mode,
+			phantom,
 			..
 		} = self;
 		QueryBuilder {
-			context,
+			prefix,
 			key_expr: KeyExpression {
 				key_expr: key_expr.into(),
 			},
 			callback,
 			storage,
 			mode,
+			phantom,
 		}
 	}
 
 	/// Set only the message qualifing part of the query.
 	/// Will be prefixed with agents prefix.
 	#[must_use]
-	pub fn topic(self, topic: &str) -> QueryBuilder<P, KeyExpression, C, S> {
-		let key_expr = self.context.key_expr(topic);
+	pub fn topic(mut self, topic: &str) -> QueryBuilder<P, KeyExpression, C, S> {
+		let key_expr = self
+			.prefix
+			.take()
+			.unwrap_or_else(|| String::from(topic))
+			+ "/" + topic;
 		let Self {
-			context,
+			prefix,
 			storage,
 			callback,
 			mode,
+			phantom,
 			..
 		} = self;
 		QueryBuilder {
-			context,
+			prefix,
 			key_expr: KeyExpression { key_expr },
 			callback,
 			storage,
 			mode,
+			phantom,
 		}
 	}
 }
@@ -146,19 +156,21 @@ where
 		F: FnMut(&ArcContext<P>, Response) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
-			context,
+			prefix,
 			key_expr,
 			storage,
 			mode,
+			phantom,
 			..
 		} = self;
 		let callback: QueryCallback<P> = Arc::new(Mutex::new(callback));
 		QueryBuilder {
-			context,
+			prefix,
 			key_expr,
 			callback: ResponseCallback { response: callback },
 			storage,
 			mode,
+			phantom,
 		}
 	}
 }
@@ -175,18 +187,20 @@ where
 		storage: Arc<RwLock<std::collections::HashMap<String, Query<P>>>>,
 	) -> QueryBuilder<P, K, C, Storage<P>> {
 		let Self {
-			context,
+			prefix,
 			key_expr,
 			callback,
 			mode,
+			phantom,
 			..
 		} = self;
 		QueryBuilder {
-			context,
+			prefix,
 			key_expr,
 			callback,
 			storage: Storage { storage },
 			mode,
+			phantom,
 		}
 	}
 }
@@ -200,7 +214,6 @@ where
 	///
 	pub fn build(self) -> Result<Query<P>> {
 		let Self {
-			context,
 			key_expr,
 			callback,
 			mode,
@@ -208,7 +221,7 @@ where
 		} = self;
 		let key_expr = key_expr.key_expr;
 		Ok(Query {
-			context,
+			context: None,
 			key_expr,
 			mode,
 			callback: callback.response,
@@ -244,10 +257,10 @@ pub struct Query<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	context: ArcContext<P>,
-	key_expr: String,
+	pub(crate) key_expr: String,
 	mode: ConsolidationMode,
 	callback: QueryCallback<P>,
+	context: Option<ArcContext<P>>,
 }
 
 impl<P> Debug for Query<P>
@@ -266,12 +279,24 @@ impl<P> Query<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// Initialize
+	/// # Errors
+	pub fn init(&mut self, context: &ArcContext<P>) -> Result<()>
+	where
+		P: Send + Sync + Unpin + 'static,
+	{
+		self.context.replace(context.clone());
+		Ok(())
+	}
+
 	/// run a query
 	#[instrument(name="query", level = Level::ERROR, skip_all)]
 	pub fn get(&self) -> Result<()> {
 		let cb = self.callback.clone();
 		let replies = self
 			.context
+			.clone()
+			.expect("snh")
 			.communicator
 			.session
 			.get(&self.key_expr)
@@ -288,7 +313,7 @@ where
 						let guard = cb.lock();
 						match guard {
 							Ok(mut lock) => {
-								if let Err(error) = lock(&self.context, msg) {
+								if let Err(error) = lock(&self.context.clone().expect("snh"), msg) {
 									error!("callback failed with {error}");
 								}
 							}

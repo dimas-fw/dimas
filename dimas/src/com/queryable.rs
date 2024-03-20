@@ -6,6 +6,7 @@
 use crate::{prelude::*, utils::TaskSignal};
 use std::{
 	fmt::Debug,
+	marker::PhantomData,
 	sync::{mpsc::Sender, Mutex},
 };
 use tokio::task::JoinHandle;
@@ -58,10 +59,11 @@ pub struct QueryableBuilder<P, K, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	pub(crate) context: ArcContext<P>,
+	prefix: Option<String>,
 	pub(crate) key_expr: K,
 	pub(crate) callback: C,
 	pub(crate) storage: S,
+	phantom: PhantomData<P>,
 }
 
 impl<P> QueryableBuilder<P, NoKeyExpression, NoRequestCallback, NoStorage>
@@ -70,12 +72,13 @@ where
 {
 	/// Construct a `QueryableBuilder` in initial state
 	#[must_use]
-	pub const fn new(context: ArcContext<P>) -> Self {
+	pub const fn new(prefix: Option<String>) -> Self {
 		Self {
-			context,
+			prefix,
 			key_expr: NoKeyExpression,
 			callback: NoRequestCallback,
 			storage: NoStorage,
+			phantom: PhantomData,
 		}
 	}
 }
@@ -88,37 +91,45 @@ where
 	#[must_use]
 	pub fn key_expr(self, key_expr: &str) -> QueryableBuilder<P, KeyExpression, C, S> {
 		let Self {
-			context,
+			prefix,
 			storage,
 			callback,
+			phantom,
 			..
 		} = self;
 		QueryableBuilder {
-			context,
+			prefix,
 			key_expr: KeyExpression {
 				key_expr: key_expr.into(),
 			},
 			callback,
 			storage,
+			phantom,
 		}
 	}
 
 	/// Set only the message qualifing part of the queryable.
 	/// Will be prefixed with agents prefix.
 	#[must_use]
-	pub fn topic(self, topic: &str) -> QueryableBuilder<P, KeyExpression, C, S> {
-		let key_expr = self.context.key_expr(topic);
+	pub fn topic(mut self, topic: &str) -> QueryableBuilder<P, KeyExpression, C, S> {
+		let key_expr = self
+			.prefix
+			.take()
+			.unwrap_or_else(|| String::from(topic))
+			+ "/" + topic;
 		let Self {
-			context,
+			prefix,
 			storage,
 			callback,
+			phantom,
 			..
 		} = self;
 		QueryableBuilder {
-			context,
+			prefix,
 			key_expr: KeyExpression { key_expr },
 			callback,
 			storage,
+			phantom,
 		}
 	}
 }
@@ -134,17 +145,19 @@ where
 		F: FnMut(&ArcContext<P>, Request) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
-			context,
+			prefix,
 			key_expr,
 			storage,
+			phantom,
 			..
 		} = self;
 		let request: QueryableCallback<P> = Arc::new(Mutex::new(Some(Box::new(callback))));
 		QueryableBuilder {
-			context,
+			prefix,
 			key_expr,
 			callback: RequestCallback { request },
 			storage,
+			phantom,
 		}
 	}
 }
@@ -161,16 +174,18 @@ where
 		storage: Arc<RwLock<std::collections::HashMap<String, Queryable<P>>>>,
 	) -> QueryableBuilder<P, K, C, Storage<P>> {
 		let Self {
-			context,
+			prefix,
 			key_expr,
 			callback,
+			phantom,
 			..
 		} = self;
 		QueryableBuilder {
-			context,
+			prefix,
 			key_expr,
 			callback,
 			storage: Storage { storage },
+			phantom,
 		}
 	}
 }
@@ -184,14 +199,10 @@ where
 	///
 	pub fn build(self) -> Result<Queryable<P>> {
 		let Self {
-			context,
-			key_expr,
-			callback,
-			..
+			key_expr, callback, ..
 		} = self;
 		let key_expr = key_expr.key_expr;
 		Ok(Queryable {
-			context,
 			key_expr,
 			callback: Some(callback.request),
 			handle: None,
@@ -230,7 +241,6 @@ where
 	key_expr: String,
 	callback: Option<QueryableCallback<P>>,
 	handle: Option<JoinHandle<()>>,
-	context: ArcContext<P>,
 }
 
 impl<P> Debug for Queryable<P>
@@ -250,8 +260,8 @@ where
 {
 	/// Start or restart the queryable.
 	/// An already running queryable will be stopped, eventually damaged Mutexes will be repaired
-	#[instrument(level = Level::TRACE)]
-	pub fn start(&mut self, tx: Sender<TaskSignal>) {
+	#[instrument(level = Level::TRACE, skip_all)]
+	pub fn start(&mut self, ctx: ArcContext<P>, tx: Sender<TaskSignal>) {
 		self.stop();
 
 		#[cfg(not(feature = "queryable"))]
@@ -269,7 +279,6 @@ where
 
 		let key_expr = self.key_expr.clone();
 		let cb = self.callback.clone();
-		let ctx = self.context.clone();
 
 		self.handle
 			.replace(tokio::task::spawn(async move {

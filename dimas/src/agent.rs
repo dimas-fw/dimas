@@ -177,8 +177,7 @@ where
 	#[must_use]
 	pub fn publisher(
 		&self,
-	) -> PublisherBuilder<P, crate::com::publisher::NoKeyExpression, crate::com::publisher::Storage>
-	{
+	) -> PublisherBuilder<crate::com::publisher::NoKeyExpression, crate::com::publisher::Storage> {
 		self.context.publisher()
 	}
 	/// Get a builder for a [`Publisher`]
@@ -186,7 +185,7 @@ where
 	#[must_use]
 	pub fn publisher(
 		&self,
-	) -> PublisherBuilder<P, crate::com::publisher::NoKeyExpression, crate::com::publisher::NoStorage>
+	) -> PublisherBuilder<crate::com::publisher::NoKeyExpression, crate::com::publisher::NoStorage>
 	{
 		self.context.publisher()
 	}
@@ -378,7 +377,7 @@ where
 								.map_err(|_| DimasError::WriteProperties)?
 								.get_mut(&key_expr)
 								.ok_or(DimasError::ShouldNotHappen)?
-								.start(self.tx.clone());
+								.start(self.context.clone(), self.tx.clone());
 						},
 						#[cfg(feature = "queryable")]
 						TaskSignal::RestartQueryable(key_expr) => {
@@ -387,7 +386,7 @@ where
 								.map_err(|_| DimasError::WriteProperties)?
 								.get_mut(&key_expr)
 								.ok_or(DimasError::ShouldNotHappen)?
-								.start(self.tx.clone());
+								.start(self.context.clone(), self.tx.clone());
 						},
 						#[cfg(feature = "subscriber")]
 						TaskSignal::RestartSubscriber(key_expr) => {
@@ -396,7 +395,7 @@ where
 								.map_err(|_| DimasError::WriteProperties)?
 								.get_mut(&key_expr)
 								.ok_or(DimasError::ShouldNotHappen)?
-								.start(self.tx.clone());
+								.start(self.context.clone(), self.tx.clone());
 						},
 						#[cfg(feature = "timer")]
 						TaskSignal::RestartTimer(key_expr) => {
