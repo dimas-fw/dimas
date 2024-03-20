@@ -21,7 +21,9 @@ async fn main() -> Result<()> {
 	let properties = AgentProps { counter: 0 };
 
 	// create an agent with the properties and the prefix 'examples'
-	let mut agent = Agent::new_with_prefix(Config::default(), properties, "examples")?;
+	let mut agent = Agent::builder(properties)
+		.prefix("examples")
+		.config(Config::default())?;
 
 	// create publisher for topic "hello"
 	agent.publisher().topic("hello").add()?;

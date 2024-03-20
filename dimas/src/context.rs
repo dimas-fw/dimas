@@ -147,6 +147,56 @@ where
 		Ok(())
 	}
 
+	/// Internal function for stopping all registered tasks
+	/// # Errors
+	/// Currently none
+	pub fn stop_registered_tasks(&mut self) -> Result<()> {
+		// reverse order of start!
+		// stop all registered timers
+		#[cfg(feature = "timer")]
+		self.timers
+			.write()
+			.map_err(|_| DimasError::ShouldNotHappen)?
+			.iter_mut()
+			.for_each(|timer| {
+				timer.1.stop();
+			});
+
+		#[cfg(feature = "liveliness")]
+		{
+			// stop all registered liveliness subscribers
+			#[cfg(feature = "liveliness")]
+			self.liveliness_subscribers
+				.write()
+				.map_err(|_| DimasError::ShouldNotHappen)?
+				.iter_mut()
+				.for_each(|subscriber| {
+					subscriber.1.stop();
+				});
+		}
+
+		// stop all registered subscribers
+		#[cfg(feature = "subscriber")]
+		self.subscribers
+			.write()
+			.map_err(|_| DimasError::ShouldNotHappen)?
+			.iter_mut()
+			.for_each(|subscriber| {
+				subscriber.1.stop();
+			});
+
+		// stop all registered queryables
+		#[cfg(feature = "queryable")]
+		self.queryables
+			.write()
+			.map_err(|_| DimasError::ShouldNotHappen)?
+			.iter_mut()
+			.for_each(|queryable| {
+				queryable.1.stop();
+			});
+		Ok(())
+	}
+
 	/// Get a builder for a [`LivelinessSubscriber`]
 	#[cfg(feature = "liveliness")]
 	#[must_use]
@@ -357,7 +407,11 @@ where
 	}
 
 	/// Constructor for the `Context` with a prefix
-	pub(crate) fn new_with_prefix(config: Config, props: P, prefix: &str) -> Result<Self> {
+	pub(crate) fn new_with_prefix(
+		config: Config,
+		props: P,
+		prefix: impl Into<String>,
+	) -> Result<Self> {
 		let communicator = Arc::new(Communicator::new_with_prefix(config, prefix)?);
 		Ok(Self {
 			communicator,

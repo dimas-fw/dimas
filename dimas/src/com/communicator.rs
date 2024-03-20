@@ -45,7 +45,10 @@ impl Communicator {
 		})
 	}
 
-	pub(crate) fn new_with_prefix(config: crate::config::Config, prefix: &str) -> Result<Self> {
+	pub(crate) fn new_with_prefix(
+		config: crate::config::Config,
+		prefix: impl Into<String>,
+	) -> Result<Self> {
 		let cfg = config;
 		let session = Arc::new(
 			zenoh::open(cfg.zenoh_config())
