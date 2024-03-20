@@ -1,6 +1,16 @@
 // Copyright © 2023 Stephan Kunz
 
 //! Module `communicator` provides the `Communicator` implementing the communication capabilities for an `Agent`.
+//!
+//! # Examples
+//! ```rust,no_run
+//! # use dimas::prelude::*;
+//! # #[tokio::main(flavor = "multi_thread")]
+//! # async fn main() -> Result<()> {
+//! # Ok(())
+//! # }
+//! ```
+//!
 
 // region:		--- modules
 use crate::prelude::*;
@@ -12,6 +22,7 @@ use zenoh::publication::Publisher;
 // endregion:	--- modules
 
 // region:		--- Communicator
+/// Communicator
 #[derive(Debug)]
 pub struct Communicator {
 	/// the zenoh session
@@ -53,14 +64,14 @@ impl Communicator {
 		self.prefix.clone()
 	}
 
-	pub(crate) fn key_expr(&self, msg_name: &str) -> String {
+	pub(crate) fn key_expr(&self, topic: &str) -> String {
 		self.prefix()
-			.map_or_else(|| msg_name.into(), |prefix| format!("{prefix}/{msg_name}"))
+			.map_or_else(|| topic.into(), |prefix| format!("{prefix}/{topic}"))
 	}
 
-	pub(crate) async fn send_liveliness<'a>(&self, msg_type: &str) -> Result<LivelinessToken<'a>> {
+	pub(crate) async fn send_liveliness<'a>(&self) -> Result<LivelinessToken<'a>> {
 		let session = self.session.clone();
-		let uuid = format!("{}/{}", self.key_expr(msg_type), session.zid());
+		let uuid = format!("{}/{}", self.key_expr("alive"), session.zid());
 
 		session
 			.liveliness()
@@ -78,20 +89,20 @@ impl Communicator {
 	}
 
 	#[allow(clippy::needless_pass_by_value)]
-	pub(crate) fn put<M>(&self, msg_name: &str, message: M) -> Result<()>
+	pub(crate) fn put<M>(&self, topic: &str, message: M) -> Result<()>
 	where
 		M: Encode,
 	{
 		let value: Vec<u8> = encode(&message);
-		let key_expr = self.key_expr(msg_name);
+		let key_expr = self.key_expr(topic);
 		match self.session.put(&key_expr, value).res_sync() {
 			Ok(()) => Ok(()),
 			Err(_) => Err(DimasError::PutMessage.into()),
 		}
 	}
 
-	pub(crate) fn delete(&self, msg_name: &str) -> Result<()> {
-		let key_expr = self.key_expr(msg_name);
+	pub(crate) fn delete(&self, topic: &str) -> Result<()> {
+		let key_expr = self.key_expr(topic);
 		match self.session.delete(&key_expr).res_sync() {
 			Ok(()) => Ok(()),
 			Err(_) => Err(DimasError::DeleteMessage.into()),
@@ -150,48 +161,6 @@ mod tests {
 	#[test]
 	const fn normal_types() {
 		is_normal::<Communicator>();
-	}
-
-	#[test]
-	//#[serial]
-	fn zenoh_create_default_sync() {
-		let _zenoh = zenoh::open(config::default()).res_sync();
-	}
-
-	#[tokio::test(flavor = "current_thread")]
-	//#[serial]
-	async fn zenoh_create_default_sync_in_async() {
-		let _zenoh = zenoh::open(config::default()).res_sync();
-	}
-
-	#[tokio::test(flavor = "current_thread")]
-	//#[serial]
-	async fn zenoh_create_default_async() {
-		let _zenoh = zenoh::open(config::default()).res_async().await;
-	}
-
-	#[tokio::test]
-	//#[serial]
-	async fn communicator_create_default() -> Result<()> {
-		let _peer1 = Communicator::new(crate::config::Config::default());
-		let _peer2 = Communicator::new_with_prefix(crate::config::Config::local()?, "peer2");
-		Ok(())
-	}
-
-	#[tokio::test(flavor = "current_thread")]
-	//#[serial]
-	async fn communicator_create_single() -> Result<()> {
-		let _peer1 = Communicator::new(crate::config::Config::default());
-		let _peer2 = Communicator::new_with_prefix(crate::config::Config::local()?, "peer2");
-		Ok(())
-	}
-
-	#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-	//#[serial]
-	async fn communicator_create_restricted() -> Result<()> {
-		let _peer1 = Communicator::new(crate::config::Config::default());
-		let _peer2 = Communicator::new_with_prefix(crate::config::Config::local()?, "peer2");
-		Ok(())
 	}
 
 	#[tokio::test(flavor = "multi_thread")]

@@ -1,71 +1,76 @@
 // Copyright © 2023 Stephan Kunz
 
 //! Primary module of `DiMAS` implementing [`Agent`]
-//! 
-//! ToDo
+//!
+//! An agent is a physical or virtual unit that
+//! - can act in an environment
+//! - communicates directly with other units/agents
+//! - is driven by a set of tendencies (individual goals and/or satisfaction-/survival-mechanisms)
+//! - has own resources
+//! - can perceive its environment to a limited extent
+//! - has no or only a partial representation of its environment
+//! - has  capabilities and offers services
+//! - can possibly reproduce itself
+//! - whose behaviour is aimed at fulfilling its objectives,
+//!   taking into account the resources and capabilities available to it and
+//!   depending on its perception, representations and abilities
+//!
+//! # Examples
+//! ```rust,no_run
+//! use dimas::prelude::*;
+//! use std::time::Duration;
+//!
+//! #[derive(Debug)]
+//! struct AgentProps {}
+//!
+//! // we need an async runtime, preferably tokio
+//! #[tokio::main]
+//! async fn main() -> Result<()> {
+//!   // create & initialize agents properties
+//!   let properties = AgentProps {};
+//!
+//!   // create an agent with the properties and a default configuration
+//!   let mut agent = Agent::new(Config::default(), properties)?;
+//!
+//!   // configuration of the agent
+//!   // ...
+//!
+//!   // run the agent
+//!   agent.start().await?;
+//!   Ok(())
+//! }
+//! ```
+//!
+//! A running agent can be properly stopped with `ctrl-c`
+//!
 
 // region:		--- modules
 use crate::context::Context;
 use crate::prelude::*;
+use crate::utils::{wait_for_task_signals, TaskSignal};
 use std::{
 	fmt::Debug,
 	ops::Deref,
-	sync::{
-		mpsc::{self, Receiver},
-		Mutex,
-	},
-	time::Duration,
+	sync::{mpsc, Mutex},
 };
 use tokio::{select, signal};
 use tracing::{error, info};
 use zenoh::liveliness::LivelinessToken;
 // endregion:	--- modules
 
-// region:		--- TaskSignal
-#[derive(Debug, Clone)]
-/// Internal signals, used by panic hooks to inform the Agent that someting has happened
-pub(crate) enum TaskSignal {
-	/// Restart a certain liveliness subscriber, identified by its key expression
-	#[cfg(feature = "liveliness")]
-	RestartLiveliness(String),
-	/// Restart a certain queryable, identified by its key expression
-	#[cfg(feature = "queryable")]
-	RestartQueryable(String),
-	/// Restart a certain lsubscriber, identified by its key expression
-	#[cfg(feature = "subscriber")]
-	RestartSubscriber(String),
-	/// Restart a certain timer, identified by its key expression
-	#[cfg(feature = "timer")]
-	RestartTimer(String),
-	/// just to avoid warning messages when no feature is selected
-	#[allow(dead_code)]
-	Dummy,
-}
-
-/// Wait for [`TaskSignal`]s.
-/// Necessary for the `select!` macro within the [`Agent`]s main loop 
-async fn wait_for_signals(rx: &Mutex<Receiver<TaskSignal>>) -> Box<TaskSignal> {
-	loop {
-		if let Ok(signal) = rx.lock().expect("").try_recv() {
-			return Box::new(signal);
-		};
-
-		tokio::time::sleep(Duration::from_millis(1)).await;
-	}
-}
-// endregion:	--- TaskSignal
-
 // region:		--- Agent
-/// `Agent`
+/// Representation of an [`Agent`].<br>
+/// Available constructors: [`Agent::new`] and [`Agent::new_with_prefix`]
 pub struct Agent<'a, P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	// The agents context structure
+	/// The agents context structure
 	context: ArcContext<P>,
-	// flag if sending liveliness is active
+	/// Flag to control whether sending liveliness or not
 	liveliness: bool,
-	// the liveliness token
+	/// The liveliness token - typically the uuid sent to other participants<br>
+	/// Is available in the [`LivelinessSubscriber`] callback
 	liveliness_token: RwLock<Option<LivelinessToken<'a>>>,
 }
 
@@ -81,24 +86,26 @@ where
 	}
 }
 
+/// Enables thread safe access to [`Context`] which is managing [`Agent`]s properties.
 impl<'a, P> Deref for Agent<'a, P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
 	type Target = ArcContext<P>;
-
+	/// Enables thread safe access to [`Context`].
 	fn deref(&self) -> &Self::Target {
 		&self.context
 	}
 }
 
+/// Directly accessible methods.
 impl<'a, P> Agent<'a, P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// Create an instance of an agent.
 	/// # Errors
-	///
+	/// Propagation of errors creating the [`Context`].
 	pub fn new(config: crate::config::Config, properties: P) -> Result<Self> {
 		Ok(Self {
 			context: Context::new(config, properties)?.into(),
@@ -107,9 +114,12 @@ where
 		})
 	}
 
-	/// Create an instance of an agent with a standard prefix for the topics.
+	/// Create an instance of an agent with a prefix.<br>
+	/// The prefix is used in communication to prefix the topics.
+	/// It is an easy way to separate groups of agents within the same environment.<br>
+	/// See [`LivelinessSubscriberBuilder`], [`PublisherBuilder`], [`QueryBuilder`], [`QueryableBuilder`], [`SubscriberBuilder`].
 	/// # Errors
-	///
+	/// Propagation of errors creating the [`Context`].
 	pub fn new_with_prefix(
 		config: crate::config::Config,
 		properties: P,
@@ -122,45 +132,31 @@ where
 		})
 	}
 
-	/// Get the agents uuid
-	#[must_use]
-	pub fn uuid(&self) -> String {
-		self.context.uuid()
-	}
-
-	/// Get the agents properties
-	#[must_use]
-	pub fn props(&self) -> Arc<RwLock<P>> {
-		self.context.props.clone()
-	}
-
 	/// Activate sending liveliness information
 	pub fn liveliness(&mut self, activate: bool) {
 		self.liveliness = activate;
 	}
 
-	/// Get a `Context` of the `Agent`
-	pub fn get_context(&self) -> ArcContext<P> {
-		self.context.clone()
-	}
-
-	/// Start the agent
+	/// Start the agent.<br>
+	/// The agent can be stopped properly using `ctrl-c`
 	/// # Errors
-	/// Currently none
+	/// Propagation of errors from [`Agent::stop`],
+	/// [`Context::start_registered_tasks`] and
+	/// [`Communicator::send_liveliness`].
 	#[tracing::instrument(skip_all)]
 	pub async fn start(&mut self) -> Result<()> {
-		// we need an mpsc channel with a receiver behind a `Mutex`
+		// we need an mpsc channel with a receiver behind a mutex guard
 		let (tx, rx) = mpsc::channel();
 		let rx = Mutex::new(rx);
 
-		self.start_tasks(&tx)?;
+		self.context.start_registered_tasks(&tx)?;
 
 		// activate liveliness
 		if self.liveliness {
 			let token: LivelinessToken<'a> = self
 				.context
 				.communicator
-				.send_liveliness("alive")
+				.send_liveliness()
 				.await?;
 			self.liveliness_token
 				.write()
@@ -171,8 +167,8 @@ where
 		loop {
 			// different possibilities that can happen
 			select! {
-				// `TaskSignal`s 
-				signal = wait_for_signals(&rx) => {
+				// `TaskSignal`s
+				signal = wait_for_task_signals(&rx) => {
 					match *signal {
 						#[cfg(feature = "liveliness")]
 						TaskSignal::RestartLiveliness(key_expr) => {
@@ -218,7 +214,7 @@ where
 				signal = signal::ctrl_c() => {
 					match signal {
 						Ok(()) => {
-							info!("shutdown due to 'Ctrl-C'");
+							info!("shutdown due to 'ctrl-c'");
 							self.stop()?;
 							return Ok(());
 						}
@@ -313,30 +309,6 @@ mod tests {
 	const fn normal_types() {
 		is_normal::<Agent<Props>>();
 		is_normal::<TaskSignal>();
-	}
-
-	#[tokio::test]
-	//#[serial]
-	async fn agent_create_default() -> Result<()> {
-		let _agent1 = Agent::new(crate::config::Config::local()?, Props {});
-		let _agent2 = Agent::new_with_prefix(crate::config::Config::local()?, Props {}, "agent2");
-		Ok(())
-	}
-
-	#[tokio::test(flavor = "current_thread")]
-	//#[serial]
-	async fn agent_create_current() -> Result<()> {
-		let _agent1 = Agent::new(crate::config::Config::local()?, Props {});
-		let _agent2 = Agent::new_with_prefix(crate::config::Config::local()?, Props {}, "agent2");
-		Ok(())
-	}
-
-	#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-	//#[serial]
-	async fn agent_create_restricted() -> Result<()> {
-		let _agent1 = Agent::new(crate::config::Config::local()?, Props {});
-		let _agent2 = Agent::new_with_prefix(crate::config::Config::local()?, Props {}, "agent2");
-		Ok(())
 	}
 
 	#[tokio::test(flavor = "multi_thread")]

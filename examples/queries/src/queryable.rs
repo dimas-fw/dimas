@@ -21,7 +21,7 @@ fn queryable(ctx: &ArcContext<AgentProps>, request: Request) -> Result<()> {
 	Ok(())
 }
 
-#[tokio::main(flavor = "current_thread")]
+#[tokio::main]
 async fn main() -> Result<()> {
 	// a tracing subscriber writing logs
 	tracing_subscriber::fmt::init();
@@ -35,7 +35,7 @@ async fn main() -> Result<()> {
 	// add a queryable
 	agent
 		.queryable()
-		.msg_type("query")
+		.topic("query")
 		.callback(queryable)
 		.add()?;
 

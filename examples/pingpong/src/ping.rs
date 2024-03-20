@@ -43,7 +43,7 @@ fn pong_received(_ctx: &ArcContext<AgentProps>, message: Message) -> Result<()> 
 	Ok(())
 }
 
-#[tokio::main(flavor = "current_thread")]
+#[tokio::main]
 async fn main() -> Result<()> {
 	// a tracing subscriber writing logs
 	tracing_subscriber::fmt::init();
@@ -55,7 +55,7 @@ async fn main() -> Result<()> {
 	let mut agent = Agent::new_with_prefix(Config::default(), properties, "examples")?;
 
 	// create publisher for topic "ping"
-	agent.publisher().msg_type("ping").add()?;
+	agent.publisher().topic("ping").add()?;
 
 	// use timer for regular publishing
 	agent
@@ -90,7 +90,7 @@ async fn main() -> Result<()> {
 	// listen for 'pong' messages
 	agent
 		.subscriber()
-		.msg_type("pong")
+		.topic("pong")
 		.put_callback(pong_received)
 		.add()?;
 

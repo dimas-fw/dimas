@@ -12,7 +12,7 @@ struct AgentProps {
 	counter: u128,
 }
 
-#[tokio::main(flavor = "current_thread")]
+#[tokio::main]
 async fn main() -> Result<()> {
 	// a tracing subscriber writing logs
 	tracing_subscriber::fmt::init();
@@ -24,7 +24,7 @@ async fn main() -> Result<()> {
 	let mut agent = Agent::new_with_prefix(Config::default(), properties, "examples")?;
 
 	// create publisher for topic "hello"
-	agent.publisher().msg_type("hello").add()?;
+	agent.publisher().topic("hello").add()?;
 
 	// use timer for regular publishing
 	agent

@@ -16,12 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 
-## [0.0.8] - 2024-03-??
+## [0.0.8] - 2024-03-??  <br>_Has breaking changes!!_
 
 ### Added
-- Builders add methods now return the possibly previously added item for that key expression  
+- Documentation
+- Builders 'add' methods now return the possibly previously added item for that key expression
 
 ### Changed
+- _Name of Builder methods to set only topics name chanched to 'topic(..)'_
+- Removed tokio "flavor=current_thread" due to changes in zenoh
 
 ### Fixed
 - Broken documentaton on docs.rs

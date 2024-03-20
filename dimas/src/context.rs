@@ -1,13 +1,22 @@
 // Copyright © 2023 Stephan Kunz
 
-//! [`ArcContext`] provides thread safe access to an [`Agent`]'s internal properties and its user defined properties.
+//! [`Context`] is the representation of an [`Agent`]'s internal and user defined properties.
+//! Never use it directly but through [`ArcContext`], which provides thread safe access.
 //!
-//! Internally uses the `Context` structure to store data.
+//! # Examples
+//! ```rust,no_run
+//! # use dimas::prelude::*;
+//! # #[tokio::main(flavor = "multi_thread")]
+//! # async fn main() -> Result<()> {
+//! # Ok(())
+//! # }
+//! ```
+//!
 
-use crate::agent::TaskSignal;
 // region:		--- modules
 use crate::com::communicator::Communicator;
 use crate::prelude::*;
+use crate::utils::TaskSignal;
 #[cfg(any(
 	feature = "liveliness",
 	feature = "publisher",
@@ -39,7 +48,8 @@ const INITIAL_SIZE: usize = 9;
 // endregion:	--- types
 
 // region:		--- ArcContext
-/// `ArcContext` is a thread safe atomic reference counted `Context` and makes all relevant data of the agent accessible via accessor methods.
+/// `ArcContext` is a thread safe atomic reference counted [`Context`]. <br>
+/// It makes all relevant data of the agent accessible in a thread safe way via accessor methods.
 #[derive(Debug)]
 #[allow(clippy::module_name_repetitions)]
 pub struct ArcContext<P>
@@ -90,7 +100,7 @@ where
 	/// # Errors
 	/// Currently none
 	#[allow(unused_variables)]
-	pub(crate) fn start_tasks(&self, tx: &Sender<TaskSignal>) -> Result<()> {
+	pub(crate) fn start_registered_tasks(&self, tx: &Sender<TaskSignal>) -> Result<()> {
 		// start all registered queryables
 		#[cfg(feature = "queryable")]
 		self.queryables
@@ -380,11 +390,12 @@ where
 	}
 
 	#[must_use]
-	pub(crate) fn key_expr(&self, msg_name: &str) -> String {
-		self.communicator.key_expr(msg_name)
+	pub(crate) fn key_expr(&self, topic: &str) -> String {
+		self.communicator.key_expr(topic)
 	}
 
 	/// Gives read access to the `Agent`s properties
+	/// # Errors
 	pub fn read(&self) -> Result<std::sync::RwLockReadGuard<'_, P>> {
 		self.props
 			.read()
@@ -392,6 +403,7 @@ where
 	}
 
 	/// Gives write access to the `Agent`s properties
+	/// # Errors
 	pub fn write(&self) -> Result<std::sync::RwLockWriteGuard<'_, P>> {
 		self.props
 			.write()
@@ -407,13 +419,13 @@ where
 
 	/// Method to do an ad hoc publishing
 	/// # Errors
-	///   Error is propagated from Communicator
+	///   Error is propagated from [`Communicator::put`]
 	#[instrument(level = Level::ERROR, skip_all)]
-	pub fn put<M>(&self, msg_name: &str, message: M) -> Result<()>
+	pub fn put<M>(&self, topic: &str, message: M) -> Result<()>
 	where
 		M: Encode,
 	{
-		self.communicator.put(msg_name, message)
+		self.communicator.put(topic, message)
 	}
 
 	/// Method to pubish data with a stored Publisher
@@ -421,11 +433,11 @@ where
 	///
 	#[cfg(feature = "publisher")]
 	#[instrument(level = Level::ERROR, skip_all)]
-	pub fn put_with<M>(&self, msg_name: &str, message: M) -> Result<()>
+	pub fn put_with<M>(&self, topic: &str, message: M) -> Result<()>
 	where
 		M: Debug + Encode,
 	{
-		let key_expr = self.key_expr(msg_name);
+		let key_expr = self.key_expr(topic);
 		if self
 			.publishers
 			.read()
@@ -447,8 +459,8 @@ where
 	/// # Errors
 	///   Error is propagated from Communicator
 	#[instrument(level = Level::ERROR, skip_all)]
-	pub fn delete(&self, msg_name: &str) -> Result<()> {
-		self.communicator.delete(msg_name)
+	pub fn delete(&self, topic: &str) -> Result<()> {
+		self.communicator.delete(topic)
 	}
 
 	/// Method to delete data with a stored Publisher
@@ -456,8 +468,8 @@ where
 	///
 	#[cfg(feature = "publisher")]
 	#[instrument(level = Level::ERROR, skip_all)]
-	pub fn delete_with(&self, msg_name: &str) -> Result<()> {
-		let key_expr = self.key_expr(msg_name);
+	pub fn delete_with(&self, topic: &str) -> Result<()> {
+		let key_expr = self.key_expr(topic);
 		if self
 			.publishers
 			.read()
@@ -492,8 +504,8 @@ where
 	///
 	#[cfg(feature = "query")]
 	#[instrument(level = Level::ERROR, skip_all)]
-	pub fn get_with(&self, msg_name: &str) -> Result<()> {
-		let key_expr = self.key_expr(msg_name);
+	pub fn get_with(&self, topic: &str) -> Result<()> {
+		let key_expr = self.key_expr(topic);
 		if self
 			.queries
 			.read()

@@ -16,6 +16,9 @@ unsafe_code = "forbid"
 missing_docs = "warn"
 #unused="allow" # for dev only
 
+[workspace.lints.rustdoc]
+private_intra_doc_links = "allow"
+
 [workspace.lints.clippy]
 enum_glob_use = "deny"
 pedantic = "deny"

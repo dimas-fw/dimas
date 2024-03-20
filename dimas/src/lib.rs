@@ -23,7 +23,7 @@ pub mod error;
 // Timer
 mod timer;
 // Helper functions
-//mod utils;
+mod utils;
 
 // Public interface of dimas.
 pub mod prelude;

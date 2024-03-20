@@ -1,6 +1,40 @@
 // Copyright © 2024 Stephan Kunz
 
 //! The [`Config`]uration data for an [`Agent`].
+//!
+//! # Examples
+//! ```rust,no_run
+//! # use dimas::prelude::*;
+//! # #[tokio::main(flavor = "multi_thread")]
+//! # async fn main() -> Result<()> {
+//! // create a configuration from a file named `default.json5`
+//! // located in one of the directories listed below
+//! // if that file does not exit, a default config will be created
+//! let config = Config::default();
+//!
+//! let config = Config::from_file("filename.sfx")?;    // use file named `filename.sfx`
+//!
+//! // a few more methods with standard filenames
+//! // [example files](https://github.com/dimas-fw/dimas/tree/main/.config)
+//! let config = Config::local()?;        // use file named `local.json5`
+//! let config = Config::peer()?;         // use file named `peer.json5`
+//! let config = Config::client()?;       // use file named `client.json5`
+//! let config = Config::router()?;       // use file named `router.json5`
+//! let config = Config::low_latency()?;  // use file named `low_latency.json5`
+//!
+//! // Configuration is handed over to the Agent
+//! let agent = Agent::new(config, {});
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! The methods using files will search in following directories for the file (order first to last):
+//!  - current working directory
+//!  - `.config` directory below current working directory
+//!  - `.config` directory below home directory
+//!  - local config directory (`Linux`: `$XDG_CONFIG_HOME` or `$HOME/.config` | `Windows`: `{FOLDERID_LocalAppData}` | `MacOS`: `$HOME/Library/Application Support`)
+//!  - config directory (`Linux`: `$XDG_CONFIG_HOME` or `$HOME/.config` | `Windows`: `{FOLDERID_RoamingAppData}` | `MacOS`: `$HOME/Library/Application Support`)
+//!
 
 // region:		--- modules
 #[allow(unused_imports)]
@@ -8,55 +42,17 @@ use crate::agent::Agent;
 // endregion:	--- modules
 
 // region:		--- modules
-use crate::error::{DimasError, Result};
-use dirs::{config_dir, config_local_dir, home_dir};
-use std::env;
+use crate::{error::Result, utils::find_config_file};
 use tracing::{error, info, warn};
 // endregion:	--- modules
 
 // region:		--- utils
-/// find a config file given by name
-/// function will search in following directories for the file (order first to last):
-///  - current directory
-///  - .config directory below current directory
-///  - .config directory below home directory
-///  - local config directory (Linux: `$XDG_CONFIG_HOME` or $HOME/.config | `Windows: {FOLDERID_LocalAppData}` | `MacOS`: $HOME/Library/Application Support)
-///  - config directory (Linux: `$XDG_CONFIG_HOME` or $HOME/.config | Windows: `{FOLDERID_RoamingAppData}` | `MacOS`: $HOME/Library/Application Support)
-fn find_file(filename: &str) -> Result<String> {
-	// handle environment path cwd
-	if let Ok(cwd) = env::current_dir() {
-		#[cfg(not(test))]
-		let path = cwd.join(filename);
-		#[cfg(test)]
-		let path = cwd.join("..").join(filename);
-		if path.is_file() {
-			info!("using file {:?}", &path);
-			return Ok(std::fs::read_to_string(path)?);
-		}
-
-		#[cfg(not(test))]
-		let path = cwd.join(".config").join(filename);
-		#[cfg(test)]
-		let path = cwd.join("../.config").join(filename);
-		if path.is_file() {
-			info!("using file {:?}", &path);
-			return Ok(std::fs::read_to_string(path)?);
-		}
-	};
-
-	// handle typical config directories
-	for path in [home_dir(), config_local_dir(), config_dir()]
-		.into_iter()
-		.flatten()
-	{
-		let file = path.join(filename);
-		if file.is_file() {
-			info!("using file {:?}", &path);
-			return Ok(std::fs::read_to_string(path)?);
-		}
-	}
-
-	Err(DimasError::FileNotFound(filename.into()).into())
+/// find and read a config file given by name
+fn _read_file(filename: &str) -> Result<String> {
+	// handle environment path current working directory `CWD`
+	let path = find_config_file(filename)?;
+	info!("using file {:?}", &path);
+	Ok(std::fs::read_to_string(path)?)
 }
 // endregion:	--- utils
 
@@ -70,20 +66,36 @@ pub struct Config {
 }
 
 impl Default for Config {
-	/// Create a default configuration that connects to [`Agent`]s in same subnet
+	/// Create a default configuration<br>
+	/// Will search for a configuration file with name "default.json5" in the directories mentioned in [`Examples`](index.html#examples).<br>
+	/// This file should contain the wanted default configuration.<br>
+	/// If no file is found, it will create a defined minimal default configuration.<br>
+	/// Currently this is just a default zenoh peer configuration which connects to peers in same subnet.
 	#[allow(clippy::cognitive_complexity)]
 	fn default() -> Self {
-		match find_file("default.json5") {
-			Ok(content) => match json5::from_str(&content) {
-				Ok(result) => result,
-				Err(error) => {
-					error!("{}", error);
-					warn!("using default zenoh peer configuration instead");
-					Self {
-						zenoh: zenoh::config::peer(),
+		match find_config_file("default.json5") {
+			Ok(path) => {
+				info!("trying file {:?}", &path);
+				match std::fs::read_to_string(path) {
+					Ok(content) => match json5::from_str(&content) {
+						Ok(result) => result,
+						Err(error) => {
+							error!("{}", error);
+							warn!("using default zenoh peer configuration instead");
+							Self {
+								zenoh: zenoh::config::peer(),
+							}
+						}
+					},
+					Err(error) => {
+						error!("{}", error);
+						warn!("using default zenoh peer configuration instead");
+						Self {
+							zenoh: zenoh::config::peer(),
+						}
 					}
 				}
-			},
+			}
 			Err(error) => {
 				error!("{}", error);
 				warn!("using default zenoh peer configuration instead");
@@ -96,55 +108,86 @@ impl Default for Config {
 }
 
 impl Config {
-	/// Create a configuration that only connects to [`Agent`]s on same host
+	/// Create a configuration based on file named `local.json5`.<br>
+	/// Will search in the directories mentioned in [`Examples`](index.html#examples).<br>
+	/// This file should contain a configuration that only connects to [`Agent`]s on same host.
 	/// # Errors
+	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.
 	pub fn local() -> Result<Self> {
-		let content = find_file("local.json5")?;
+		let path = find_config_file("local.json5")?;
+		info!("using file {:?}", &path);
+		let content = std::fs::read_to_string(path)?;
 		let cfg = json5::from_str(&content)?;
 		Ok(cfg)
 	}
 
-	/// Create a low latency configuration
+	/// Create a configuration based on file named `low_latency.json5`.<br>
+	/// Will search in the directories mentioned in [`Examples`](index.html#examples).<br>
+	/// This file should contain a configuration that only connects to [`Agent`]s on same host.
 	/// # Errors
+	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.
 	pub fn low_latency() -> Result<Self> {
-		let content = find_file("low_latency.json5")?;
+		let path = find_config_file("low_latency.json5")?;
+		info!("using file {:?}", &path);
+		let content = std::fs::read_to_string(path)?;
 		let cfg = json5::from_str(&content)?;
 		Ok(cfg)
 	}
 
-	/// Create a client configuration that connects to agents in same subnet
+	/// Create a configuration based on file named `client.json5`.<br>
+	/// Will search in the directories mentioned in [`Examples`](index.html#examples).<br>
+	/// This file should contain a configuration that creates an [`Agent`] in client mode.
 	/// # Errors
+	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.
 	pub fn client() -> Result<Self> {
-		let content = find_file("client.json5")?;
+		let path = find_config_file("client.json5")?;
+		info!("using file {:?}", &path);
+		let content = std::fs::read_to_string(path)?;
 		let cfg = json5::from_str(&content)?;
 		Ok(cfg)
 	}
 
-	/// Create a peer configuration that connects to agents in same subnet
+	/// Create a configuration based on file named `peer.json5`.<br>
+	/// Will search in the directories mentioned in [`Examples`](index.html#examples).<br>
+	/// This file should contain a configuration that creates an [`Agent`] in peer mode.
 	/// # Errors
+	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.
 	pub fn peer() -> Result<Self> {
-		let content = find_file("peer.json5")?;
+		let path = find_config_file("peer.json5")?;
+		info!("using file {:?}", &path);
+		let content = std::fs::read_to_string(path)?;
 		let cfg = json5::from_str(&content)?;
 		Ok(cfg)
 	}
 
-	/// Create a router configuration
+	/// Create a configuration based on file named `router.json5`.<br>
+	/// Will search in the directories mentioned in [`Examples`](index.html#examples).<br>
+	/// This file should contain a configuration that creates an [`Agent`] in router mode.
 	/// # Errors
+	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.
 	pub fn router() -> Result<Self> {
-		let content = find_file("router.json5")?;
+		let path = find_config_file("router.json5")?;
+		info!("using file {:?}", &path);
+		let content = std::fs::read_to_string(path)?;
+
 		let cfg = json5::from_str(&content)?;
 		Ok(cfg)
 	}
 
-	/// Create a configuration from a configuration file
+	/// Create a configuration based on file with given filename.<br>
+	/// Will search in the directories mentioned in [`Examples`](index.html#examples).<br>
 	/// # Errors
+	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.
 	pub fn from_file(filename: &str) -> Result<Self> {
-		let content = find_file(filename)?;
+		let path = find_config_file(filename)?;
+		info!("using file {:?}", &path);
+		let content = std::fs::read_to_string(path)?;
 		let cfg = json5::from_str(&content)?;
 		Ok(cfg)
 	}
 
-	/// Create a zenoh configuration from [`Config`]
+	/// Internal method to reate a zenoh configuration from [`Config`].<br>
+	/// Can be passed to `zenoh::open()`.
 	#[must_use]
 	pub(crate) fn zenoh_config(&self) -> zenoh::config::Config {
 		self.zenoh.clone()

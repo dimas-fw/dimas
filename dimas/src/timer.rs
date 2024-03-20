@@ -4,7 +4,7 @@
 //! When fired, a `Timer` calls his assigned `TimerCallback`.
 
 // region:		--- modules
-use crate::{agent::TaskSignal, prelude::*};
+use crate::{prelude::*, utils::TaskSignal};
 use std::{
 	fmt::Debug,
 	sync::{mpsc::Sender, Mutex},
@@ -117,7 +117,9 @@ where
 		} = self;
 		TimerBuilder {
 			context,
-			key_expr: KeyExpression { key_expr: key_expr.into() },
+			key_expr: KeyExpression {
+				key_expr: key_expr.into(),
+			},
 			interval,
 			callback,
 			storage,
@@ -128,8 +130,8 @@ where
 	/// Set only the name of the timer.
 	/// Will be prefixed with agents prefix.
 	#[must_use]
-	pub fn name(self, msg_type: &str) -> TimerBuilder<P, KeyExpression, I, C, S> {
-		let key_expr = self.context.key_expr(msg_type);
+	pub fn name(self, topic: &str) -> TimerBuilder<P, KeyExpression, I, C, S> {
+		let key_expr = self.context.key_expr(topic);
 		let Self {
 			context,
 			interval,
@@ -390,7 +392,7 @@ where
 				let _key = name.clone();
 				#[cfg(feature = "timer")]
 				let key = name.clone();
-				handle.replace(tokio::spawn(async move {
+				handle.replace(tokio::task::spawn(async move {
 					std::panic::set_hook(Box::new(move |reason| {
 						error!("interval timer panic: {}", reason);
 						#[cfg(feature = "timer")]
@@ -429,7 +431,7 @@ where
 				let _key = name.clone();
 				#[cfg(feature = "timer")]
 				let key = name.clone();
-				handle.replace(tokio::spawn(async move {
+				handle.replace(tokio::task::spawn(async move {
 					std::panic::set_hook(Box::new(move |reason| {
 						error!("delayed timer panic: {}", reason);
 						#[cfg(feature = "timer")]
@@ -512,6 +514,7 @@ mod tests {
 	#[test]
 	const fn normal_types() {
 		is_normal::<Timer<Props>>();
-		is_normal::<TimerBuilder<Props, NoKeyExpression, NoInterval, NoIntervalCallback, NoStorage>>();
+		is_normal::<TimerBuilder<Props, NoKeyExpression, NoInterval, NoIntervalCallback, NoStorage>>(
+		);
 	}
 }

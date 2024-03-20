@@ -3,7 +3,7 @@
 //! Module `queryable` provides an information/compute provider `Queryable` which can be created using the `QueryableBuilder`.
 
 // region:		--- modules
-use crate::{agent::TaskSignal, prelude::*};
+use crate::{prelude::*, utils::TaskSignal};
 use std::{
 	fmt::Debug,
 	sync::{mpsc::Sender, Mutex},
@@ -106,8 +106,8 @@ where
 	/// Set only the message qualifing part of the queryable.
 	/// Will be prefixed with agents prefix.
 	#[must_use]
-	pub fn msg_type(self, msg_type: &str) -> QueryableBuilder<P, KeyExpression, C, S> {
-		let key_expr = self.context.key_expr(msg_type);
+	pub fn topic(self, topic: &str) -> QueryableBuilder<P, KeyExpression, C, S> {
+		let key_expr = self.context.key_expr(topic);
 		let Self {
 			context,
 			storage,
@@ -271,22 +271,23 @@ where
 		let cb = self.callback.clone();
 		let ctx = self.context.clone();
 
-		self.handle.replace(tokio::spawn(async move {
-			#[cfg(feature = "queryable")]
-			let key = key_expr.clone();
-			std::panic::set_hook(Box::new(move |reason| {
-				error!("queryable panic: {}", reason);
+		self.handle
+			.replace(tokio::task::spawn(async move {
 				#[cfg(feature = "queryable")]
-				if let Err(reason) = tx.send(TaskSignal::RestartQueryable(key.clone())) {
-					error!("could not restart queryable: {}", reason);
-				} else {
-					info!("restarting queryable!");
+				let key = key_expr.clone();
+				std::panic::set_hook(Box::new(move |reason| {
+					error!("queryable panic: {}", reason);
+					#[cfg(feature = "queryable")]
+					if let Err(reason) = tx.send(TaskSignal::RestartQueryable(key.clone())) {
+						error!("could not restart queryable: {}", reason);
+					} else {
+						info!("restarting queryable!");
+					};
+				}));
+				if let Err(error) = run_queryable(key_expr, cb, ctx).await {
+					error!("queryable failed with {error}");
 				};
 			}));
-			if let Err(error) = run_queryable(key_expr, cb, ctx).await {
-				error!("queryable failed with {error}");
-			};
-		}));
 	}
 
 	/// Stop a running Queryable
