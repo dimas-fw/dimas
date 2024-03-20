@@ -362,8 +362,21 @@ impl<'a, P> RunningAgent<'a, P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+
 	/// run
 	async fn run(mut self) -> Result<Agent<'a, P>> {
+		#[cfg(not(any(
+			feature = "liveliness",
+			feature = "publisher",
+			feature = "query",
+			feature = "queryable",
+			feature = "subscriber",
+			feature = "timer",
+		)))]
+		{
+			let tx = self.tx.clone();
+			std::mem::drop(tx);
+		}
 		loop {
 			// different possibilities that can happen
 			select! {
@@ -404,7 +417,7 @@ where
 								.map_err(|_| DimasError::WriteProperties)?
 								.get_mut(&key_expr)
 								.ok_or(DimasError::ShouldNotHappen)?
-								.start(self.tx.clone());
+								.start(self.context.clone(), self.tx.clone());
 						},
 						TaskSignal::Dummy => {},
 					};

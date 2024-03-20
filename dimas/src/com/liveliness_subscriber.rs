@@ -68,7 +68,7 @@ where
 	/// Construct a `LivelinessSubscriberBuilder` in initial state
 	#[must_use]
 	pub fn new(prefix: Option<String>) -> Self {
-		let key_expr = prefix.unwrap_or_else(|| String::from("alive/*")) + "/alive/*";
+		let key_expr = prefix.map_or("alive/*".to_string(), |prefix| format!("{prefix}/alive/*"));
 		Self {
 			key_expr,
 			put_callback: NoPutCallback,

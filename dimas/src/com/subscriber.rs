@@ -150,8 +150,7 @@ where
 		let key_expr = self
 			.prefix
 			.take()
-			.unwrap_or_else(|| String::from(topic))
-			+ "/" + topic;
+			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
 		let Self {
 			prefix,
 			storage,
@@ -239,6 +238,7 @@ where
 			delete_callback,
 			..
 		} = self;
+		dbg!(&key_expr.key_expr);
 		Ok(Subscriber {
 			key_expr: key_expr.key_expr,
 			put_callback: Some(put_callback.callback),

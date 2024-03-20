@@ -86,8 +86,7 @@ impl<S> PublisherBuilder<NoKeyExpression, S> {
 		let key_expr = self
 			.prefix
 			.take()
-			.unwrap_or_else(|| String::from(topic))
-			+ "/" + topic;
+			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
 		let Self {
 			prefix, storage, ..
 		} = self;
@@ -104,6 +103,7 @@ impl<S> PublisherBuilder<KeyExpression, S> {
 	/// # Errors
 	///
 	pub fn build(self) -> Result<Publisher> {
+		dbg!(&self.key_expr.key_expr);
 		Ok(Publisher {
 			key_expr: self.key_expr.key_expr,
 			publisher: None,

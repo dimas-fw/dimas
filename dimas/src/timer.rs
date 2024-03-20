@@ -7,6 +7,7 @@
 use crate::{prelude::*, utils::TaskSignal};
 use std::{
 	fmt::Debug,
+	marker::PhantomData,
 	sync::{mpsc::Sender, Mutex},
 	time::Duration,
 };
@@ -62,12 +63,13 @@ pub struct TimerBuilder<P, K, I, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	pub(crate) context: ArcContext<P>,
+	prefix: Option<String>,
 	pub(crate) key_expr: K,
 	pub(crate) interval: I,
 	pub(crate) callback: C,
 	pub(crate) storage: S,
 	pub(crate) delay: Option<Duration>,
+	phantom: PhantomData<P>,
 }
 
 impl<P> TimerBuilder<P, NoKeyExpression, NoInterval, NoIntervalCallback, NoStorage>
@@ -76,14 +78,15 @@ where
 {
 	/// Construct a `TimerBuilder` in initial state
 	#[must_use]
-	pub const fn new(context: ArcContext<P>) -> Self {
+	pub const fn new(prefix: Option<String>) -> Self {
 		Self {
-			context,
+			prefix,
 			key_expr: NoKeyExpression,
 			interval: NoInterval,
 			callback: NoIntervalCallback,
 			storage: NoStorage,
 			delay: None,
+			phantom: PhantomData,
 		}
 	}
 }
@@ -108,15 +111,16 @@ where
 	#[must_use]
 	pub fn key_expr(self, key_expr: &str) -> TimerBuilder<P, KeyExpression, I, C, S> {
 		let Self {
-			context,
+			prefix,
 			interval,
 			callback,
 			storage,
 			delay,
+			phantom,
 			..
 		} = self;
 		TimerBuilder {
-			context,
+			prefix,
 			key_expr: KeyExpression {
 				key_expr: key_expr.into(),
 			},
@@ -124,29 +128,35 @@ where
 			callback,
 			storage,
 			delay,
+			phantom,
 		}
 	}
 
 	/// Set only the name of the timer.
 	/// Will be prefixed with agents prefix.
 	#[must_use]
-	pub fn name(self, topic: &str) -> TimerBuilder<P, KeyExpression, I, C, S> {
-		let key_expr = self.context.key_expr(topic);
+	pub fn name(mut self, topic: &str) -> TimerBuilder<P, KeyExpression, I, C, S> {
+		let key_expr = self
+			.prefix
+			.take()
+			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
 		let Self {
-			context,
+			prefix,
 			interval,
 			callback,
 			storage,
 			delay,
+			phantom,
 			..
 		} = self;
 		TimerBuilder {
-			context,
+			prefix,
 			key_expr: KeyExpression { key_expr },
 			interval,
 			callback,
 			storage,
 			delay,
+			phantom,
 		}
 	}
 }
@@ -159,20 +169,22 @@ where
 	#[must_use]
 	pub fn interval(self, interval: Duration) -> TimerBuilder<P, K, Interval, C, S> {
 		let Self {
-			context,
+			prefix,
 			key_expr: name,
 			callback,
 			storage,
 			delay,
+			phantom,
 			..
 		} = self;
 		TimerBuilder {
-			context,
+			prefix,
 			key_expr: name,
 			interval: Interval { interval },
 			callback,
 			storage,
 			delay,
+			phantom,
 		}
 	}
 }
@@ -188,21 +200,23 @@ where
 		F: FnMut(&ArcContext<P>) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
-			context,
+			prefix,
 			key_expr: name,
 			interval,
 			storage,
 			delay,
+			phantom,
 			..
 		} = self;
 		let callback: TimerCallback<P> = Arc::new(Mutex::new(Some(Box::new(callback))));
 		TimerBuilder {
-			context,
+			prefix,
 			key_expr: name,
 			interval,
 			callback: IntervalCallback { callback },
 			storage,
 			delay,
+			phantom,
 		}
 	}
 }
@@ -219,20 +233,22 @@ where
 		storage: Arc<RwLock<std::collections::HashMap<String, Timer<P>>>>,
 	) -> TimerBuilder<P, K, I, C, Storage<P>> {
 		let Self {
-			context,
+			prefix,
 			key_expr: name,
 			interval,
 			callback,
 			delay,
+			phantom,
 			..
 		} = self;
 		TimerBuilder {
-			context,
+			prefix,
 			key_expr: name,
 			interval,
 			callback,
 			storage: Storage { storage },
 			delay,
+			phantom,
 		}
 	}
 }
@@ -246,7 +262,6 @@ where
 	///
 	pub fn build(self) -> Result<Timer<P>> {
 		let Self {
-			context,
 			key_expr: name,
 			interval,
 			callback,
@@ -256,7 +271,6 @@ where
 
 		match delay {
 			Some(delay) => Ok(Timer::DelayedInterval {
-				context,
 				name: name.key_expr,
 				delay,
 				interval: interval.interval,
@@ -264,7 +278,6 @@ where
 				handle: None,
 			}),
 			None => Ok(Timer::Interval {
-				context,
 				name: name.key_expr,
 				interval: interval.interval,
 				callback: Some(callback.callback),
@@ -313,8 +326,6 @@ where
 		callback: Option<TimerCallback<P>>,
 		/// The handle to stop the Timer
 		handle: Option<JoinHandle<()>>,
-		/// The agents Context available within the callback function
-		context: ArcContext<P>,
 	},
 	/// A delayed Timer with an Interval
 	DelayedInterval {
@@ -328,8 +339,6 @@ where
 		callback: Option<TimerCallback<P>>,
 		/// The handle to stop the Timer
 		handle: Option<JoinHandle<()>>,
-		/// The agents Context available within the callback function
-		context: ArcContext<P>,
 	},
 }
 
@@ -361,7 +370,7 @@ where
 	/// Start or restart the timer
 	/// An already running timer will be stopped, eventually damaged Mutexes will be repaired
 	#[instrument(level = Level::TRACE, skip_all)]
-	pub fn start(&mut self, tx: Sender<TaskSignal>) {
+	pub fn start(&mut self, ctx: ArcContext<P>, tx: Sender<TaskSignal>) {
 		self.stop();
 
 		#[cfg(not(feature = "timer"))]
@@ -373,7 +382,6 @@ where
 				interval,
 				callback,
 				handle,
-				context,
 			} => {
 				{
 					if let Some(cb) = callback.clone() {
@@ -386,7 +394,6 @@ where
 
 				let interval = *interval;
 				let cb = callback.clone();
-				let ctx = context.clone();
 
 				#[cfg(not(feature = "timer"))]
 				let _key = name.clone();
@@ -411,7 +418,6 @@ where
 				interval,
 				callback,
 				handle,
-				context,
 			} => {
 				{
 					if let Some(cb) = callback.clone() {
@@ -425,7 +431,6 @@ where
 				let delay = *delay;
 				let interval = *interval;
 				let cb = callback.clone();
-				let ctx = context.clone();
 
 				#[cfg(not(feature = "timer"))]
 				let _key = name.clone();
@@ -457,7 +462,6 @@ where
 				interval: _,
 				callback: _,
 				handle,
-				context: _,
 			}
 			| Self::DelayedInterval {
 				name: _,
@@ -465,7 +469,6 @@ where
 				interval: _,
 				callback: _,
 				handle,
-				context: _,
 			} => {
 				if let Some(handle) = handle.take() {
 					handle.abort();

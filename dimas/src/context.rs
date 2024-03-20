@@ -29,7 +29,12 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::ops::Deref;
 use std::sync::mpsc::Sender;
-use tracing::{error, instrument, Level};
+#[cfg(any(
+	feature = "publisher",
+	feature = "query",
+))]
+use tracing::error;
+use tracing::{instrument, Level};
 use zenoh::publication::Publisher;
 use zenoh::query::ConsolidationMode;
 // endregion:	--- modules
@@ -171,7 +176,7 @@ where
 			.map_err(|_| DimasError::ShouldNotHappen)?
 			.iter_mut()
 			.for_each(|timer| {
-				timer.1.start(tx.clone());
+				timer.1.start(self.clone(), tx.clone());
 			});
 
 		Ok(())
@@ -393,7 +398,7 @@ where
 		crate::timer::NoIntervalCallback,
 		crate::timer::Storage<P>,
 	> {
-		TimerBuilder::new(self.clone()).storage(self.timers.clone())
+		TimerBuilder::new(self.prefix()).storage(self.timers.clone())
 	}
 	/// Get a builder for a [`Timer`]
 	#[cfg(not(feature = "timer"))]
@@ -407,7 +412,7 @@ where
 		crate::timer::NoIntervalCallback,
 		crate::timer::NoStorage,
 	> {
-		TimerBuilder::new(self.clone())
+		TimerBuilder::new(self.prefix())
 	}
 }
 // endregion:	--- ArcContext
@@ -502,11 +507,6 @@ where
 		self.communicator.prefix()
 	}
 
-	#[must_use]
-	pub(crate) fn key_expr(&self, topic: &str) -> String {
-		self.communicator.key_expr(topic)
-	}
-
 	/// Gives read access to the `Agent`s properties
 	/// # Errors
 	pub fn read(&self) -> Result<std::sync::RwLockReadGuard<'_, P>> {
@@ -550,7 +550,10 @@ where
 	where
 		M: Debug + Encode,
 	{
-		let key_expr = self.key_expr(topic);
+		let key_expr = self
+			.prefix()
+			.take()
+			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
 		if self
 			.publishers
 			.read()
@@ -582,7 +585,10 @@ where
 	#[cfg(feature = "publisher")]
 	#[instrument(level = Level::ERROR, skip_all)]
 	pub fn delete_with(&self, topic: &str) -> Result<()> {
-		let key_expr = self.key_expr(topic);
+		let key_expr = self
+			.prefix()
+			.take()
+			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
 		if self
 			.publishers
 			.read()
@@ -618,7 +624,10 @@ where
 	#[cfg(feature = "query")]
 	#[instrument(level = Level::ERROR, skip_all)]
 	pub fn get_with(&self, topic: &str) -> Result<()> {
-		let key_expr = self.key_expr(topic);
+		let key_expr = self
+			.prefix()
+			.take()
+			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
 		if self
 			.queries
 			.read()
