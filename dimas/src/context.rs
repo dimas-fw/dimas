@@ -143,8 +143,8 @@ where
 			.for_each(|publisher| {
 				if let Err(reason) = publisher.1.init(self) {
 					error!(
-						"could not initialize publisher for {}",
-						publisher.1.key_expr
+						"could not initialize publisher for {}, reason: {}",
+						publisher.1.key_expr, reason
 					);
 				};
 			});
@@ -157,7 +157,10 @@ where
 			.iter_mut()
 			.for_each(|query| {
 				if let Err(reason) = query.1.init(self) {
-					error!("could not initialize publisher for {}", query.1.key_expr);
+					error!(
+						"could not initialize query for {}, reason: {}",
+						query.1.key_expr, reason
+					);
 				};
 			});
 
@@ -187,6 +190,36 @@ where
 			.iter_mut()
 			.for_each(|timer| {
 				timer.1.stop();
+			});
+
+		// de-init all registered queries
+		#[cfg(feature = "query")]
+		self.queries
+			.write()
+			.map_err(|_| DimasError::ShouldNotHappen)?
+			.iter_mut()
+			.for_each(|query| {
+				if let Err(reason) = query.1.de_init() {
+					error!(
+						"could not de-initialize query for {}, reason: {}",
+						query.1.key_expr, reason
+					);
+				};
+			});
+
+		// init all registered publishers
+		#[cfg(feature = "publisher")]
+		self.publishers
+			.write()
+			.map_err(|_| DimasError::ShouldNotHappen)?
+			.iter_mut()
+			.for_each(|publisher| {
+				if let Err(reason) = publisher.1.de_init() {
+					error!(
+						"could not de-initialize publisher for {}, reason: {}",
+						publisher.1.key_expr, reason
+					);
+				};
 			});
 
 		#[cfg(feature = "liveliness")]

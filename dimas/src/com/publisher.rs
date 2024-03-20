@@ -161,6 +161,13 @@ impl Publisher
 		Ok(())
 	}
 
+	/// De-Initialize
+	/// # Errors
+	pub fn de_init(&mut self) -> Result<()> {
+		self.publisher.take();
+		Ok(())
+	}
+
 	/// Send a "put" message
 	/// # Errors
 	///

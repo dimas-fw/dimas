@@ -289,6 +289,16 @@ where
 		Ok(())
 	}
 
+	/// De-Initialize
+	/// # Errors
+	pub fn de_init(&mut self) -> Result<()>
+	where
+		P: Send + Sync + Unpin + 'static,
+	{
+		self.context.take();
+		Ok(())
+	}
+
 	/// run a query
 	#[instrument(name="query", level = Level::ERROR, skip_all)]
 	pub fn get(&self) -> Result<()> {
