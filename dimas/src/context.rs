@@ -2,7 +2,7 @@
 
 //! [`Context`] is the representation of an [`Agent`]'s internal and user defined properties.
 //! Never use it directly but through [`ArcContext`], which provides thread safe access.
-//! 
+//!
 //! # Examples
 //! ```rust,no_run
 //! # use dimas::prelude::*;

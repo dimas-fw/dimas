@@ -4,7 +4,7 @@
 //! A `LivelinessSubscriber` can optional subscribe on a delete message.
 
 // region:		--- modules
-use crate::{utils::TaskSignal, prelude::*};
+use crate::{prelude::*, utils::TaskSignal};
 use std::{
 	sync::{mpsc::Sender, Mutex},
 	time::Duration,
@@ -304,22 +304,23 @@ where
 		let ctx = self.context.clone();
 		let key_expr = self.key_expr.clone();
 
-		self.handle.replace(tokio::task::spawn(async move {
-			#[cfg(feature = "liveliness")]
-			let key = key_expr.clone();
-			std::panic::set_hook(Box::new(move |reason| {
-				error!("liveliness subscriber panic: {}", reason);
+		self.handle
+			.replace(tokio::task::spawn(async move {
 				#[cfg(feature = "liveliness")]
-				if let Err(reason) = tx.send(TaskSignal::RestartLiveliness(key.clone())) {
-					error!("could not restart liveliness subscriber: {}", reason);
-				} else {
-					info!("restarting liveliness subscriber!");
+				let key = key_expr.clone();
+				std::panic::set_hook(Box::new(move |reason| {
+					error!("liveliness subscriber panic: {}", reason);
+					#[cfg(feature = "liveliness")]
+					if let Err(reason) = tx.send(TaskSignal::RestartLiveliness(key.clone())) {
+						error!("could not restart liveliness subscriber: {}", reason);
+					} else {
+						info!("restarting liveliness subscriber!");
+					};
+				}));
+				if let Err(error) = run_liveliness(key_expr, p_cb, d_cb, ctx).await {
+					error!("spawning liveliness subscriber failed with {error}");
 				};
 			}));
-			if let Err(error) = run_liveliness(key_expr, p_cb, d_cb, ctx).await {
-				error!("spawning liveliness subscriber failed with {error}");
-			};
-		}));
 	}
 
 	/// Stop a running LivelinessSubscriber

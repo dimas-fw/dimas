@@ -86,13 +86,13 @@ where
 	}
 }
 
-/// Enables thread safe access to [`Context`] including [`Agent`]s properties.
+/// Enables thread safe access to [`Context`] which is managing [`Agent`]s properties.
 impl<'a, P> Deref for Agent<'a, P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
 	type Target = ArcContext<P>;
-	/// Enables thread safe access to [`Context`] including properties.
+	/// Enables thread safe access to [`Context`].
 	fn deref(&self) -> &Self::Target {
 		&self.context
 	}

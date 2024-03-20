@@ -4,7 +4,7 @@
 //! A `Subscriber` can optional subscribe on a delete message.
 
 // region:		--- modules
-use crate::{utils::TaskSignal, prelude::*};
+use crate::{prelude::*, utils::TaskSignal};
 use std::sync::{mpsc::Sender, Mutex};
 use tokio::task::JoinHandle;
 #[cfg(feature = "subscriber")]
@@ -329,22 +329,23 @@ where
 		let d_cb = self.delete_callback.clone();
 		let ctx = self.context.clone();
 
-		self.handle.replace(tokio::task::spawn(async move {
-			#[cfg(feature = "subscriber")]
-			let key = key_expr.clone();
-			std::panic::set_hook(Box::new(move |reason| {
-				error!("subscriber panic: {}", reason);
+		self.handle
+			.replace(tokio::task::spawn(async move {
 				#[cfg(feature = "subscriber")]
-				if let Err(reason) = tx.send(TaskSignal::RestartSubscriber(key.clone())) {
-					error!("could not restart subscriber: {}", reason);
-				} else {
-					info!("restarting subscriber!");
+				let key = key_expr.clone();
+				std::panic::set_hook(Box::new(move |reason| {
+					error!("subscriber panic: {}", reason);
+					#[cfg(feature = "subscriber")]
+					if let Err(reason) = tx.send(TaskSignal::RestartSubscriber(key.clone())) {
+						error!("could not restart subscriber: {}", reason);
+					} else {
+						info!("restarting subscriber!");
+					};
+				}));
+				if let Err(error) = run_subscriber(key_expr, p_cb, d_cb, ctx).await {
+					error!("spawning subscriber failed with {error}");
 				};
 			}));
-			if let Err(error) = run_subscriber(key_expr, p_cb, d_cb, ctx).await {
-				error!("spawning subscriber failed with {error}");
-			};
-		}));
 	}
 
 	/// Stop a running Subscriber
