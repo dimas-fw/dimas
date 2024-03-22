@@ -5,6 +5,8 @@
 
 // region:		--- modules
 use crate::{prelude::*, utils::TaskSignal};
+#[allow(unused_imports)]
+use std::collections::HashMap;
 use std::sync::{mpsc::Sender, Mutex};
 use tokio::task::JoinHandle;
 #[cfg(feature = "subscriber")]
@@ -34,25 +36,34 @@ pub type SubscriberDeleteCallback<P> = Arc<
 // endregion:	--- types
 
 // region:		--- states
+/// State signaling that the [`SubscriberBuilder`] has no storage value set
 pub struct NoStorage;
+/// State signaling that the [`SubscriberBuilder`] has the storage value set
 #[cfg(feature = "subscriber")]
 pub struct Storage<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// Thread safe reference to a [`HashMap`] to store the created [`Subscriber`]
 	pub storage: Arc<RwLock<std::collections::HashMap<String, Subscriber<P>>>>,
 }
 
+/// State signaling that the [`SubscriberBuilder`] has no key expression value set
 pub struct NoKeyExpression;
+/// State signaling that the [`SubscriberBuilder`] has the key expression value set
 pub struct KeyExpression {
+	/// The key expression
 	key_expr: String,
 }
 
+/// State signaling that the [`SubscriberBuilder`] has no put callback value set
 pub struct NoPutCallback;
+/// State signaling that the [`SubscriberBuilder`] has the put callback value set
 pub struct PutCallback<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// Put callback for the [`Subscriber`]
 	pub callback: SubscriberPutCallback<P>,
 }
 // endregion:	--- states
@@ -150,8 +161,7 @@ where
 		let key_expr = self
 			.prefix
 			.take()
-			.unwrap_or_else(|| String::from(topic))
-			+ "/" + topic;
+			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
 		let Self {
 			prefix,
 			storage,
@@ -239,6 +249,7 @@ where
 			delete_callback,
 			..
 		} = self;
+		dbg!(&key_expr.key_expr);
 		Ok(Subscriber {
 			key_expr: key_expr.key_expr,
 			put_callback: Some(put_callback.callback),

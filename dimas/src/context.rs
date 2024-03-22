@@ -1,11 +1,26 @@
 // Copyright © 2023 Stephan Kunz
 
 //! [`Context`] is the representation of an [`Agent`]'s internal and user defined properties.
-//! Never use it directly but through [`ArcContext`], which provides thread safe access.
+//! Never use it directly but through the created [`ArcContext`], which provides thread safe access.
+//! A reference to this wrapper is handed into every callback function.
 //!
 //! # Examples
 //! ```rust,no_run
 //! # use dimas::prelude::*;
+//! // The [`Agent`]s properties
+//! #[derive(Debug)]
+//! struct AgentProps {
+//!   counter: i32,
+//! }
+//! // A [`Timer`] callback
+//! fn timer_callback(context: &ArcContext<AgentProps>) -> Result<()> {
+//!   // reading properties
+//!   let mut value = context.read()?.counter;
+//!   value +=1;
+//!   // writing properties
+//!   context.write()?.counter = value;
+//!   Ok(())
+//! }
 //! # #[tokio::main(flavor = "multi_thread")]
 //! # async fn main() -> Result<()> {
 //! # Ok(())
@@ -29,7 +44,9 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::ops::Deref;
 use std::sync::mpsc::Sender;
-use tracing::{error, instrument, Level};
+#[cfg(any(feature = "publisher", feature = "query",))]
+use tracing::error;
+use tracing::{instrument, Level};
 use zenoh::publication::Publisher;
 use zenoh::query::ConsolidationMode;
 // endregion:	--- modules
@@ -48,7 +65,7 @@ const INITIAL_SIZE: usize = 9;
 // endregion:	--- types
 
 // region:		--- ArcContext
-/// `ArcContext` is a thread safe atomic reference counted [`Context`]. <br>
+/// `ArcContext` is a thread safe atomic reference counted [`Context`].<br>
 /// It makes all relevant data of the agent accessible in a thread safe way via accessor methods.
 #[derive(Debug)]
 #[allow(clippy::module_name_repetitions)]
@@ -96,7 +113,16 @@ impl<P> ArcContext<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	/// Internal function for starting all registered tasks
+	/// Internal function for starting all registered tasks.<br>
+	/// The tasks are started in the order
+	/// - [`Queryable`]s
+	/// - [`Subscriber`]s
+	/// - [`LivelinessSubscriber`]s and last
+	/// - [`Timer`]s
+	/// Beforehand of starting the [`Timer`]s ther is the initialisation of the
+	/// - [`Publisher`]s and the
+	/// - [`Query`]s
+	///
 	/// # Errors
 	/// Currently none
 	#[allow(unused_variables)]
@@ -171,16 +197,18 @@ where
 			.map_err(|_| DimasError::ShouldNotHappen)?
 			.iter_mut()
 			.for_each(|timer| {
-				timer.1.start(tx.clone());
+				timer.1.start(self.clone(), tx.clone());
 			});
 
 		Ok(())
 	}
 
-	/// Internal function for stopping all registered tasks
+	/// Internal function for stopping all registered tasks.<br>
+	/// The tasks are stopped in reverse order of their start in [`ArcContext::start_registered_tasks()`]
+	///
 	/// # Errors
 	/// Currently none
-	pub fn stop_registered_tasks(&mut self) -> Result<()> {
+	pub(crate) fn stop_registered_tasks(&mut self) -> Result<()> {
 		// reverse order of start!
 		// stop all registered timers
 		#[cfg(feature = "timer")]
@@ -393,7 +421,7 @@ where
 		crate::timer::NoIntervalCallback,
 		crate::timer::Storage<P>,
 	> {
-		TimerBuilder::new(self.clone()).storage(self.timers.clone())
+		TimerBuilder::new(self.prefix()).storage(self.timers.clone())
 	}
 	/// Get a builder for a [`Timer`]
 	#[cfg(not(feature = "timer"))]
@@ -407,7 +435,7 @@ where
 		crate::timer::NoIntervalCallback,
 		crate::timer::NoStorage,
 	> {
-		TimerBuilder::new(self.clone())
+		TimerBuilder::new(self.prefix())
 	}
 }
 // endregion:	--- ArcContext
@@ -419,23 +447,26 @@ pub struct Context<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	/// The agents property structure
+	/// The [`Agent`]s property structure
 	pub(crate) props: Arc<RwLock<P>>,
+	/// The [`Agent`]s [`Communicator`]
 	pub(crate) communicator: Arc<Communicator>,
-	// registered liveliness subscribers
+	/// Registered [`LivelinessSubscriber`]
 	#[cfg(feature = "liveliness")]
 	pub(crate) liveliness_subscribers: Arc<RwLock<HashMap<String, LivelinessSubscriber<P>>>>,
+	/// Registered [`Publisher`]
 	#[cfg(feature = "publisher")]
 	pub(crate) publishers: Arc<RwLock<HashMap<String, crate::com::publisher::Publisher>>>,
+	/// Registered [`Query`]s
 	#[cfg(feature = "query")]
 	pub(crate) queries: Arc<RwLock<HashMap<String, crate::com::query::Query<P>>>>,
-	// registered queryables
+	/// Registered [`Queryable`]s
 	#[cfg(feature = "queryable")]
 	pub(crate) queryables: Arc<RwLock<HashMap<String, Queryable<P>>>>,
-	// registered subscribers
+	/// Registered [`Subscriber`]
 	#[cfg(feature = "subscriber")]
 	pub(crate) subscribers: Arc<RwLock<HashMap<String, Subscriber<P>>>>,
-	// registered timer
+	/// Registered [`Timer`]
 	#[cfg(feature = "timer")]
 	pub(crate) timers: Arc<RwLock<HashMap<String, Timer<P>>>>,
 }
@@ -444,11 +475,14 @@ impl<P> Context<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	/// Constructor for the `Context`
-	pub(crate) fn new(config: Config, props: P) -> Result<Self> {
-		let communicator = Arc::new(Communicator::new(config)?);
+	/// Constructor for the [`Context`]
+	pub(crate) fn new(config: Config, props: P, prefix: Option<String>) -> Result<Self> {
+		let mut communicator = Communicator::new(config)?;
+		if let Some(prefix) = prefix {
+			communicator.set_prefix(prefix);
+		}
 		Ok(Self {
-			communicator,
+			communicator: Arc::new(communicator),
 			props: Arc::new(RwLock::new(props)),
 			#[cfg(feature = "liveliness")]
 			liveliness_subscribers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
@@ -465,49 +499,20 @@ where
 		})
 	}
 
-	/// Constructor for the `Context` with a prefix
-	pub(crate) fn new_with_prefix(
-		config: Config,
-		props: P,
-		prefix: impl Into<String>,
-	) -> Result<Self> {
-		let communicator = Arc::new(Communicator::new_with_prefix(config, prefix)?);
-		Ok(Self {
-			communicator,
-			props: Arc::new(RwLock::new(props)),
-			#[cfg(feature = "liveliness")]
-			liveliness_subscribers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
-			#[cfg(feature = "publisher")]
-			publishers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
-			#[cfg(feature = "query")]
-			queries: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
-			#[cfg(feature = "query")]
-			queryables: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
-			#[cfg(feature = "subscriber")]
-			subscribers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
-			#[cfg(feature = "timer")]
-			timers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
-		})
-	}
-
-	/// Get the agents uuid
+	/// Get the [`Agent`]s uuid
 	#[must_use]
 	pub fn uuid(&self) -> String {
 		self.communicator.uuid()
 	}
 
-	/// Get the agents prefix
+	/// Get the [`Agent`]s prefix
 	#[must_use]
 	pub fn prefix(&self) -> Option<String> {
 		self.communicator.prefix()
 	}
 
-	#[must_use]
-	pub(crate) fn key_expr(&self, topic: &str) -> String {
-		self.communicator.key_expr(topic)
-	}
-
-	/// Gives read access to the `Agent`s properties
+	/// Gives read access to the [`Agent`]s properties
+	///
 	/// # Errors
 	pub fn read(&self) -> Result<std::sync::RwLockReadGuard<'_, P>> {
 		self.props
@@ -515,7 +520,8 @@ where
 			.map_err(|_| DimasError::ReadProperties.into())
 	}
 
-	/// Gives write access to the `Agent`s properties
+	/// Gives write access to the [`Agent`]s properties
+	///
 	/// # Errors
 	pub fn write(&self) -> Result<std::sync::RwLockWriteGuard<'_, P>> {
 		self.props
@@ -523,6 +529,7 @@ where
 			.map_err(|_| DimasError::WriteProperties.into())
 	}
 
+	/// Create a [`Publisher`]
 	pub(crate) fn create_publisher<'publisher>(
 		&self,
 		key_expr: &str,
@@ -531,8 +538,9 @@ where
 	}
 
 	/// Method to do an ad hoc publishing
+	///
 	/// # Errors
-	///   Error is propagated from [`Communicator::put`]
+	///   Error is propagated from [`Communicator::put()`]
 	#[instrument(level = Level::ERROR, skip_all)]
 	pub fn put<M>(&self, topic: &str, message: M) -> Result<()>
 	where
@@ -541,7 +549,8 @@ where
 		self.communicator.put(topic, message)
 	}
 
-	/// Method to pubish data with a stored Publisher
+	/// Method to pubish data with a stored [`Publisher`]
+	///
 	/// # Errors
 	///
 	#[cfg(feature = "publisher")]
@@ -550,7 +559,10 @@ where
 	where
 		M: Debug + Encode,
 	{
-		let key_expr = self.key_expr(topic);
+		let key_expr = self
+			.prefix()
+			.take()
+			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
 		if self
 			.publishers
 			.read()
@@ -569,6 +581,7 @@ where
 	}
 
 	/// Method to do an ad hoc deletion
+	///
 	/// # Errors
 	///   Error is propagated from Communicator
 	#[instrument(level = Level::ERROR, skip_all)]
@@ -576,13 +589,17 @@ where
 		self.communicator.delete(topic)
 	}
 
-	/// Method to delete data with a stored Publisher
+	/// Method to delete data with a stored [`Publisher`]
+	///
 	/// # Errors
 	///
 	#[cfg(feature = "publisher")]
 	#[instrument(level = Level::ERROR, skip_all)]
 	pub fn delete_with(&self, topic: &str) -> Result<()> {
-		let key_expr = self.key_expr(topic);
+		let key_expr = self
+			.prefix()
+			.take()
+			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
 		if self
 			.publishers
 			.read()
@@ -602,6 +619,9 @@ where
 
 	/// Method to do an ad hoc query without any consolidation of answers.
 	/// Multiple answers may be received for the same timestamp.
+	///
+	/// #Errors
+	///
 	#[instrument(level = Level::ERROR, skip_all)]
 	pub fn get<F>(&self, ctx: ArcContext<P>, query_name: &str, callback: F) -> Result<()>
 	where
@@ -613,12 +633,16 @@ where
 	}
 
 	/// Method to query data with a stored Query
+	///
 	/// # Errors
 	///
 	#[cfg(feature = "query")]
 	#[instrument(level = Level::ERROR, skip_all)]
 	pub fn get_with(&self, topic: &str) -> Result<()> {
-		let key_expr = self.key_expr(topic);
+		let key_expr = self
+			.prefix()
+			.take()
+			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
 		if self
 			.queries
 			.read()

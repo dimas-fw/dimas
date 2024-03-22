@@ -4,6 +4,8 @@
 
 // region:		--- modules
 use crate::{prelude::*, utils::TaskSignal};
+#[allow(unused_imports)]
+use std::collections::HashMap;
 use std::{
 	fmt::Debug,
 	marker::PhantomData,
@@ -29,25 +31,34 @@ pub type QueryableCallback<P> = Arc<
 // endregion:	--- types
 
 // region:		--- states
+/// State signaling that the [`QueryableBuilder`] has no storage value set
 pub struct NoStorage;
+/// State signaling that the [`QueryableBuilder`] has the storage value set
 #[cfg(feature = "queryable")]
 pub struct Storage<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// Thread safe reference to a [`HashMap`] to store the created [`Queryable`]
 	pub storage: Arc<RwLock<std::collections::HashMap<String, Queryable<P>>>>,
 }
 
+/// State signaling that the [`QueryableBuilder`] has no key expression set
 pub struct NoKeyExpression;
+/// State signaling that the [`QueryableBuilder`] has the key expression set
 pub struct KeyExpression {
+	/// The key expression
 	key_expr: String,
 }
 
+/// State signaling that the [`QueryableBuilder`] has no request callback set
 pub struct NoRequestCallback;
+/// State signaling that the [`QueryableBuilder`] has the request callback set
 pub struct RequestCallback<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// Request callback for the [`Queryable`]
 	pub request: QueryableCallback<P>,
 }
 
@@ -115,8 +126,7 @@ where
 		let key_expr = self
 			.prefix
 			.take()
-			.unwrap_or_else(|| String::from(topic))
-			+ "/" + topic;
+			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
 		let Self {
 			prefix,
 			storage,

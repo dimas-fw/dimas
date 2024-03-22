@@ -195,6 +195,6 @@ It is necessary to enable all those features you want to use within your `Agent`
 - `liveliness`: Enables listening and reacting on liveliness tokens. Sending tokens is always possible.
 - `publisher`: Enables to store `Publisher` within the `Agent`s `Context`.
 - `query`: Enables to store `Query`s within the `Agent`s `Context`.
-- `queryable`: Enables to store `Queryable`a within the `Agent`s `Context`.
+- `queryable`: Enables to store `Queryable`s within the `Agent`s `Context`.
 - `subscriber`: Enables to store `Subscriber` within the `Agent`s `Context`.
 - `timer`: Enables to store `Timer` within the `Agent`s `Context`.

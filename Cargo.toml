@@ -58,6 +58,6 @@ zenoh = { version = "0.10.1-rc", features = ["unstable"] } # "shared-memory" ,"t
 [profile.release]
 opt-level = 'z'   # Optimize for size.
 lto = true        # Enable Link Time Optimisation
-codegen-units = 1 # Reduced to increase optimisations.
+codegen-units = 1 # Reduced to increase optimisations
 panic = 'abort'   # Abort on panic
 strip = "symbols" # Strip symbols from binary

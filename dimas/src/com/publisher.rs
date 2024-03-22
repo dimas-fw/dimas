@@ -4,20 +4,28 @@
 
 // region:		--- modules
 use crate::prelude::*;
+#[allow(unused_imports)]
+use std::collections::HashMap;
 use std::fmt::Debug;
 use tracing::{instrument, Level};
 use zenoh::prelude::sync::SyncResolve;
 // endregion:	--- modules
 
 // region:		--- states
+/// State signaling that the [`PublisherBuilder`] has no storage value set
 pub struct NoStorage;
 #[cfg(feature = "publisher")]
+/// State signaling that the [`PublisherBuilder`] has the storage value set
 pub struct Storage {
+	/// Thread safe reference to a [`HashMap`] to store the created [`Publisher`]
 	pub storage: Arc<RwLock<std::collections::HashMap<String, Publisher>>>,
 }
 
+/// State signaling that the [`PublisherBuilder`] has no key expression set
 pub struct NoKeyExpression;
+/// State signaling that the [`PublisherBuilder`] has the key expression set
 pub struct KeyExpression {
+	/// The key expression
 	key_expr: String,
 }
 // endregion:	--- states
@@ -86,8 +94,7 @@ impl<S> PublisherBuilder<NoKeyExpression, S> {
 		let key_expr = self
 			.prefix
 			.take()
-			.unwrap_or_else(|| String::from(topic))
-			+ "/" + topic;
+			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
 		let Self {
 			prefix, storage, ..
 		} = self;
@@ -104,6 +111,7 @@ impl<S> PublisherBuilder<KeyExpression, S> {
 	/// # Errors
 	///
 	pub fn build(self) -> Result<Publisher> {
+		dbg!(&self.key_expr.key_expr);
 		Ok(Publisher {
 			key_expr: self.key_expr.key_expr,
 			publisher: None,
