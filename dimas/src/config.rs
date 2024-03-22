@@ -2,20 +2,23 @@
 
 //! The [`Config`]uration data for an [`Agent`].
 //!
+//! An Agents configuration can be defined using json5 formated files.
+//! There is a set of read methods for predefined filenames available.
+//! You can find some example files [here](https://github.com/dimas-fw/dimas/tree/main/.config)
+//!
 //! # Examples
 //! ```rust,no_run
 //! # use dimas::prelude::*;
 //! # #[tokio::main(flavor = "multi_thread")]
 //! # async fn main() -> Result<()> {
 //! // create a configuration from a file named `default.json5`
-//! // located in one of the directories listed below
-//! // if that file does not exit, a default config will be created
+//! // located in one of the directories listed below.
+//! // If that file does not exist, a default config will be created
 //! let config = Config::default();
 //!
 //! let config = Config::from_file("filename.sfx")?;    // use file named `filename.sfx`
 //!
-//! // a few more methods with standard filenames
-//! // [example files](https://github.com/dimas-fw/dimas/tree/main/.config)
+//! // methods with predefined filenames
 //! let config = Config::local()?;        // use file named `local.json5`
 //! let config = Config::peer()?;         // use file named `peer.json5`
 //! let config = Config::client()?;       // use file named `client.json5`
@@ -37,8 +40,8 @@
 //!
 
 // region:		--- modules
-//#[allow(unused_imports)]
-//use crate::agent::ConfiguredAgent;
+#[allow(unused_imports)]
+use crate::agent::Agent;
 // endregion:	--- modules
 
 // region:		--- modules
@@ -111,6 +114,7 @@ impl Config {
 	/// Create a configuration based on file named `local.json5`.<br>
 	/// Will search in the directories mentioned in [`Examples`](index.html#examples).<br>
 	/// This file should contain a configuration that only connects to [`Agent`]s on same host.
+	///
 	/// # Errors
 	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.
 	pub fn local() -> Result<Self> {
@@ -124,6 +128,7 @@ impl Config {
 	/// Create a configuration based on file named `low_latency.json5`.<br>
 	/// Will search in the directories mentioned in [`Examples`](index.html#examples).<br>
 	/// This file should contain a configuration that only connects to [`Agent`]s on same host.
+	///
 	/// # Errors
 	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.
 	pub fn low_latency() -> Result<Self> {
@@ -137,6 +142,7 @@ impl Config {
 	/// Create a configuration based on file named `client.json5`.<br>
 	/// Will search in the directories mentioned in [`Examples`](index.html#examples).<br>
 	/// This file should contain a configuration that creates an [`Agent`] in client mode.
+	///
 	/// # Errors
 	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.
 	pub fn client() -> Result<Self> {
@@ -150,6 +156,7 @@ impl Config {
 	/// Create a configuration based on file named `peer.json5`.<br>
 	/// Will search in the directories mentioned in [`Examples`](index.html#examples).<br>
 	/// This file should contain a configuration that creates an [`Agent`] in peer mode.
+	///
 	/// # Errors
 	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.
 	pub fn peer() -> Result<Self> {
@@ -163,6 +170,7 @@ impl Config {
 	/// Create a configuration based on file named `router.json5`.<br>
 	/// Will search in the directories mentioned in [`Examples`](index.html#examples).<br>
 	/// This file should contain a configuration that creates an [`Agent`] in router mode.
+	///
 	/// # Errors
 	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.
 	pub fn router() -> Result<Self> {
@@ -176,6 +184,7 @@ impl Config {
 
 	/// Create a configuration based on file with given filename.<br>
 	/// Will search in the directories mentioned in [`Examples`](index.html#examples).<br>
+	///
 	/// # Errors
 	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.
 	pub fn from_file(filename: &str) -> Result<Self> {
@@ -186,7 +195,7 @@ impl Config {
 		Ok(cfg)
 	}
 
-	/// Internal method to reate a zenoh configuration from [`Config`].<br>
+	/// Internal method to create a zenoh configuration from [`Config`].<br>
 	/// Can be passed to `zenoh::open()`.
 	#[must_use]
 	pub(crate) fn zenoh_config(&self) -> zenoh::config::Config {

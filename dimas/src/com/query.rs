@@ -4,13 +4,14 @@
 
 // region:		--- modules
 use crate::prelude::*;
+#[allow(unused_imports)]
+use std::collections::HashMap;
 use std::{fmt::Debug, marker::PhantomData, sync::Mutex};
 use tracing::{error, instrument, Level};
 use zenoh::{
 	prelude::{sync::SyncResolve, SampleKind},
 	query::ConsolidationMode,
 };
-
 // endregion:	--- modules
 
 // region:		--- types
@@ -21,25 +22,34 @@ pub type QueryCallback<P> =
 // endregion:	--- types
 
 // region:		--- states
+/// State signaling that the [`QueryBuilder`] has no storage value set
 pub struct NoStorage;
+/// State signaling that the [`QueryBuilder`] has the storage value set
 #[cfg(feature = "query")]
 pub struct Storage<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// Thread safe reference to a [`HashMap`] to store the created [`Query`]
 	pub storage: Arc<RwLock<std::collections::HashMap<String, Query<P>>>>,
 }
 
+/// State signaling that the [`QueryBuilder`] has no key expression set
 pub struct NoKeyExpression;
+/// State signaling that the [`QueryBuilder`] has the key expression set
 pub struct KeyExpression {
+	/// The key expression
 	key_expr: String,
 }
 
+/// State signaling that the [`QueryBuilder`] has no response callback set
 pub struct NoResponseCallback;
+/// State signaling that the [`QueryBuilder`] has the response callback set
 pub struct ResponseCallback<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// Response callback for the [`Query`]
 	pub response: QueryCallback<P>,
 }
 // endregion:	--- states

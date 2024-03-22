@@ -4,11 +4,11 @@
 //!
 //! # Examples
 //! ```rust,no_run
-//! # use dimas::prelude::*;
-//! # #[tokio::main(flavor = "multi_thread")]
-//! # async fn main() -> Result<()> {
-//! # Ok(())
-//! # }
+//! use dimas::prelude::*;
+//! #[tokio::main(flavor = "multi_thread")]
+//! async fn main() -> Result<()> {
+//! Ok(())
+//! }
 //! ```
 //!
 
@@ -67,9 +67,12 @@ pub enum DimasError {
 	#[error("Could not find file: {0}")]
 	FileNotFound(String),
 
+	/// `zenoh` activate sending liveliness failed
+	#[error("activation of zenoh liveliness failed with {0}")]
+	ActivateLiveliness(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
 	/// `zenoh` session creation failed
-	#[error("Creation of zenoh session failed: {0}")]
-	SessionCreation(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+	#[error("creation of zenoh session failed with {0}")]
+	CreateSession(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
 
 	// should be last line
 	/// auto conversion for boxed `std::error::Error`

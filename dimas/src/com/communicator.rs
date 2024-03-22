@@ -1,6 +1,6 @@
 // Copyright © 2023 Stephan Kunz
 
-//! Module `communicator` provides the `Communicator` implementing the communication capabilities for an `Agent`.
+//! `Communicator` implements the communication capabilities for an `Agent`.
 //!
 //! # Examples
 //! ```rust,no_run
@@ -16,9 +16,10 @@
 use crate::prelude::*;
 use std::fmt::Debug;
 use tracing::error;
-use zenoh::liveliness::LivelinessToken;
 use zenoh::prelude::{r#async::*, sync::SyncResolve};
 use zenoh::publication::Publisher;
+#[allow(unused_imports)]
+use crate::agent::Agent;
 // endregion:	--- modules
 
 // region:		--- Communicator
@@ -37,7 +38,7 @@ impl Communicator {
 		let session = Arc::new(
 			zenoh::open(cfg.zenoh_config())
 				.res_sync()
-				.map_err(DimasError::SessionCreation)?,
+				.map_err(DimasError::CreateSession)?,
 		);
 		Ok(Self {
 			session,
@@ -45,18 +46,8 @@ impl Communicator {
 		})
 	}
 
-	pub(crate) fn new_with_prefix(
-		config: crate::config::Config,
-		prefix: impl Into<String>,
-	) -> Result<Self> {
-		let cfg = config;
-		let session = Arc::new(
-			zenoh::open(cfg.zenoh_config())
-				.res_sync()
-				.map_err(DimasError::SessionCreation)?,
-		);
-		let prefix = Some(prefix.into());
-		Ok(Self { session, prefix })
+	pub(crate) fn set_prefix(&mut self, prefix: impl Into<String>) {
+		self.prefix = Some(prefix.into());
 	}
 
 	pub(crate) fn uuid(&self) -> String {
@@ -67,21 +58,11 @@ impl Communicator {
 		self.prefix.clone()
 	}
 
-	pub(crate) fn key_expr(&self, topic: &str) -> String {
+	/// Create a key expression from a topic by adding [`Agent`]s prefix if one is given.
+	#[must_use]
+	pub fn key_expr(&self, topic: &str) -> String {
 		self.prefix()
 			.map_or_else(|| topic.into(), |prefix| format!("{prefix}/{topic}"))
-	}
-
-	pub(crate) async fn send_liveliness<'a>(&self) -> Result<LivelinessToken<'a>> {
-		let session = self.session.clone();
-		let uuid = format!("{}/{}", self.key_expr("alive"), session.zid());
-
-		session
-			.liveliness()
-			.declare_token(&uuid)
-			.res_async()
-			.await
-			.map_err(|_| DimasError::ShouldNotHappen.into())
 	}
 
 	pub(crate) fn create_publisher<'a>(&self, key_expr: &str) -> Result<Publisher<'a>> {
@@ -169,8 +150,8 @@ mod tests {
 	#[tokio::test(flavor = "multi_thread")]
 	//#[serial]
 	async fn communicator_create_multi() -> Result<()> {
-		let _peer1 = Communicator::new(crate::config::Config::default());
-		let _peer2 = Communicator::new_with_prefix(crate::config::Config::local()?, "peer2");
+		let mut peer1 = Communicator::new(crate::config::Config::default())?;
+		peer1.set_prefix("peer1");
 		Ok(())
 	}
 }

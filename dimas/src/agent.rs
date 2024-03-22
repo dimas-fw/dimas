@@ -54,7 +54,7 @@ use std::{
 };
 use tokio::{select, signal};
 use tracing::{error, info};
-use zenoh::liveliness::LivelinessToken;
+use zenoh::{liveliness::LivelinessToken, prelude::sync::SyncResolve, SessionDeclarations};
 // endregion:	--- modules
 
 // region:	   --- UnconfiguredAgent
@@ -89,12 +89,10 @@ where
 	}
 
 	/// Set the [`Config`]uration.
+	///
 	/// # Errors
 	pub fn config(self, config: Config) -> Result<Agent<'a, P>> {
-		let context = match self.prefix {
-			Some(prefix) => Context::new_with_prefix(config, self.props, prefix)?.into(),
-			None => Context::new(config, self.props)?.into(),
-		};
+		let context = Context::new(config, self.props, self.prefix)?.into();
 		Ok(Agent {
 			context,
 			liveliness: false,
@@ -302,10 +300,9 @@ where
 
 	/// Start the agent.<br>
 	/// The agent can be stopped properly using `ctrl-c`
+	///
 	/// # Errors
-	/// Propagation of errors from [`Agent::stop`],
-	/// [`Context::start_registered_tasks`] and
-	/// [`Communicator::send_liveliness`].
+	/// Propagation of errors from [`ArcContext::start_registered_tasks()`].
 	#[tracing::instrument(skip_all)]
 	pub async fn start(self) -> Result<Agent<'a, P>> {
 		// we need an mpsc channel with a receiver behind a mutex guard
@@ -314,13 +311,17 @@ where
 
 		self.context.start_registered_tasks(&tx)?;
 
-		// activate liveliness
+		// activate sending liveliness
 		if self.liveliness {
-			let token: LivelinessToken<'a> = self
-				.context
-				.communicator
-				.send_liveliness()
-				.await?;
+			let session = self.context.communicator.session.clone();
+			let uuid = format!("{}/{}", self.context.communicator.key_expr("alive"), session.zid());
+
+			let token = session
+				.liveliness()
+				.declare_token(&uuid)
+				.res_sync()
+				.map_err(DimasError::ActivateLiveliness)?;
+
 			self.liveliness_token
 				.write()
 				.map_err(|_| DimasError::ShouldNotHappen)?
@@ -362,7 +363,6 @@ impl<'a, P> RunningAgent<'a, P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-
 	/// run
 	async fn run(mut self) -> Result<Agent<'a, P>> {
 		#[cfg(not(any(
@@ -463,8 +463,9 @@ where
 	}
 
 	/// Stop the agent
+	///
 	/// # Errors
-	/// Currently none
+	/// Propagation of errors from [`ArcContext::stop_registered_tasks()`].
 	#[tracing::instrument(skip_all)]
 	pub fn stop(mut self) -> Result<Agent<'a, P>> {
 		self.context.stop_registered_tasks()?;

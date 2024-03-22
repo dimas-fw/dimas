@@ -5,6 +5,8 @@
 
 // region:		--- modules
 use crate::{prelude::*, utils::TaskSignal};
+#[allow(unused_imports)]
+use std::collections::HashMap;
 use std::{
 	sync::{mpsc::Sender, Mutex},
 	time::Duration,
@@ -29,20 +31,26 @@ pub type LivelinessCallback<P> = Arc<
 // endregion:	--- types
 
 // region:		--- states
+/// State signaling that the [`LivelinessSubscriberBuilder`] has no storage value set
 pub struct NoStorage;
+/// State signaling that the [`LivelinessSubscriberBuilder`] has the storage value set
 #[cfg(feature = "liveliness")]
 pub struct Storage<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// Thread safe reference to a [`HashMap`] to store the created [`LivelinessSubscriber`]
 	pub storage: Arc<RwLock<std::collections::HashMap<String, LivelinessSubscriber<P>>>>,
 }
 
+/// State signaling that the [`LivelinessSubscriberBuilder`] has no put callback set
 pub struct NoPutCallback;
+/// State signaling that the [`LivelinessSubscriberBuilder`] has the put callback set
 pub struct PutCallback<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// The callback to use when receiving a put message
 	pub callback: LivelinessCallback<P>,
 }
 // endregion:	--- states

@@ -5,6 +5,8 @@
 
 // region:		--- modules
 use crate::{prelude::*, utils::TaskSignal};
+#[allow(unused_imports)]
+use std::collections::HashMap;
 use std::{
 	fmt::Debug,
 	marker::PhantomData,
@@ -26,31 +28,43 @@ pub type TimerCallback<P> = Arc<
 // endregion:	--- types
 
 // region:		--- states
+/// State signaling that the [`TimerBuilder`] has no storage value set
 pub struct NoStorage;
+/// State signaling that the [`TimerBuilder`] has the storage value set
 #[cfg(feature = "timer")]
 pub struct Storage<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// Thread safe reference to a [`HashMap`] to store the created [`Timer`]
 	pub storage: Arc<RwLock<std::collections::HashMap<String, Timer<P>>>>,
 }
 
+/// State signaling that the [`TimerBuilder`] has no key expression set
 pub struct NoKeyExpression;
 #[allow(clippy::module_name_repetitions)]
+/// State signaling that the [`TimerBuilder`] has the key expression set
 pub struct KeyExpression {
+	/// The key expression
 	key_expr: String,
 }
 
+/// State signaling that the [`TimerBuilder`] has no interval set
 pub struct NoInterval;
+/// State signaling that the [`TimerBuilder`] has the interval set
 pub struct Interval {
+	/// The [`Duration`] of [`Timer`]s interval
 	interval: Duration,
 }
 
+/// State signaling that the [`TimerBuilder`] has no interval callback set
 pub struct NoIntervalCallback;
+/// State signaling that the [`TimerBuilder`] has the interval callback set
 pub struct IntervalCallback<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// The interval callback for the [`Timer`]
 	pub callback: TimerCallback<P>,
 }
 // endregion:	--- states

@@ -12,8 +12,8 @@ doc_comment::doctest!("../README.md");
 // region:    --- modules
 // Primary module of `DiMAS` containing the Agent
 pub mod agent;
-// Internal module handling communication
-mod com;
+// Module handles communication with other Agents.
+pub mod com;
 // Configuration for an Agent
 pub mod config;
 // Context of an Agent
@@ -21,7 +21,7 @@ pub mod context;
 // Error handling
 pub mod error;
 // Timer
-mod timer;
+pub mod timer;
 // Helper functions
 mod utils;
 

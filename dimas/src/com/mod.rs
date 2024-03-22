@@ -1,5 +1,8 @@
 // Copyright © 2023 Stephan Kunz
 
+//! Module handles communication with other Agents.
+//!
+
 // region:    --- modules
 /// Communicator
 pub mod communicator;
