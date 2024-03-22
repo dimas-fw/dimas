@@ -16,7 +16,7 @@ fn query_callback(_ctx: &ArcContext<AgentProps>, response: Response) -> Result<(
 	Ok(())
 }
 
-#[tokio::main(flavor = "current_thread")]
+#[tokio::main]
 async fn main() -> Result<()> {
 	// a tracing subscriber writing logs
 	tracing_subscriber::fmt::init();
@@ -25,12 +25,14 @@ async fn main() -> Result<()> {
 	let properties = AgentProps {};
 
 	// create an agent with the properties and the prefix 'examples'
-	let mut agent = Agent::new_with_prefix(Config::default(), properties, "examples")?;
+	let mut agent = Agent::new(properties)
+		.prefix("examples")
+		.config(Config::default())?;
 
 	// create publisher for topic "ping"
 	agent
 		.query()
-		.msg_type("query")
+		.topic("query")
 		.callback(query_callback)
 		.add()?;
 

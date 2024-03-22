@@ -36,7 +36,7 @@ fn ping_received(ctx: &ArcContext<AgentProps>, message: Message) -> Result<()> {
 	Ok(())
 }
 
-#[tokio::main(flavor = "current_thread")]
+#[tokio::main]
 async fn main() -> Result<()> {
 	// a tracing subscriber writing logs
 	tracing_subscriber::fmt::init();
@@ -45,15 +45,17 @@ async fn main() -> Result<()> {
 	let properties = AgentProps {};
 
 	// create an agent with the properties and the prefix 'examples'
-	let mut agent = Agent::new_with_prefix(Config::default(), properties, "examples")?;
+	let mut agent = Agent::new(properties)
+		.prefix("examples")
+		.config(Config::default())?;
 
 	// create publisher for topic "ping"
-	agent.publisher().msg_type("pong").add()?;
+	agent.publisher().topic("pong").add()?;
 
 	// listen for 'ping' messages
 	agent
 		.subscriber()
-		.msg_type("ping")
+		.topic("ping")
 		.put_callback(ping_received)
 		.add()?;
 

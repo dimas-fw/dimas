@@ -16,6 +16,9 @@ unsafe_code = "forbid"
 missing_docs = "warn"
 #unused="allow" # for dev only
 
+[workspace.lints.rustdoc]
+private_intra_doc_links = "allow"
+
 [workspace.lints.clippy]
 enum_glob_use = "deny"
 pedantic = "deny"
@@ -25,13 +28,13 @@ unwrap_used = "deny"
 [workspace.package]
 rust-version = "1.75.0"
 edition = "2021"
-version = "0.0.7"
+version = "0.0.8"
 authors = [
 	"stepkun <stephan.kunz@kabelbw.de>",
 ]
 #license = "NGMC"
 license-file = "LICENSE"
-keywords = ["automation", "mas", "robot", "robotics"]
+keywords = ["automation", "mas", "robots", "robotics"]
 categories = [
 	"development-tools",
 	"science::robotics",
@@ -55,6 +58,6 @@ zenoh = { version = "0.10.1-rc", features = ["unstable"] } # "shared-memory" ,"t
 [profile.release]
 opt-level = 'z'   # Optimize for size.
 lto = true        # Enable Link Time Optimisation
-codegen-units = 1 # Reduced to increase optimisations.
-#panic = 'abort'   # Abort on panic
+codegen-units = 1 # Reduced to increase optimisations
+panic = 'abort'   # Abort on panic
 strip = "symbols" # Strip symbols from binary

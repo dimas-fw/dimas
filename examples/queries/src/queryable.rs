@@ -21,7 +21,7 @@ fn queryable(ctx: &ArcContext<AgentProps>, request: Request) -> Result<()> {
 	Ok(())
 }
 
-#[tokio::main(flavor = "current_thread")]
+#[tokio::main]
 async fn main() -> Result<()> {
 	// a tracing subscriber writing logs
 	tracing_subscriber::fmt::init();
@@ -30,12 +30,14 @@ async fn main() -> Result<()> {
 	let properties = AgentProps { counter: 0 };
 
 	// create an agent with the properties and the prefix 'examples'
-	let mut agent = Agent::new_with_prefix(Config::default(), properties, "examples")?;
+	let mut agent = Agent::new(properties)
+		.prefix("examples")
+		.config(Config::default())?;
 
 	// add a queryable
 	agent
 		.queryable()
-		.msg_type("query")
+		.topic("query")
 		.callback(queryable)
 		.add()?;
 

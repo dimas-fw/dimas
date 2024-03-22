@@ -1,12 +1,24 @@
 # dimas
 
-[DiMAS](https://github.com/dimas-fw/dimas/dimas) - A framework for building **Di**stributed **M**ulti **A**gent **S**ystems
+[DiMAS](https://github.com/dimas-fw/dimas/tree/main/dimas) - A framework for building **Di**stributed **M**ulti **A**gent **S**ystems
 
-A Distributed Multi Agent Systems is a system of independant working programs, interchanging information,
-that are running on several somehow connected computers (e.g. an ethernet network).
+⚠️ WARNING ⚠️ : DiMAS is under active development, so expect gaps between implementation and documentation. 
 
-This crate is on [crates.io](https://crates.io/crates/dimas).
-`DiMAS` is tested on Windows (Version 10) and Linux (Debian flavours, AMD64 & aarch64) but should also run on `MacOS`.
+A distributed multi agent system is a set of independant agents that are widely distributed but somehow connected.
+They are designed in a way that they can solve complex tasks by working together.
+
+The system is characterised by
+- a somewhat large and complex environment
+- containing a set of (non agent) objects that can be perceived, created, moved, modified or destroyed by the agents
+- that changes over time due to external rules
+
+with multiple agents operating in that environment which
+- can percieve the environment to a limited extent
+- have the possibility to communicate with some or all of the other agents
+- have certain capabilities to influence the environment
+
+
+This crate is available on [crates.io](https://crates.io/crates/dimas).
 
 [DiMAS](https://github.com/dimas-fw/dimas/tree/main/dimas) follows the semantic versioning principle with the enhancement,
 that until version 1.0.0 each new version may include breaking changes, which will be noticed in the changelog.
@@ -16,7 +28,8 @@ that until version 1.0.0 each new version may include breaking changes, which wi
 DiMAS needs an `async` runtime. So you have to define your `main` function as an `async` function.
 
 So include `dimas` together with an async runtime in the dependencies section of your `Cargo.toml`.
-As DiMAS uses `tokio` as async runtime, so preferably use `tokio` for your application.
+As DiMAS uses `tokio` as async runtime, so preferably use `tokio` for your application. 
+Ensure that you use a multi-threaded runtime, otherwise dimas will panic.
 
 DiMAS uses features to have some control over compile time and the size of the binary. 
 The feature `all`, including all available features, is a good point to start with.
@@ -25,7 +38,7 @@ So your `Cargo.toml` should include:
 
 ```toml
 [dependencies]
-dimas = { version = "0.0.7", features = ["all"] }
+dimas = { version = "0.0.8", features = ["all"] }
 tokio = { version = "1", features = ["macros"] }
 ```
 
@@ -57,7 +70,7 @@ The `Cargo.toml` for this publisher/subscriber example should include
 
 ```toml
 [dependencies]
-dimas = { version = "0.0.7", features = ["timer", "subscriber"] }
+dimas = { version = "0.0.8", features = ["timer", "subscriber"] }
 tokio = { version = "1",features = ["macros"] }
 ```
 
@@ -79,13 +92,14 @@ async fn main() -> Result<()> {
 	// create & initialize agents properties
 	let properties = AgentProps { counter: 0 };
 
-	// create an agent with the properties
-	let mut agent = Agent::new(Config::default(), properties)?;
+	// create an agent with the properties and default configuration
+	let mut agent = Agent::new(properties)
+		.config(Config::default())?;
 
 	// create publisher for topic "hello"
 	agent
 		.publisher()
-		.msg_type("hello")
+		.topic("hello")
 		.add()?;
 
 	// use a timer for regular publishing of "hello" topic
@@ -119,7 +133,7 @@ async fn main() -> Result<()> {
 		// errors will be propagated to main
 		.add()?;
 
-	// run the agent
+	// start the agent
 	agent.start().await?;
 	Ok(())
 }
@@ -146,22 +160,23 @@ async fn main() -> Result<()> {
 	// create & initialize agents properties
 	let properties = AgentProps {};
 
-	// create an agent with the properties
-	let mut agent = Agent::new(Config::default(), properties)?;
+	// create an agent with the properties and default configuration
+	let mut agent = Agent::new(properties)
+		.config(Config::default())?;
 
 	// subscribe to "hello" messages
 	agent
 		// get the SubscriberBuilder from the agent
 		.subscriber()
     	//set wanted message topic (corresponding to publishers topic!)
-		.msg_type("hello")
+		.topic("hello")
     	// set the callback function for put messages
 		.put_callback(callback)
     	// finally add the subscriber to the agent
     	// errors will be propagated to main
 		.add()?;
 
-	// run the agent
+	// start the agent
 	agent.start().await?;
 	Ok(())
 }
@@ -178,8 +193,8 @@ It is necessary to enable all those features you want to use within your `Agent`
 
 - `all`: Enables all the features listed below. It's a good point to start with.
 - `liveliness`: Enables listening and reacting on liveliness tokens. Sending tokens is always possible.
-- `publisher`: Enables to store `Publisher`'s within the `Agent`'s `Context`.
-- `query`: Enables to store `Query`'s within the `Agent`'s `Context`.
-- `queryable`: Enables to store `Queryable`'s within the `Agent`'s `Context`.
-- `subscriber`: Enables to store `Subscriber`'s within the `Agent`'s `Context`.
-- `timer`: Enables to store `Timer`'s within the `Agent`'s `Context`.
+- `publisher`: Enables to store `Publisher` within the `Agent`s `Context`.
+- `query`: Enables to store `Query`s within the `Agent`s `Context`.
+- `queryable`: Enables to store `Queryable`s within the `Agent`s `Context`.
+- `subscriber`: Enables to store `Subscriber` within the `Agent`s `Context`.
+- `timer`: Enables to store `Timer` within the `Agent`s `Context`.

@@ -16,6 +16,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 
+## [0.0.8] - 2024-03-22  <br>_Has breaking changes!!_
+
+### Added
+- Documentation
+- Builders 'add' methods now return the possibly previously added item for that key expression
+
+### Changed
+- _Name of Builder methods to set only topics name chanched to 'topic(..)'_
+- _Removed tokio 'flavor=current_thread' due to changes in zenoh_
+- _Creation of Agent now uses a builder pattern_
+
+### Fixed
+- Broken documentaton on docs.rs
+- Same naming scheme for TimerBuilder as for other builders
+
+### Removed
+
+
 ## [0.0.7] - 2024-03-17 <br>_Has breaking changes!!_
 
 ### Added

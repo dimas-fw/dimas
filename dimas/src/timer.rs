@@ -4,9 +4,12 @@
 //! When fired, a `Timer` calls his assigned `TimerCallback`.
 
 // region:		--- modules
-use crate::{agent::TaskSignal, prelude::*};
+use crate::{prelude::*, utils::TaskSignal};
+#[allow(unused_imports)]
+use std::collections::HashMap;
 use std::{
 	fmt::Debug,
+	marker::PhantomData,
 	sync::{mpsc::Sender, Mutex},
 	time::Duration,
 };
@@ -25,31 +28,43 @@ pub type TimerCallback<P> = Arc<
 // endregion:	--- types
 
 // region:		--- states
+/// State signaling that the [`TimerBuilder`] has no storage value set
 pub struct NoStorage;
+/// State signaling that the [`TimerBuilder`] has the storage value set
 #[cfg(feature = "timer")]
 pub struct Storage<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// Thread safe reference to a [`HashMap`] to store the created [`Timer`]
 	pub storage: Arc<RwLock<std::collections::HashMap<String, Timer<P>>>>,
 }
 
-pub struct NoName;
+/// State signaling that the [`TimerBuilder`] has no key expression set
+pub struct NoKeyExpression;
 #[allow(clippy::module_name_repetitions)]
-pub struct Name {
-	name: String,
+/// State signaling that the [`TimerBuilder`] has the key expression set
+pub struct KeyExpression {
+	/// The key expression
+	key_expr: String,
 }
 
+/// State signaling that the [`TimerBuilder`] has no interval set
 pub struct NoInterval;
+/// State signaling that the [`TimerBuilder`] has the interval set
 pub struct Interval {
+	/// The [`Duration`] of [`Timer`]s interval
 	interval: Duration,
 }
 
+/// State signaling that the [`TimerBuilder`] has no interval callback set
 pub struct NoIntervalCallback;
+/// State signaling that the [`TimerBuilder`] has the interval callback set
 pub struct IntervalCallback<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// The interval callback for the [`Timer`]
 	pub callback: TimerCallback<P>,
 }
 // endregion:	--- states
@@ -58,37 +73,39 @@ where
 /// A builder for a timer
 #[allow(clippy::module_name_repetitions)]
 #[derive(Clone)]
-pub struct TimerBuilder<P, N, I, C, S>
+pub struct TimerBuilder<P, K, I, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	pub(crate) context: ArcContext<P>,
-	pub(crate) name: N,
+	prefix: Option<String>,
+	pub(crate) key_expr: K,
 	pub(crate) interval: I,
 	pub(crate) callback: C,
 	pub(crate) storage: S,
 	pub(crate) delay: Option<Duration>,
+	phantom: PhantomData<P>,
 }
 
-impl<P> TimerBuilder<P, NoName, NoInterval, NoIntervalCallback, NoStorage>
+impl<P> TimerBuilder<P, NoKeyExpression, NoInterval, NoIntervalCallback, NoStorage>
 where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// Construct a `TimerBuilder` in initial state
 	#[must_use]
-	pub const fn new(context: ArcContext<P>) -> Self {
+	pub const fn new(prefix: Option<String>) -> Self {
 		Self {
-			context,
-			name: NoName,
+			prefix,
+			key_expr: NoKeyExpression,
 			interval: NoInterval,
 			callback: NoIntervalCallback,
 			storage: NoStorage,
 			delay: None,
+			phantom: PhantomData,
 		}
 	}
 }
 
-impl<P, N, I, C, S> TimerBuilder<P, N, I, C, S>
+impl<P, K, I, C, S> TimerBuilder<P, K, I, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -100,90 +117,126 @@ where
 	}
 }
 
-impl<P, I, C, S> TimerBuilder<P, NoName, I, C, S>
+impl<P, I, C, S> TimerBuilder<P, NoKeyExpression, I, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	/// Set the name for the timer
+	/// Set the key expression for the timer
 	#[must_use]
-	pub fn name(self, name: &str) -> TimerBuilder<P, Name, I, C, S> {
+	pub fn key_expr(self, key_expr: &str) -> TimerBuilder<P, KeyExpression, I, C, S> {
 		let Self {
-			context,
+			prefix,
 			interval,
 			callback,
 			storage,
 			delay,
+			phantom,
 			..
 		} = self;
 		TimerBuilder {
-			context,
-			name: Name { name: name.into() },
+			prefix,
+			key_expr: KeyExpression {
+				key_expr: key_expr.into(),
+			},
 			interval,
 			callback,
 			storage,
 			delay,
+			phantom,
+		}
+	}
+
+	/// Set only the name of the timer.
+	/// Will be prefixed with agents prefix.
+	#[must_use]
+	pub fn name(mut self, topic: &str) -> TimerBuilder<P, KeyExpression, I, C, S> {
+		let key_expr = self
+			.prefix
+			.take()
+			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
+		let Self {
+			prefix,
+			interval,
+			callback,
+			storage,
+			delay,
+			phantom,
+			..
+		} = self;
+		TimerBuilder {
+			prefix,
+			key_expr: KeyExpression { key_expr },
+			interval,
+			callback,
+			storage,
+			delay,
+			phantom,
 		}
 	}
 }
 
-impl<P, N, C, S> TimerBuilder<P, N, NoInterval, C, S>
+impl<P, K, C, S> TimerBuilder<P, K, NoInterval, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// set timers interval
 	#[must_use]
-	pub fn interval(self, interval: Duration) -> TimerBuilder<P, N, Interval, C, S> {
+	pub fn interval(self, interval: Duration) -> TimerBuilder<P, K, Interval, C, S> {
 		let Self {
-			context,
-			name,
+			prefix,
+			key_expr: name,
 			callback,
 			storage,
 			delay,
+			phantom,
 			..
 		} = self;
 		TimerBuilder {
-			context,
-			name,
+			prefix,
+			key_expr: name,
 			interval: Interval { interval },
 			callback,
 			storage,
 			delay,
+			phantom,
 		}
 	}
 }
 
-impl<P, N, I, S> TimerBuilder<P, N, I, NoIntervalCallback, S>
+impl<P, K, I, S> TimerBuilder<P, K, I, NoIntervalCallback, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// Set interval callback for timer
 	#[must_use]
-	pub fn callback<F>(self, callback: F) -> TimerBuilder<P, N, I, IntervalCallback<P>, S>
+	pub fn callback<F>(self, callback: F) -> TimerBuilder<P, K, I, IntervalCallback<P>, S>
 	where
 		F: FnMut(&ArcContext<P>) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
-			context,
-			name,
+			prefix,
+			key_expr: name,
 			interval,
 			storage,
 			delay,
+			phantom,
 			..
 		} = self;
 		let callback: TimerCallback<P> = Arc::new(Mutex::new(Some(Box::new(callback))));
 		TimerBuilder {
-			context,
-			name,
+			prefix,
+			key_expr: name,
 			interval,
 			callback: IntervalCallback { callback },
 			storage,
 			delay,
+			phantom,
 		}
 	}
 }
 
 #[cfg(feature = "timer")]
-impl<P, N, I, C> TimerBuilder<P, N, I, C, NoStorage>
+impl<P, K, I, C> TimerBuilder<P, K, I, C, NoStorage>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -192,27 +245,29 @@ where
 	pub fn storage(
 		self,
 		storage: Arc<RwLock<std::collections::HashMap<String, Timer<P>>>>,
-	) -> TimerBuilder<P, N, I, C, Storage<P>> {
+	) -> TimerBuilder<P, K, I, C, Storage<P>> {
 		let Self {
-			context,
-			name,
+			prefix,
+			key_expr: name,
 			interval,
 			callback,
 			delay,
+			phantom,
 			..
 		} = self;
 		TimerBuilder {
-			context,
-			name,
+			prefix,
+			key_expr: name,
 			interval,
 			callback,
 			storage: Storage { storage },
 			delay,
+			phantom,
 		}
 	}
 }
 
-impl<P, S> TimerBuilder<P, Name, Interval, IntervalCallback<P>, S>
+impl<P, S> TimerBuilder<P, KeyExpression, Interval, IntervalCallback<P>, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -221,8 +276,7 @@ where
 	///
 	pub fn build(self) -> Result<Timer<P>> {
 		let Self {
-			context,
-			name,
+			key_expr: name,
 			interval,
 			callback,
 			delay,
@@ -231,16 +285,14 @@ where
 
 		match delay {
 			Some(delay) => Ok(Timer::DelayedInterval {
-				context,
-				name: name.name,
+				name: name.key_expr,
 				delay,
 				interval: interval.interval,
 				callback: Some(callback.callback),
 				handle: None,
 			}),
 			None => Ok(Timer::Interval {
-				context,
-				name: name.name,
+				name: name.key_expr,
 				interval: interval.interval,
 				callback: Some(callback.callback),
 				handle: None,
@@ -250,7 +302,7 @@ where
 }
 
 #[cfg(feature = "timer")]
-impl<P> TimerBuilder<P, Name, Interval, IntervalCallback<P>, Storage<P>>
+impl<P> TimerBuilder<P, KeyExpression, Interval, IntervalCallback<P>, Storage<P>>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -258,16 +310,16 @@ where
 	/// # Errors
 	///
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "timer")))]
-	pub fn add(self) -> Result<()> {
-		let name = self.name.name.clone();
+	pub fn add(self) -> Result<Option<Timer<P>>> {
+		let name = self.key_expr.key_expr.clone();
 		let collection = self.storage.storage.clone();
 		let t = self.build()?;
 
-		collection
+		let r = collection
 			.write()
 			.map_err(|_| DimasError::ShouldNotHappen)?
 			.insert(name, t);
-		Ok(())
+		Ok(r)
 	}
 }
 // endregion:	--- TimerBuilder
@@ -288,8 +340,6 @@ where
 		callback: Option<TimerCallback<P>>,
 		/// The handle to stop the Timer
 		handle: Option<JoinHandle<()>>,
-		/// The agents Context available within the callback function
-		context: ArcContext<P>,
 	},
 	/// A delayed Timer with an Interval
 	DelayedInterval {
@@ -303,8 +353,6 @@ where
 		callback: Option<TimerCallback<P>>,
 		/// The handle to stop the Timer
 		handle: Option<JoinHandle<()>>,
-		/// The agents Context available within the callback function
-		context: ArcContext<P>,
 	},
 }
 
@@ -336,7 +384,7 @@ where
 	/// Start or restart the timer
 	/// An already running timer will be stopped, eventually damaged Mutexes will be repaired
 	#[instrument(level = Level::TRACE, skip_all)]
-	pub fn start(&mut self, tx: Sender<TaskSignal>) {
+	pub fn start(&mut self, ctx: ArcContext<P>, tx: Sender<TaskSignal>) {
 		self.stop();
 
 		#[cfg(not(feature = "timer"))]
@@ -348,7 +396,6 @@ where
 				interval,
 				callback,
 				handle,
-				context,
 			} => {
 				{
 					if let Some(cb) = callback.clone() {
@@ -361,13 +408,12 @@ where
 
 				let interval = *interval;
 				let cb = callback.clone();
-				let ctx = context.clone();
 
 				#[cfg(not(feature = "timer"))]
 				let _key = name.clone();
 				#[cfg(feature = "timer")]
 				let key = name.clone();
-				handle.replace(tokio::spawn(async move {
+				handle.replace(tokio::task::spawn(async move {
 					std::panic::set_hook(Box::new(move |reason| {
 						error!("interval timer panic: {}", reason);
 						#[cfg(feature = "timer")]
@@ -386,7 +432,6 @@ where
 				interval,
 				callback,
 				handle,
-				context,
 			} => {
 				{
 					if let Some(cb) = callback.clone() {
@@ -400,13 +445,12 @@ where
 				let delay = *delay;
 				let interval = *interval;
 				let cb = callback.clone();
-				let ctx = context.clone();
 
 				#[cfg(not(feature = "timer"))]
 				let _key = name.clone();
 				#[cfg(feature = "timer")]
 				let key = name.clone();
-				handle.replace(tokio::spawn(async move {
+				handle.replace(tokio::task::spawn(async move {
 					std::panic::set_hook(Box::new(move |reason| {
 						error!("delayed timer panic: {}", reason);
 						#[cfg(feature = "timer")]
@@ -432,7 +476,6 @@ where
 				interval: _,
 				callback: _,
 				handle,
-				context: _,
 			}
 			| Self::DelayedInterval {
 				name: _,
@@ -440,7 +483,6 @@ where
 				interval: _,
 				callback: _,
 				handle,
-				context: _,
 			} => {
 				if let Some(handle) = handle.take() {
 					handle.abort();
@@ -489,6 +531,7 @@ mod tests {
 	#[test]
 	const fn normal_types() {
 		is_normal::<Timer<Props>>();
-		is_normal::<TimerBuilder<Props, NoName, NoInterval, NoIntervalCallback, NoStorage>>();
+		is_normal::<TimerBuilder<Props, NoKeyExpression, NoInterval, NoIntervalCallback, NoStorage>>(
+		);
 	}
 }

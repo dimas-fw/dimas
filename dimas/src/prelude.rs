@@ -1,6 +1,7 @@
 // Copyright © 2023 Stephan Kunz
 
-//! DiMAS `prelude` should be in most cases sufficient to include.
+//! Public interface of dimas. Typically it is sufficient to include the prelude with
+//! ```use dimas::prelude::*;```
 
 // region:    --- modules
 // re-exports

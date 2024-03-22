@@ -3,9 +3,12 @@
 //! Module `queryable` provides an information/compute provider `Queryable` which can be created using the `QueryableBuilder`.
 
 // region:		--- modules
-use crate::{agent::TaskSignal, prelude::*};
+use crate::{prelude::*, utils::TaskSignal};
+#[allow(unused_imports)]
+use std::collections::HashMap;
 use std::{
 	fmt::Debug,
+	marker::PhantomData,
 	sync::{mpsc::Sender, Mutex},
 };
 use tokio::task::JoinHandle;
@@ -28,25 +31,34 @@ pub type QueryableCallback<P> = Arc<
 // endregion:	--- types
 
 // region:		--- states
+/// State signaling that the [`QueryableBuilder`] has no storage value set
 pub struct NoStorage;
+/// State signaling that the [`QueryableBuilder`] has the storage value set
 #[cfg(feature = "queryable")]
 pub struct Storage<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// Thread safe reference to a [`HashMap`] to store the created [`Queryable`]
 	pub storage: Arc<RwLock<std::collections::HashMap<String, Queryable<P>>>>,
 }
 
+/// State signaling that the [`QueryableBuilder`] has no key expression set
 pub struct NoKeyExpression;
+/// State signaling that the [`QueryableBuilder`] has the key expression set
 pub struct KeyExpression {
+	/// The key expression
 	key_expr: String,
 }
 
+/// State signaling that the [`QueryableBuilder`] has no request callback set
 pub struct NoRequestCallback;
+/// State signaling that the [`QueryableBuilder`] has the request callback set
 pub struct RequestCallback<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// Request callback for the [`Queryable`]
 	pub request: QueryableCallback<P>,
 }
 
@@ -58,10 +70,11 @@ pub struct QueryableBuilder<P, K, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	pub(crate) context: ArcContext<P>,
+	prefix: Option<String>,
 	pub(crate) key_expr: K,
 	pub(crate) callback: C,
 	pub(crate) storage: S,
+	phantom: PhantomData<P>,
 }
 
 impl<P> QueryableBuilder<P, NoKeyExpression, NoRequestCallback, NoStorage>
@@ -70,12 +83,13 @@ where
 {
 	/// Construct a `QueryableBuilder` in initial state
 	#[must_use]
-	pub const fn new(context: ArcContext<P>) -> Self {
+	pub const fn new(prefix: Option<String>) -> Self {
 		Self {
-			context,
+			prefix,
 			key_expr: NoKeyExpression,
 			callback: NoRequestCallback,
 			storage: NoStorage,
+			phantom: PhantomData,
 		}
 	}
 }
@@ -88,37 +102,44 @@ where
 	#[must_use]
 	pub fn key_expr(self, key_expr: &str) -> QueryableBuilder<P, KeyExpression, C, S> {
 		let Self {
-			context,
+			prefix,
 			storage,
 			callback,
+			phantom,
 			..
 		} = self;
 		QueryableBuilder {
-			context,
+			prefix,
 			key_expr: KeyExpression {
 				key_expr: key_expr.into(),
 			},
 			callback,
 			storage,
+			phantom,
 		}
 	}
 
 	/// Set only the message qualifing part of the queryable.
 	/// Will be prefixed with agents prefix.
 	#[must_use]
-	pub fn msg_type(self, msg_type: &str) -> QueryableBuilder<P, KeyExpression, C, S> {
-		let key_expr = self.context.key_expr(msg_type);
+	pub fn topic(mut self, topic: &str) -> QueryableBuilder<P, KeyExpression, C, S> {
+		let key_expr = self
+			.prefix
+			.take()
+			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
 		let Self {
-			context,
+			prefix,
 			storage,
 			callback,
+			phantom,
 			..
 		} = self;
 		QueryableBuilder {
-			context,
+			prefix,
 			key_expr: KeyExpression { key_expr },
 			callback,
 			storage,
+			phantom,
 		}
 	}
 }
@@ -134,17 +155,19 @@ where
 		F: FnMut(&ArcContext<P>, Request) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
-			context,
+			prefix,
 			key_expr,
 			storage,
+			phantom,
 			..
 		} = self;
 		let request: QueryableCallback<P> = Arc::new(Mutex::new(Some(Box::new(callback))));
 		QueryableBuilder {
-			context,
+			prefix,
 			key_expr,
 			callback: RequestCallback { request },
 			storage,
+			phantom,
 		}
 	}
 }
@@ -161,16 +184,18 @@ where
 		storage: Arc<RwLock<std::collections::HashMap<String, Queryable<P>>>>,
 	) -> QueryableBuilder<P, K, C, Storage<P>> {
 		let Self {
-			context,
+			prefix,
 			key_expr,
 			callback,
+			phantom,
 			..
 		} = self;
 		QueryableBuilder {
-			context,
+			prefix,
 			key_expr,
 			callback,
 			storage: Storage { storage },
+			phantom,
 		}
 	}
 }
@@ -184,14 +209,10 @@ where
 	///
 	pub fn build(self) -> Result<Queryable<P>> {
 		let Self {
-			context,
-			key_expr,
-			callback,
-			..
+			key_expr, callback, ..
 		} = self;
 		let key_expr = key_expr.key_expr;
 		Ok(Queryable {
-			context,
 			key_expr,
 			callback: Some(callback.request),
 			handle: None,
@@ -208,15 +229,15 @@ where
 	/// # Errors
 	///
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "query")))]
-	pub fn add(self) -> Result<()> {
+	pub fn add(self) -> Result<Option<Queryable<P>>> {
 		let collection = self.storage.storage.clone();
 		let q = self.build()?;
 
-		collection
+		let r = collection
 			.write()
 			.map_err(|_| DimasError::ShouldNotHappen)?
 			.insert(q.key_expr.clone(), q);
-		Ok(())
+		Ok(r)
 	}
 }
 // endregion:	--- QueryableBuilder
@@ -230,7 +251,6 @@ where
 	key_expr: String,
 	callback: Option<QueryableCallback<P>>,
 	handle: Option<JoinHandle<()>>,
-	context: ArcContext<P>,
 }
 
 impl<P> Debug for Queryable<P>
@@ -250,8 +270,8 @@ where
 {
 	/// Start or restart the queryable.
 	/// An already running queryable will be stopped, eventually damaged Mutexes will be repaired
-	#[instrument(level = Level::TRACE)]
-	pub fn start(&mut self, tx: Sender<TaskSignal>) {
+	#[instrument(level = Level::TRACE, skip_all)]
+	pub fn start(&mut self, ctx: ArcContext<P>, tx: Sender<TaskSignal>) {
 		self.stop();
 
 		#[cfg(not(feature = "queryable"))]
@@ -269,24 +289,24 @@ where
 
 		let key_expr = self.key_expr.clone();
 		let cb = self.callback.clone();
-		let ctx = self.context.clone();
 
-		self.handle.replace(tokio::spawn(async move {
-			#[cfg(feature = "queryable")]
-			let key = key_expr.clone();
-			std::panic::set_hook(Box::new(move |reason| {
-				error!("queryable panic: {}", reason);
+		self.handle
+			.replace(tokio::task::spawn(async move {
 				#[cfg(feature = "queryable")]
-				if let Err(reason) = tx.send(TaskSignal::RestartQueryable(key.clone())) {
-					error!("could not restart queryable: {}", reason);
-				} else {
-					info!("restarting queryable!");
+				let key = key_expr.clone();
+				std::panic::set_hook(Box::new(move |reason| {
+					error!("queryable panic: {}", reason);
+					#[cfg(feature = "queryable")]
+					if let Err(reason) = tx.send(TaskSignal::RestartQueryable(key.clone())) {
+						error!("could not restart queryable: {}", reason);
+					} else {
+						info!("restarting queryable!");
+					};
+				}));
+				if let Err(error) = run_queryable(key_expr, cb, ctx).await {
+					error!("queryable failed with {error}");
 				};
 			}));
-			if let Err(error) = run_queryable(key_expr, cb, ctx).await {
-				error!("queryable failed with {error}");
-			};
-		}));
 	}
 
 	/// Stop a running Queryable

@@ -1,12 +1,19 @@
 // Copyright © 2023 Stephan Kunz
 
-//! Module `error` provides the DiMAS specific `Error`s.
-
-// region:		--- modules
-// endregion:	--- modules
+//! The `DiMAS` specific error enum [`DimasError`] togehter with a type alias for [`std::result::Result`] to write only `Result<T>`.
+//!
+//! # Examples
+//! ```rust,no_run
+//! use dimas::prelude::*;
+//! #[tokio::main(flavor = "multi_thread")]
+//! async fn main() -> Result<()> {
+//! Ok(())
+//! }
+//! ```
+//!
 
 // region:		--- types
-/// type alias for `std::result::Result` to ease up implementation
+/// Type alias for `std::result::Result` to ease up implementation
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync + 'static>>;
 // endregion:	--- types
 
@@ -60,9 +67,12 @@ pub enum DimasError {
 	#[error("Could not find file: {0}")]
 	FileNotFound(String),
 
+	/// `zenoh` activate sending liveliness failed
+	#[error("activation of zenoh liveliness failed with {0}")]
+	ActivateLiveliness(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
 	/// `zenoh` session creation failed
-	#[error("Creation of zenoh session failed: {0}")]
-	SessionCreation(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+	#[error("creation of zenoh session failed with {0}")]
+	CreateSession(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
 
 	// should be last line
 	/// auto conversion for boxed `std::error::Error`
