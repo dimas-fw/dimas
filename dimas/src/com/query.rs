@@ -315,7 +315,7 @@ where
 		let replies = self
 			.context
 			.clone()
-			.expect("snh")
+			.ok_or(DimasError::ShouldNotHappen)?
 			.communicator
 			.session
 			.get(&self.key_expr)

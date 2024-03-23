@@ -188,7 +188,7 @@ impl Publisher
 		match self
 			.publisher
 			.clone()
-			.expect("snh")
+			.ok_or(DimasError::ShouldNotHappen)?
 			.put(value)
 			.res_sync()
 		{
@@ -205,7 +205,7 @@ impl Publisher
 		match self
 			.publisher
 			.clone()
-			.expect("snh")
+			.ok_or(DimasError::ShouldNotHappen)?
 			.delete()
 			.res_sync()
 		{

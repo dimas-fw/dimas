@@ -38,7 +38,7 @@ So your `Cargo.toml` should include:
 
 ```toml
 [dependencies]
-dimas = { version = "0.0.8", features = ["all"] }
+dimas = { version = "0.1.0", features = ["all"] }
 tokio = { version = "1", features = ["macros"] }
 ```
 
@@ -70,7 +70,7 @@ The `Cargo.toml` for this publisher/subscriber example should include
 
 ```toml
 [dependencies]
-dimas = { version = "0.0.8", features = ["timer", "subscriber"] }
+dimas = { version = "0.1.0", features = ["timer", "subscriber"] }
 tokio = { version = "1",features = ["macros"] }
 ```
 

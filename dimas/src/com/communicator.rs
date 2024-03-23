@@ -13,13 +13,13 @@
 //!
 
 // region:		--- modules
+#[allow(unused_imports)]
+use crate::agent::Agent;
 use crate::prelude::*;
 use std::fmt::Debug;
 use tracing::error;
 use zenoh::prelude::{r#async::*, sync::SyncResolve};
 use zenoh::publication::Publisher;
-#[allow(unused_imports)]
-use crate::agent::Agent;
 // endregion:	--- modules
 
 // region:		--- Communicator

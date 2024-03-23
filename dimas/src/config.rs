@@ -222,33 +222,39 @@ mod tests {
 	}
 
 	#[test]
-	fn config_local() {
-		Config::local().expect("");
+	fn config_local() -> Result<()> {
+		Config::local()?;
+		Ok(())
 	}
 
 	#[test]
-	fn config_router() {
-		Config::router().expect("");
+	fn config_router() -> Result<()> {
+		Config::router()?;
+		Ok(())
 	}
 
 	#[test]
-	fn config_peer() {
-		Config::peer().expect("");
+	fn config_peer() -> Result<()> {
+		Config::peer()?;
+		Ok(())
 	}
 
 	#[test]
-	fn config_client() {
-		Config::client().expect("");
+	fn config_client() -> Result<()> {
+		Config::client()?;
+		Ok(())
 	}
 
 	#[test]
-	fn config_low_latency() {
-		Config::low_latency().expect("");
+	fn config_low_latency() -> Result<()> {
+		Config::low_latency()?;
+		Ok(())
 	}
 
 	#[test]
-	fn config_from_fle() {
-		Config::from_file("default.json5").expect("");
+	fn config_from_fle() -> Result<()> {
+		Config::from_file("default.json5")?;
+		Ok(())
 	}
 
 	#[test]
