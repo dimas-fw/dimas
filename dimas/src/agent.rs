@@ -324,7 +324,7 @@ where
 
 			self.liveliness_token
 				.write()
-				.map_err(|_| DimasError::ShouldNotHappen)?
+				.map_err(|_| DimasError::ModifyContext("liveliness".into()))?
 				.replace(token);
 		};
 
@@ -433,7 +433,7 @@ where
 							if self.liveliness {
 								self.liveliness_token
 									.write()
-									.map_err(|_| DimasError::ShouldNotHappen)?
+									.map_err(|_| DimasError::ModifyContext("liveliness".into()))?
 									.take();
 							}
 							let r = Agent {
@@ -451,7 +451,7 @@ where
 							if self.liveliness {
 								self.liveliness_token
 									.write()
-									.map_err(|_| DimasError::ShouldNotHappen)?
+									.map_err(|_| DimasError::ModifyContext("liveliness".into()))?
 									.take();
 							}
 							return Err(DimasError::ShouldNotHappen.into());
@@ -474,7 +474,7 @@ where
 		if self.liveliness {
 			self.liveliness_token
 				.write()
-				.map_err(|_| DimasError::ShouldNotHappen)?
+				.map_err(|_| DimasError::ModifyContext("liveliness".into()))?
 				.take();
 		}
 		let r = Agent {

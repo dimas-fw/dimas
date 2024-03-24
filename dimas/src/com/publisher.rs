@@ -193,7 +193,7 @@ impl Publisher
 			.res_sync()
 		{
 			Ok(()) => Ok(()),
-			Err(_) => Err(DimasError::PutMessage.into()),
+			Err(_) => Err(DimasError::Put.into()),
 		}
 	}
 
@@ -210,7 +210,7 @@ impl Publisher
 			.res_sync()
 		{
 			Ok(()) => Ok(()),
-			Err(_) => Err(DimasError::DeleteMessage.into()),
+			Err(_) => Err(DimasError::Delete.into()),
 		}
 	}
 }

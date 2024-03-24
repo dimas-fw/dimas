@@ -127,11 +127,21 @@ where
 	/// Currently none
 	#[allow(unused_variables)]
 	pub(crate) fn start_registered_tasks(&self, tx: &Sender<TaskSignal>) -> Result<()> {
+		// start liveliness subscriber
+		#[cfg(feature = "liveliness")]
+		self.inner.liveliness_subscribers
+			.write()
+			.map_err(|_| DimasError::ModifyContext("liveliness subscribers".into()))?
+			.iter_mut()
+			.for_each(|subscriber| {
+				subscriber.1.start(self.clone(), tx.clone());
+			});
+
 		// start all registered queryables
 		#[cfg(feature = "queryable")]
-		self.queryables
+		self.inner.queryables
 			.write()
-			.map_err(|_| DimasError::ShouldNotHappen)?
+			.map_err(|_| DimasError::ModifyContext("queryables".into()))?
 			.iter_mut()
 			.for_each(|queryable| {
 				queryable.1.start(self.clone(), tx.clone());
@@ -139,32 +149,19 @@ where
 
 		// start all registered subscribers
 		#[cfg(feature = "subscriber")]
-		self.subscribers
+		self.inner.subscribers
 			.write()
-			.map_err(|_| DimasError::ShouldNotHappen)?
+			.map_err(|_| DimasError::ModifyContext("subscribers".into()))?
 			.iter_mut()
 			.for_each(|subscriber| {
 				subscriber.1.start(self.clone(), tx.clone());
 			});
-
-		// start liveliness subscriber
-		#[cfg(feature = "liveliness")]
-		self.liveliness_subscribers
-			.write()
-			.map_err(|_| DimasError::ShouldNotHappen)?
-			.iter_mut()
-			.for_each(|subscriber| {
-				subscriber.1.start(self.clone(), tx.clone());
-			});
-
-		// wait a little bit before starting active part
-		//tokio::time::sleep(Duration::from_millis(10)).await;
 
 		// init all registered publishers
 		#[cfg(feature = "publisher")]
-		self.publishers
+		self.inner.publishers
 			.write()
-			.map_err(|_| DimasError::ShouldNotHappen)?
+			.map_err(|_| DimasError::ModifyContext("publishers".into()))?
 			.iter_mut()
 			.for_each(|publisher| {
 				if let Err(reason) = publisher.1.init(self) {
@@ -177,9 +174,9 @@ where
 
 		// init all registered queries
 		#[cfg(feature = "query")]
-		self.queries
+		self.inner.queries
 			.write()
-			.map_err(|_| DimasError::ShouldNotHappen)?
+			.map_err(|_| DimasError::ModifyContext("queries".into()))?
 			.iter_mut()
 			.for_each(|query| {
 				if let Err(reason) = query.1.init(self) {
@@ -192,9 +189,9 @@ where
 
 		// start all registered timers
 		#[cfg(feature = "timer")]
-		self.timers
+		self.inner.timers
 			.write()
-			.map_err(|_| DimasError::ShouldNotHappen)?
+			.map_err(|_| DimasError::ModifyContext("timers".into()))?
 			.iter_mut()
 			.for_each(|timer| {
 				timer.1.start(self.clone(), tx.clone());
@@ -212,9 +209,9 @@ where
 		// reverse order of start!
 		// stop all registered timers
 		#[cfg(feature = "timer")]
-		self.timers
+		self.inner.timers
 			.write()
-			.map_err(|_| DimasError::ShouldNotHappen)?
+			.map_err(|_| DimasError::ModifyContext("timers".into()))?
 			.iter_mut()
 			.for_each(|timer| {
 				timer.1.stop();
@@ -222,9 +219,9 @@ where
 
 		// de-init all registered queries
 		#[cfg(feature = "query")]
-		self.queries
+		self.inner.queries
 			.write()
-			.map_err(|_| DimasError::ShouldNotHappen)?
+			.map_err(|_| DimasError::ModifyContext("queries".into()))?
 			.iter_mut()
 			.for_each(|query| {
 				if let Err(reason) = query.1.de_init() {
@@ -235,11 +232,11 @@ where
 				};
 			});
 
-		// init all registered publishers
+		// de-init all registered publishers
 		#[cfg(feature = "publisher")]
-		self.publishers
+		self.inner.publishers
 			.write()
-			.map_err(|_| DimasError::ShouldNotHappen)?
+			.map_err(|_| DimasError::ModifyContext("publishers".into()))?
 			.iter_mut()
 			.for_each(|publisher| {
 				if let Err(reason) = publisher.1.de_init() {
@@ -250,24 +247,11 @@ where
 				};
 			});
 
-		#[cfg(feature = "liveliness")]
-		{
-			// stop all registered liveliness subscribers
-			#[cfg(feature = "liveliness")]
-			self.liveliness_subscribers
-				.write()
-				.map_err(|_| DimasError::ShouldNotHappen)?
-				.iter_mut()
-				.for_each(|subscriber| {
-					subscriber.1.stop();
-				});
-		}
-
 		// stop all registered subscribers
 		#[cfg(feature = "subscriber")]
-		self.subscribers
+		self.inner.subscribers
 			.write()
-			.map_err(|_| DimasError::ShouldNotHappen)?
+			.map_err(|_| DimasError::ModifyContext("subscribers".into()))?
 			.iter_mut()
 			.for_each(|subscriber| {
 				subscriber.1.stop();
@@ -275,17 +259,31 @@ where
 
 		// stop all registered queryables
 		#[cfg(feature = "queryable")]
-		self.queryables
+		self.inner.queryables
 			.write()
-			.map_err(|_| DimasError::ShouldNotHappen)?
+			.map_err(|_| DimasError::ModifyContext("queryables".into()))?
 			.iter_mut()
 			.for_each(|queryable| {
 				queryable.1.stop();
 			});
+
+		#[cfg(feature = "liveliness")]
+		{
+			// stop all registered liveliness subscribers
+			#[cfg(feature = "liveliness")]
+			self.inner.liveliness_subscribers
+				.write()
+				.map_err(|_| DimasError::ModifyContext("liveliness subscribers".into()))?
+				.iter_mut()
+				.for_each(|subscriber| {
+					subscriber.1.stop();
+				});
+		}
+
 		Ok(())
 	}
 
-	/// Get a builder for a [`LivelinessSubscriber`]
+	/// Get a [`LivelinessSubscriberBuilder`], the builder for a [`LivelinessSubscriber`].
 	#[cfg(feature = "liveliness")]
 	#[must_use]
 	pub fn liveliness_subscriber(
@@ -297,7 +295,7 @@ where
 	> {
 		LivelinessSubscriberBuilder::new(self.prefix()).storage(self.liveliness_subscribers.clone())
 	}
-	/// Get a builder for a [`LivelinessSubscriber`]
+	/// Get a [`LivelinessSubscriberBuilder`], the builder for a [`LivelinessSubscriber`].
 	#[cfg(not(feature = "liveliness"))]
 	#[must_use]
 	pub fn liveliness_subscriber(
@@ -310,7 +308,7 @@ where
 		LivelinessSubscriberBuilder::new(self.prefix())
 	}
 
-	/// Get a builder for a [`Publisher`]
+	/// Get a [`PublisherBuilder`], the builder for a [`Publisher`].
 	#[cfg(feature = "publisher")]
 	#[must_use]
 	pub fn publisher(
@@ -318,7 +316,7 @@ where
 	) -> PublisherBuilder<crate::com::publisher::NoKeyExpression, crate::com::publisher::Storage> {
 		PublisherBuilder::new(self.prefix()).storage(self.publishers.clone())
 	}
-	/// Get a builder for a [`Publisher`]
+	/// Get a [`PublisherBuilder`], the builder for a [`Publisher`].
 	#[cfg(not(feature = "publisher"))]
 	#[must_use]
 	pub fn publisher(
@@ -328,7 +326,7 @@ where
 		PublisherBuilder::new(self.prefix())
 	}
 
-	/// Get a builder for a [`Query`]
+	/// Get a [`QueryBuilder`], the builder for a [`Query`].
 	#[cfg(feature = "query")]
 	#[must_use]
 	pub fn query(
@@ -341,7 +339,7 @@ where
 	> {
 		QueryBuilder::new(self.prefix()).storage(self.queries.clone())
 	}
-	/// Get a builder for a [`Query`]
+	/// Get a [`QueryBuilder`], the builder for a [`Query`].
 	#[cfg(not(feature = "query"))]
 	#[must_use]
 	pub fn query(
@@ -355,7 +353,7 @@ where
 		QueryBuilder::new(self.prefix())
 	}
 
-	/// Get a builder for a [`Queryable`]
+	/// Get a [`QueryableBuilder`], the builder for a [`Queryable`].
 	#[cfg(feature = "queryable")]
 	#[must_use]
 	pub fn queryable(
@@ -368,7 +366,7 @@ where
 	> {
 		QueryableBuilder::new(self.prefix()).storage(self.queryables.clone())
 	}
-	/// Get a builder for a [`Queryable`]
+	/// Get a [`QueryableBuilder`], the builder for a [`Queryable`].
 	#[cfg(not(feature = "queryable"))]
 	#[must_use]
 	pub fn queryable(
@@ -382,7 +380,7 @@ where
 		QueryableBuilder::new(self.prefix())
 	}
 
-	/// Get a builder for a [`Subscriber`]
+	/// Get a [`SubscriberBuilder`], the builder for a [`Subscriber`].
 	#[cfg(feature = "subscriber")]
 	#[must_use]
 	pub fn subscriber(
@@ -395,7 +393,7 @@ where
 	> {
 		SubscriberBuilder::new(self.prefix()).storage(self.subscribers.clone())
 	}
-	/// Get a builder for a [`Subscriber`]
+	/// Get a [`SubscriberBuilder`], the builder for a [`Subscriber`].
 	#[cfg(not(feature = "subscriber"))]
 	#[must_use]
 	pub fn subscriber(
@@ -409,7 +407,7 @@ where
 		SubscriberBuilder::new(self.prefix())
 	}
 
-	/// Get a builder for a [`Timer`]
+	/// Get a [`TimerBuilder`], the builder for a [`Timer`].
 	#[cfg(feature = "timer")]
 	#[must_use]
 	pub fn timer(
@@ -423,7 +421,7 @@ where
 	> {
 		TimerBuilder::new(self.prefix()).storage(self.timers.clone())
 	}
-	/// Get a builder for a [`Timer`]
+	/// Get a [`TimerBuilder`], the builder for a [`Timer`].
 	#[cfg(not(feature = "timer"))]
 	#[must_use]
 	pub fn timer(
@@ -441,7 +439,7 @@ where
 // endregion:	--- ArcContext
 
 // region:		--- Context
-/// Context makes all relevant data of the agent accessible via accessor methods.
+/// [`Context`] makes all relevant data of the [`Agent`] accessible via accessor methods.
 #[derive(Debug, Clone)]
 pub struct Context<P>
 where
@@ -537,7 +535,7 @@ where
 		self.communicator.create_publisher(key_expr)
 	}
 
-	/// Method to do an ad hoc publishing
+	/// Method to do an ad hoc publishing for a `topic`
 	///
 	/// # Errors
 	///   Error is propagated from [`Communicator::put()`]
@@ -549,10 +547,10 @@ where
 		self.communicator.put(topic, message)
 	}
 
-	/// Method to pubish data with a stored [`Publisher`]
+	/// Method to publish data with a stored [`Publisher`]
 	///
 	/// # Errors
-	///
+	/// 
 	#[cfg(feature = "publisher")]
 	#[instrument(level = Level::ERROR, skip_all)]
 	pub fn put_with<M>(&self, topic: &str, message: M) -> Result<()>
@@ -566,13 +564,13 @@ where
 		if self
 			.publishers
 			.read()
-			.map_err(|_| DimasError::ShouldNotHappen)?
+			.map_err(|_| DimasError::ReadContext("publishers".into()))?
 			.get(&key_expr)
 			.is_some()
 		{
 			self.publishers
 				.read()
-				.map_err(|_| DimasError::ShouldNotHappen)?
+				.map_err(|_| DimasError::ReadContext("publishers".into()))?
 				.get(&key_expr)
 				.ok_or(DimasError::ShouldNotHappen)?
 				.put(message)?;
@@ -580,10 +578,10 @@ where
 		Ok(())
 	}
 
-	/// Method to do an ad hoc deletion
+	/// Method to do an ad hoc deletion for the `topic`
 	///
 	/// # Errors
-	///   Error is propagated from Communicator
+	///   Error is propagated from [`Communicator::delete()`]
 	#[instrument(level = Level::ERROR, skip_all)]
 	pub fn delete(&self, topic: &str) -> Result<()> {
 		self.communicator.delete(topic)
@@ -603,13 +601,13 @@ where
 		if self
 			.publishers
 			.read()
-			.map_err(|_| DimasError::ShouldNotHappen)?
+			.map_err(|_| DimasError::ReadContext("publishers".into()))?
 			.get(&key_expr)
 			.is_some()
 		{
 			self.publishers
 				.read()
-				.map_err(|_| DimasError::ShouldNotHappen)?
+				.map_err(|_| DimasError::ReadContext("publishers".into()))?
 				.get(&key_expr)
 				.ok_or(DimasError::ShouldNotHappen)?
 				.delete()?;
@@ -620,8 +618,8 @@ where
 	/// Method to do an ad hoc query without any consolidation of answers.
 	/// Multiple answers may be received for the same timestamp.
 	///
-	/// #Errors
-	///
+	/// # Errors
+	///   Error is propagated from [`Communicator::get()`]
 	#[instrument(level = Level::ERROR, skip_all)]
 	pub fn get<F>(&self, ctx: ArcContext<P>, query_name: &str, callback: F) -> Result<()>
 	where
@@ -646,13 +644,13 @@ where
 		if self
 			.queries
 			.read()
-			.map_err(|_| DimasError::ShouldNotHappen)?
+			.map_err(|_| DimasError::ReadContext("queries".into()))?
 			.get(&key_expr)
 			.is_some()
 		{
 			self.queries
 				.read()
-				.map_err(|_| DimasError::ShouldNotHappen)?
+				.map_err(|_| DimasError::ReadContext("queries".into()))?
 				.get(&key_expr)
 				.ok_or(DimasError::ShouldNotHappen)?
 				.get()?;

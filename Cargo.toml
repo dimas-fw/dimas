@@ -26,7 +26,7 @@ nursery = "deny"
 unwrap_used = "deny"
 
 [workspace.package]
-rust-version = "1.75.0"
+rust-version = "1.77.0"
 edition = "2021"
 version = "0.1.0"
 authors = [
@@ -42,7 +42,7 @@ categories = [
 ]
 
 [workspace.dependencies]
-bitcode = "0.6.0-beta.1"
+bitcode = "0.6"
 dimas = { path = "dimas" }
 dirs = "5"
 json5 = "0.4"

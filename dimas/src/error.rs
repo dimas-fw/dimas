@@ -28,22 +28,13 @@ pub enum DimasError {
 	ShouldNotHappen,
 	/// The `put` of a `Publisher` failed
 	#[error("Publisher 'put' failed")]
-	PutMessage,
+	Put,
 	/// The `delete` of a `Publisher` failed
 	#[error("Publisher 'delete' failed")]
-	DeleteMessage,
-	/// There was no key expression given to the Builder
-	#[error("no key expression given")]
-	NoKeyExpression,
-	/// There was no callback function given to the Builder
-	#[error("no callback given")]
-	NoCallback,
-	/// There was no interval duration given to the `TimerBuilder`
-	#[error("no interval given")]
-	NoInterval,
-	/// There was no name given to the `TimerBuilder`
-	#[error("no name given")]
-	NoName,
+	Delete,
+	/// The `get` of a `Query` failed
+	#[error("Query 'get' failed")]
+	Get,
 	/// Encoding of message failed
 	#[error("message encoding failed")]
 	EncodingMessage,
@@ -64,15 +55,24 @@ pub enum DimasError {
 	ExecuteCallback,
 
 	/// File not found
-	#[error("Could not find file: {0}")]
+	#[error("could not find file: {0}")]
 	FileNotFound(String),
+	/// Modifying context failed
+	#[error("modifiying context for {0} failed")]
+	ModifyContext(String),
+	/// Reading context failed
+	#[error("reading context for {0} failed")]
+	ReadContext(String),
 
-	/// `zenoh` activate sending liveliness failed
-	#[error("activation of zenoh liveliness failed with {0}")]
-	ActivateLiveliness(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
 	/// `zenoh` session creation failed
 	#[error("creation of zenoh session failed with {0}")]
 	CreateSession(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+	/// `zenoh` activate sending liveliness failed
+	#[error("activation of zenoh liveliness failed with {0}")]
+	ActivateLiveliness(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+	/// `zenoh` publisher  declaration failed
+	#[error("declaration of zenoh publisher failed with {0}")]
+	DeclarePublisher(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
 
 	// should be last line
 	/// auto conversion for boxed `std::error::Error`
