@@ -23,15 +23,13 @@ use zenoh::{
 #[allow(clippy::module_name_repetitions)]
 pub type SubscriberPutCallback<P> = Arc<
 	Mutex<
-		Option<
-			Box<dyn FnMut(&ArcContext<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static>,
-		>,
+		Box<dyn FnMut(&ArcContext<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static>,
 	>,
 >;
 /// Type definition for a subscribers `delete` callback function
 #[allow(clippy::module_name_repetitions)]
 pub type SubscriberDeleteCallback<P> = Arc<
-	Mutex<Option<Box<dyn FnMut(&ArcContext<P>) -> Result<()> + Send + Sync + Unpin + 'static>>>,
+	Mutex<Box<dyn FnMut(&ArcContext<P>) -> Result<()> + Send + Sync + Unpin + 'static>>,
 >;
 // endregion:	--- types
 
@@ -118,7 +116,7 @@ where
 			..
 		} = self;
 		let delete_callback: Option<SubscriberDeleteCallback<P>> =
-			Some(Arc::new(Mutex::new(Some(Box::new(callback)))));
+			Some(Arc::new(Mutex::new(Box::new(callback))));
 		Self {
 			prefix,
 			key_expr,
@@ -196,7 +194,7 @@ where
 			delete_callback,
 			..
 		} = self;
-		let callback: SubscriberPutCallback<P> = Arc::new(Mutex::new(Some(Box::new(callback))));
+		let callback: SubscriberPutCallback<P> = Arc::new(Mutex::new(Box::new(callback)));
 		SubscriberBuilder {
 			prefix,
 			key_expr,
@@ -252,7 +250,7 @@ where
 		dbg!(&key_expr.key_expr);
 		Ok(Subscriber {
 			key_expr: key_expr.key_expr,
-			put_callback: Some(put_callback.callback),
+			put_callback: put_callback.callback,
 			delete_callback,
 			handle: None,
 		})
@@ -288,7 +286,7 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	key_expr: String,
-	put_callback: Option<SubscriberPutCallback<P>>,
+	put_callback: SubscriberPutCallback<P>,
 	delete_callback: Option<SubscriberDeleteCallback<P>>,
 	handle: Option<JoinHandle<()>>,
 }
@@ -318,20 +316,15 @@ where
 		drop(tx);
 
 		{
-			if let Some(pcb) = self.put_callback.clone() {
-				if let Err(err) = pcb.lock() {
+				if self.put_callback.lock().is_err() {
 					warn!("found poisoned put Mutex");
-					self.put_callback
-						.replace(Arc::new(Mutex::new(err.into_inner().take())));
-				}
-			}
+					self.put_callback.clear_poison();
 		}
 		{
 			if let Some(dcb) = self.delete_callback.clone() {
-				if let Err(err) = dcb.lock() {
+				if dcb.lock().is_err() {
 					warn!("found poisoned delete Mutex");
-					self.delete_callback
-						.replace(Arc::new(Mutex::new(err.into_inner().take())));
+					dcb.clear_poison();
 				}
 			}
 		}
@@ -357,6 +350,7 @@ where
 					error!("spawning subscriber failed with {error}");
 				};
 			}));
+		}
 	}
 
 	/// Stop a running Subscriber
@@ -371,7 +365,7 @@ where
 #[instrument(name="subscriber", level = Level::ERROR, skip_all)]
 async fn run_subscriber<P>(
 	key_expr: String,
-	p_cb: Option<SubscriberPutCallback<P>>,
+	p_cb: SubscriberPutCallback<P>,
 	d_cb: Option<SubscriberDeleteCallback<P>>,
 	ctx: ArcContext<P>,
 ) -> Result<()>
@@ -395,31 +389,27 @@ where
 		match sample.kind {
 			SampleKind::Put => {
 				let msg = Message(sample);
-				if let Some(cb) = p_cb.clone() {
-					let result = cb.lock();
-					match result {
-						Ok(mut cb) => {
-							if let Err(error) = cb.as_deref_mut().expect("snh")(&ctx, msg) {
-								error!("put callback failed with {error}");
-							}
+				match p_cb.lock() {
+					Ok(mut lock) => {
+						if let Err(error) = lock(&ctx, msg) {
+							error!("subscriber put callback failed with {error}");
 						}
-						Err(err) => {
-							error!("put callback lock failed with {err}");
-						}
+					}
+					Err(err) => {
+						error!("subscriber put callback lock failed with {err}");
 					}
 				}
 			}
 			SampleKind::Delete => {
 				if let Some(cb) = d_cb.clone() {
-					let result = cb.lock();
-					match result {
-						Ok(mut cb) => {
-							if let Err(error) = cb.as_deref_mut().expect("snh")(&ctx) {
-								error!("delete callback failed with {error}");
+					match cb.lock() {
+						Ok(mut lock) => {
+							if let Err(error) = lock(&ctx) {
+								error!("subscriber delete callback failed with {error}");
 							}
 						}
 						Err(err) => {
-							error!("delete callback lock failed with {err}");
+							error!("subscriber delete callback lock failed with {err}");
 						}
 					}
 				}

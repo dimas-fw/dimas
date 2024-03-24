@@ -17,7 +17,7 @@
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync + 'static>>;
 // endregion:	--- types
 
-// region:    --- Error
+// region:    --- DimasError
 /// `DiMAS` Error type
 #[non_exhaustive]
 #[derive(thiserror::Error, Debug)]
@@ -78,7 +78,7 @@ pub enum DimasError {
 	/// auto conversion for boxed `std::error::Error`
 	#[error(transparent)]
 	StdError(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),
-} // endregion: --- Error
+} // endregion: --- DimasError
 
 #[cfg(test)]
 mod tests {
