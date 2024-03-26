@@ -129,7 +129,8 @@ where
 	pub(crate) fn start_registered_tasks(&self, tx: &Sender<TaskSignal>) -> Result<()> {
 		// start liveliness subscriber
 		#[cfg(feature = "liveliness")]
-		self.inner.liveliness_subscribers
+		self.inner
+			.liveliness_subscribers
 			.write()
 			.map_err(|_| DimasError::ModifyContext("liveliness subscribers".into()))?
 			.iter_mut()
@@ -139,7 +140,8 @@ where
 
 		// start all registered queryables
 		#[cfg(feature = "queryable")]
-		self.inner.queryables
+		self.inner
+			.queryables
 			.write()
 			.map_err(|_| DimasError::ModifyContext("queryables".into()))?
 			.iter_mut()
@@ -149,7 +151,8 @@ where
 
 		// start all registered subscribers
 		#[cfg(feature = "subscriber")]
-		self.inner.subscribers
+		self.inner
+			.subscribers
 			.write()
 			.map_err(|_| DimasError::ModifyContext("subscribers".into()))?
 			.iter_mut()
@@ -159,7 +162,8 @@ where
 
 		// init all registered publishers
 		#[cfg(feature = "publisher")]
-		self.inner.publishers
+		self.inner
+			.publishers
 			.write()
 			.map_err(|_| DimasError::ModifyContext("publishers".into()))?
 			.iter_mut()
@@ -174,7 +178,8 @@ where
 
 		// init all registered queries
 		#[cfg(feature = "query")]
-		self.inner.queries
+		self.inner
+			.queries
 			.write()
 			.map_err(|_| DimasError::ModifyContext("queries".into()))?
 			.iter_mut()
@@ -189,7 +194,8 @@ where
 
 		// start all registered timers
 		#[cfg(feature = "timer")]
-		self.inner.timers
+		self.inner
+			.timers
 			.write()
 			.map_err(|_| DimasError::ModifyContext("timers".into()))?
 			.iter_mut()
@@ -209,7 +215,8 @@ where
 		// reverse order of start!
 		// stop all registered timers
 		#[cfg(feature = "timer")]
-		self.inner.timers
+		self.inner
+			.timers
 			.write()
 			.map_err(|_| DimasError::ModifyContext("timers".into()))?
 			.iter_mut()
@@ -219,7 +226,8 @@ where
 
 		// de-init all registered queries
 		#[cfg(feature = "query")]
-		self.inner.queries
+		self.inner
+			.queries
 			.write()
 			.map_err(|_| DimasError::ModifyContext("queries".into()))?
 			.iter_mut()
@@ -234,7 +242,8 @@ where
 
 		// de-init all registered publishers
 		#[cfg(feature = "publisher")]
-		self.inner.publishers
+		self.inner
+			.publishers
 			.write()
 			.map_err(|_| DimasError::ModifyContext("publishers".into()))?
 			.iter_mut()
@@ -249,7 +258,8 @@ where
 
 		// stop all registered subscribers
 		#[cfg(feature = "subscriber")]
-		self.inner.subscribers
+		self.inner
+			.subscribers
 			.write()
 			.map_err(|_| DimasError::ModifyContext("subscribers".into()))?
 			.iter_mut()
@@ -259,7 +269,8 @@ where
 
 		// stop all registered queryables
 		#[cfg(feature = "queryable")]
-		self.inner.queryables
+		self.inner
+			.queryables
 			.write()
 			.map_err(|_| DimasError::ModifyContext("queryables".into()))?
 			.iter_mut()
@@ -271,7 +282,8 @@ where
 		{
 			// stop all registered liveliness subscribers
 			#[cfg(feature = "liveliness")]
-			self.inner.liveliness_subscribers
+			self.inner
+				.liveliness_subscribers
 				.write()
 				.map_err(|_| DimasError::ModifyContext("liveliness subscribers".into()))?
 				.iter_mut()
@@ -550,7 +562,7 @@ where
 	/// Method to publish data with a stored [`Publisher`]
 	///
 	/// # Errors
-	/// 
+	///
 	#[cfg(feature = "publisher")]
 	#[instrument(level = Level::ERROR, skip_all)]
 	pub fn put_with<M>(&self, topic: &str, message: M) -> Result<()>

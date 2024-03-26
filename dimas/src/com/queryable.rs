@@ -22,9 +22,7 @@ use zenoh::{prelude::r#async::AsyncResolve, SessionDeclarations};
 /// type defnition for the queryables callback function.
 #[allow(clippy::module_name_repetitions)]
 pub type QueryableCallback<P> = Arc<
-	Mutex<
-		Box<dyn FnMut(&ArcContext<P>, Request) -> Result<()> + Send + Sync + Unpin + 'static>,
-	>,
+	Mutex<Box<dyn FnMut(&ArcContext<P>, Request) -> Result<()> + Send + Sync + Unpin + 'static>>,
 >;
 // endregion:	--- types
 

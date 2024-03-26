@@ -8,7 +8,10 @@ use crate::prelude::*;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use tracing::{instrument, Level};
-use zenoh::prelude::sync::SyncResolve;
+use zenoh::{
+	prelude::sync::SyncResolve,
+	publication::{CongestionControl, Priority},
+};
 // endregion:	--- modules
 
 // region:		--- states
@@ -36,6 +39,8 @@ pub struct KeyExpression {
 #[derive(Clone)]
 pub struct PublisherBuilder<K, S> {
 	prefix: Option<String>,
+	priority: Priority,
+	congestion_control: CongestionControl,
 	pub(crate) key_expr: K,
 	pub(crate) storage: S,
 }
@@ -46,9 +51,27 @@ impl PublisherBuilder<NoKeyExpression, NoStorage> {
 	pub const fn new(prefix: Option<String>) -> Self {
 		Self {
 			prefix,
+			priority: Priority::Data,
+			congestion_control: CongestionControl::Drop,
 			key_expr: NoKeyExpression,
 			storage: NoStorage,
 		}
+	}
+}
+
+impl<K, S> PublisherBuilder<K, S> {
+	/// Set the publishers priority
+	#[must_use]
+	pub const fn set_priority(mut self, priority: Priority) -> Self {
+		self.priority = priority;
+		self
+	}
+
+	/// Set the publishers congestion control
+	#[must_use]
+	pub const fn set_congestion_control(mut self, congestion_control: CongestionControl) -> Self {
+		self.congestion_control = congestion_control;
+		self
 	}
 }
 
@@ -61,10 +84,16 @@ impl<K> PublisherBuilder<K, NoStorage> {
 		storage: Arc<RwLock<std::collections::HashMap<String, Publisher>>>,
 	) -> PublisherBuilder<K, Storage> {
 		let Self {
-			prefix, key_expr, ..
+			prefix,
+			priority,
+			congestion_control,
+			key_expr,
+			..
 		} = self;
 		PublisherBuilder {
 			prefix,
+			priority,
+			congestion_control,
 			key_expr,
 			storage: Storage { storage },
 		}
@@ -76,10 +105,16 @@ impl<S> PublisherBuilder<NoKeyExpression, S> {
 	#[must_use]
 	pub fn key_expr(self, key_expr: &str) -> PublisherBuilder<KeyExpression, S> {
 		let Self {
-			prefix, storage, ..
+			prefix,
+			priority,
+			congestion_control,
+			storage,
+			..
 		} = self;
 		PublisherBuilder {
 			prefix,
+			priority,
+			congestion_control,
 			key_expr: KeyExpression {
 				key_expr: key_expr.into(),
 			},
@@ -96,10 +131,16 @@ impl<S> PublisherBuilder<NoKeyExpression, S> {
 			.take()
 			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
 		let Self {
-			prefix, storage, ..
+			prefix,
+			priority,
+			congestion_control,
+			storage,
+			..
 		} = self;
 		PublisherBuilder {
 			prefix,
+			priority,
+			congestion_control,
 			key_expr: KeyExpression { key_expr },
 			storage,
 		}
@@ -111,9 +152,10 @@ impl<S> PublisherBuilder<KeyExpression, S> {
 	/// # Errors
 	///
 	pub fn build(self) -> Result<Publisher> {
-		dbg!(&self.key_expr.key_expr);
 		Ok(Publisher {
 			key_expr: self.key_expr.key_expr,
+			priority: self.priority,
+			congestion_control: self.congestion_control,
 			publisher: None,
 		})
 	}
@@ -142,6 +184,8 @@ impl PublisherBuilder<KeyExpression, Storage> {
 /// Publisher
 pub struct Publisher {
 	pub(crate) key_expr: String,
+	priority: Priority,
+	congestion_control: CongestionControl,
 	publisher: Option<zenoh::publication::Publisher<'static>>,
 }
 
@@ -164,7 +208,10 @@ impl Publisher
 	where
 		P: Send + Sync + Unpin + 'static,
 	{
-		let publ = context.create_publisher(&self.key_expr)?;
+		let publ = context
+			.create_publisher(&self.key_expr)?
+			.congestion_control(self.congestion_control)
+			.priority(self.priority);
 		self.publisher.replace(publ);
 		Ok(())
 	}

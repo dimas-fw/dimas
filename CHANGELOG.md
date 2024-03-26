@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Documentation
 - Builders 'add' methods now return the possibly previously added item for that key expression
+- QoS for publisher & subscriber
 
 ### Changed
 - _Name of Builder methods to set only topics name chanched to 'topic(..)'_

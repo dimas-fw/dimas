@@ -23,11 +23,8 @@ use zenoh::{
 
 // region:		--- types
 /// Type definition for liveliness callback function
-pub type LivelinessCallback<P> = Arc<
-	Mutex<
-		Box<dyn FnMut(&ArcContext<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static>,
-	>,
->;
+pub type LivelinessCallback<P> =
+	Arc<Mutex<Box<dyn FnMut(&ArcContext<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static>>>;
 // endregion:	--- types
 
 // region:		--- states
@@ -352,18 +349,16 @@ where
 					continue;
 				};
 				match sample.kind {
-					SampleKind::Put => {
-						match p_cb.lock() {
-							Ok(mut lock) => {
-								if let Err(error) = lock(&ctx, id) {
-									error!("liveliness put callback failed with {error}");
-								}
-							}
-							Err(err) => {
-								error!("liveliness put callback lock failed with {err}");
+					SampleKind::Put => match p_cb.lock() {
+						Ok(mut lock) => {
+							if let Err(error) = lock(&ctx, id) {
+								error!("liveliness put callback failed with {error}");
 							}
 						}
-					}
+						Err(err) => {
+							error!("liveliness put callback lock failed with {err}");
+						}
+					},
 					SampleKind::Delete => {
 						if let Some(cb) = d_cb.clone() {
 							match cb.lock() {

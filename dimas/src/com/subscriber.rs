@@ -13,8 +13,7 @@ use tokio::task::JoinHandle;
 use tracing::info;
 use tracing::{error, instrument, warn, Level};
 use zenoh::{
-	prelude::{r#async::AsyncResolve, SampleKind},
-	SessionDeclarations,
+	prelude::{r#async::AsyncResolve, SampleKind}, subscriber::Reliability, SessionDeclarations
 };
 // endregion:	--- modules
 
@@ -22,15 +21,12 @@ use zenoh::{
 /// Type definition for a subscribers `publish` callback function
 #[allow(clippy::module_name_repetitions)]
 pub type SubscriberPutCallback<P> = Arc<
-	Mutex<
-		Box<dyn FnMut(&ArcContext<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static>,
-	>,
+	Mutex<Box<dyn FnMut(&ArcContext<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static>>,
 >;
 /// Type definition for a subscribers `delete` callback function
 #[allow(clippy::module_name_repetitions)]
-pub type SubscriberDeleteCallback<P> = Arc<
-	Mutex<Box<dyn FnMut(&ArcContext<P>) -> Result<()> + Send + Sync + Unpin + 'static>>,
->;
+pub type SubscriberDeleteCallback<P> =
+	Arc<Mutex<Box<dyn FnMut(&ArcContext<P>) -> Result<()> + Send + Sync + Unpin + 'static>>>;
 // endregion:	--- types
 
 // region:		--- states
@@ -78,6 +74,7 @@ where
 	pub(crate) key_expr: K,
 	pub(crate) put_callback: C,
 	pub(crate) storage: S,
+	pub(crate) reliability: Reliability,
 	pub(crate) delete_callback: Option<SubscriberDeleteCallback<P>>,
 }
 
@@ -93,6 +90,7 @@ where
 			key_expr: NoKeyExpression,
 			put_callback: NoPutCallback,
 			storage: NoStorage,
+			reliability: Reliability::BestEffort,
 			delete_callback: None,
 		}
 	}
@@ -102,6 +100,13 @@ impl<P, K, C, S> SubscriberBuilder<P, K, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// Set reliability
+	#[must_use]
+	pub const fn set_reliability(mut self, reliability: Reliability) -> Self {
+		self.reliability = reliability;
+		self
+	}
+
 	/// Set liveliness subscribers callback for `delete` messages
 	#[must_use]
 	pub fn delete_callback<F>(self, callback: F) -> Self
@@ -113,6 +118,7 @@ where
 			key_expr,
 			put_callback,
 			storage,
+			reliability,
 			..
 		} = self;
 		let delete_callback: Option<SubscriberDeleteCallback<P>> =
@@ -122,6 +128,7 @@ where
 			key_expr,
 			put_callback,
 			storage,
+			reliability,
 			delete_callback,
 		}
 	}
@@ -139,6 +146,7 @@ where
 			storage,
 			put_callback,
 			delete_callback,
+			reliability,
 			..
 		} = self;
 		SubscriberBuilder {
@@ -148,6 +156,7 @@ where
 			},
 			put_callback,
 			storage,
+			reliability,
 			delete_callback,
 		}
 	}
@@ -164,6 +173,7 @@ where
 			prefix,
 			storage,
 			put_callback,
+			reliability,
 			delete_callback,
 			..
 		} = self;
@@ -172,6 +182,7 @@ where
 			key_expr: KeyExpression { key_expr },
 			put_callback,
 			storage,
+			reliability,
 			delete_callback,
 		}
 	}
@@ -191,6 +202,7 @@ where
 			prefix,
 			key_expr,
 			storage,
+			reliability,
 			delete_callback,
 			..
 		} = self;
@@ -200,6 +212,7 @@ where
 			key_expr,
 			put_callback: PutCallback { callback },
 			storage,
+			reliability,
 			delete_callback,
 		}
 	}
@@ -220,6 +233,7 @@ where
 			prefix,
 			key_expr,
 			put_callback,
+			reliability,
 			delete_callback,
 			..
 		} = self;
@@ -228,6 +242,7 @@ where
 			key_expr,
 			put_callback,
 			storage: Storage { storage },
+			reliability,
 			delete_callback,
 		}
 	}
@@ -244,6 +259,7 @@ where
 		let Self {
 			key_expr,
 			put_callback,
+			reliability,
 			delete_callback,
 			..
 		} = self;
@@ -251,6 +267,7 @@ where
 		Ok(Subscriber {
 			key_expr: key_expr.key_expr,
 			put_callback: put_callback.callback,
+			reliability,
 			delete_callback,
 			handle: None,
 		})
@@ -287,6 +304,7 @@ where
 {
 	key_expr: String,
 	put_callback: SubscriberPutCallback<P>,
+	reliability: Reliability,
 	delete_callback: Option<SubscriberDeleteCallback<P>>,
 	handle: Option<JoinHandle<()>>,
 }
@@ -316,40 +334,41 @@ where
 		drop(tx);
 
 		{
-				if self.put_callback.lock().is_err() {
-					warn!("found poisoned put Mutex");
-					self.put_callback.clear_poison();
-		}
-		{
-			if let Some(dcb) = self.delete_callback.clone() {
-				if dcb.lock().is_err() {
-					warn!("found poisoned delete Mutex");
-					dcb.clear_poison();
+			if self.put_callback.lock().is_err() {
+				warn!("found poisoned put Mutex");
+				self.put_callback.clear_poison();
+			}
+			{
+				if let Some(dcb) = self.delete_callback.clone() {
+					if dcb.lock().is_err() {
+						warn!("found poisoned delete Mutex");
+						dcb.clear_poison();
+					}
 				}
 			}
-		}
 
-		let key_expr = self.key_expr.clone();
-		let p_cb = self.put_callback.clone();
-		let d_cb = self.delete_callback.clone();
+			let key_expr = self.key_expr.clone();
+			let p_cb = self.put_callback.clone();
+			let d_cb = self.delete_callback.clone();
+			let reliability = self.reliability;
 
-		self.handle
-			.replace(tokio::task::spawn(async move {
-				#[cfg(feature = "subscriber")]
-				let key = key_expr.clone();
-				std::panic::set_hook(Box::new(move |reason| {
-					error!("subscriber panic: {}", reason);
+			self.handle
+				.replace(tokio::task::spawn(async move {
 					#[cfg(feature = "subscriber")]
-					if let Err(reason) = tx.send(TaskSignal::RestartSubscriber(key.clone())) {
-						error!("could not restart subscriber: {}", reason);
-					} else {
-						info!("restarting subscriber!");
+					let key = key_expr.clone();
+					std::panic::set_hook(Box::new(move |reason| {
+						error!("subscriber panic: {}", reason);
+						#[cfg(feature = "subscriber")]
+						if let Err(reason) = tx.send(TaskSignal::RestartSubscriber(key.clone())) {
+							error!("could not restart subscriber: {}", reason);
+						} else {
+							info!("restarting subscriber!");
+						};
+					}));
+					if let Err(error) = run_subscriber(key_expr, p_cb, d_cb, reliability, ctx).await {
+						error!("spawning subscriber failed with {error}");
 					};
 				}));
-				if let Err(error) = run_subscriber(key_expr, p_cb, d_cb, ctx).await {
-					error!("spawning subscriber failed with {error}");
-				};
-			}));
 		}
 	}
 
@@ -367,6 +386,7 @@ async fn run_subscriber<P>(
 	key_expr: String,
 	p_cb: SubscriberPutCallback<P>,
 	d_cb: Option<SubscriberDeleteCallback<P>>,
+	reliability: Reliability,
 	ctx: ArcContext<P>,
 ) -> Result<()>
 where
@@ -376,6 +396,7 @@ where
 		.communicator
 		.session
 		.declare_subscriber(&key_expr)
+		.reliability(reliability)
 		.res_async()
 		.await
 		.map_err(|_| DimasError::ShouldNotHappen)?;

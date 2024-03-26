@@ -70,7 +70,8 @@ impl Communicator {
 
 	/// Create a zenoh publisher
 	pub(crate) fn create_publisher<'a>(&self, key_expr: &str) -> Result<Publisher<'a>> {
-		let p = self.session
+		let p = self
+			.session
 			.declare_publisher(key_expr.to_owned())
 			.res_sync()
 			.map_err(DimasError::DeclarePublisher)?;
@@ -86,16 +87,18 @@ impl Communicator {
 		let value: Vec<u8> = encode(&message);
 		let key_expr = self.key_expr(topic);
 
-		self.session.put(&key_expr, value)
+		self.session
+			.put(&key_expr, value)
 			.res_sync()
 			.map_err(|_| DimasError::Put.into())
-}
+	}
 
 	/// Send an ad hoc delete using the given `topic`.
 	pub(crate) fn delete(&self, topic: &str) -> Result<()> {
 		let key_expr = self.key_expr(topic);
 
-		self.session.delete(&key_expr)
+		self.session
+			.delete(&key_expr)
 			.res_sync()
 			.map_err(|_| DimasError::Delete.into())
 	}
