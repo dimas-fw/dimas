@@ -57,7 +57,12 @@ async fn main() -> Result<()> {
 		.config(Config::default())?;
 
 	// create publisher for topic "ping"
-	agent.publisher().topic("ping").add()?;
+	agent
+		.publisher()
+		.topic("ping")
+		.set_priority(Priority::RealTime)
+		.set_congestion_control(CongestionControl::Block)
+		.add()?;
 
 	// use timer for regular publishing
 	agent
@@ -94,6 +99,7 @@ async fn main() -> Result<()> {
 		.subscriber()
 		.topic("pong")
 		.put_callback(pong_received)
+		.set_reliability(Reliability::Reliable)
 		.add()?;
 
 	// activate liveliness

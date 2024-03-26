@@ -13,7 +13,9 @@ use tokio::task::JoinHandle;
 use tracing::info;
 use tracing::{error, instrument, warn, Level};
 use zenoh::{
-	prelude::{r#async::AsyncResolve, SampleKind}, subscriber::Reliability, SessionDeclarations
+	prelude::{r#async::AsyncResolve, SampleKind},
+	subscriber::Reliability,
+	SessionDeclarations,
 };
 // endregion:	--- modules
 
@@ -365,7 +367,8 @@ where
 							info!("restarting subscriber!");
 						};
 					}));
-					if let Err(error) = run_subscriber(key_expr, p_cb, d_cb, reliability, ctx).await {
+					if let Err(error) = run_subscriber(key_expr, p_cb, d_cb, reliability, ctx).await
+					{
 						error!("spawning subscriber failed with {error}");
 					};
 				}));
