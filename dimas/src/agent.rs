@@ -314,7 +314,11 @@ where
 		// activate sending liveliness
 		if self.liveliness {
 			let session = self.context.communicator.session.clone();
-			let uuid = format!("{}/{}", self.context.communicator.key_expr("alive"), session.zid());
+			let uuid = format!(
+				"{}/{}",
+				self.context.communicator.key_expr("alive"),
+				session.zid()
+			);
 
 			let token = session
 				.liveliness()

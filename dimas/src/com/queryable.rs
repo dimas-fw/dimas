@@ -22,11 +22,7 @@ use zenoh::{prelude::r#async::AsyncResolve, SessionDeclarations};
 /// type defnition for the queryables callback function.
 #[allow(clippy::module_name_repetitions)]
 pub type QueryableCallback<P> = Arc<
-	Mutex<
-		Option<
-			Box<dyn FnMut(&ArcContext<P>, Request) -> Result<()> + Send + Sync + Unpin + 'static>,
-		>,
-	>,
+	Mutex<Box<dyn FnMut(&ArcContext<P>, Request) -> Result<()> + Send + Sync + Unpin + 'static>>,
 >;
 // endregion:	--- types
 
@@ -161,7 +157,7 @@ where
 			phantom,
 			..
 		} = self;
-		let request: QueryableCallback<P> = Arc::new(Mutex::new(Some(Box::new(callback))));
+		let request: QueryableCallback<P> = Arc::new(Mutex::new(Box::new(callback)));
 		QueryableBuilder {
 			prefix,
 			key_expr,
@@ -214,7 +210,7 @@ where
 		let key_expr = key_expr.key_expr;
 		Ok(Queryable {
 			key_expr,
-			callback: Some(callback.request),
+			callback: callback.request,
 			handle: None,
 		})
 	}
@@ -249,7 +245,7 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	key_expr: String,
-	callback: Option<QueryableCallback<P>>,
+	callback: QueryableCallback<P>,
 	handle: Option<JoinHandle<()>>,
 }
 
@@ -278,12 +274,9 @@ where
 		drop(tx);
 
 		{
-			if let Some(cb) = self.callback.clone() {
-				if let Err(err) = cb.lock() {
-					warn!("found poisoned put Mutex");
-					self.callback
-						.replace(Arc::new(Mutex::new(err.into_inner().take())));
-				}
+			if self.callback.lock().is_err() {
+				warn!("found poisoned put Mutex");
+				self.callback.clear_poison();
 			}
 		}
 
@@ -321,7 +314,7 @@ where
 #[instrument(name="queryable", level = Level::ERROR, skip_all)]
 async fn run_queryable<P>(
 	key_expr: String,
-	cb: Option<QueryableCallback<P>>,
+	cb: QueryableCallback<P>,
 	ctx: ArcContext<P>,
 ) -> Result<()>
 where
@@ -342,17 +335,14 @@ where
 			.map_err(|_| DimasError::ShouldNotHappen)?;
 		let request = Request(query);
 
-		if let Some(cb) = cb.clone() {
-			let result = cb.lock();
-			match result {
-				Ok(mut cb) => {
-					if let Err(error) = cb.as_deref_mut().expect("snh")(&ctx, request) {
-						error!("callback failed with {error}");
-					}
+		match cb.lock() {
+			Ok(mut lock) => {
+				if let Err(error) = lock(&ctx, request) {
+					error!("queryable callback failed with {error}");
 				}
-				Err(err) => {
-					error!("callback lock failed with {err}");
-				}
+			}
+			Err(err) => {
+				error!("queryable callback failed with {err}");
 			}
 		}
 	}
