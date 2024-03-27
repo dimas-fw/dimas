@@ -21,6 +21,7 @@ workspace = true
 bitcode = { workspace = true }
 dirs = { workspace = true }
 json5 = { workspace = true }
+ros2-client = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["signal", "time"]}
@@ -30,10 +31,12 @@ zenoh = { workspace = true }
 [dev-dependencies]
 
 [features]
-all = ["liveliness", "publisher", "query", "queryable", "subscriber", "timer"]
+all = ["liveliness", "publisher", "query", "queryable", "subscriber", "timer", "ros_publisher", "ros_subscriber"]
 liveliness = []
 publisher = []
 query = []
 queryable = []
 subscriber = []
 timer = []
+ros_publisher = []
+ros_subscriber = []

@@ -1,0 +1,30 @@
+# Copyright © 2024 Stephan Kunz
+[package]
+name = "ros2pubsub"
+rust-version = { workspace = true }
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+publish = false
+license-file = { workspace = true }
+categories = { workspace = true }
+description = "ROS2 communication examples"
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "ros-publisher"
+path = "src/ros_publisher.rs"
+
+[[bin]]
+name = "ros-subscriber"
+path = "src/ros_subscriber.rs"
+
+[dependencies]
+dimas = { workspace = true, features = ["timer", "ros_publisher", "ros_subscriber"] }
+tokio = { workspace = true, features = ["macros"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[dev-dependencies]

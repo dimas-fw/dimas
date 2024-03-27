@@ -39,6 +39,8 @@ use crate::utils::TaskSignal;
 	feature = "queryable",
 	feature = "subscriber",
 	feature = "timer",
+	feature = "ros_publisher",
+	feature = "ros_subscriber",
 ))]
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -47,8 +49,6 @@ use std::sync::mpsc::Sender;
 #[cfg(any(feature = "publisher", feature = "query",))]
 use tracing::error;
 use tracing::{instrument, Level};
-use zenoh::publication::Publisher;
-use zenoh::query::ConsolidationMode;
 // endregion:	--- modules
 
 // region:		--- types
@@ -60,6 +60,8 @@ use zenoh::query::ConsolidationMode;
 	feature = "queryable",
 	feature = "subscriber",
 	feature = "timer",
+	feature = "ros_publisher",
+	feature = "ros_subscriber",
 ))]
 const INITIAL_SIZE: usize = 9;
 // endregion:	--- types
@@ -447,6 +449,56 @@ where
 	> {
 		TimerBuilder::new(self.prefix())
 	}
+
+	/// Get a [`RosPublisherBuilder`], the builder for a [`RosPublisher`].
+	#[cfg(feature = "ros_publisher")]
+	#[must_use]
+	pub fn ros_publisher(
+		&self,
+	) -> RosPublisherBuilder<
+		crate::com::ros_publisher::NoKeyExpression,
+		crate::com::ros_publisher::Storage,
+	> {
+		RosPublisherBuilder::new(self.prefix()).storage(self.ros_publishers.clone())
+	}
+	/// Get a [`RosPublisherBuilder`], the builder for a [`RosPublisher`].
+	#[cfg(not(feature = "ros_publisher"))]
+	#[must_use]
+	pub fn ros_publisher(
+		&self,
+	) -> RosPublisherBuilder<
+		crate::com::ros_publisher::NoKeyExpression,
+		crate::com::ros_publisher::NoStorage,
+	> {
+		RosPublisherBuilder::new(self.prefix())
+	}
+
+	/// Get a [`RosSubscriberBuilder`], the builder for a [`RosSubscriber`].
+	#[cfg(feature = "ros_subscriber")]
+	#[must_use]
+	pub fn ros_subscriber(
+		&self,
+	) -> RosSubscriberBuilder<
+		P,
+		crate::com::ros_subscriber::NoKeyExpression,
+		crate::com::ros_subscriber::NoCallback,
+		crate::com::ros_subscriber::Storage<P>,
+	> {
+		RosSubscriberBuilder::new(self.prefix()).storage(self.ros_subscribers.clone())
+	}
+	/// Get a [`RosSubscriberBuilder`], the builder for a [`RosSubscriber`].
+	#[cfg(not(feature = "ros_subscriber"))]
+	#[must_use]
+	pub fn ros_subscriber(
+		&self,
+	) -> RosSubscriberBuilder<
+		P,
+		crate::com::ros_subscriber::NoKeyExpression,
+		crate::com::ros_subscriber::NoCallback,
+		crate::com::ros_subscriber::NoStorage,
+	> {
+		RosSubscriberBuilder::new(self.prefix())
+	}
 }
 // endregion:	--- ArcContext
 
@@ -466,10 +518,10 @@ where
 	pub(crate) liveliness_subscribers: Arc<RwLock<HashMap<String, LivelinessSubscriber<P>>>>,
 	/// Registered [`Publisher`]
 	#[cfg(feature = "publisher")]
-	pub(crate) publishers: Arc<RwLock<HashMap<String, crate::com::publisher::Publisher>>>,
+	pub(crate) publishers: Arc<RwLock<HashMap<String, Publisher>>>,
 	/// Registered [`Query`]s
 	#[cfg(feature = "query")]
-	pub(crate) queries: Arc<RwLock<HashMap<String, crate::com::query::Query<P>>>>,
+	pub(crate) queries: Arc<RwLock<HashMap<String, Query<P>>>>,
 	/// Registered [`Queryable`]s
 	#[cfg(feature = "queryable")]
 	pub(crate) queryables: Arc<RwLock<HashMap<String, Queryable<P>>>>,
@@ -479,6 +531,12 @@ where
 	/// Registered [`Timer`]
 	#[cfg(feature = "timer")]
 	pub(crate) timers: Arc<RwLock<HashMap<String, Timer<P>>>>,
+	/// Registered [`RosPublisher`]
+	#[cfg(feature = "ros_publisher")]
+	pub(crate) ros_publishers: Arc<RwLock<HashMap<String, RosPublisher>>>,
+	/// Registered [`RosSubscriber`]
+	#[cfg(feature = "ros_subscriber")]
+	pub(crate) ros_subscribers: Arc<RwLock<HashMap<String, RosSubscriber<P>>>>,
 }
 
 impl<P> Context<P>
@@ -506,6 +564,10 @@ where
 			subscribers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 			#[cfg(feature = "timer")]
 			timers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
+			#[cfg(feature = "ros_publisher")]
+			ros_publishers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
+			#[cfg(feature = "ros_subscriber")]
+			ros_subscribers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 		})
 	}
 
@@ -543,7 +605,7 @@ where
 	pub(crate) fn create_publisher<'publisher>(
 		&self,
 		key_expr: &str,
-	) -> Result<Publisher<'publisher>> {
+	) -> Result<zenoh::publication::Publisher<'publisher>> {
 		self.communicator.create_publisher(key_expr)
 	}
 

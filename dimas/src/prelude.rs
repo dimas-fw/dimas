@@ -15,6 +15,7 @@ pub extern crate bitcode;
 // zenoh stuff
 pub use zenoh::publication::CongestionControl;
 pub use zenoh::publication::Priority;
+pub use zenoh::query::ConsolidationMode;
 pub use zenoh::subscriber::Reliability;
 
 pub use crate::agent::Agent;
@@ -23,6 +24,8 @@ pub use crate::com::message::{Message, Request, Response};
 pub use crate::com::publisher::{Publisher, PublisherBuilder};
 pub use crate::com::query::{Query, QueryBuilder};
 pub use crate::com::queryable::{Queryable, QueryableBuilder};
+pub use crate::com::ros_publisher::{RosPublisher, RosPublisherBuilder};
+pub use crate::com::ros_subscriber::{RosSubscriber, RosSubscriberBuilder};
 pub use crate::com::subscriber::{Subscriber, SubscriberBuilder};
 pub use crate::config::Config;
 pub use crate::context::ArcContext;

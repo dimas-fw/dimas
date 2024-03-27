@@ -9,6 +9,7 @@ members = [
 	"examples/pingpong",
 	"examples/pubsub",
 	"examples/queries",
+	"examples/ros2",
 ]
 
 [workspace.lints.rust]
@@ -37,6 +38,7 @@ license-file = "LICENSE"
 keywords = ["automation", "mas", "robots", "robotics"]
 categories = [
 	"development-tools",
+	"network-programming",
 	"science::robotics",
 	"simulation"
 ]
@@ -46,6 +48,7 @@ bitcode = "0.6"
 dimas = { path = "dimas" }
 dirs = "5"
 json5 = "0.4"
+ros2-client = "0.6"
 serde = { version = "1", default-features = false, features = ["derive"] }
 thiserror = "1"
 tokio = "1"
