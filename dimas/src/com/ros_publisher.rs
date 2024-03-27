@@ -2,6 +2,8 @@
 
 // region:		--- modules
 use crate::prelude::*;
+#[allow(unused_imports)]
+use std::collections::HashMap;
 use std::fmt::Debug;
 // endregion:	--- modules
 

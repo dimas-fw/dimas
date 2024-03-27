@@ -14,7 +14,6 @@ use tracing::info;
 use tracing::{error, instrument, warn, Level};
 use zenoh::{
 	prelude::{r#async::AsyncResolve, SampleKind},
-	subscriber::Reliability,
 	SessionDeclarations,
 };
 // endregion:	--- modules

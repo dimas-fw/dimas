@@ -8,10 +8,7 @@ use crate::prelude::*;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use tracing::{instrument, Level};
-use zenoh::{
-	prelude::sync::SyncResolve,
-	publication::{CongestionControl, Priority},
-};
+use zenoh::prelude::sync::SyncResolve;
 // endregion:	--- modules
 
 // region:		--- states

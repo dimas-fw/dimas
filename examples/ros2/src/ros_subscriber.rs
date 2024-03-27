@@ -27,8 +27,8 @@ async fn main() -> Result<()> {
 	// create an agent with the properties and no prefix
 	let mut agent = Agent::new(properties).config(Config::default())?;
 
-		// listen for ROS2 'hello' messages
-		agent
+	// listen for ROS2 'hello' messages
+	agent
 		.ros_subscriber()
 		.topic("hello")
 		.callback(hello_callback)

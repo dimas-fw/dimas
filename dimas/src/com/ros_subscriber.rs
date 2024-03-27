@@ -2,6 +2,8 @@
 
 // region:		--- modules
 use crate::prelude::*;
+#[allow(unused_imports)]
+use std::collections::HashMap;
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::sync::Mutex;
@@ -9,7 +11,7 @@ use tokio::task::JoinHandle;
 // endregion:	--- modules
 
 // region:		--- types
-/// Type definition for a [`RosSubscribers`] callback function
+/// Type definition for a [`RosSubscriber`]s callback function
 #[allow(clippy::module_name_repetitions)]
 pub type RosSubscriberCallback<P> = Arc<
 	Mutex<Box<dyn FnMut(&ArcContext<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static>>,

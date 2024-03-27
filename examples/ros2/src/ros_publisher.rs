@@ -32,14 +32,14 @@ async fn main() -> Result<()> {
 		.timer()
 		.name("ros2")
 		.interval(Duration::from_secs(1))
-		.callback(|ctx| -> Result<()> { 
+		.callback(|ctx| -> Result<()> {
 			let counter = ctx.read()?.counter;
 
 			let text = format!("Hello World! [{counter}]");
 			info!("Sending '{}'", &text);
 			// publishing with stored publisher
 			//let _ = ctx.put_with("hello", text);
-			Ok(()) 
+			Ok(())
 		})
 		.add()?;
 
