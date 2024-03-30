@@ -31,12 +31,12 @@ where
 	pub storage: Arc<RwLock<std::collections::HashMap<String, RosSubscriber<P>>>>,
 }
 
-/// State signaling that the [`RosSubscriberBuilder`] has no key expression value set
-pub struct NoKeyExpression;
-/// State signaling that the [`RosSubscriberBuilder`] has the key expression value set
-pub struct KeyExpression {
-	/// The key expression
-	key_expr: String,
+/// State signaling that the [`RosSubscriberBuilder`] has no topic value set
+pub struct NoTopic;
+/// State signaling that the [`RosSubscriberBuilder`] has the topic value set
+pub struct Topic {
+	/// The topic
+	topic: String,
 }
 
 /// State signaling that the [`RosSubscriberBuilder`] has no callback value set
@@ -59,13 +59,13 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	prefix: Option<String>,
-	pub(crate) key_expr: K,
+	pub(crate) topic: K,
 	pub(crate) callback: C,
 	pub(crate) storage: S,
 	phantom: PhantomData<P>,
 }
 
-impl<P> RosSubscriberBuilder<P, NoKeyExpression, NoCallback, NoStorage>
+impl<P> RosSubscriberBuilder<P, NoTopic, NoCallback, NoStorage>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -74,7 +74,7 @@ where
 	pub const fn new(prefix: Option<String>) -> Self {
 		Self {
 			prefix,
-			key_expr: NoKeyExpression,
+			topic: NoTopic,
 			callback: NoCallback,
 			storage: NoStorage,
 			phantom: PhantomData,
@@ -82,13 +82,14 @@ where
 	}
 }
 
-impl<P, C, S> RosSubscriberBuilder<P, NoKeyExpression, C, S>
+impl<P, C, S> RosSubscriberBuilder<P, NoTopic, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	/// Set the full key expression for the [`RosSubscriber`]
+	/// Set the topic of the [`RosSubscriber`].
+	/// Will be prefixed with [`Agent`]s prefix as namespace.
 	#[must_use]
-	pub fn key_expr(self, key_expr: &str) -> RosSubscriberBuilder<P, KeyExpression, C, S> {
+	pub fn topic(self, topic: &str) -> RosSubscriberBuilder<P, Topic, C, S> {
 		let Self {
 			prefix,
 			storage,
@@ -98,33 +99,7 @@ where
 		} = self;
 		RosSubscriberBuilder {
 			prefix,
-			key_expr: KeyExpression {
-				key_expr: key_expr.into(),
-			},
-			callback,
-			storage,
-			phantom,
-		}
-	}
-
-	/// Set only the message qualifing part of the [`RosSubscriber`].
-	/// Will be prefixed with [`Agent`]s prefix.
-	#[must_use]
-	pub fn topic(mut self, topic: &str) -> RosSubscriberBuilder<P, KeyExpression, C, S> {
-		let key_expr = self
-			.prefix
-			.take()
-			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
-		let Self {
-			prefix,
-			storage,
-			callback,
-			phantom,
-			..
-		} = self;
-		RosSubscriberBuilder {
-			prefix,
-			key_expr: KeyExpression { key_expr },
+			topic: Topic { topic: topic.into() },
 			callback,
 			storage,
 			phantom,
@@ -144,7 +119,7 @@ where
 	{
 		let Self {
 			prefix,
-			key_expr,
+			topic,
 			storage,
 			phantom,
 			..
@@ -152,7 +127,7 @@ where
 		let callback: RosSubscriberCallback<P> = Arc::new(Mutex::new(Box::new(callback)));
 		RosSubscriberBuilder {
 			prefix,
-			key_expr,
+			topic,
 			callback: Callback { callback },
 			storage,
 			phantom,
@@ -173,14 +148,14 @@ where
 	) -> RosSubscriberBuilder<P, K, C, Storage<P>> {
 		let Self {
 			prefix,
-			key_expr,
+			topic,
 			callback,
 			phantom,
 			..
 		} = self;
 		RosSubscriberBuilder {
 			prefix,
-			key_expr,
+			topic,
 			callback,
 			storage: Storage { storage },
 			phantom,
@@ -188,7 +163,7 @@ where
 	}
 }
 
-impl<P, S> RosSubscriberBuilder<P, KeyExpression, Callback<P>, S>
+impl<P, S> RosSubscriberBuilder<P, Topic, Callback<P>, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -198,10 +173,10 @@ where
 	/// Currently none
 	pub fn build(self) -> Result<RosSubscriber<P>> {
 		let Self {
-			key_expr, callback, ..
+			topic, callback, ..
 		} = self;
 		Ok(RosSubscriber {
-			key_expr: key_expr.key_expr,
+			topic: topic.topic,
 			callback: callback.callback,
 			handle: None,
 		})
@@ -209,7 +184,7 @@ where
 }
 
 #[cfg(feature = "ros_subscriber")]
-impl<P> RosSubscriberBuilder<P, KeyExpression, Callback<P>, Storage<P>>
+impl<P> RosSubscriberBuilder<P, Topic, Callback<P>, Storage<P>>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -225,7 +200,7 @@ where
 		let r = c
 			.write()
 			.map_err(|_| DimasError::ShouldNotHappen)?
-			.insert(s.key_expr.clone(), s);
+			.insert(s.topic.clone(), s);
 		Ok(r)
 	}
 }
@@ -237,7 +212,7 @@ pub struct RosSubscriber<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	pub(crate) key_expr: String,
+	pub(crate) topic: String,
 	callback: RosSubscriberCallback<P>,
 	handle: Option<JoinHandle<()>>,
 }
@@ -248,7 +223,7 @@ where
 {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("RosSubscriber")
-			.field("key_expr", &self.key_expr)
+			.field("topic", &self.topic)
 			.finish_non_exhaustive()
 	}
 }
@@ -267,6 +242,6 @@ mod tests {
 	#[test]
 	const fn normal_types() {
 		is_normal::<RosSubscriber<Props>>();
-		is_normal::<RosSubscriberBuilder<Props, NoKeyExpression, NoCallback, NoStorage>>();
+		is_normal::<RosSubscriberBuilder<Props, NoTopic, NoCallback, NoStorage>>();
 	}
 }

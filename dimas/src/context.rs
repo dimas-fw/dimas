@@ -456,7 +456,7 @@ where
 	pub fn ros_publisher(
 		&self,
 	) -> RosPublisherBuilder<
-		crate::com::ros_publisher::NoKeyExpression,
+		crate::com::ros_publisher::NoTopic,
 		crate::com::ros_publisher::Storage,
 	> {
 		RosPublisherBuilder::new(self.prefix()).storage(self.ros_publishers.clone())
@@ -467,7 +467,7 @@ where
 	pub fn ros_publisher(
 		&self,
 	) -> RosPublisherBuilder<
-		crate::com::ros_publisher::NoKeyExpression,
+		crate::com::ros_publisher::NoTopic,
 		crate::com::ros_publisher::NoStorage,
 	> {
 		RosPublisherBuilder::new(self.prefix())
@@ -480,7 +480,7 @@ where
 		&self,
 	) -> RosSubscriberBuilder<
 		P,
-		crate::com::ros_subscriber::NoKeyExpression,
+		crate::com::ros_subscriber::NoTopic,
 		crate::com::ros_subscriber::NoCallback,
 		crate::com::ros_subscriber::Storage<P>,
 	> {
@@ -493,7 +493,7 @@ where
 		&self,
 	) -> RosSubscriberBuilder<
 		P,
-		crate::com::ros_subscriber::NoKeyExpression,
+		crate::com::ros_subscriber::NoTopic,
 		crate::com::ros_subscriber::NoCallback,
 		crate::com::ros_subscriber::NoStorage,
 	> {

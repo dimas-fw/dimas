@@ -17,12 +17,12 @@ pub struct Storage {
 	pub storage: Arc<RwLock<std::collections::HashMap<String, RosPublisher>>>,
 }
 
-/// State signaling that the [`RosPublisherBuilder`] has no key expression set
-pub struct NoKeyExpression;
-/// State signaling that the [`RosPublisherBuilder`] has the key expression set
-pub struct KeyExpression {
-	/// The key expression
-	key_expr: String,
+/// State signaling that the [`RosPublisherBuilder`] has no topic set
+pub struct NoTopic;
+/// State signaling that the [`RosPublisherBuilder`] has the topic set
+pub struct Topic {
+	/// The topic
+	topic: String,
 }
 // endregion:	--- states
 
@@ -31,17 +31,17 @@ pub struct KeyExpression {
 #[allow(clippy::module_name_repetitions)]
 pub struct RosPublisherBuilder<K, S> {
 	prefix: Option<String>,
-	pub(crate) key_expr: K,
+	pub(crate) topic: K,
 	pub(crate) storage: S,
 }
 
-impl RosPublisherBuilder<NoKeyExpression, NoStorage> {
+impl RosPublisherBuilder<NoTopic, NoStorage> {
 	/// Construct a `RosPublisherBuilder` in initial state
 	#[must_use]
 	pub const fn new(prefix: Option<String>) -> Self {
 		Self {
 			prefix,
-			key_expr: NoKeyExpression,
+			topic: NoTopic,
 			storage: NoStorage,
 		}
 	}
@@ -56,65 +56,46 @@ impl<K> RosPublisherBuilder<K, NoStorage> {
 		storage: Arc<RwLock<std::collections::HashMap<String, RosPublisher>>>,
 	) -> RosPublisherBuilder<K, Storage> {
 		let Self {
-			prefix, key_expr, ..
+			prefix, topic, ..
 		} = self;
 		RosPublisherBuilder {
 			prefix,
-			key_expr,
+			topic,
 			storage: Storage { storage },
 		}
 	}
 }
 
-impl<S> RosPublisherBuilder<NoKeyExpression, S> {
-	/// Set the full key expression for the [`RosPublisher`]
+impl<S> RosPublisherBuilder<NoTopic, S> {
+	/// Set the topic of the [`Publisher`].
+	/// Will be prefixed with [`Agent`]s prefix as namespace.
 	#[must_use]
-	pub fn key_expr(self, key_expr: &str) -> RosPublisherBuilder<KeyExpression, S> {
+	pub fn topic(self, topic: &str) -> RosPublisherBuilder<Topic, S> {
 		let Self {
 			prefix, storage, ..
 		} = self;
 		RosPublisherBuilder {
 			prefix,
-			key_expr: KeyExpression {
-				key_expr: key_expr.into(),
-			},
-			storage,
-		}
-	}
-
-	/// Set only the message qualifing part of the [`Publisher`].
-	/// Will be prefixed with [`Agent`]s prefix.
-	#[must_use]
-	pub fn topic(mut self, topic: &str) -> RosPublisherBuilder<KeyExpression, S> {
-		let key_expr = self
-			.prefix
-			.take()
-			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
-		let Self {
-			prefix, storage, ..
-		} = self;
-		RosPublisherBuilder {
-			prefix,
-			key_expr: KeyExpression { key_expr },
+			topic: Topic { topic: topic.into() },
 			storage,
 		}
 	}
 }
 
-impl<S> RosPublisherBuilder<KeyExpression, S> {
+impl<S> RosPublisherBuilder<Topic, S> {
 	/// Build the [`RosPublisher`]
 	///
 	/// # Errors
 	/// Currently none
 	pub fn build(self) -> Result<RosPublisher> {
 		Ok(RosPublisher {
-			key_expr: self.key_expr.key_expr,
+			topic: self.topic.topic,
 		})
 	}
 }
 
 #[cfg(feature = "ros_publisher")]
-impl RosPublisherBuilder<KeyExpression, Storage> {
+impl RosPublisherBuilder<Topic, Storage> {
 	/// Build and add the [`RosPublisher`] to the [`Agent`]s context
 	///
 	/// # Errors
@@ -126,7 +107,7 @@ impl RosPublisherBuilder<KeyExpression, Storage> {
 		let r = collection
 			.write()
 			.map_err(|_| DimasError::ShouldNotHappen)?
-			.insert(p.key_expr.to_string(), p);
+			.insert(p.topic.to_string(), p);
 		Ok(r)
 	}
 }
@@ -135,13 +116,13 @@ impl RosPublisherBuilder<KeyExpression, Storage> {
 // region:		--- RosPublisher
 /// `RosPublisher`
 pub struct RosPublisher {
-	pub(crate) key_expr: String,
+	pub(crate) topic: String,
 }
 
 impl Debug for RosPublisher {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("RosPublisher")
-			.field("key_expr", &self.key_expr)
+			.field("topic", &self.topic)
 			//.field("initialized", &self.publisher.is_some())
 			.finish_non_exhaustive()
 	}
@@ -158,6 +139,6 @@ mod tests {
 	#[test]
 	const fn normal_types() {
 		is_normal::<RosPublisher>();
-		is_normal::<RosPublisherBuilder<NoKeyExpression, NoStorage>>();
+		is_normal::<RosPublisherBuilder<NoTopic, NoStorage>>();
 	}
 }
