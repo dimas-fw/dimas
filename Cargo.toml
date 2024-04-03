@@ -47,7 +47,6 @@ bitcode = "0.6"
 dimas = { path = "dimas" }
 dirs = "5"
 json5 = "0.4"
-ros2-client = "0.6"
 serde = { version = "1", default-features = false, features = ["derive"] }
 thiserror = "1"
 tokio = "1"
