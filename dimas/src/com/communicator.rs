@@ -7,7 +7,7 @@
 //! # use dimas::prelude::*;
 //! # #[tokio::main(flavor = "multi_thread")]
 //! # async fn main() -> Result<()> {
-//! # let agent = agent::new({});
+//! # let agent = Agent::new({});
 //! # Ok(())
 //! # }
 //! ```

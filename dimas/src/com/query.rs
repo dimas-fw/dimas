@@ -8,10 +8,7 @@ use crate::prelude::*;
 use std::collections::HashMap;
 use std::{fmt::Debug, marker::PhantomData, sync::Mutex};
 use tracing::{error, instrument, Level};
-use zenoh::{
-	prelude::{sync::SyncResolve, SampleKind},
-	query::ConsolidationMode,
-};
+use zenoh::prelude::{sync::SyncResolve, SampleKind};
 // endregion:	--- modules
 
 // region:		--- types

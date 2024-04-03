@@ -5,8 +5,6 @@
 
 // region:    --- modules
 // re-exports
-//pub use anyhow::Result;
-// anyhows Result
 // used std synchronisation primitives
 pub use std::sync::Arc;
 pub use std::sync::RwLock;
@@ -14,6 +12,11 @@ pub use std::sync::RwLock;
 pub(crate) use bitcode::{decode, encode};
 pub use bitcode::{Decode, Encode};
 pub extern crate bitcode;
+// zenoh stuff
+pub use zenoh::publication::CongestionControl;
+pub use zenoh::publication::Priority;
+pub use zenoh::query::ConsolidationMode;
+pub use zenoh::subscriber::Reliability;
 
 pub use crate::agent::Agent;
 pub use crate::com::liveliness_subscriber::{LivelinessSubscriber, LivelinessSubscriberBuilder};

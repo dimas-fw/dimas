@@ -39,6 +39,8 @@ use crate::utils::TaskSignal;
 	feature = "queryable",
 	feature = "subscriber",
 	feature = "timer",
+	feature = "ros_publisher",
+	feature = "ros_subscriber",
 ))]
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -47,8 +49,6 @@ use std::sync::mpsc::Sender;
 #[cfg(any(feature = "publisher", feature = "query",))]
 use tracing::error;
 use tracing::{instrument, Level};
-use zenoh::publication::Publisher;
-use zenoh::query::ConsolidationMode;
 // endregion:	--- modules
 
 // region:		--- types
@@ -60,6 +60,8 @@ use zenoh::query::ConsolidationMode;
 	feature = "queryable",
 	feature = "subscriber",
 	feature = "timer",
+	feature = "ros_publisher",
+	feature = "ros_subscriber",
 ))]
 const INITIAL_SIZE: usize = 9;
 // endregion:	--- types
@@ -466,10 +468,10 @@ where
 	pub(crate) liveliness_subscribers: Arc<RwLock<HashMap<String, LivelinessSubscriber<P>>>>,
 	/// Registered [`Publisher`]
 	#[cfg(feature = "publisher")]
-	pub(crate) publishers: Arc<RwLock<HashMap<String, crate::com::publisher::Publisher>>>,
+	pub(crate) publishers: Arc<RwLock<HashMap<String, Publisher>>>,
 	/// Registered [`Query`]s
 	#[cfg(feature = "query")]
-	pub(crate) queries: Arc<RwLock<HashMap<String, crate::com::query::Query<P>>>>,
+	pub(crate) queries: Arc<RwLock<HashMap<String, Query<P>>>>,
 	/// Registered [`Queryable`]s
 	#[cfg(feature = "queryable")]
 	pub(crate) queryables: Arc<RwLock<HashMap<String, Queryable<P>>>>,
@@ -543,7 +545,7 @@ where
 	pub(crate) fn create_publisher<'publisher>(
 		&self,
 		key_expr: &str,
-	) -> Result<Publisher<'publisher>> {
+	) -> Result<zenoh::publication::Publisher<'publisher>> {
 		self.communicator.create_publisher(key_expr)
 	}
 

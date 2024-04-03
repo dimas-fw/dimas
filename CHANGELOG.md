@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - MSRV bumped to '1.77'
 - Bumped version of 'bitcode' to '0.6'
+- cleanup coding
 
 ### Fixed
 
@@ -96,7 +97,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Ability to store Publisher's and Query's in Agent's Context
 - Introduce `tracing` support
-- Agent::new_with_prefix() - as replacement for the old agent::new()
+- Agent::new_with_prefix() - as replacement for the old Agent::new()
 - Benchmarks
   - benches/montblanc/* - an implementation of the Montblanc benchmark for robots
   - benches/montblanc/tmux-robot.sh - a tmux script to run all of the robots nodes

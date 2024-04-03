@@ -13,12 +13,13 @@ use tokio::task::JoinHandle;
 use tracing::info;
 use tracing::{error, instrument, warn, Level};
 use zenoh::{
-	prelude::{r#async::AsyncResolve, SampleKind}, subscriber::Reliability, SessionDeclarations
+	prelude::{r#async::AsyncResolve, SampleKind},
+	SessionDeclarations,
 };
 // endregion:	--- modules
 
 // region:		--- types
-/// Type definition for a subscribers `publish` callback function
+/// Type definition for a subscribers `put` callback function
 #[allow(clippy::module_name_repetitions)]
 pub type SubscriberPutCallback<P> = Arc<
 	Mutex<Box<dyn FnMut(&ArcContext<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static>>,
@@ -138,7 +139,7 @@ impl<P, C, S> SubscriberBuilder<P, NoKeyExpression, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	/// Set the full expression for the subscriber
+	/// Set the full key expression for the [`Subscriber`].
 	#[must_use]
 	pub fn key_expr(self, key_expr: &str) -> SubscriberBuilder<P, KeyExpression, C, S> {
 		let Self {
@@ -161,8 +162,8 @@ where
 		}
 	}
 
-	/// Set only the message qualifing part of the subscriber.
-	/// Will be prefixed with agents prefix.
+	/// Set only the message qualifing part of the [`Subscriber`].
+	/// Will be prefixed with [`Agent`]s prefix.
 	#[must_use]
 	pub fn topic(mut self, topic: &str) -> SubscriberBuilder<P, KeyExpression, C, S> {
 		let key_expr = self
@@ -252,9 +253,10 @@ impl<P, S> SubscriberBuilder<P, KeyExpression, PutCallback<P>, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	/// Build the subscriber
-	/// # Errors
+	/// Build the [`Subscriber`].
 	///
+	/// # Errors
+	/// Currently none
 	pub fn build(self) -> Result<Subscriber<P>> {
 		let Self {
 			key_expr,
@@ -279,9 +281,10 @@ impl<P> SubscriberBuilder<P, KeyExpression, PutCallback<P>, Storage<P>>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	/// Build and add the subscriber to the agent
-	/// # Errors
+	/// Build and add the [`Subscriber`] to the [`Agent`].
 	///
+	/// # Errors
+	/// Currently none
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "subscriber")))]
 	pub fn add(self) -> Result<Option<Subscriber<P>>> {
 		let c = self.storage.storage.clone();
@@ -365,7 +368,8 @@ where
 							info!("restarting subscriber!");
 						};
 					}));
-					if let Err(error) = run_subscriber(key_expr, p_cb, d_cb, reliability, ctx).await {
+					if let Err(error) = run_subscriber(key_expr, p_cb, d_cb, reliability, ctx).await
+					{
 						error!("spawning subscriber failed with {error}");
 					};
 				}));
