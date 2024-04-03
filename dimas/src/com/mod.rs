@@ -21,10 +21,6 @@ pub mod publisher;
 pub mod query;
 /// Queryable
 pub mod queryable;
-/// ROS2 Publisher
-pub mod ros_publisher;
-/// ROS2 Subscriber
-pub mod ros_subscriber;
 /// Subscriber
 pub mod subscriber;
 // endregion: --- modules

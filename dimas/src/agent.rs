@@ -298,56 +298,6 @@ where
 		self.context.timer()
 	}
 
-	/// Get a [`RosPublisherBuilder`], the builder for a [`RosPublisher`].
-	#[cfg(feature = "ros_publisher")]
-	#[must_use]
-	pub fn ros_publisher(
-		&self,
-	) -> RosPublisherBuilder<
-		crate::com::ros_publisher::NoTopic,
-		crate::com::ros_publisher::Storage,
-	> {
-		self.context.ros_publisher()
-	}
-	/// Get a [`RosPublisherBuilder`], the builder for a [`RosPublisher`].
-	#[cfg(not(feature = "ros_publisher"))]
-	#[must_use]
-	pub fn ros_publisher(
-		&self,
-	) -> RosPublisherBuilder<
-		crate::com::ros_publisher::NoTopic,
-		crate::com::ros_publisher::NoStorage,
-	> {
-		self.context.ros_publisher()
-	}
-
-	/// Get a [`RosSubscriberBuilder`], the builder for a [`RosSubscriber`].
-	#[cfg(feature = "ros_subscriber")]
-	#[must_use]
-	pub fn ros_subscriber(
-		&self,
-	) -> RosSubscriberBuilder<
-		P,
-		crate::com::ros_subscriber::NoTopic,
-		crate::com::ros_subscriber::NoCallback,
-		crate::com::ros_subscriber::Storage<P>,
-	> {
-		self.context.ros_subscriber()
-	}
-	/// Get a [`RosSubscriberBuilder`], the builder for a [`RosSubscriber`].
-	#[cfg(not(feature = "ros_subscriber"))]
-	#[must_use]
-	pub fn ros_subscriber(
-		&self,
-	) -> RosSubscriberBuilder<
-		P,
-		crate::com::ros_subscriber::NoTopic,
-		crate::com::ros_subscriber::NoCallback,
-		crate::com::ros_subscriber::NoStorage,
-	> {
-		self.context.ros_subscriber()
-	}
-
 	/// Start the agent.<br>
 	/// The agent can be stopped properly using `ctrl-c`
 	///

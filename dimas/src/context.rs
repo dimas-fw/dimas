@@ -449,56 +449,6 @@ where
 	> {
 		TimerBuilder::new(self.prefix())
 	}
-
-	/// Get a [`RosPublisherBuilder`], the builder for a [`RosPublisher`].
-	#[cfg(feature = "ros_publisher")]
-	#[must_use]
-	pub fn ros_publisher(
-		&self,
-	) -> RosPublisherBuilder<
-		crate::com::ros_publisher::NoTopic,
-		crate::com::ros_publisher::Storage,
-	> {
-		RosPublisherBuilder::new(self.prefix()).storage(self.ros_publishers.clone())
-	}
-	/// Get a [`RosPublisherBuilder`], the builder for a [`RosPublisher`].
-	#[cfg(not(feature = "ros_publisher"))]
-	#[must_use]
-	pub fn ros_publisher(
-		&self,
-	) -> RosPublisherBuilder<
-		crate::com::ros_publisher::NoTopic,
-		crate::com::ros_publisher::NoStorage,
-	> {
-		RosPublisherBuilder::new(self.prefix())
-	}
-
-	/// Get a [`RosSubscriberBuilder`], the builder for a [`RosSubscriber`].
-	#[cfg(feature = "ros_subscriber")]
-	#[must_use]
-	pub fn ros_subscriber(
-		&self,
-	) -> RosSubscriberBuilder<
-		P,
-		crate::com::ros_subscriber::NoTopic,
-		crate::com::ros_subscriber::NoCallback,
-		crate::com::ros_subscriber::Storage<P>,
-	> {
-		RosSubscriberBuilder::new(self.prefix()).storage(self.ros_subscribers.clone())
-	}
-	/// Get a [`RosSubscriberBuilder`], the builder for a [`RosSubscriber`].
-	#[cfg(not(feature = "ros_subscriber"))]
-	#[must_use]
-	pub fn ros_subscriber(
-		&self,
-	) -> RosSubscriberBuilder<
-		P,
-		crate::com::ros_subscriber::NoTopic,
-		crate::com::ros_subscriber::NoCallback,
-		crate::com::ros_subscriber::NoStorage,
-	> {
-		RosSubscriberBuilder::new(self.prefix())
-	}
 }
 // endregion:	--- ArcContext
 
@@ -531,12 +481,6 @@ where
 	/// Registered [`Timer`]
 	#[cfg(feature = "timer")]
 	pub(crate) timers: Arc<RwLock<HashMap<String, Timer<P>>>>,
-	/// Registered [`RosPublisher`]
-	#[cfg(feature = "ros_publisher")]
-	pub(crate) ros_publishers: Arc<RwLock<HashMap<String, RosPublisher>>>,
-	/// Registered [`RosSubscriber`]
-	#[cfg(feature = "ros_subscriber")]
-	pub(crate) ros_subscribers: Arc<RwLock<HashMap<String, RosSubscriber<P>>>>,
 }
 
 impl<P> Context<P>
@@ -564,10 +508,6 @@ where
 			subscribers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 			#[cfg(feature = "timer")]
 			timers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
-			#[cfg(feature = "ros_publisher")]
-			ros_publishers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
-			#[cfg(feature = "ros_subscriber")]
-			ros_subscribers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 		})
 	}
 

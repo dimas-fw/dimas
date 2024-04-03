@@ -9,7 +9,6 @@ members = [
 	"examples/pingpong",
 	"examples/pubsub",
 	"examples/queries",
-	"examples/ros2",
 ]
 
 [workspace.lints.rust]

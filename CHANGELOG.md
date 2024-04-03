@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - MSRV bumped to '1.77'
 - Bumped version of 'bitcode' to '0.6'
+- cleanup coding
 
 ### Fixed
 

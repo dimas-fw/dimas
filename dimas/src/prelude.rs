@@ -24,8 +24,6 @@ pub use crate::com::message::{Message, Request, Response};
 pub use crate::com::publisher::{Publisher, PublisherBuilder};
 pub use crate::com::query::{Query, QueryBuilder};
 pub use crate::com::queryable::{Queryable, QueryableBuilder};
-pub use crate::com::ros_publisher::{RosPublisher, RosPublisherBuilder};
-pub use crate::com::ros_subscriber::{RosSubscriber, RosSubscriberBuilder};
 pub use crate::com::subscriber::{Subscriber, SubscriberBuilder};
 pub use crate::config::Config;
 pub use crate::context::ArcContext;
