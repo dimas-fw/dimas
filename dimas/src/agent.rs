@@ -134,7 +134,7 @@ where
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Agent")
 			.field("id", &self.context.uuid())
-			.field("prefix", &self.context.prefix())
+			.field("prefix", self.context.prefix())
 			.finish_non_exhaustive()
 	}
 }
