@@ -307,7 +307,7 @@ where
 		crate::com::liveliness_subscriber::NoPutCallback,
 		crate::com::liveliness_subscriber::Storage<P>,
 	> {
-		LivelinessSubscriberBuilder::new(self.prefix()).storage(self.liveliness_subscribers.clone())
+		LivelinessSubscriberBuilder::new(self.prefix().clone()).storage(self.liveliness_subscribers.clone())
 	}
 	/// Get a [`LivelinessSubscriberBuilder`], the builder for a [`LivelinessSubscriber`].
 	#[cfg(not(feature = "liveliness"))]
@@ -319,7 +319,7 @@ where
 		crate::com::liveliness_subscriber::NoPutCallback,
 		crate::com::liveliness_subscriber::NoStorage,
 	> {
-		LivelinessSubscriberBuilder::new(self.prefix())
+		LivelinessSubscriberBuilder::new(self.prefix().clone())
 	}
 
 	/// Get a [`PublisherBuilder`], the builder for a [`Publisher`].
@@ -328,7 +328,7 @@ where
 	pub fn publisher(
 		&self,
 	) -> PublisherBuilder<crate::com::publisher::NoKeyExpression, crate::com::publisher::Storage> {
-		PublisherBuilder::new(self.prefix()).storage(self.publishers.clone())
+		PublisherBuilder::new(self.prefix().clone()).storage(self.publishers.clone())
 	}
 	/// Get a [`PublisherBuilder`], the builder for a [`Publisher`].
 	#[cfg(not(feature = "publisher"))]
@@ -337,7 +337,7 @@ where
 		&self,
 	) -> PublisherBuilder<crate::com::publisher::NoKeyExpression, crate::com::publisher::NoStorage>
 	{
-		PublisherBuilder::new(self.prefix())
+		PublisherBuilder::new(self.prefix().clone())
 	}
 
 	/// Get a [`QueryBuilder`], the builder for a [`Query`].
@@ -351,7 +351,7 @@ where
 		crate::com::query::NoResponseCallback,
 		crate::com::query::Storage<P>,
 	> {
-		QueryBuilder::new(self.prefix()).storage(self.queries.clone())
+		QueryBuilder::new(self.prefix().clone()).storage(self.queries.clone())
 	}
 	/// Get a [`QueryBuilder`], the builder for a [`Query`].
 	#[cfg(not(feature = "query"))]
@@ -364,7 +364,7 @@ where
 		crate::com::query::NoResponseCallback,
 		crate::com::query::NoStorage,
 	> {
-		QueryBuilder::new(self.prefix())
+		QueryBuilder::new(self.prefix().clone())
 	}
 
 	/// Get a [`QueryableBuilder`], the builder for a [`Queryable`].
@@ -378,7 +378,7 @@ where
 		crate::com::queryable::NoRequestCallback,
 		crate::com::queryable::Storage<P>,
 	> {
-		QueryableBuilder::new(self.prefix()).storage(self.queryables.clone())
+		QueryableBuilder::new(self.prefix().clone()).storage(self.queryables.clone())
 	}
 	/// Get a [`QueryableBuilder`], the builder for a [`Queryable`].
 	#[cfg(not(feature = "queryable"))]
@@ -391,7 +391,7 @@ where
 		crate::com::queryable::NoRequestCallback,
 		crate::com::queryable::NoStorage,
 	> {
-		QueryableBuilder::new(self.prefix())
+		QueryableBuilder::new(self.prefix().clone())
 	}
 
 	/// Get a [`SubscriberBuilder`], the builder for a [`Subscriber`].
@@ -405,7 +405,7 @@ where
 		crate::com::subscriber::NoPutCallback,
 		crate::com::subscriber::Storage<P>,
 	> {
-		SubscriberBuilder::new(self.prefix()).storage(self.subscribers.clone())
+		SubscriberBuilder::new(self.prefix().clone()).storage(self.subscribers.clone())
 	}
 	/// Get a [`SubscriberBuilder`], the builder for a [`Subscriber`].
 	#[cfg(not(feature = "subscriber"))]
@@ -418,7 +418,7 @@ where
 		crate::com::subscriber::NoPutCallback,
 		crate::com::subscriber::NoStorage,
 	> {
-		SubscriberBuilder::new(self.prefix())
+		SubscriberBuilder::new(self.prefix().clone())
 	}
 
 	/// Get a [`TimerBuilder`], the builder for a [`Timer`].
@@ -433,7 +433,7 @@ where
 		crate::timer::NoIntervalCallback,
 		crate::timer::Storage<P>,
 	> {
-		TimerBuilder::new(self.prefix()).storage(self.timers.clone())
+		TimerBuilder::new(self.prefix().clone()).storage(self.timers.clone())
 	}
 	/// Get a [`TimerBuilder`], the builder for a [`Timer`].
 	#[cfg(not(feature = "timer"))]
@@ -447,7 +447,7 @@ where
 		crate::timer::NoIntervalCallback,
 		crate::timer::NoStorage,
 	> {
-		TimerBuilder::new(self.prefix())
+		TimerBuilder::new(self.prefix().clone())
 	}
 }
 // endregion:	--- ArcContext
@@ -459,6 +459,9 @@ pub struct Context<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// The [`Agent`]s name.
+	/// Name must not, but should be unique.
+	pub(crate) name: Option<String>,
 	/// The [`Agent`]s property structure
 	pub(crate) props: Arc<RwLock<P>>,
 	/// The [`Agent`]s [`Communicator`]
@@ -488,12 +491,13 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// Constructor for the [`Context`]
-	pub(crate) fn new(config: Config, props: P, prefix: Option<String>) -> Result<Self> {
+	pub(crate) fn new(config: Config, props: P, name: Option<String>, prefix: Option<String>) -> Result<Self> {
 		let mut communicator = Communicator::new(config)?;
 		if let Some(prefix) = prefix {
 			communicator.set_prefix(prefix);
 		}
 		Ok(Self {
+			name,
 			communicator: Arc::new(communicator),
 			props: Arc::new(RwLock::new(props)),
 			#[cfg(feature = "liveliness")]
@@ -517,10 +521,16 @@ where
 		self.communicator.uuid()
 	}
 
+	/// Get the [`Agent`]s name
+	#[must_use]
+	pub const fn name(&self) -> &Option<String> {
+		&self.name
+	}
+
 	/// Get the [`Agent`]s prefix
 	#[must_use]
-	pub fn prefix(&self) -> Option<String> {
-		self.communicator.prefix()
+	pub fn prefix(&self) -> &Option<String> {
+		&self.communicator.prefix
 	}
 
 	/// Gives read access to the [`Agent`]s properties
@@ -572,7 +582,7 @@ where
 		M: Debug + Encode,
 	{
 		let key_expr = self
-			.prefix()
+			.prefix().clone()
 			.take()
 			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
 		if self
@@ -609,7 +619,7 @@ where
 	#[instrument(level = Level::ERROR, skip_all)]
 	pub fn delete_with(&self, topic: &str) -> Result<()> {
 		let key_expr = self
-			.prefix()
+			.prefix().clone()
 			.take()
 			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
 		if self
@@ -652,7 +662,7 @@ where
 	#[instrument(level = Level::ERROR, skip_all)]
 	pub fn get_with(&self, topic: &str) -> Result<()> {
 		let key_expr = self
-			.prefix()
+			.prefix().clone()
 			.take()
 			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
 		if self

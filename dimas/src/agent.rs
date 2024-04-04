@@ -65,6 +65,7 @@ pub struct UnconfiguredAgent<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	name: Option<String>,
 	prefix: Option<String>,
 	props: P,
 }
@@ -76,9 +77,17 @@ where
 	/// Constructor
 	const fn new(properties: P) -> Self {
 		Self {
-			props: properties,
+			name: None,
 			prefix: None,
+			props: properties,
 		}
+	}
+
+	/// Set a name
+	#[must_use]
+	pub fn name(mut self, name: impl Into<String>) -> Self {
+		self.name = Some(name.into());
+		self
 	}
 
 	/// Set a prefix
@@ -92,7 +101,7 @@ where
 	///
 	/// # Errors
 	pub fn config(self, config: Config) -> Result<Agent<'a, P>> {
-		let context = Context::new(config, self.props, self.prefix)?.into();
+		let context = Context::new(config, self.props, self.name, self.prefix)?.into();
 		Ok(Agent {
 			context,
 			liveliness: false,

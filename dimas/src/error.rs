@@ -37,18 +37,18 @@ pub enum DimasError {
 	Get,
 	/// Encoding of message failed
 	#[error("message encoding failed")]
-	EncodingMessage,
+	Encoding,
 	/// Converting of message failed
 	#[error("converting value into 'Vec<u8>' failed")]
 	ConvertingValue,
 	/// Decoding of message failed
 	#[error("message decoding failed")]
-	DecodingMessage,
+	Decoding,
 	/// Read access to properties failed
-	#[error("read  of properties failed")]
+	#[error("read of properties failed")]
 	ReadProperties,
 	/// Write access to properties failed
-	#[error("write  of properties failed")]
+	#[error("write of properties failed")]
 	WriteProperties,
 	/// Lock on callback failed
 	#[error("could not execute callback")]

@@ -21,7 +21,7 @@ with multiple agents operating in that environment which
 This crate is available on [crates.io](https://crates.io/crates/dimas).
 
 [DiMAS](https://github.com/dimas-fw/dimas/tree/main/dimas) follows the semantic versioning principle with the enhancement,
-that until version 1.0.0 each new version may include breaking changes, which will be noticed in the changelog.
+that until version 1.0.0 each new minor version has breaking changes, while patches are non breaking changes but may include enhancements.
 
 # Usage
 

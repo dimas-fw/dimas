@@ -16,13 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 
-## [0.1.0] - 2024-??-?? <br>_Has breaking changes!!_
+## [0.1.0] - 2024-??-??
 
 ### Added
 - Documentation
+- QoS for Publisher & Subscriber
 
 ### Changed
-- MSRV bumped to '1.77'
+- MSRV bumped to '1.77' due to Mutex::clear_poison()
 - Bumped version of 'bitcode' to '0.6'
 - cleanup coding
 
@@ -36,7 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Documentation
 - Builders 'add' methods now return the possibly previously added item for that key expression
-- QoS for publisher & subscriber
+- Agent can have a (non unique) name
+- QoS for Publisher & Subscriber
 
 ### Changed
 - _Name of Builder methods to set only topics name chanched to 'topic(..)'_

@@ -52,8 +52,9 @@ impl Communicator {
 	}
 
 	/// Get [`Agent`]s group prefix
-	pub(crate) fn prefix(&self) -> Option<String> {
-		self.prefix.clone()
+	#[must_use]
+	pub const fn prefix(&self) -> &Option<String> {
+		&self.prefix
 	}
 
 	/// Set [`Agent`]s group prefix
@@ -64,7 +65,7 @@ impl Communicator {
 	/// Create a key expression from a topic by adding [`Agent`]s prefix if one is given.
 	#[must_use]
 	pub fn key_expr(&self, topic: &str) -> String {
-		self.prefix()
+		self.prefix.clone()
 			.map_or_else(|| topic.into(), |prefix| format!("{prefix}/{topic}"))
 	}
 
