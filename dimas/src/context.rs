@@ -307,7 +307,8 @@ where
 		crate::com::liveliness_subscriber::NoPutCallback,
 		crate::com::liveliness_subscriber::Storage<P>,
 	> {
-		LivelinessSubscriberBuilder::new(self.prefix().clone()).storage(self.liveliness_subscribers.clone())
+		LivelinessSubscriberBuilder::new(self.prefix().clone())
+			.storage(self.liveliness_subscribers.clone())
 	}
 	/// Get a [`LivelinessSubscriberBuilder`], the builder for a [`LivelinessSubscriber`].
 	#[cfg(not(feature = "liveliness"))]
@@ -491,7 +492,12 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// Constructor for the [`Context`]
-	pub(crate) fn new(config: Config, props: P, name: Option<String>, prefix: Option<String>) -> Result<Self> {
+	pub(crate) fn new(
+		config: Config,
+		props: P,
+		name: Option<String>,
+		prefix: Option<String>,
+	) -> Result<Self> {
 		let mut communicator = Communicator::new(config)?;
 		if let Some(prefix) = prefix {
 			communicator.set_prefix(prefix);
@@ -582,7 +588,8 @@ where
 		M: Debug + Encode,
 	{
 		let key_expr = self
-			.prefix().clone()
+			.prefix()
+			.clone()
 			.take()
 			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
 		if self
@@ -619,7 +626,8 @@ where
 	#[instrument(level = Level::ERROR, skip_all)]
 	pub fn delete_with(&self, topic: &str) -> Result<()> {
 		let key_expr = self
-			.prefix().clone()
+			.prefix()
+			.clone()
 			.take()
 			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
 		if self
@@ -662,7 +670,8 @@ where
 	#[instrument(level = Level::ERROR, skip_all)]
 	pub fn get_with(&self, topic: &str) -> Result<()> {
 		let key_expr = self
-			.prefix().clone()
+			.prefix()
+			.clone()
 			.take()
 			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
 		if self

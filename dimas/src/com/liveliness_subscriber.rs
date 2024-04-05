@@ -73,7 +73,7 @@ where
 	/// Construct a `LivelinessSubscriberBuilder` in initial state
 	#[must_use]
 	pub fn new(prefix: Option<String>) -> Self {
-		let key_expr = prefix.map_or("alive/*".to_string(), |prefix| format!("{prefix}/alive/*"));
+		let key_expr = prefix.map_or("/*".to_string(), |prefix| format!("{prefix}/*"));
 		Self {
 			key_expr,
 			put_callback: NoPutCallback,
@@ -90,7 +90,7 @@ where
 	/// Set a different prefix for the liveliness subscriber.
 	#[must_use]
 	pub fn prefix(self, prefix: &str) -> Self {
-		let key_expr = format!("{prefix}/alive/*");
+		let key_expr = format!("{prefix}/*");
 		let Self {
 			put_callback,
 			storage,
@@ -104,6 +104,7 @@ where
 			delete_callback,
 		}
 	}
+
 	/// Set liveliness subscribers callback for `delete` messages
 	#[must_use]
 	pub fn delete_callback<F>(self, callback: F) -> Self

@@ -126,7 +126,7 @@ impl Deref for Feedback {
 
 impl Feedback {
 	/// decode feedback
-	/// 
+	///
 	/// # Errors
 	pub fn decode<T>(self) -> Result<T>
 	where

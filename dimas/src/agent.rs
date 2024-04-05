@@ -323,15 +323,17 @@ where
 		// activate sending liveliness
 		if self.liveliness {
 			let session = self.context.communicator.session.clone();
-			let uuid = format!(
-				"{}/{}",
-				self.context.communicator.key_expr("alive"),
-				session.zid()
-			);
+			let token_str = self
+				.context
+				.prefix()
+				.clone()
+				.map_or(self.context.communicator.uuid(), |prefix| {
+					format!("{}/{}", prefix, self.context.communicator.uuid())
+				});
 
 			let token = session
 				.liveliness()
-				.declare_token(&uuid)
+				.declare_token(&token_str)
 				.res_sync()
 				.map_err(DimasError::ActivateLiveliness)?;
 
