@@ -60,7 +60,7 @@ pub struct LivelinessSubscriberBuilder<P, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	key_expr: String,
+	token: String,
 	pub(crate) put_callback: C,
 	pub(crate) storage: S,
 	pub(crate) delete_callback: Option<LivelinessCallback<P>>,
@@ -73,9 +73,9 @@ where
 	/// Construct a `LivelinessSubscriberBuilder` in initial state
 	#[must_use]
 	pub fn new(prefix: Option<String>) -> Self {
-		let key_expr = prefix.map_or("/*".to_string(), |prefix| format!("{prefix}/*"));
+		let token = prefix.map_or("*".to_string(), |prefix| format!("{prefix}/*"));
 		Self {
-			key_expr,
+			token,
 			put_callback: NoPutCallback,
 			storage: NoStorage,
 			delete_callback: None,
@@ -98,7 +98,24 @@ where
 			..
 		} = self;
 		Self {
-			key_expr,
+			token: key_expr,
+			put_callback,
+			storage,
+			delete_callback,
+		}
+	}
+
+	/// Set an explicite token for the liveliness subscriber.
+	#[must_use]
+	pub fn token(self, token: impl Into<String>) -> Self {
+		let Self {
+			put_callback,
+			storage,
+			delete_callback,
+			..
+		} = self;
+		Self {
+			token: token.into(),
 			put_callback,
 			storage,
 			delete_callback,
@@ -112,7 +129,7 @@ where
 		F: FnMut(&ArcContext<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
-			key_expr,
+			token: key_expr,
 			put_callback,
 			storage,
 			..
@@ -120,7 +137,7 @@ where
 		let delete_callback: Option<LivelinessCallback<P>> =
 			Some(Arc::new(Mutex::new(Box::new(callback))));
 		Self {
-			key_expr,
+			token: key_expr,
 			put_callback,
 			storage,
 			delete_callback,
@@ -139,14 +156,14 @@ where
 		F: FnMut(&ArcContext<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
-			key_expr,
+			token: key_expr,
 			storage,
 			delete_callback,
 			..
 		} = self;
 		let put_callback: LivelinessCallback<P> = Arc::new(Mutex::new(Box::new(callback)));
 		LivelinessSubscriberBuilder {
-			key_expr,
+			token: key_expr,
 			put_callback: PutCallback {
 				callback: put_callback,
 			},
@@ -168,13 +185,13 @@ where
 		storage: Arc<RwLock<std::collections::HashMap<String, LivelinessSubscriber<P>>>>,
 	) -> LivelinessSubscriberBuilder<P, C, Storage<P>> {
 		let Self {
-			key_expr,
+			token: key_expr,
 			put_callback,
 			delete_callback,
 			..
 		} = self;
 		LivelinessSubscriberBuilder {
-			key_expr,
+			token: key_expr,
 			put_callback,
 			storage: Storage { storage },
 			delete_callback,
@@ -191,7 +208,7 @@ where
 	///
 	pub fn build(self) -> Result<LivelinessSubscriber<P>> {
 		let Self {
-			key_expr,
+			token: key_expr,
 			put_callback,
 			delete_callback,
 			..

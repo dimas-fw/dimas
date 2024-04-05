@@ -265,7 +265,6 @@ where
 			delete_callback,
 			..
 		} = self;
-		dbg!(&key_expr.key_expr);
 		Ok(Subscriber {
 			key_expr: key_expr.key_expr,
 			put_callback: put_callback.callback,
