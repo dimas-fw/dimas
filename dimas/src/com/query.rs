@@ -59,6 +59,7 @@ pub struct QueryBuilder<P, K, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	pub(crate) allowed_destination: Locality,
 	pub(crate) prefix: Option<String>,
 	pub(crate) key_expr: K,
 	pub(crate) callback: C,
@@ -76,6 +77,7 @@ where
 	#[must_use]
 	pub const fn new(prefix: Option<String>) -> Self {
 		Self {
+			allowed_destination: Locality::Any,
 			prefix,
 			key_expr: NoKeyExpression,
 			callback: NoResponseCallback,
@@ -91,17 +93,24 @@ impl<P, K, C, S> QueryBuilder<P, K, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	/// Set the [`ConsolidationMode`]
+	/// Set the [`ConsolidationMode`] of the [`Query`].
 	#[must_use]
 	pub const fn mode(mut self, mode: ConsolidationMode) -> Self {
 		self.mode = mode;
 		self
 	}
 
-	/// Set the [`QueryTarget`]
+	/// Set the [`QueryTarget`] of the [`Query`].
 	#[must_use]
 	pub const fn target(mut self, target: QueryTarget) -> Self {
 		self.target = target;
+		self
+	}
+
+	/// Set the allowed destination of the [`Query`].
+	#[must_use]
+	pub const fn allowed_destination(mut self, allowed_destination: Locality) -> Self {
+		self.allowed_destination = allowed_destination;
 		self
 	}
 }
@@ -114,6 +123,7 @@ where
 	#[must_use]
 	pub fn key_expr(self, key_expr: &str) -> QueryBuilder<P, KeyExpression, C, S> {
 		let Self {
+			allowed_destination,
 			prefix,
 			storage,
 			callback,
@@ -123,6 +133,7 @@ where
 			..
 		} = self;
 		QueryBuilder {
+			allowed_destination,
 			prefix,
 			key_expr: KeyExpression {
 				key_expr: key_expr.into(),
@@ -144,6 +155,7 @@ where
 			.take()
 			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
 		let Self {
+			allowed_destination,
 			prefix,
 			storage,
 			callback,
@@ -153,6 +165,7 @@ where
 			..
 		} = self;
 		QueryBuilder {
+			allowed_destination,
 			prefix,
 			key_expr: KeyExpression { key_expr },
 			callback,
@@ -175,6 +188,7 @@ where
 		F: FnMut(&ArcContext<P>, Response) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
+			allowed_destination,
 			prefix,
 			key_expr,
 			storage,
@@ -185,6 +199,7 @@ where
 		} = self;
 		let callback: QueryCallback<P> = Arc::new(Mutex::new(callback));
 		QueryBuilder {
+			allowed_destination,
 			prefix,
 			key_expr,
 			callback: ResponseCallback { response: callback },
@@ -208,6 +223,7 @@ where
 		storage: Arc<RwLock<std::collections::HashMap<String, Query<P>>>>,
 	) -> QueryBuilder<P, K, C, Storage<P>> {
 		let Self {
+			allowed_destination,
 			prefix,
 			key_expr,
 			callback,
@@ -217,6 +233,7 @@ where
 			..
 		} = self;
 		QueryBuilder {
+			allowed_destination,
 			prefix,
 			key_expr,
 			callback,
@@ -237,6 +254,7 @@ where
 	///
 	pub fn build(self) -> Result<Query<P>> {
 		let Self {
+			allowed_destination,
 			key_expr,
 			callback,
 			mode,
@@ -245,6 +263,7 @@ where
 		} = self;
 		let key_expr = key_expr.key_expr;
 		Ok(Query {
+			allowed_destination,
 			context: None,
 			key_expr,
 			mode,
@@ -282,6 +301,7 @@ pub struct Query<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	allowed_destination: Locality,
 	pub(crate) key_expr: String,
 	mode: ConsolidationMode,
 	target: QueryTarget,
@@ -297,6 +317,7 @@ where
 		f.debug_struct("Query")
 			.field("key_expr", &self.key_expr)
 			.field("mode", &self.mode)
+			.field("allowed_destination", &self.allowed_destination)
 			.finish_non_exhaustive()
 	}
 }
@@ -338,6 +359,7 @@ where
 			.get(&self.key_expr)
 			.target(self.target)
 			.consolidation(self.mode)
+			.allowed_destination(self.allowed_destination)
 			//.timeout(Duration::from_millis(1000))
 			.res_sync()
 			.map_err(|_| DimasError::ShouldNotHappen)?;

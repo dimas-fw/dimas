@@ -17,6 +17,7 @@ pub use zenoh::publication::CongestionControl;
 pub use zenoh::publication::Priority;
 pub use zenoh::query::ConsolidationMode;
 pub use zenoh::query::QueryTarget;
+pub use zenoh::sample::Locality;
 pub use zenoh::subscriber::Reliability;
 
 pub use crate::agent::Agent;
