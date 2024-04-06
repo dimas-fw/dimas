@@ -6,7 +6,7 @@
 use crate::prelude::*;
 #[allow(unused_imports)]
 use std::collections::HashMap;
-use std::{fmt::Debug, marker::PhantomData, sync::Mutex};
+use std::{fmt::Debug, marker::PhantomData, sync::Mutex, time::Duration};
 use tracing::{error, instrument, Level};
 use zenoh::prelude::{sync::SyncResolve, SampleKind};
 // endregion:	--- modules
@@ -61,6 +61,7 @@ where
 {
 	pub(crate) allowed_destination: Locality,
 	pub(crate) prefix: Option<String>,
+	pub(crate) timeout: Option<Duration>,
 	pub(crate) key_expr: K,
 	pub(crate) callback: C,
 	pub(crate) storage: S,
@@ -79,6 +80,7 @@ where
 		Self {
 			allowed_destination: Locality::Any,
 			prefix,
+			timeout: None,
 			key_expr: NoKeyExpression,
 			callback: NoResponseCallback,
 			storage: NoStorage,
@@ -113,6 +115,13 @@ where
 		self.allowed_destination = allowed_destination;
 		self
 	}
+
+	/// Set a timeout for the [`Query`].
+	#[must_use]
+	pub const fn timeout(mut self, timeout: Option<Duration>) -> Self {
+		self.timeout = timeout;
+		self
+	}
 }
 
 impl<P, C, S> QueryBuilder<P, NoKeyExpression, C, S>
@@ -125,6 +134,7 @@ where
 		let Self {
 			allowed_destination,
 			prefix,
+			timeout,
 			storage,
 			callback,
 			mode,
@@ -135,6 +145,7 @@ where
 		QueryBuilder {
 			allowed_destination,
 			prefix,
+			timeout,
 			key_expr: KeyExpression {
 				key_expr: key_expr.into(),
 			},
@@ -157,6 +168,7 @@ where
 		let Self {
 			allowed_destination,
 			prefix,
+			timeout,
 			storage,
 			callback,
 			mode,
@@ -167,6 +179,7 @@ where
 		QueryBuilder {
 			allowed_destination,
 			prefix,
+			timeout,
 			key_expr: KeyExpression { key_expr },
 			callback,
 			storage,
@@ -190,6 +203,7 @@ where
 		let Self {
 			allowed_destination,
 			prefix,
+			timeout,
 			key_expr,
 			storage,
 			mode,
@@ -201,6 +215,7 @@ where
 		QueryBuilder {
 			allowed_destination,
 			prefix,
+			timeout,
 			key_expr,
 			callback: ResponseCallback { response: callback },
 			storage,
@@ -225,6 +240,7 @@ where
 		let Self {
 			allowed_destination,
 			prefix,
+			timeout,
 			key_expr,
 			callback,
 			mode,
@@ -235,6 +251,7 @@ where
 		QueryBuilder {
 			allowed_destination,
 			prefix,
+			timeout,
 			key_expr,
 			callback,
 			storage: Storage { storage },
@@ -255,6 +272,7 @@ where
 	pub fn build(self) -> Result<Query<P>> {
 		let Self {
 			allowed_destination,
+			timeout,
 			key_expr,
 			callback,
 			mode,
@@ -264,6 +282,7 @@ where
 		let key_expr = key_expr.key_expr;
 		Ok(Query {
 			allowed_destination,
+			timeout,
 			context: None,
 			key_expr,
 			mode,
@@ -302,6 +321,7 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	allowed_destination: Locality,
+	timeout: Option<Duration>,
 	pub(crate) key_expr: String,
 	mode: ConsolidationMode,
 	target: QueryTarget,
@@ -350,7 +370,8 @@ where
 	#[instrument(name="query", level = Level::ERROR, skip_all)]
 	pub fn get(&self) -> Result<()> {
 		let cb = self.callback.clone();
-		let replies = self
+		let replies = if self.timeout.is_some() {
+			self
 			.context
 			.clone()
 			.ok_or(DimasError::ShouldNotHappen)?
@@ -360,9 +381,23 @@ where
 			.target(self.target)
 			.consolidation(self.mode)
 			.allowed_destination(self.allowed_destination)
-			//.timeout(Duration::from_millis(1000))
+			.timeout(self.timeout.expect("snh"))
 			.res_sync()
-			.map_err(|_| DimasError::ShouldNotHappen)?;
+			.map_err(|_| DimasError::ShouldNotHappen)?
+		} else {
+			self
+			.context
+			.clone()
+			.ok_or(DimasError::ShouldNotHappen)?
+			.communicator
+			.session
+			.get(&self.key_expr)
+			.target(self.target)
+			.consolidation(self.mode)
+			.allowed_destination(self.allowed_destination)
+			.res_sync()
+			.map_err(|_| DimasError::ShouldNotHappen)?
+		};
 
 		while let Ok(reply) = replies.recv() {
 			match reply.sample {
