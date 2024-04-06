@@ -64,6 +64,7 @@ where
 	pub(crate) callback: C,
 	pub(crate) storage: S,
 	pub(crate) mode: ConsolidationMode,
+	pub(crate) target: QueryTarget,
 	phantom: PhantomData<P>,
 }
 
@@ -80,6 +81,7 @@ where
 			callback: NoResponseCallback,
 			storage: NoStorage,
 			mode: ConsolidationMode::None,
+			target: QueryTarget::BestMatching,
 			phantom: PhantomData,
 		}
 	}
@@ -89,10 +91,17 @@ impl<P, K, C, S> QueryBuilder<P, K, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	/// Set the consolidation mode
+	/// Set the [`ConsolidationMode`]
 	#[must_use]
 	pub const fn mode(mut self, mode: ConsolidationMode) -> Self {
 		self.mode = mode;
+		self
+	}
+
+	/// Set the [`QueryTarget`]
+	#[must_use]
+	pub const fn target(mut self, target: QueryTarget) -> Self {
+		self.target = target;
 		self
 	}
 }
@@ -109,6 +118,7 @@ where
 			storage,
 			callback,
 			mode,
+			target, 
 			phantom,
 			..
 		} = self;
@@ -120,6 +130,7 @@ where
 			callback,
 			storage,
 			mode,
+			target, 
 			phantom,
 		}
 	}
@@ -137,6 +148,7 @@ where
 			storage,
 			callback,
 			mode,
+			target, 
 			phantom,
 			..
 		} = self;
@@ -146,6 +158,7 @@ where
 			callback,
 			storage,
 			mode,
+			target, 
 			phantom,
 		}
 	}
@@ -166,6 +179,7 @@ where
 			key_expr,
 			storage,
 			mode,
+			target, 
 			phantom,
 			..
 		} = self;
@@ -176,6 +190,7 @@ where
 			callback: ResponseCallback { response: callback },
 			storage,
 			mode,
+			target, 
 			phantom,
 		}
 	}
@@ -197,6 +212,7 @@ where
 			key_expr,
 			callback,
 			mode,
+			target, 
 			phantom,
 			..
 		} = self;
@@ -206,6 +222,7 @@ where
 			callback,
 			storage: Storage { storage },
 			mode,
+			target, 
 			phantom,
 		}
 	}
@@ -223,6 +240,7 @@ where
 			key_expr,
 			callback,
 			mode,
+			target, 
 			..
 		} = self;
 		let key_expr = key_expr.key_expr;
@@ -230,6 +248,7 @@ where
 			context: None,
 			key_expr,
 			mode,
+			target, 
 			callback: callback.response,
 		})
 	}
@@ -265,6 +284,7 @@ where
 {
 	pub(crate) key_expr: String,
 	mode: ConsolidationMode,
+	target: QueryTarget,
 	callback: QueryCallback<P>,
 	context: Option<ArcContext<P>>,
 }
@@ -316,6 +336,7 @@ where
 			.communicator
 			.session
 			.get(&self.key_expr)
+			.target(self.target)
 			.consolidation(self.mode)
 			//.timeout(Duration::from_millis(1000))
 			.res_sync()

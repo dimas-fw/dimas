@@ -25,7 +25,7 @@ that until version 1.0.0 each new minor version has breaking changes, while patc
 
 # Usage
 
-DiMAS needs an `async` runtime. So you have to define your `main` function as an `async` function.
+DiMAS needs an `async` runtime. You have to define your `main` function as an `async` function.
 
 So include `dimas` together with an async runtime in the dependencies section of your `Cargo.toml`.
 As DiMAS uses `tokio` as async runtime, so preferably use `tokio` for your application. 
@@ -70,7 +70,7 @@ The `Cargo.toml` for this publisher/subscriber example should include
 
 ```toml
 [dependencies]
-dimas = { version = "0.1.0", features = ["timer", "subscriber"] }
+dimas = { version = "0.1.0", features = ["publisher", "subscriber", "timer"] }
 tokio = { version = "1",features = ["macros"] }
 ```
 
