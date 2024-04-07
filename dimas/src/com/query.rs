@@ -370,34 +370,26 @@ where
 	#[instrument(name="query", level = Level::ERROR, skip_all)]
 	pub fn get(&self) -> Result<()> {
 		let cb = self.callback.clone();
-		let replies = if self.timeout.is_some() {
-			self
+		let communicator =  self
 			.context
 			.clone()
 			.ok_or(DimasError::ShouldNotHappen)?
-			.communicator
-			.session
+			.communicator.clone();
+
+		let mut query = communicator.session
 			.get(&self.key_expr)
 			.target(self.target)
 			.consolidation(self.mode)
-			.allowed_destination(self.allowed_destination)
-			.timeout(self.timeout.expect("snh"))
-			.res_sync()
-			.map_err(|_| DimasError::ShouldNotHappen)?
-		} else {
-			self
-			.context
-			.clone()
-			.ok_or(DimasError::ShouldNotHappen)?
-			.communicator
-			.session
-			.get(&self.key_expr)
-			.target(self.target)
-			.consolidation(self.mode)
-			.allowed_destination(self.allowed_destination)
-			.res_sync()
-			.map_err(|_| DimasError::ShouldNotHappen)?
+			.allowed_destination(self.allowed_destination);
+
+		if let Some(timeout) = self.timeout {
+			query = query
+				.timeout(timeout);
 		};
+
+		let replies = query
+			.res_sync()
+			.map_err(|_| DimasError::ShouldNotHappen)?;
 
 		while let Ok(reply) = replies.recv() {
 			match reply.sample {
@@ -407,7 +399,7 @@ where
 						let guard = cb.lock();
 						match guard {
 							Ok(mut lock) => {
-								if let Err(error) = lock(&self.context.clone().expect("snh"), msg) {
+								if let Err(error) = lock(&self.context.clone().ok_or(DimasError::ShouldNotHappen)?, msg) {
 									error!("callback failed with {error}");
 								}
 							}

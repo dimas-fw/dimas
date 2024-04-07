@@ -81,6 +81,7 @@ impl Communicator {
 	}
 
 	/// Send an ad hoc put `message` of type `M` using the given `topic`.
+	/// The `topic` will be enhanced with the group prefix. 
 	#[allow(clippy::needless_pass_by_value)]
 	pub(crate) fn put<M>(&self, topic: &str, message: M) -> Result<()>
 	where
@@ -96,6 +97,7 @@ impl Communicator {
 	}
 
 	/// Send an ad hoc delete using the given `topic`.
+	/// The `topic` will be enhanced with the group prefix. 
 	pub(crate) fn delete(&self, topic: &str) -> Result<()> {
 		let key_expr = self.key_expr(topic);
 
@@ -105,13 +107,14 @@ impl Communicator {
 			.map_err(|_| DimasError::Delete.into())
 	}
 
-	/// Send an ad hoc query using the given `query_name`.
+	/// Send an ad hoc query using the given `topic`.
+	/// The `topic` will be enhanced with the group prefix. 
 	/// Response will be handled by `callback`, a closure or function with
-	/// signature Fn(&[`ArcContext`]<AgentProperties>, [`Message`]).
+	/// signature Fn(&[`ArcContext`]<AgentProperties>, [`Response`]).
 	pub(crate) fn get<P, F>(
 		&self,
 		ctx: ArcContext<P>,
-		query_name: &str,
+		topic: &str,
 		mode: ConsolidationMode,
 		callback: F,
 	) -> Result<()>
@@ -119,7 +122,7 @@ impl Communicator {
 		P: Send + Sync + Unpin + 'static,
 		F: Fn(&ArcContext<P>, Message) + Send + Sync + Unpin + 'static,
 	{
-		let key_expr = self.key_expr(query_name);
+		let key_expr = self.key_expr(topic);
 		let ctx = ctx;
 		let session = self.session.clone();
 
