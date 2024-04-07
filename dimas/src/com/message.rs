@@ -3,7 +3,8 @@
 //! Module `message` provides the different types of `Message`s used in callbacks.
 
 // region:		--- modules
-use crate::prelude::{decode, encode, Decode, DimasError, Encode, Result};
+use crate::error::{DimasError, Result};
+use bitcode::{decode, encode, Decode, Encode};
 use std::ops::Deref;
 use zenoh::{prelude::sync::SyncResolve, queryable::Query, sample::Sample};
 // endregion:	--- modules

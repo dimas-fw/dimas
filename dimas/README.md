@@ -2,7 +2,7 @@
 
 [DiMAS](https://github.com/dimas-fw/dimas/tree/main/dimas) - A framework for building **Di**stributed **M**ulti **A**gent **S**ystems
 
-⚠️ WARNING ⚠️ : DiMAS is under active development, so expect gaps between implementation and documentation. 
+⚠️ WARNING ⚠️ : DiMAS is under active development, so expect gaps between implementation and documentation.
 
 A distributed multi agent system is a set of independant agents that are widely distributed but somehow connected.
 They are designed in a way that they can solve complex tasks by working together.

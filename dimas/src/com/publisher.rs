@@ -3,12 +3,21 @@
 //! Module `publisher` provides a message sender `Publisher` which can be created using the `PublisherBuilder`.
 
 // region:		--- modules
-use crate::prelude::*;
+use crate::{
+	context::ArcContext,
+	error::{DimasError, Result},
+};
+use bitcode::{encode, Encode};
 #[allow(unused_imports)]
 use std::collections::HashMap;
 use std::fmt::Debug;
+#[cfg(feature = "publisher")]
+use std::sync::{Arc, RwLock};
 use tracing::{instrument, Level};
-use zenoh::prelude::sync::SyncResolve;
+use zenoh::{
+	prelude::sync::SyncResolve,
+	publication::{CongestionControl, Priority},
+};
 // endregion:	--- modules
 
 // region:		--- states

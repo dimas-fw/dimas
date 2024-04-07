@@ -3,12 +3,28 @@
 //! Module `query` provides an information/compute requestor `Query` which can be created using the `QueryBuilder`.
 
 // region:		--- modules
-use crate::prelude::*;
+use crate::{
+	context::ArcContext,
+	error::{DimasError, Result},
+};
 #[allow(unused_imports)]
 use std::collections::HashMap;
-use std::{fmt::Debug, marker::PhantomData, sync::Mutex, time::Duration};
+use std::{
+	fmt::Debug,
+	marker::PhantomData,
+	sync::{Arc, Mutex},
+	time::Duration,
+};
+#[cfg(feature = "query")]
+use std::sync::RwLock;
 use tracing::{error, instrument, Level};
-use zenoh::prelude::{sync::SyncResolve, SampleKind};
+use zenoh::{
+	prelude::{sync::SyncResolve, SampleKind},
+	query::{ConsolidationMode, QueryTarget},
+	sample::Locality,
+};
+
+use super::message::Response;
 // endregion:	--- modules
 
 // region:		--- types
@@ -138,7 +154,7 @@ where
 			storage,
 			callback,
 			mode,
-			target, 
+			target,
 			phantom,
 			..
 		} = self;
@@ -152,7 +168,7 @@ where
 			callback,
 			storage,
 			mode,
-			target, 
+			target,
 			phantom,
 		}
 	}
@@ -172,7 +188,7 @@ where
 			storage,
 			callback,
 			mode,
-			target, 
+			target,
 			phantom,
 			..
 		} = self;
@@ -184,7 +200,7 @@ where
 			callback,
 			storage,
 			mode,
-			target, 
+			target,
 			phantom,
 		}
 	}
@@ -207,7 +223,7 @@ where
 			key_expr,
 			storage,
 			mode,
-			target, 
+			target,
 			phantom,
 			..
 		} = self;
@@ -220,7 +236,7 @@ where
 			callback: ResponseCallback { response: callback },
 			storage,
 			mode,
-			target, 
+			target,
 			phantom,
 		}
 	}
@@ -244,7 +260,7 @@ where
 			key_expr,
 			callback,
 			mode,
-			target, 
+			target,
 			phantom,
 			..
 		} = self;
@@ -256,7 +272,7 @@ where
 			callback,
 			storage: Storage { storage },
 			mode,
-			target, 
+			target,
 			phantom,
 		}
 	}
@@ -276,7 +292,7 @@ where
 			key_expr,
 			callback,
 			mode,
-			target, 
+			target,
 			..
 		} = self;
 		let key_expr = key_expr.key_expr;
@@ -286,7 +302,7 @@ where
 			context: None,
 			key_expr,
 			mode,
-			target, 
+			target,
 			callback: callback.response,
 		})
 	}
@@ -370,21 +386,22 @@ where
 	#[instrument(name="query", level = Level::ERROR, skip_all)]
 	pub fn get(&self) -> Result<()> {
 		let cb = self.callback.clone();
-		let communicator =  self
+		let communicator = self
 			.context
 			.clone()
 			.ok_or(DimasError::ShouldNotHappen)?
-			.communicator.clone();
+			.communicator
+			.clone();
 
-		let mut query = communicator.session
+		let mut query = communicator
+			.session
 			.get(&self.key_expr)
 			.target(self.target)
 			.consolidation(self.mode)
 			.allowed_destination(self.allowed_destination);
 
 		if let Some(timeout) = self.timeout {
-			query = query
-				.timeout(timeout);
+			query = query.timeout(timeout);
 		};
 
 		let replies = query
@@ -399,7 +416,13 @@ where
 						let guard = cb.lock();
 						match guard {
 							Ok(mut lock) => {
-								if let Err(error) = lock(&self.context.clone().ok_or(DimasError::ShouldNotHappen)?, msg) {
+								if let Err(error) = lock(
+									&self
+										.context
+										.clone()
+										.ok_or(DimasError::ShouldNotHappen)?,
+									msg,
+								) {
 									error!("callback failed with {error}");
 								}
 							}

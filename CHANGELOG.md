@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Documentation
-- QoS for Publisher & Subscriber
+- Additional features for Publisher, Subscriber, Query & Queryable
 
 ### Changed
 - MSRV bumped to '1.77' due to Mutex::clear_poison()

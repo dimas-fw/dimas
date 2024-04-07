@@ -49,26 +49,3 @@ and the queryable in another terminal window with
 ```shell
 cargo run --bin queryable
 ```
-
-## [ROS2 Publisher/Subscriber](https://github.com/dimas-fw/dimas/tree/main/examples/ros2)
-Implements a simple "Hello World!" Publisher/Subscriber pair using ROS2 and DDS.
-To test it properly you need a ROS2 installation. Follow [these](https://docs.ros.org/en/iron/Installation.html) instructions.
-
-Run the publisher in one terminal window with either
-```shell
-cargo run --bin ros2-publisher
-```
-or
-```shell
-ros2 run demo_nodes_cpp talker
-```
-
-and the subscriber in another terminal window with either
-```shell
-ros2 run demo_nodes_cpp listener
-```
-or
-```shell
-cargo run --bin ros2-subscriber
-```
-

@@ -29,9 +29,32 @@
 //!
 
 // region:		--- modules
-use crate::com::communicator::Communicator;
-use crate::prelude::*;
+use crate::com::{
+	communicator::Communicator,
+	liveliness_subscriber::LivelinessSubscriberBuilder,
+	message::Message,
+	publisher::PublisherBuilder,
+	query::QueryBuilder,
+	queryable::QueryableBuilder,
+	subscriber::SubscriberBuilder,
+};
+#[cfg(feature = "liveliness")]
+use crate::com::liveliness_subscriber::LivelinessSubscriber;
+#[cfg(feature = "publisher")]
+use crate::com::publisher::Publisher;
+#[cfg(feature = "query")]
+use crate::com::query::Query;
+#[cfg(feature = "queryable")]
+use crate::com::queryable::Queryable;
+#[cfg(feature = "subscriber")]
+use crate::com::subscriber::Subscriber;
+use crate::config::Config;
+use crate::error::{DimasError, Result};
+#[cfg(feature = "timer")]
+use crate::timer::Timer;
+use crate::timer::TimerBuilder;
 use crate::utils::TaskSignal;
+use bitcode::Encode;
 #[cfg(any(
 	feature = "liveliness",
 	feature = "publisher",
@@ -39,16 +62,16 @@ use crate::utils::TaskSignal;
 	feature = "queryable",
 	feature = "subscriber",
 	feature = "timer",
-	feature = "ros_publisher",
-	feature = "ros_subscriber",
 ))]
 use std::collections::HashMap;
-use std::fmt::Debug;
 use std::ops::Deref;
 use std::sync::mpsc::Sender;
+use std::sync::RwLock;
+use std::{fmt::Debug, sync::Arc};
 #[cfg(any(feature = "publisher", feature = "query",))]
 use tracing::error;
 use tracing::{instrument, Level};
+use zenoh::query::ConsolidationMode;
 // endregion:	--- modules
 
 // region:		--- types
@@ -60,8 +83,6 @@ use tracing::{instrument, Level};
 	feature = "queryable",
 	feature = "subscriber",
 	feature = "timer",
-	feature = "ros_publisher",
-	feature = "ros_subscriber",
 ))]
 const INITIAL_SIZE: usize = 9;
 // endregion:	--- types

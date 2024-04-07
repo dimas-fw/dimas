@@ -14,11 +14,18 @@
 //!
 
 // region:		--- modules
-use crate::prelude::*;
+use crate::{
+	context::ArcContext,
+	error::{DimasError, Result},
+};
+use bitcode::{encode, Encode};
 use std::fmt::Debug;
+use std::sync::Arc;
 use tracing::error;
 use zenoh::prelude::{r#async::*, sync::SyncResolve};
 use zenoh::publication::Publisher;
+
+use super::message::Message;
 // endregion:	--- modules
 
 // region:		--- Communicator
@@ -81,7 +88,7 @@ impl Communicator {
 	}
 
 	/// Send an ad hoc put `message` of type `M` using the given `topic`.
-	/// The `topic` will be enhanced with the group prefix. 
+	/// The `topic` will be enhanced with the group prefix.
 	#[allow(clippy::needless_pass_by_value)]
 	pub(crate) fn put<M>(&self, topic: &str, message: M) -> Result<()>
 	where
@@ -97,7 +104,7 @@ impl Communicator {
 	}
 
 	/// Send an ad hoc delete using the given `topic`.
-	/// The `topic` will be enhanced with the group prefix. 
+	/// The `topic` will be enhanced with the group prefix.
 	pub(crate) fn delete(&self, topic: &str) -> Result<()> {
 		let key_expr = self.key_expr(topic);
 
@@ -108,7 +115,7 @@ impl Communicator {
 	}
 
 	/// Send an ad hoc query using the given `topic`.
-	/// The `topic` will be enhanced with the group prefix. 
+	/// The `topic` will be enhanced with the group prefix.
 	/// Response will be handled by `callback`, a closure or function with
 	/// signature Fn(&[`ArcContext`]<AgentProperties>, [`Response`]).
 	pub(crate) fn get<P, F>(

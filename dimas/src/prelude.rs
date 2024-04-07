@@ -3,15 +3,15 @@
 //! Public interface of dimas. Typically it is sufficient to include the prelude with
 //! ```use dimas::prelude::*;```
 
+pub extern crate bitcode;
+
 // region:    --- modules
 // re-exports
 // used std synchronisation primitives
 pub use std::sync::Arc;
 pub use std::sync::RwLock;
 // bitcode encoding/decoding
-pub(crate) use bitcode::{decode, encode};
 pub use bitcode::{Decode, Encode};
-pub extern crate bitcode;
 // zenoh stuff
 pub use zenoh::publication::CongestionControl;
 pub use zenoh::publication::Priority;

@@ -3,19 +3,27 @@
 //! Module `queryable` provides an information/compute provider `Queryable` which can be created using the `QueryableBuilder`.
 
 // region:		--- modules
-use crate::{prelude::*, utils::TaskSignal};
+use crate::{
+	context::ArcContext,
+	error::{DimasError, Result},
+	utils::TaskSignal,
+};
 #[allow(unused_imports)]
 use std::collections::HashMap;
 use std::{
 	fmt::Debug,
 	marker::PhantomData,
-	sync::{mpsc::Sender, Mutex},
+	sync::{mpsc::Sender, Arc, Mutex},
 };
+#[cfg(feature = "queryable")]
+use std::sync::RwLock;
 use tokio::task::JoinHandle;
 #[cfg(feature = "queryable")]
 use tracing::info;
 use tracing::{error, instrument, warn, Level};
-use zenoh::{prelude::r#async::AsyncResolve, SessionDeclarations};
+use zenoh::{prelude::r#async::AsyncResolve, sample::Locality, SessionDeclarations};
+
+use super::message::Request;
 // endregion:	--- modules
 
 // region:		--- types
@@ -246,7 +254,9 @@ where
 		let Self {
 			completeness,
 			allowed_origin,
-			key_expr, callback, ..
+			key_expr,
+			callback,
+			..
 		} = self;
 		let key_expr = key_expr.key_expr;
 		Ok(Queryable {
@@ -344,7 +354,9 @@ where
 						info!("restarting queryable!");
 					};
 				}));
-				if let Err(error) = run_queryable(completeness, allowed_origin, key_expr, cb, ctx).await {
+				if let Err(error) =
+					run_queryable(completeness, allowed_origin, key_expr, cb, ctx).await
+				{
 					error!("queryable failed with {error}");
 				};
 			}));
