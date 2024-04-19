@@ -25,6 +25,7 @@ serde = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["signal", "time"]}
 tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 zenoh = { workspace = true }
 
 [dev-dependencies]

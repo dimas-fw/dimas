@@ -25,6 +25,5 @@ path = "src/query.rs"
 dimas = { workspace = true, features = ["timer", "query", "queryable"] }
 tokio = { workspace = true, features = ["macros"] }
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
 
 [dev-dependencies]

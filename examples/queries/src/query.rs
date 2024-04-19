@@ -18,8 +18,8 @@ fn query_callback(_ctx: &ArcContext<AgentProps>, response: Response) -> Result<(
 
 #[tokio::main]
 async fn main() -> Result<()> {
-	// a tracing subscriber writing logs
-	tracing_subscriber::fmt::init();
+	// initialize tracing/logging
+	init_tracing();
 
 	// create & initialize agents properties
 	let properties = AgentProps {};

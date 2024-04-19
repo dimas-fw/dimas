@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2024-??-??
 
 ### Added
-- Documentation
+- Enhance Documentation
 - Additional features for Publisher, Subscriber, Query & Queryable
 
 ### Changed
@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - cleanup coding
 
 ### Fixed
+- tracing initialisation now fits to zenohs usage of tracing crate
 
 ### Removed
 

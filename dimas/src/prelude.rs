@@ -20,6 +20,7 @@ pub use zenoh::query::QueryTarget;
 pub use zenoh::sample::Locality;
 pub use zenoh::subscriber::Reliability;
 
+// dimas stuff
 pub use crate::agent::Agent;
 pub use crate::com::liveliness_subscriber::{LivelinessSubscriber, LivelinessSubscriberBuilder};
 pub use crate::com::message::{Message, Request, Response};
@@ -31,6 +32,7 @@ pub use crate::config::Config;
 pub use crate::context::ArcContext;
 pub use crate::error::{DimasError, Result};
 pub use crate::timer::{Timer, TimerBuilder};
+pub use crate::utils::init_tracing;
 // endregeion:  --- modules
 
 // region:    --- types
