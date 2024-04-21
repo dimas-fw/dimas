@@ -2,7 +2,7 @@
   zenoh: {
     mode: "router",
     listen: {
-      endpoints: ["tcp/192.168.0.100:17447", "udp/192.168.0.100:17446"],
+      endpoints: ["tcp/0.0.0.0:7447", "udp/0.0.0.0:7448"],
     },
 //    connect: {
 //      endpoints: ["tcp/192.168.0.???:7447"],
