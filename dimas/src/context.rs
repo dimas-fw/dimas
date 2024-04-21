@@ -29,15 +29,6 @@
 //!
 
 // region:		--- modules
-use crate::com::{
-	communicator::Communicator,
-	liveliness_subscriber::LivelinessSubscriberBuilder,
-	message::Message,
-	publisher::PublisherBuilder,
-	query::QueryBuilder,
-	queryable::QueryableBuilder,
-	subscriber::SubscriberBuilder,
-};
 #[cfg(feature = "liveliness")]
 use crate::com::liveliness_subscriber::LivelinessSubscriber;
 #[cfg(feature = "publisher")]
@@ -48,6 +39,11 @@ use crate::com::query::Query;
 use crate::com::queryable::Queryable;
 #[cfg(feature = "subscriber")]
 use crate::com::subscriber::Subscriber;
+use crate::com::{
+	communicator::Communicator, liveliness_subscriber::LivelinessSubscriberBuilder,
+	message::Message, publisher::PublisherBuilder, query::QueryBuilder,
+	queryable::QueryableBuilder, subscriber::SubscriberBuilder,
+};
 use crate::config::Config;
 use crate::error::{DimasError, Result};
 #[cfg(feature = "timer")]

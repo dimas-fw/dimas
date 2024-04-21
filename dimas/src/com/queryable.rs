@@ -10,13 +10,13 @@ use crate::{
 };
 #[allow(unused_imports)]
 use std::collections::HashMap;
+#[cfg(feature = "queryable")]
+use std::sync::RwLock;
 use std::{
 	fmt::Debug,
 	marker::PhantomData,
 	sync::{mpsc::Sender, Arc, Mutex},
 };
-#[cfg(feature = "queryable")]
-use std::sync::RwLock;
 use tokio::task::JoinHandle;
 #[cfg(feature = "queryable")]
 use tracing::info;

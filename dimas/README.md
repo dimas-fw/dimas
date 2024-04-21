@@ -144,14 +144,18 @@ async fn main() -> Result<()> {
 The `subscriber.rs` should look like this:
 
 ```rust,no_run
+//! `DiMAS` zenoh-pico example
+//! Copyright © 2024 Stephan Kunz
+
 use dimas::prelude::*;
 
+/// The Agent's proerties
 #[derive(Debug)]
 pub struct AgentProps {}
 
 fn callback(_ctx: &ArcContext<AgentProps>, message: Message) -> Result<()> {
 	let message: String =	message.decode()?;
-	println!("Received '{}'", message);
+	println!("Received '{message}'");
 	Ok(())
 }
 
@@ -161,7 +165,7 @@ async fn main() -> Result<()> {
 	let properties = AgentProps {};
 
 	// create an agent with the properties and default configuration
-	let mut agent = Agent::new(properties)
+	let agent = Agent::new(properties)
 		.config(Config::default())?;
 
 	// subscribe to "hello" messages

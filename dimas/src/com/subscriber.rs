@@ -11,9 +11,9 @@ use crate::{
 };
 #[allow(unused_imports)]
 use std::collections::HashMap;
-use std::sync::{mpsc::Sender, Arc, Mutex};
 #[cfg(feature = "subscriber")]
 use std::sync::RwLock;
+use std::sync::{mpsc::Sender, Arc, Mutex};
 use tokio::task::JoinHandle;
 #[cfg(feature = "subscriber")]
 use tracing::info;

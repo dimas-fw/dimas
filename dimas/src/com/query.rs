@@ -9,14 +9,14 @@ use crate::{
 };
 #[allow(unused_imports)]
 use std::collections::HashMap;
+#[cfg(feature = "query")]
+use std::sync::RwLock;
 use std::{
 	fmt::Debug,
 	marker::PhantomData,
 	sync::{Arc, Mutex},
 	time::Duration,
 };
-#[cfg(feature = "query")]
-use std::sync::RwLock;
 use tracing::{error, instrument, Level};
 use zenoh::{
 	prelude::{sync::SyncResolve, SampleKind},
