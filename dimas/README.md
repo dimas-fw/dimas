@@ -38,7 +38,7 @@ So your `Cargo.toml` should include:
 
 ```toml
 [dependencies]
-dimas = { version = "0.1.0", features = ["all"] }
+dimas = { version = "0.1", features = ["all"] }
 tokio = { version = "1", features = ["macros"] }
 ```
 

@@ -16,6 +16,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 
+## [0.?.?] - 2024-??-??
+
+### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+
 ## [0.1.0] - 2024-04-25
 
 ### Added
@@ -29,8 +40,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - tracing initialisation now fits to zenohs usage of tracing crate
-
-### Removed
 
 
 ## [0.0.8] - 2024-03-22  <br>_Has breaking changes!!_
