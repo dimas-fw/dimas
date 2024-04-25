@@ -38,8 +38,8 @@ fn ping_received(ctx: &ArcContext<AgentProps>, message: Message) -> Result<()> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-	// a tracing subscriber writing logs
-	tracing_subscriber::fmt::init();
+	// initialize tracing/logging
+	init_tracing();
 
 	// create & initialize agents properties
 	let properties = AgentProps {};
@@ -50,13 +50,19 @@ async fn main() -> Result<()> {
 		.config(Config::default())?;
 
 	// create publisher for topic "ping"
-	agent.publisher().topic("pong").add()?;
+	agent
+		.publisher()
+		.topic("pong")
+		.set_priority(Priority::RealTime)
+		.set_congestion_control(CongestionControl::Block)
+		.add()?;
 
 	// listen for 'ping' messages
 	agent
 		.subscriber()
 		.topic("ping")
 		.put_callback(ping_received)
+		.set_reliability(Reliability::Reliable)
 		.add()?;
 
 	// activate liveliness

@@ -14,8 +14,8 @@ struct AgentProps {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-	// a tracing subscriber writing logs
-	tracing_subscriber::fmt::init();
+	// initialize tracing/logging
+	init_tracing();
 
 	// create & initialize agents properties
 	let properties = AgentProps { counter: 0 };

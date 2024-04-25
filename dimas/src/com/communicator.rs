@@ -1,38 +1,45 @@
 // Copyright © 2023 Stephan Kunz
 
-//! `Communicator` implements the communication capabilities for an `Agent`.
+//! [`Communicator`] implements the communication capabilities for an [`Agent`].
 //!
 //! # Examples
 //! ```rust,no_run
 //! # use dimas::prelude::*;
 //! # #[tokio::main(flavor = "multi_thread")]
 //! # async fn main() -> Result<()> {
+//! # let agent = Agent::new({});
 //! # Ok(())
 //! # }
 //! ```
 //!
 
 // region:		--- modules
-use crate::prelude::*;
+use crate::{
+	context::ArcContext,
+	error::{DimasError, Result},
+};
+use bitcode::{encode, Encode};
 use std::fmt::Debug;
+use std::sync::Arc;
 use tracing::error;
 use zenoh::prelude::{r#async::*, sync::SyncResolve};
 use zenoh::publication::Publisher;
-#[allow(unused_imports)]
-use crate::agent::Agent;
+
+use super::message::Message;
 // endregion:	--- modules
 
 // region:		--- Communicator
-/// Communicator
+/// [`Communicator`] handles all communication aspects
 #[derive(Debug)]
 pub struct Communicator {
-	/// the zenoh session
+	/// The zenoh session
 	pub(crate) session: Arc<Session>,
-	/// prefix to separate agents communication
+	/// A prefix to separate communication for different groups of [`Agent`]s
 	pub(crate) prefix: Option<String>,
 }
 
 impl Communicator {
+	/// Constructor
 	pub(crate) fn new(config: crate::config::Config) -> Result<Self> {
 		let cfg = config;
 		let session = Arc::new(
@@ -46,32 +53,42 @@ impl Communicator {
 		})
 	}
 
-	pub(crate) fn set_prefix(&mut self, prefix: impl Into<String>) {
-		self.prefix = Some(prefix.into());
-	}
-
+	/// Get [`Agent`]s globally unique ID
 	pub(crate) fn uuid(&self) -> String {
 		self.session.zid().to_string()
 	}
 
-	pub(crate) fn prefix(&self) -> Option<String> {
-		self.prefix.clone()
+	/// Get [`Agent`]s group prefix
+	#[must_use]
+	pub const fn prefix(&self) -> &Option<String> {
+		&self.prefix
+	}
+
+	/// Set [`Agent`]s group prefix
+	pub(crate) fn set_prefix(&mut self, prefix: impl Into<String>) {
+		self.prefix = Some(prefix.into());
 	}
 
 	/// Create a key expression from a topic by adding [`Agent`]s prefix if one is given.
 	#[must_use]
 	pub fn key_expr(&self, topic: &str) -> String {
-		self.prefix()
+		self.prefix
+			.clone()
 			.map_or_else(|| topic.into(), |prefix| format!("{prefix}/{topic}"))
 	}
 
+	/// Create a zenoh publisher
 	pub(crate) fn create_publisher<'a>(&self, key_expr: &str) -> Result<Publisher<'a>> {
-		self.session
+		let p = self
+			.session
 			.declare_publisher(key_expr.to_owned())
 			.res_sync()
-			.map_err(|_| DimasError::ShouldNotHappen.into())
+			.map_err(DimasError::DeclarePublisher)?;
+		Ok(p)
 	}
 
+	/// Send an ad hoc put `message` of type `M` using the given `topic`.
+	/// The `topic` will be enhanced with the group prefix.
 	#[allow(clippy::needless_pass_by_value)]
 	pub(crate) fn put<M>(&self, topic: &str, message: M) -> Result<()>
 	where
@@ -79,24 +96,32 @@ impl Communicator {
 	{
 		let value: Vec<u8> = encode(&message);
 		let key_expr = self.key_expr(topic);
-		match self.session.put(&key_expr, value).res_sync() {
-			Ok(()) => Ok(()),
-			Err(_) => Err(DimasError::PutMessage.into()),
-		}
+
+		self.session
+			.put(&key_expr, value)
+			.res_sync()
+			.map_err(|_| DimasError::Put.into())
 	}
 
+	/// Send an ad hoc delete using the given `topic`.
+	/// The `topic` will be enhanced with the group prefix.
 	pub(crate) fn delete(&self, topic: &str) -> Result<()> {
 		let key_expr = self.key_expr(topic);
-		match self.session.delete(&key_expr).res_sync() {
-			Ok(()) => Ok(()),
-			Err(_) => Err(DimasError::DeleteMessage.into()),
-		}
+
+		self.session
+			.delete(&key_expr)
+			.res_sync()
+			.map_err(|_| DimasError::Delete.into())
 	}
 
+	/// Send an ad hoc query using the given `topic`.
+	/// The `topic` will be enhanced with the group prefix.
+	/// Response will be handled by `callback`, a closure or function with
+	/// signature Fn(&[`ArcContext`]<AgentProperties>, [`Response`]).
 	pub(crate) fn get<P, F>(
 		&self,
 		ctx: ArcContext<P>,
-		query_name: &str,
+		topic: &str,
 		mode: ConsolidationMode,
 		callback: F,
 	) -> Result<()>
@@ -104,7 +129,7 @@ impl Communicator {
 		P: Send + Sync + Unpin + 'static,
 		F: Fn(&ArcContext<P>, Message) + Send + Sync + Unpin + 'static,
 	{
-		let key_expr = self.key_expr(query_name);
+		let key_expr = self.key_expr(topic);
 		let ctx = ctx;
 		let session = self.session.clone();
 
@@ -113,7 +138,7 @@ impl Communicator {
 			.consolidation(mode)
 			//.timeout(Duration::from_millis(1000))
 			.res_sync()
-			.map_err(|_| DimasError::ShouldNotHappen)?;
+			.map_err(|_| DimasError::Get)?;
 
 		while let Ok(reply) = replies.recv() {
 			match reply.sample {

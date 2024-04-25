@@ -3,7 +3,8 @@
 //! Module `message` provides the different types of `Message`s used in callbacks.
 
 // region:		--- modules
-use crate::prelude::{decode, encode, Decode, DimasError, Encode, Result};
+use crate::error::{DimasError, Result};
+use bitcode::{decode, encode, Decode, Encode};
 use std::ops::Deref;
 use zenoh::{prelude::sync::SyncResolve, queryable::Query, sample::Sample};
 // endregion:	--- modules
@@ -23,8 +24,8 @@ impl Deref for Message {
 
 impl Message {
 	/// decode message
-	/// # Errors
 	///
+	/// # Errors
 	pub fn decode<T>(self) -> Result<T>
 	where
 		T: for<'a> Decode<'a>,
@@ -34,7 +35,7 @@ impl Message {
 			.value
 			.try_into()
 			.map_err(|_| DimasError::ConvertingValue)?;
-		decode::<T>(value.as_slice()).map_err(|_| DimasError::DecodingMessage.into())
+		decode::<T>(value.as_slice()).map_err(|_| DimasError::Decoding.into())
 	}
 }
 // endregion:	--- Message
@@ -54,8 +55,8 @@ impl Deref for Request {
 
 impl Request {
 	/// Reply to the given request
-	/// # Errors
 	///
+	/// # Errors
 	#[allow(clippy::needless_pass_by_value)]
 	pub fn reply<T>(self, value: T) -> Result<()>
 	where
@@ -95,8 +96,8 @@ impl Deref for Response {
 
 impl Response {
 	/// decode response
-	/// # Errors
 	///
+	/// # Errors
 	pub fn decode<T>(self) -> Result<T>
 	where
 		T: for<'a> Decode<'a>,
@@ -106,10 +107,41 @@ impl Response {
 			.value
 			.try_into()
 			.map_err(|_| DimasError::ConvertingValue)?;
-		decode::<T>(value.as_slice()).map_err(|_| DimasError::DecodingMessage.into())
+		decode::<T>(value.as_slice()).map_err(|_| DimasError::Decoding.into())
 	}
 }
 // endregion:	--- Response
+
+// region:		--- Feedback
+/// Implementation of feedback messages
+#[derive(Debug)]
+pub struct Feedback(pub(crate) Sample);
+
+impl Deref for Feedback {
+	type Target = Sample;
+
+	fn deref(&self) -> &Self::Target {
+		&self.0
+	}
+}
+
+impl Feedback {
+	/// decode feedback
+	///
+	/// # Errors
+	pub fn decode<T>(self) -> Result<T>
+	where
+		T: for<'a> Decode<'a>,
+	{
+		let value: Vec<u8> = self
+			.0
+			.value
+			.try_into()
+			.map_err(|_| DimasError::ConvertingValue)?;
+		decode::<T>(value.as_slice()).map_err(|_| DimasError::Decoding.into())
+	}
+}
+// endregion:	--- Feedback
 
 #[cfg(test)]
 mod tests {
@@ -123,5 +155,6 @@ mod tests {
 		is_normal::<Message>();
 		is_normal::<Request>();
 		is_normal::<Response>();
+		is_normal::<Feedback>();
 	}
 }

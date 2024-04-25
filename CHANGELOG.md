@@ -16,11 +16,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 
+## [0.1.0] - 2024-04-25
+
+### Added
+- Enhance Documentation
+- Additional features for Publisher, Subscriber, Query & Queryable
+
+### Changed
+- MSRV bumped to '1.77' due to Mutex::clear_poison()
+- Bumped version of 'bitcode' to '0.6'
+- cleanup coding
+
+### Fixed
+- tracing initialisation now fits to zenohs usage of tracing crate
+
+### Removed
+
+
 ## [0.0.8] - 2024-03-22  <br>_Has breaking changes!!_
 
 ### Added
 - Documentation
 - Builders 'add' methods now return the possibly previously added item for that key expression
+- Agent can have a (non unique) name
+- QoS for Publisher & Subscriber
 
 ### Changed
 - _Name of Builder methods to set only topics name chanched to 'topic(..)'_
@@ -30,8 +49,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Broken documentaton on docs.rs
 - Same naming scheme for TimerBuilder as for other builders
-
-### Removed
 
 
 ## [0.0.7] - 2024-03-17 <br>_Has breaking changes!!_
@@ -83,7 +100,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Ability to store Publisher's and Query's in Agent's Context
 - Introduce `tracing` support
-- Agent::new_with_prefix() - as replacement for the old agent::new()
+- Agent::new_with_prefix() - as replacement for the old Agent::new()
 - Benchmarks
   - benches/montblanc/* - an implementation of the Montblanc benchmark for robots
   - benches/montblanc/tmux-robot.sh - a tmux script to run all of the robots nodes

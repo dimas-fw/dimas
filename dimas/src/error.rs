@@ -17,7 +17,7 @@
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync + 'static>>;
 // endregion:	--- types
 
-// region:    --- Error
+// region:    --- DimasError
 /// `DiMAS` Error type
 #[non_exhaustive]
 #[derive(thiserror::Error, Debug)]
@@ -28,57 +28,57 @@ pub enum DimasError {
 	ShouldNotHappen,
 	/// The `put` of a `Publisher` failed
 	#[error("Publisher 'put' failed")]
-	PutMessage,
+	Put,
 	/// The `delete` of a `Publisher` failed
 	#[error("Publisher 'delete' failed")]
-	DeleteMessage,
-	/// There was no key expression given to the Builder
-	#[error("no key expression given")]
-	NoKeyExpression,
-	/// There was no callback function given to the Builder
-	#[error("no callback given")]
-	NoCallback,
-	/// There was no interval duration given to the `TimerBuilder`
-	#[error("no interval given")]
-	NoInterval,
-	/// There was no name given to the `TimerBuilder`
-	#[error("no name given")]
-	NoName,
+	Delete,
+	/// The `get` of a `Query` failed
+	#[error("Query 'get' failed")]
+	Get,
 	/// Encoding of message failed
 	#[error("message encoding failed")]
-	EncodingMessage,
+	Encoding,
 	/// Converting of message failed
 	#[error("converting value into 'Vec<u8>' failed")]
 	ConvertingValue,
 	/// Decoding of message failed
 	#[error("message decoding failed")]
-	DecodingMessage,
+	Decoding,
 	/// Read access to properties failed
-	#[error("read  of properties failed")]
+	#[error("read of properties failed")]
 	ReadProperties,
 	/// Write access to properties failed
-	#[error("write  of properties failed")]
+	#[error("write of properties failed")]
 	WriteProperties,
 	/// Lock on callback failed
 	#[error("could not execute callback")]
 	ExecuteCallback,
 
 	/// File not found
-	#[error("Could not find file: {0}")]
+	#[error("could not find file: {0}")]
 	FileNotFound(String),
+	/// Modifying context failed
+	#[error("modifiying context for {0} failed")]
+	ModifyContext(String),
+	/// Reading context failed
+	#[error("reading context for {0} failed")]
+	ReadContext(String),
 
-	/// `zenoh` activate sending liveliness failed
-	#[error("activation of zenoh liveliness failed with {0}")]
-	ActivateLiveliness(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
 	/// `zenoh` session creation failed
 	#[error("creation of zenoh session failed with {0}")]
 	CreateSession(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+	/// `zenoh` activate sending liveliness failed
+	#[error("activation of zenoh liveliness failed with {0}")]
+	ActivateLiveliness(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+	/// `zenoh` publisher  declaration failed
+	#[error("declaration of zenoh publisher failed with {0}")]
+	DeclarePublisher(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
 
 	// should be last line
 	/// auto conversion for boxed `std::error::Error`
 	#[error(transparent)]
 	StdError(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),
-} // endregion: --- Error
+} // endregion: --- DimasError
 
 #[cfg(test)]
 mod tests {

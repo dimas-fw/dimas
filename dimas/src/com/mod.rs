@@ -4,6 +4,11 @@
 //!
 
 // region:    --- modules
+// to avoid doc warnings
+#[allow(unused_imports)]
+use super::agent::Agent;
+#[allow(unused_imports)]
+use communicator::Communicator;
 /// Communicator
 pub mod communicator;
 /// Liveliness

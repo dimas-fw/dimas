@@ -23,11 +23,8 @@ use zenoh::{
 
 // region:		--- types
 /// Type definition for liveliness callback function
-pub type LivelinessCallback<P> = Arc<
-	Mutex<
-		Option<Box<dyn FnMut(&ArcContext<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static>>,
-	>,
->;
+pub type LivelinessCallback<P> =
+	Arc<Mutex<Box<dyn FnMut(&ArcContext<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static>>>;
 // endregion:	--- types
 
 // region:		--- states
@@ -63,7 +60,7 @@ pub struct LivelinessSubscriberBuilder<P, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	key_expr: String,
+	token: String,
 	pub(crate) put_callback: C,
 	pub(crate) storage: S,
 	pub(crate) delete_callback: Option<LivelinessCallback<P>>,
@@ -76,9 +73,9 @@ where
 	/// Construct a `LivelinessSubscriberBuilder` in initial state
 	#[must_use]
 	pub fn new(prefix: Option<String>) -> Self {
-		let key_expr = prefix.map_or("alive/*".to_string(), |prefix| format!("{prefix}/alive/*"));
+		let token = prefix.map_or("*".to_string(), |prefix| format!("{prefix}/*"));
 		Self {
-			key_expr,
+			token,
 			put_callback: NoPutCallback,
 			storage: NoStorage,
 			delete_callback: None,
@@ -93,7 +90,7 @@ where
 	/// Set a different prefix for the liveliness subscriber.
 	#[must_use]
 	pub fn prefix(self, prefix: &str) -> Self {
-		let key_expr = format!("{prefix}/alive/*");
+		let key_expr = format!("{prefix}/*");
 		let Self {
 			put_callback,
 			storage,
@@ -101,12 +98,30 @@ where
 			..
 		} = self;
 		Self {
-			key_expr,
+			token: key_expr,
 			put_callback,
 			storage,
 			delete_callback,
 		}
 	}
+
+	/// Set an explicite token for the liveliness subscriber.
+	#[must_use]
+	pub fn token(self, token: impl Into<String>) -> Self {
+		let Self {
+			put_callback,
+			storage,
+			delete_callback,
+			..
+		} = self;
+		Self {
+			token: token.into(),
+			put_callback,
+			storage,
+			delete_callback,
+		}
+	}
+
 	/// Set liveliness subscribers callback for `delete` messages
 	#[must_use]
 	pub fn delete_callback<F>(self, callback: F) -> Self
@@ -114,15 +129,15 @@ where
 		F: FnMut(&ArcContext<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
-			key_expr,
+			token: key_expr,
 			put_callback,
 			storage,
 			..
 		} = self;
 		let delete_callback: Option<LivelinessCallback<P>> =
-			Some(Arc::new(Mutex::new(Some(Box::new(callback)))));
+			Some(Arc::new(Mutex::new(Box::new(callback))));
 		Self {
-			key_expr,
+			token: key_expr,
 			put_callback,
 			storage,
 			delete_callback,
@@ -141,14 +156,14 @@ where
 		F: FnMut(&ArcContext<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
-			key_expr,
+			token: key_expr,
 			storage,
 			delete_callback,
 			..
 		} = self;
-		let put_callback: LivelinessCallback<P> = Arc::new(Mutex::new(Some(Box::new(callback))));
+		let put_callback: LivelinessCallback<P> = Arc::new(Mutex::new(Box::new(callback)));
 		LivelinessSubscriberBuilder {
-			key_expr,
+			token: key_expr,
 			put_callback: PutCallback {
 				callback: put_callback,
 			},
@@ -170,13 +185,13 @@ where
 		storage: Arc<RwLock<std::collections::HashMap<String, LivelinessSubscriber<P>>>>,
 	) -> LivelinessSubscriberBuilder<P, C, Storage<P>> {
 		let Self {
-			key_expr,
+			token: key_expr,
 			put_callback,
 			delete_callback,
 			..
 		} = self;
 		LivelinessSubscriberBuilder {
-			key_expr,
+			token: key_expr,
 			put_callback,
 			storage: Storage { storage },
 			delete_callback,
@@ -193,14 +208,14 @@ where
 	///
 	pub fn build(self) -> Result<LivelinessSubscriber<P>> {
 		let Self {
-			key_expr,
+			token: key_expr,
 			put_callback,
 			delete_callback,
 			..
 		} = self;
 		Ok(LivelinessSubscriber {
 			key_expr,
-			put_callback: Some(put_callback.callback),
+			put_callback: put_callback.callback,
 			delete_callback,
 			handle: None,
 		})
@@ -236,7 +251,7 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	key_expr: String,
-	put_callback: Option<LivelinessCallback<P>>,
+	put_callback: LivelinessCallback<P>,
 	delete_callback: Option<LivelinessCallback<P>>,
 	handle: Option<JoinHandle<()>>,
 }
@@ -265,20 +280,16 @@ where
 		drop(tx);
 
 		{
-			if let Some(pcb) = self.put_callback.clone() {
-				if let Err(err) = pcb.lock() {
-					warn!("found poisoned put Mutex");
-					self.put_callback
-						.replace(Arc::new(Mutex::new(err.into_inner().take())));
-				}
+			if self.put_callback.lock().is_err() {
+				warn!("found poisoned put Mutex");
+				self.put_callback.clear_poison();
 			}
 		}
 		{
 			if let Some(dcb) = self.delete_callback.clone() {
-				if let Err(err) = dcb.lock() {
+				if dcb.lock().is_err() {
 					warn!("found poisoned delete Mutex");
-					self.delete_callback
-						.replace(Arc::new(Mutex::new(err.into_inner().take())));
+					dcb.clear_poison();
 				}
 			}
 		}
@@ -330,7 +341,7 @@ where
 #[instrument(name="liveliness", level = Level::ERROR, skip_all)]
 async fn run_liveliness<P>(
 	key_expr: String,
-	p_cb: Option<LivelinessCallback<P>>,
+	p_cb: LivelinessCallback<P>,
 	d_cb: Option<LivelinessCallback<P>>,
 	ctx: ArcContext<P>,
 ) -> Result<()>
@@ -356,32 +367,26 @@ where
 					continue;
 				};
 				match sample.kind {
-					SampleKind::Put => {
-						if let Some(cb) = p_cb.clone() {
-							let result = cb.lock();
-							match result {
-								Ok(mut cb) => {
-									if let Err(error) = cb.as_deref_mut().expect("snh")(&ctx, id) {
-										error!("put callback failed with {error}");
-									}
-								}
-								Err(err) => {
-									error!("put callback lock failed with {err}");
-								}
+					SampleKind::Put => match p_cb.lock() {
+						Ok(mut lock) => {
+							if let Err(error) = lock(&ctx, id) {
+								error!("liveliness put callback failed with {error}");
 							}
 						}
-					}
+						Err(err) => {
+							error!("liveliness put callback lock failed with {err}");
+						}
+					},
 					SampleKind::Delete => {
 						if let Some(cb) = d_cb.clone() {
-							let result = cb.lock();
-							match result {
-								Ok(mut cb) => {
-									if let Err(error) = cb.as_deref_mut().expect("snh")(&ctx, id) {
-										error!("delete callback failed with {error}");
+							match cb.lock() {
+								Ok(mut lock) => {
+									if let Err(err) = lock(&ctx, id) {
+										error!("liveliness delete callback failed with {err}");
 									}
 								}
 								Err(err) => {
-									error!("delete callback lock failed with {err}");
+									error!("liveliness delete callback lock failed with {err}");
 								}
 							}
 						}
@@ -398,7 +403,7 @@ where
 #[instrument(name="initial liveliness", level = Level::ERROR, skip_all)]
 async fn run_initial<P>(
 	key_expr: String,
-	p_cb: Option<LivelinessCallback<P>>,
+	p_cb: LivelinessCallback<P>,
 	ctx: ArcContext<P>,
 ) -> Result<()>
 where
@@ -423,26 +428,23 @@ where
 						if id == ctx.uuid() {
 							continue;
 						};
-						if let Some(cb) = p_cb.clone() {
-							let result = cb.lock();
-							match result {
-								Ok(mut cb) => {
-									if let Err(error) = cb.as_deref_mut().expect("snh")(&ctx, id) {
-										error!("callback failed with {error}");
-									}
+						match p_cb.lock() {
+							Ok(mut lock) => {
+								if let Err(error) = lock(&ctx, id) {
+									error!("lveliness put callback failed with {error}");
 								}
-								Err(err) => {
-									error!("callback lock failed with {err}");
-								}
+							}
+							Err(err) => {
+								error!("liveliness put callback failed with {err}");
 							}
 						}
 					}
-					Err(err) => error!("receive error: {err})"),
+					Err(err) => error!(">> liveliness subscriber delete error: {err})"),
 				}
 			}
 		}
 		Err(error) => {
-			error!("failed with {error}");
+			error!("livelieness subscriber failed with {error}");
 		}
 	}
 	Ok(())
