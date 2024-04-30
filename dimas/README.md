@@ -144,9 +144,6 @@ async fn main() -> Result<()> {
 The `subscriber.rs` should look like this:
 
 ```rust,no_run
-//! `DiMAS` zenoh-pico example
-//! Copyright © 2024 Stephan Kunz
-
 use dimas::prelude::*;
 
 /// The Agent's proerties

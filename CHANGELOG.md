@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - MSRV bumped to '1.77' due to Mutex::clear_poison()
+- Bumped version of 'zenoh' to '0.11.0-rc.1'
 - Bumped version of 'bitcode' to '0.6'
 - cleanup coding
 

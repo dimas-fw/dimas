@@ -42,9 +42,10 @@ tmux split-pane -v -p 50
 
 # start an example in each pane but pane 9
 # end with active pane 9
-# publisher & subscriber
+# router
 tmux select-pane -t 0
-tmux send-keys "cargo run --bin publisher $1" C-m
+tmux send-keys "cargo run --bin router $1" C-m
+# publisher & subscriber
 tmux select-pane -t 1
 tmux send-keys "cargo run --bin publisher $1" C-m
 tmux select-pane -t 2
