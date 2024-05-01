@@ -203,7 +203,7 @@ impl<P, S> LivelinessSubscriberBuilder<P, PutCallback<P>, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	/// Build the liveliness subscriber
+	/// Build the [`LivelinessSubscriber`]
 	/// # Errors
 	///
 	pub fn build(self) -> Result<LivelinessSubscriber<P>> {
@@ -213,12 +213,11 @@ where
 			delete_callback,
 			..
 		} = self;
-		Ok(LivelinessSubscriber {
+		Ok(LivelinessSubscriber::new(
 			key_expr,
-			put_callback: put_callback.callback,
+			put_callback.callback,
 			delete_callback,
-			handle: None,
-		})
+		))
 	}
 }
 
@@ -270,6 +269,20 @@ impl<P> LivelinessSubscriber<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// Constructor for a [`LivelinessSubscriber`]
+	pub fn new(
+		key_expr: String,
+		put_callback: LivelinessCallback<P>,
+		delete_callback: Option<LivelinessCallback<P>>,
+	) -> Self {
+		Self {
+			key_expr,
+			put_callback,
+			delete_callback,
+			handle: None,
+		}
+	}
+
 	/// Start or restart the liveliness subscriber.
 	/// An already running subscriber will be stopped, eventually damaged Mutexes will be repaired
 	#[instrument(level = Level::TRACE, skip_all)]

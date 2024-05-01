@@ -79,7 +79,7 @@ where
 	pub(crate) prefix: Option<String>,
 	pub(crate) timeout: Option<Duration>,
 	pub(crate) key_expr: K,
-	pub(crate) callback: C,
+	pub(crate) response_callback: C,
 	pub(crate) storage: S,
 	pub(crate) mode: ConsolidationMode,
 	pub(crate) target: QueryTarget,
@@ -98,7 +98,7 @@ where
 			prefix,
 			timeout: None,
 			key_expr: NoKeyExpression,
-			callback: NoResponseCallback,
+			response_callback: NoResponseCallback,
 			storage: NoStorage,
 			mode: ConsolidationMode::None,
 			target: QueryTarget::BestMatching,
@@ -152,7 +152,7 @@ where
 			prefix,
 			timeout,
 			storage,
-			callback,
+			response_callback: callback,
 			mode,
 			target,
 			phantom,
@@ -165,7 +165,7 @@ where
 			key_expr: KeyExpression {
 				key_expr: key_expr.into(),
 			},
-			callback,
+			response_callback: callback,
 			storage,
 			mode,
 			target,
@@ -186,7 +186,7 @@ where
 			prefix,
 			timeout,
 			storage,
-			callback,
+			response_callback: callback,
 			mode,
 			target,
 			phantom,
@@ -197,7 +197,7 @@ where
 			prefix,
 			timeout,
 			key_expr: KeyExpression { key_expr },
-			callback,
+			response_callback: callback,
 			storage,
 			mode,
 			target,
@@ -233,7 +233,7 @@ where
 			prefix,
 			timeout,
 			key_expr,
-			callback: ResponseCallback { response: callback },
+			response_callback: ResponseCallback { response: callback },
 			storage,
 			mode,
 			target,
@@ -258,7 +258,7 @@ where
 			prefix,
 			timeout,
 			key_expr,
-			callback,
+			response_callback: callback,
 			mode,
 			target,
 			phantom,
@@ -269,7 +269,7 @@ where
 			prefix,
 			timeout,
 			key_expr,
-			callback,
+			response_callback: callback,
 			storage: Storage { storage },
 			mode,
 			target,
@@ -282,7 +282,7 @@ impl<P, S> QueryBuilder<P, KeyExpression, ResponseCallback<P>, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	/// Build the query
+	/// Build the [`Query`]
 	/// # Errors
 	///
 	pub fn build(self) -> Result<Query<P>> {
@@ -290,21 +290,20 @@ where
 			allowed_destination,
 			timeout,
 			key_expr,
-			callback,
+			response_callback,
 			mode,
 			target,
 			..
 		} = self;
 		let key_expr = key_expr.key_expr;
-		Ok(Query {
-			allowed_destination,
-			timeout,
-			context: None,
+		Ok(Query::new(
 			key_expr,
+			response_callback.response,
 			mode,
+			allowed_destination,
 			target,
-			callback: callback.response,
-		})
+			timeout,
+		))
 	}
 }
 
@@ -336,12 +335,12 @@ pub struct Query<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	allowed_destination: Locality,
-	timeout: Option<Duration>,
 	pub(crate) key_expr: String,
+	response_callback: QueryCallback<P>,
 	mode: ConsolidationMode,
+	allowed_destination: Locality,
 	target: QueryTarget,
-	callback: QueryCallback<P>,
+	timeout: Option<Duration>,
 	context: Option<ArcContext<P>>,
 }
 
@@ -362,6 +361,27 @@ impl<P> Query<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// Constructor for a [`Query`]
+	#[must_use]
+	pub fn new(
+		key_expr: String,
+		response_callback: QueryCallback<P>,
+		mode: ConsolidationMode,
+		allowed_destination: Locality,
+		target: QueryTarget,
+		timeout: Option<Duration>,
+	) -> Self {
+		Self {
+			key_expr,
+			response_callback,
+			mode,
+			allowed_destination,
+			target,
+			timeout,
+			context: None,
+		}
+	}
+
 	/// Initialize
 	/// # Errors
 	pub fn init(&mut self, context: &ArcContext<P>) -> Result<()>
@@ -385,7 +405,7 @@ where
 	/// run a query
 	#[instrument(name="query", level = Level::ERROR, skip_all)]
 	pub fn get(&self) -> Result<()> {
-		let cb = self.callback.clone();
+		let cb = self.response_callback.clone();
 		let communicator = self
 			.context
 			.clone()

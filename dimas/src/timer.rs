@@ -271,7 +271,7 @@ impl<P, S> TimerBuilder<P, KeyExpression, Interval, IntervalCallback<P>, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	/// Build the timer
+	/// Build the [Timer]
 	/// # Errors
 	///
 	pub fn build(self) -> Result<Timer<P>> {
@@ -283,21 +283,12 @@ where
 			..
 		} = self;
 
-		match delay {
-			Some(delay) => Ok(Timer::DelayedInterval {
-				name: name.key_expr,
-				delay,
-				interval: interval.interval,
-				callback: Some(callback.callback),
-				handle: None,
-			}),
-			None => Ok(Timer::Interval {
-				name: name.key_expr,
-				interval: interval.interval,
-				callback: Some(callback.callback),
-				handle: None,
-			}),
-		}
+		Ok(Timer::new(
+			name.key_expr,
+			callback.callback,
+			interval.interval,
+			delay,
+		))
 	}
 }
 
@@ -333,24 +324,24 @@ where
 	/// A Timer with an Interval
 	Interval {
 		/// The Timers ID
-		name: String,
+		key_expr: String,
+		/// Timers Callback function called, when Timer is fired
+		callback: TimerCallback<P>,
 		/// The interval in which the Timer is fired
 		interval: Duration,
-		/// Timers Callback function called, when Timer is fired
-		callback: Option<TimerCallback<P>>,
 		/// The handle to stop the Timer
 		handle: Option<JoinHandle<()>>,
 	},
 	/// A delayed Timer with an Interval
 	DelayedInterval {
 		/// The Timers ID
-		name: String,
-		/// The delay after which the first firing of the Timer happenes
-		delay: Duration,
+		key_expr: String,
+		/// Timers Callback function called, when Timer is fired
+		callback: TimerCallback<P>,
 		/// The interval in which the Timer is fired
 		interval: Duration,
-		/// Timers Callback function called, when Timer is fired
-		callback: Option<TimerCallback<P>>,
+		/// The delay after which the first firing of the Timer happenes
+		delay: Duration,
 		/// The handle to stop the Timer
 		handle: Option<JoinHandle<()>>,
 	},
@@ -381,6 +372,31 @@ impl<P> Timer<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// Constructor for a [Timer]
+	#[must_use]
+	pub fn new(
+		name: String,
+		callback: TimerCallback<P>,
+		interval: Duration,
+		delay: Option<Duration>,
+	) -> Self {
+		match delay {
+			Some(delay) => Self::DelayedInterval {
+				key_expr: name,
+				delay,
+				interval,
+				callback,
+				handle: None,
+			},
+			None => Self::Interval {
+				key_expr: name,
+				interval,
+				callback,
+				handle: None,
+			},
+		}
+	}
+
 	/// Start or restart the timer
 	/// An already running timer will be stopped, eventually damaged Mutexes will be repaired
 	#[instrument(level = Level::TRACE, skip_all)]
@@ -392,17 +408,15 @@ where
 
 		match self {
 			Self::Interval {
-				name,
+				key_expr,
 				interval,
 				callback,
 				handle,
 			} => {
 				{
-					if let Some(cb) = callback.clone() {
-						if let Err(err) = cb.lock() {
-							warn!("found poisoned put Mutex");
-							callback.replace(Arc::new(Mutex::new(err.into_inner().take())));
-						}
+					if callback.lock().is_err() {
+						warn!("found poisoned Mutex");
+						callback.clear_poison();
 					}
 				}
 
@@ -410,9 +424,9 @@ where
 				let cb = callback.clone();
 
 				#[cfg(not(feature = "timer"))]
-				let _key = name.clone();
+				let _key = key_expr.clone();
 				#[cfg(feature = "timer")]
-				let key = name.clone();
+				let key = key_expr.clone();
 				handle.replace(tokio::task::spawn(async move {
 					std::panic::set_hook(Box::new(move |reason| {
 						error!("interval timer panic: {}", reason);
@@ -427,18 +441,16 @@ where
 				}));
 			}
 			Self::DelayedInterval {
-				name,
+				key_expr,
 				delay,
 				interval,
 				callback,
 				handle,
 			} => {
 				{
-					if let Some(cb) = callback.clone() {
-						if let Err(err) = cb.lock() {
-							warn!("found poisoned put Mutex");
-							callback.replace(Arc::new(Mutex::new(err.into_inner().take())));
-						}
+					if callback.lock().is_err() {
+						warn!("found poisoned Mutex");
+						callback.clear_poison();
 					}
 				}
 
@@ -447,9 +459,9 @@ where
 				let cb = callback.clone();
 
 				#[cfg(not(feature = "timer"))]
-				let _key = name.clone();
+				let _key = key_expr.clone();
 				#[cfg(feature = "timer")]
-				let key = name.clone();
+				let key = key_expr.clone();
 				handle.replace(tokio::task::spawn(async move {
 					std::panic::set_hook(Box::new(move |reason| {
 						error!("delayed timer panic: {}", reason);
@@ -472,13 +484,13 @@ where
 	pub fn stop(&mut self) {
 		match self {
 			Self::Interval {
-				name: _,
+				key_expr: _,
 				interval: _,
 				callback: _,
 				handle,
 			}
 			| Self::DelayedInterval {
-				name: _,
+				key_expr: _,
 				delay: _,
 				interval: _,
 				callback: _,
@@ -493,7 +505,7 @@ where
 }
 
 #[instrument(name="timer", level = Level::ERROR, skip_all)]
-async fn run_timer<P>(interval: Duration, cb: Option<TimerCallback<P>>, ctx: ArcContext<P>)
+async fn run_timer<P>(interval: Duration, cb: TimerCallback<P>, ctx: ArcContext<P>)
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -501,7 +513,7 @@ where
 	loop {
 		interval.tick().await;
 
-		if let Some(cb) = cb.clone() {
+		//if let Some(cb) = cb.clone() {
 			let result = cb.lock();
 			match result {
 				Ok(mut cb) => {
@@ -513,7 +525,7 @@ where
 					error!("callback lock failed with {err}");
 				}
 			}
-		}
+		//}
 	}
 }
 // endregion:	--- Timer

@@ -267,12 +267,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("publishers".into()))?
 			.iter_mut()
 			.for_each(|publisher| {
-				if let Err(reason) = publisher.1.de_init() {
-					error!(
-						"could not de-initialize publisher for {}, reason: {}",
-						publisher.1.key_expr, reason
-					);
-				};
+				publisher.1.de_init();
 			});
 
 		// stop all registered subscribers
@@ -572,14 +567,6 @@ where
 		self.props
 			.write()
 			.map_err(|_| DimasError::WriteProperties.into())
-	}
-
-	/// Create a [`Publisher`]
-	pub(crate) fn create_publisher<'publisher>(
-		&self,
-		key_expr: &str,
-	) -> Result<zenoh::publication::Publisher<'publisher>> {
-		self.communicator.create_publisher(key_expr)
 	}
 
 	/// Method to do an ad hoc publishing for a `topic`
