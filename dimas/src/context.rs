@@ -29,8 +29,11 @@
 //!
 
 // region:		--- modules
+// these ones are only for doc needed
+#[cfg(doc)]
+use crate::agent::Agent;
 #[cfg(feature = "liveliness")]
-use crate::com::liveliness_subscriber::LivelinessSubscriber;
+use crate::com::liveliness::LivelinessSubscriber;
 #[cfg(feature = "publisher")]
 use crate::com::publisher::Publisher;
 #[cfg(feature = "query")]
@@ -40,9 +43,9 @@ use crate::com::queryable::Queryable;
 #[cfg(feature = "subscriber")]
 use crate::com::subscriber::Subscriber;
 use crate::com::{
-	communicator::Communicator, liveliness_subscriber::LivelinessSubscriberBuilder,
-	message::Message, publisher::PublisherBuilder, query::QueryBuilder,
-	queryable::QueryableBuilder, subscriber::SubscriberBuilder,
+	communicator::Communicator, liveliness::LivelinessSubscriberBuilder, message::Message,
+	publisher::PublisherBuilder, query::QueryBuilder, queryable::QueryableBuilder,
+	subscriber::SubscriberBuilder,
 };
 use crate::config::Config;
 use crate::error::{DimasError, Result};
@@ -316,8 +319,8 @@ where
 		&self,
 	) -> LivelinessSubscriberBuilder<
 		P,
-		crate::com::liveliness_subscriber::NoPutCallback,
-		crate::com::liveliness_subscriber::Storage<P>,
+		crate::com::liveliness::NoPutCallback,
+		crate::com::liveliness::Storage<P>,
 	> {
 		LivelinessSubscriberBuilder::new(self.prefix().clone())
 			.storage(self.liveliness_subscribers.clone())
@@ -329,8 +332,8 @@ where
 		&self,
 	) -> LivelinessSubscriberBuilder<
 		P,
-		crate::com::liveliness_subscriber::NoPutCallback,
-		crate::com::liveliness_subscriber::NoStorage,
+		crate::com::liveliness::NoPutCallback,
+		crate::com::liveliness::NoStorage,
 	> {
 		LivelinessSubscriberBuilder::new(self.prefix().clone())
 	}

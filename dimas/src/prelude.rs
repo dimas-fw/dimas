@@ -22,7 +22,7 @@ pub use zenoh::subscriber::Reliability;
 
 // dimas stuff
 pub use crate::agent::Agent;
-pub use crate::com::liveliness_subscriber::{LivelinessSubscriber, LivelinessSubscriberBuilder};
+pub use crate::com::liveliness::{LivelinessSubscriber, LivelinessSubscriberBuilder};
 pub use crate::com::message::{Message, Request, Response};
 pub use crate::com::publisher::{Publisher, PublisherBuilder};
 pub use crate::com::query::{Query, QueryBuilder};

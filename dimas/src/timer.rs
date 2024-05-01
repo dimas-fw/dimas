@@ -513,19 +513,16 @@ where
 	loop {
 		interval.tick().await;
 
-		//if let Some(cb) = cb.clone() {
-			let result = cb.lock();
-			match result {
-				Ok(mut cb) => {
-					if let Err(error) = cb.as_deref_mut().expect("snh")(&ctx) {
-						error!("callback failed with {error}");
-					}
-				}
-				Err(err) => {
-					error!("callback lock failed with {err}");
+		match cb.lock() {
+			Ok(mut cb) => {
+				if let Err(error) = cb.as_deref_mut().expect("snh")(&ctx) {
+					error!("callback failed with {error}");
 				}
 			}
-		//}
+			Err(err) => {
+				error!("callback lock failed with {err}");
+			}
+		}
 	}
 }
 // endregion:	--- Timer

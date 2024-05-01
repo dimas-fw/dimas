@@ -12,7 +12,7 @@ use communicator::Communicator;
 /// Communicator
 pub mod communicator;
 /// Liveliness
-pub mod liveliness_subscriber;
+pub mod liveliness;
 /// Message
 pub mod message;
 /// Publisher

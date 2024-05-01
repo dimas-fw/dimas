@@ -23,6 +23,7 @@ use zenoh::{
 
 // region:		--- types
 /// Type definition for liveliness callback function
+#[allow(clippy::module_name_repetitions)]
 pub type LivelinessCallback<P> =
 	Arc<Mutex<Box<dyn FnMut(&ArcContext<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static>>>;
 // endregion:	--- types
@@ -245,6 +246,7 @@ where
 
 // region:		--- LivelinessSubscriber
 /// Liveliness Subscriber
+#[allow(clippy::module_name_repetitions)]
 pub struct LivelinessSubscriber<P>
 where
 	P: Send + Sync + Unpin + 'static,

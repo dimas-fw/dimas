@@ -70,7 +70,7 @@ The `Cargo.toml` for this publisher/subscriber example should include
 
 ```toml
 [dependencies]
-dimas = { version = "0.1.0", features = ["publisher", "subscriber", "timer"] }
+dimas = { version = "0.1", features = ["publisher", "subscriber", "timer"] }
 tokio = { version = "1",features = ["macros"] }
 ```
 

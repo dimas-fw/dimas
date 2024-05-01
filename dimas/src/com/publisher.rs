@@ -3,6 +3,9 @@
 //! Module `publisher` provides a message sender `Publisher` which can be created using the `PublisherBuilder`.
 
 // region:		--- modules
+// these ones are only for doc needed
+#[cfg(doc)]
+use crate::agent::Agent;
 use crate::{
 	context::ArcContext,
 	error::{DimasError, Result},
@@ -225,7 +228,7 @@ impl Publisher
 	/// Initialize
 	/// # Errors
 	///
-	pub(crate) fn init<P>(&mut self, context: &ArcContext<P>) -> Result<()>
+	pub fn init<P>(&mut self, context: &ArcContext<P>) -> Result<()>
 	where
 		P: Send + Sync + Unpin + 'static,
 	{
@@ -239,7 +242,7 @@ impl Publisher
 	}
 
 	/// De-Initialize
-	pub(crate) fn de_init(&mut self) {
+	pub fn de_init(&mut self) {
 		self.publisher.take();
 	}
 

@@ -4,6 +4,9 @@
 //! A `Subscriber` can optional subscribe on a delete message.
 
 // region:		--- modules
+// these ones are only for doc needed
+#[cfg(doc)]
+use crate::agent::Agent;
 use crate::{
 	context::ArcContext,
 	error::{DimasError, Result},
