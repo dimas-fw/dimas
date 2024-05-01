@@ -45,9 +45,18 @@
 //!
 
 // region:		--- modules
-use crate::context::Context;
-use crate::prelude::*;
+use crate::com::{
+	liveliness_subscriber::LivelinessSubscriberBuilder, publisher::PublisherBuilder,
+	query::QueryBuilder, queryable::QueryableBuilder, subscriber::SubscriberBuilder,
+};
+use crate::timer::TimerBuilder;
 use crate::utils::{wait_for_task_signals, TaskSignal};
+use crate::{
+	config::Config,
+	context::{ArcContext, Context},
+	error::{DimasError, Result},
+};
+use std::sync::RwLock;
 use std::{
 	fmt::Debug,
 	sync::{mpsc, Mutex},
@@ -65,6 +74,7 @@ pub struct UnconfiguredAgent<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	name: Option<String>,
 	prefix: Option<String>,
 	props: P,
 }
@@ -76,9 +86,17 @@ where
 	/// Constructor
 	const fn new(properties: P) -> Self {
 		Self {
-			props: properties,
+			name: None,
 			prefix: None,
+			props: properties,
 		}
+	}
+
+	/// Set a name
+	#[must_use]
+	pub fn name(mut self, name: impl Into<String>) -> Self {
+		self.name = Some(name.into());
+		self
 	}
 
 	/// Set a prefix
@@ -92,7 +110,7 @@ where
 	///
 	/// # Errors
 	pub fn config(self, config: Config) -> Result<Agent<'a, P>> {
-		let context = Context::new(config, self.props, self.prefix)?.into();
+		let context = Context::new(config, self.props, self.name, self.prefix)?.into();
 		Ok(Agent {
 			context,
 			liveliness: false,
@@ -125,7 +143,7 @@ where
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Agent")
 			.field("id", &self.context.uuid())
-			.field("prefix", &self.context.prefix())
+			.field("prefix", self.context.prefix())
 			.finish_non_exhaustive()
 	}
 }
@@ -314,17 +332,23 @@ where
 		// activate sending liveliness
 		if self.liveliness {
 			let session = self.context.communicator.session.clone();
-			let uuid = format!("{}/{}", self.context.communicator.key_expr("alive"), session.zid());
+			let token_str = self
+				.context
+				.prefix()
+				.clone()
+				.map_or(self.context.communicator.uuid(), |prefix| {
+					format!("{}/{}", prefix, self.context.communicator.uuid())
+				});
 
 			let token = session
 				.liveliness()
-				.declare_token(&uuid)
+				.declare_token(&token_str)
 				.res_sync()
 				.map_err(DimasError::ActivateLiveliness)?;
 
 			self.liveliness_token
 				.write()
-				.map_err(|_| DimasError::ShouldNotHappen)?
+				.map_err(|_| DimasError::ModifyContext("liveliness".into()))?
 				.replace(token);
 		};
 
@@ -433,7 +457,7 @@ where
 							if self.liveliness {
 								self.liveliness_token
 									.write()
-									.map_err(|_| DimasError::ShouldNotHappen)?
+									.map_err(|_| DimasError::ModifyContext("liveliness".into()))?
 									.take();
 							}
 							let r = Agent {
@@ -451,7 +475,7 @@ where
 							if self.liveliness {
 								self.liveliness_token
 									.write()
-									.map_err(|_| DimasError::ShouldNotHappen)?
+									.map_err(|_| DimasError::ModifyContext("liveliness".into()))?
 									.take();
 							}
 							return Err(DimasError::ShouldNotHappen.into());
@@ -474,7 +498,7 @@ where
 		if self.liveliness {
 			self.liveliness_token
 				.write()
-				.map_err(|_| DimasError::ShouldNotHappen)?
+				.map_err(|_| DimasError::ModifyContext("liveliness".into()))?
 				.take();
 		}
 		let r = Agent {

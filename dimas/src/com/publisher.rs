@@ -3,12 +3,21 @@
 //! Module `publisher` provides a message sender `Publisher` which can be created using the `PublisherBuilder`.
 
 // region:		--- modules
-use crate::prelude::*;
+use crate::{
+	context::ArcContext,
+	error::{DimasError, Result},
+};
+use bitcode::{encode, Encode};
 #[allow(unused_imports)]
 use std::collections::HashMap;
 use std::fmt::Debug;
+#[cfg(feature = "publisher")]
+use std::sync::{Arc, RwLock};
 use tracing::{instrument, Level};
-use zenoh::prelude::sync::SyncResolve;
+use zenoh::{
+	prelude::sync::SyncResolve,
+	publication::{CongestionControl, Priority},
+};
 // endregion:	--- modules
 
 // region:		--- states
@@ -31,24 +40,43 @@ pub struct KeyExpression {
 // endregion:	--- states
 
 // region:		--- PublisherBuilder
-/// The builder for a publisher
+/// The builder for a [`Publisher`]
 #[allow(clippy::module_name_repetitions)]
-#[derive(Clone)]
 pub struct PublisherBuilder<K, S> {
 	prefix: Option<String>,
+	priority: Priority,
+	congestion_control: CongestionControl,
 	pub(crate) key_expr: K,
 	pub(crate) storage: S,
 }
 
 impl PublisherBuilder<NoKeyExpression, NoStorage> {
-	/// Construct a `PublisherBuilder` in initial state
+	/// Construct a [`PublisherBuilder`] in initial state
 	#[must_use]
 	pub const fn new(prefix: Option<String>) -> Self {
 		Self {
 			prefix,
+			priority: Priority::Data,
+			congestion_control: CongestionControl::Drop,
 			key_expr: NoKeyExpression,
 			storage: NoStorage,
 		}
+	}
+}
+
+impl<K, S> PublisherBuilder<K, S> {
+	/// Set the publishers priority
+	#[must_use]
+	pub const fn set_priority(mut self, priority: Priority) -> Self {
+		self.priority = priority;
+		self
+	}
+
+	/// Set the publishers congestion control
+	#[must_use]
+	pub const fn set_congestion_control(mut self, congestion_control: CongestionControl) -> Self {
+		self.congestion_control = congestion_control;
+		self
 	}
 }
 
@@ -61,10 +89,16 @@ impl<K> PublisherBuilder<K, NoStorage> {
 		storage: Arc<RwLock<std::collections::HashMap<String, Publisher>>>,
 	) -> PublisherBuilder<K, Storage> {
 		let Self {
-			prefix, key_expr, ..
+			prefix,
+			priority,
+			congestion_control,
+			key_expr,
+			..
 		} = self;
 		PublisherBuilder {
 			prefix,
+			priority,
+			congestion_control,
 			key_expr,
 			storage: Storage { storage },
 		}
@@ -72,14 +106,20 @@ impl<K> PublisherBuilder<K, NoStorage> {
 }
 
 impl<S> PublisherBuilder<NoKeyExpression, S> {
-	/// Set the full expression for the publisher
+	/// Set the full key expression for the [`Publisher`]
 	#[must_use]
 	pub fn key_expr(self, key_expr: &str) -> PublisherBuilder<KeyExpression, S> {
 		let Self {
-			prefix, storage, ..
+			prefix,
+			priority,
+			congestion_control,
+			storage,
+			..
 		} = self;
 		PublisherBuilder {
 			prefix,
+			priority,
+			congestion_control,
 			key_expr: KeyExpression {
 				key_expr: key_expr.into(),
 			},
@@ -87,8 +127,8 @@ impl<S> PublisherBuilder<NoKeyExpression, S> {
 		}
 	}
 
-	/// Set only the message qualifing part of the publisher.
-	/// Will be prefixed with agents prefix.
+	/// Set only the message qualifing part of the [`Publisher`].
+	/// Will be prefixed with [`Agent`]s prefix.
 	#[must_use]
 	pub fn topic(mut self, topic: &str) -> PublisherBuilder<KeyExpression, S> {
 		let key_expr = self
@@ -96,10 +136,16 @@ impl<S> PublisherBuilder<NoKeyExpression, S> {
 			.take()
 			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
 		let Self {
-			prefix, storage, ..
+			prefix,
+			priority,
+			congestion_control,
+			storage,
+			..
 		} = self;
 		PublisherBuilder {
 			prefix,
+			priority,
+			congestion_control,
 			key_expr: KeyExpression { key_expr },
 			storage,
 		}
@@ -107,13 +153,15 @@ impl<S> PublisherBuilder<NoKeyExpression, S> {
 }
 
 impl<S> PublisherBuilder<KeyExpression, S> {
-	/// Build the publisher
-	/// # Errors
+	/// Build the [`Publisher`]
 	///
+	/// # Errors
+	/// Currently none
 	pub fn build(self) -> Result<Publisher> {
-		dbg!(&self.key_expr.key_expr);
 		Ok(Publisher {
 			key_expr: self.key_expr.key_expr,
+			priority: self.priority,
+			congestion_control: self.congestion_control,
 			publisher: None,
 		})
 	}
@@ -121,11 +169,11 @@ impl<S> PublisherBuilder<KeyExpression, S> {
 
 #[cfg(feature = "publisher")]
 impl PublisherBuilder<KeyExpression, Storage> {
-	/// Build and add the publisher to the agents context
-	/// # Errors
+	/// Build and add the [Publisher] to the [`Agent`]s context
 	///
+	/// # Errors
+	/// Currently none
 	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "publisher")))]
-	#[cfg(feature = "publisher")]
 	pub fn add(self) -> Result<Option<Publisher>> {
 		let collection = self.storage.storage.clone();
 		let p = self.build()?;
@@ -142,6 +190,8 @@ impl PublisherBuilder<KeyExpression, Storage> {
 /// Publisher
 pub struct Publisher {
 	pub(crate) key_expr: String,
+	priority: Priority,
+	congestion_control: CongestionControl,
 	publisher: Option<zenoh::publication::Publisher<'static>>,
 }
 
@@ -164,7 +214,10 @@ impl Publisher
 	where
 		P: Send + Sync + Unpin + 'static,
 	{
-		let publ = context.create_publisher(&self.key_expr)?;
+		let publ = context
+			.create_publisher(&self.key_expr)?
+			.congestion_control(self.congestion_control)
+			.priority(self.priority);
 		self.publisher.replace(publ);
 		Ok(())
 	}
@@ -188,12 +241,12 @@ impl Publisher
 		match self
 			.publisher
 			.clone()
-			.expect("snh")
+			.ok_or(DimasError::ShouldNotHappen)?
 			.put(value)
 			.res_sync()
 		{
 			Ok(()) => Ok(()),
-			Err(_) => Err(DimasError::PutMessage.into()),
+			Err(_) => Err(DimasError::Put.into()),
 		}
 	}
 
@@ -205,12 +258,12 @@ impl Publisher
 		match self
 			.publisher
 			.clone()
-			.expect("snh")
+			.ok_or(DimasError::ShouldNotHappen)?
 			.delete()
 			.res_sync()
 		{
 			Ok(()) => Ok(()),
-			Err(_) => Err(DimasError::DeleteMessage.into()),
+			Err(_) => Err(DimasError::Delete.into()),
 		}
 	}
 }
@@ -219,9 +272,6 @@ impl Publisher
 #[cfg(test)]
 mod tests {
 	use super::*;
-
-	#[derive(Debug)]
-	struct Props {}
 
 	// check, that the auto traits are available
 	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}

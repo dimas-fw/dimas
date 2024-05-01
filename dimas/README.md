@@ -2,7 +2,7 @@
 
 [DiMAS](https://github.com/dimas-fw/dimas/tree/main/dimas) - A framework for building **Di**stributed **M**ulti **A**gent **S**ystems
 
-⚠️ WARNING ⚠️ : DiMAS is under active development, so expect gaps between implementation and documentation. 
+⚠️ WARNING ⚠️ : DiMAS is under active development, so expect gaps between implementation and documentation.
 
 A distributed multi agent system is a set of independant agents that are widely distributed but somehow connected.
 They are designed in a way that they can solve complex tasks by working together.
@@ -21,11 +21,11 @@ with multiple agents operating in that environment which
 This crate is available on [crates.io](https://crates.io/crates/dimas).
 
 [DiMAS](https://github.com/dimas-fw/dimas/tree/main/dimas) follows the semantic versioning principle with the enhancement,
-that until version 1.0.0 each new version may include breaking changes, which will be noticed in the changelog.
+that until version 1.0.0 each new minor version has breaking changes, while patches are non breaking changes but may include enhancements.
 
 # Usage
 
-DiMAS needs an `async` runtime. So you have to define your `main` function as an `async` function.
+DiMAS needs an `async` runtime. You have to define your `main` function as an `async` function.
 
 So include `dimas` together with an async runtime in the dependencies section of your `Cargo.toml`.
 As DiMAS uses `tokio` as async runtime, so preferably use `tokio` for your application. 
@@ -38,7 +38,7 @@ So your `Cargo.toml` should include:
 
 ```toml
 [dependencies]
-dimas = { version = "0.0.8", features = ["all"] }
+dimas = { version = "0.1.0", features = ["all"] }
 tokio = { version = "1", features = ["macros"] }
 ```
 
@@ -70,7 +70,7 @@ The `Cargo.toml` for this publisher/subscriber example should include
 
 ```toml
 [dependencies]
-dimas = { version = "0.0.8", features = ["timer", "subscriber"] }
+dimas = { version = "0.1.0", features = ["publisher", "subscriber", "timer"] }
 tokio = { version = "1",features = ["macros"] }
 ```
 
@@ -144,14 +144,18 @@ async fn main() -> Result<()> {
 The `subscriber.rs` should look like this:
 
 ```rust,no_run
+//! `DiMAS` zenoh-pico example
+//! Copyright © 2024 Stephan Kunz
+
 use dimas::prelude::*;
 
+/// The Agent's proerties
 #[derive(Debug)]
 pub struct AgentProps {}
 
 fn callback(_ctx: &ArcContext<AgentProps>, message: Message) -> Result<()> {
 	let message: String =	message.decode()?;
-	println!("Received '{}'", message);
+	println!("Received '{message}'");
 	Ok(())
 }
 
@@ -161,7 +165,7 @@ async fn main() -> Result<()> {
 	let properties = AgentProps {};
 
 	// create an agent with the properties and default configuration
-	let mut agent = Agent::new(properties)
+	let agent = Agent::new(properties)
 		.config(Config::default())?;
 
 	// subscribe to "hello" messages

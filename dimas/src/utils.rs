@@ -89,3 +89,18 @@ pub async fn wait_for_task_signals(rx: &Mutex<Receiver<TaskSignal>>) -> Box<Task
 	}
 }
 // endregion:	--- TaskSignal
+
+// region:    --- Tracing
+/// Initialize tracing
+pub fn init_tracing() {
+	let subscriber = tracing_subscriber::fmt()
+		//.with_env_filter(env_filter)
+		.with_thread_ids(true)
+		.with_thread_names(true)
+		.with_level(true)
+		.with_target(true);
+
+	let subscriber = subscriber.finish();
+	let _ = tracing::subscriber::set_global_default(subscriber);
+}
+// endregion: --- Tracing

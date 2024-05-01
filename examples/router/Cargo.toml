@@ -1,6 +1,6 @@
 # Copyright © 2024 Stephan Kunz
 [package]
-name = "pingpong"
+name = "router"
 rust-version = { workspace = true }
 version = { workspace = true }
 edition = { workspace = true }
@@ -8,22 +8,17 @@ authors = { workspace = true }
 publish = false
 license-file = { workspace = true }
 categories = { workspace = true }
-description = "Ping/Pong example measuring the roundtrip time"
+description = "Example for zenoh-pico"
 
 [lints]
 workspace = true
 
 [[bin]]
-name = "ping"
-path = "src/ping.rs"
-
-[[bin]]
-name = "pong"
-path = "src/pong.rs"
+name = "router"
+path = "src/router.rs"
 
 [dependencies]
-chrono = "0.4"
-dimas = { workspace = true, features = ["publisher", "subscriber", "timer"] }
+dimas = { workspace = true }
 tokio = { workspace = true, features = ["macros"] }
 tracing = { workspace = true }
 

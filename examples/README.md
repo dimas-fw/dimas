@@ -6,13 +6,13 @@ Implements a liveliness sender (token) and reciever (subscriber) in one program.
 ```shell
 cargo run --bin liveliness
 ```
-will show in both terminals an an output similar to
+will show in both terminals an an output similar to (they will differ in the agent id)
 ```shell
 Running `target/debug/liveliness`
-43c984f2dc9c3ef28a0751ac8612cdf1 is alive
-3e350ff6a9e5c5d6b9e22effd5a19f96 is alive
+2024-01-27T17:34:03.993964Z  INFO liveliness: liveliness: 3e350ff6a9e5c5d6b9e22effd5a19f96 is alive
+Number of agents is 3
 ```
-The subscriber can see its own token.
+The subscriber doesn't see its own token.
 
 ## [Publisher/Subscriber](https://github.com/dimas-fw/dimas/tree/main/examples/pubsub)
 Implements a simple "Hello World!" Publisher/Subscriber pair
@@ -49,4 +49,3 @@ and the queryable in another terminal window with
 ```shell
 cargo run --bin queryable
 ```
-
