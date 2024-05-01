@@ -15,14 +15,31 @@
         enabled: true,
         address: "224.0.0.224:7446",
         interface: "auto",
-        autoconnect: { router: "router|peer" },
+        autoconnect: { router: "router|peer|client" },
         listen: true,
       },
       gossip: {
         enabled: true,
         multihop: false,
-        autoconnect: { router: "router|peer" },
+        autoconnect: { router: "router|peer|client" },
       },
     },
   },
+//  adminspace: {
+//    permissions: {
+//      read: true,
+//      write: true,
+//    },
+//  },
+//  plugins: {
+//    rest: {
+//      /// Setting this option to true allows zenohd to panic should it detect issues with this plugin.
+//      /// Setting it to false politely asks the plugin not to panic.
+//      __required__: true, // defaults to false
+//      /// load configuration from the file
+//      __config__: "./plugins/zenoh-plugin-rest/rest_config.json5",
+//      /// http port to answer to rest requests
+//      http_port: 8000,
+//    },
+//  },
 }

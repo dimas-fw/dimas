@@ -3,6 +3,9 @@
 //! Module `publisher` provides a message sender `Publisher` which can be created using the `PublisherBuilder`.
 
 // region:		--- modules
+// these ones are only for doc needed
+#[cfg(doc)]
+use crate::agent::Agent;
 use crate::{
 	context::ArcContext,
 	error::{DimasError, Result},
@@ -158,12 +161,11 @@ impl<S> PublisherBuilder<KeyExpression, S> {
 	/// # Errors
 	/// Currently none
 	pub fn build(self) -> Result<Publisher> {
-		Ok(Publisher {
-			key_expr: self.key_expr.key_expr,
-			priority: self.priority,
-			congestion_control: self.congestion_control,
-			publisher: None,
-		})
+		Ok(Publisher::new(
+			self.key_expr.key_expr,
+			self.priority,
+			self.congestion_control,
+		))
 	}
 }
 
@@ -208,13 +210,30 @@ impl Publisher
 //where
 //	P: Send + Sync + Unpin + 'a,
 {
+	/// Constructor for a [`Publisher`]
+	#[must_use]
+	pub const fn new(
+		key_expr: String,
+		priority: Priority,
+		congestion_control: CongestionControl,
+	) -> Self {
+		Self {
+			key_expr,
+			priority,
+			congestion_control,
+			publisher: None,
+		}
+	}
+
 	/// Initialize
 	/// # Errors
+	///
 	pub fn init<P>(&mut self, context: &ArcContext<P>) -> Result<()>
 	where
 		P: Send + Sync + Unpin + 'static,
 	{
 		let publ = context
+			.communicator
 			.create_publisher(&self.key_expr)?
 			.congestion_control(self.congestion_control)
 			.priority(self.priority);
@@ -223,10 +242,8 @@ impl Publisher
 	}
 
 	/// De-Initialize
-	/// # Errors
-	pub fn de_init(&mut self) -> Result<()> {
+	pub fn de_init(&mut self) {
 		self.publisher.take();
-		Ok(())
 	}
 
 	/// Send a "put" message
@@ -250,7 +267,7 @@ impl Publisher
 		}
 	}
 
-	/// Send a "delete" message - method currently does not work!!
+	/// Send a "delete" message
 	/// # Errors
 	///
 	#[instrument(level = Level::ERROR, skip_all)]

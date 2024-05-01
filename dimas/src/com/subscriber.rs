@@ -4,6 +4,9 @@
 //! A `Subscriber` can optional subscribe on a delete message.
 
 // region:		--- modules
+// these ones are only for doc needed
+#[cfg(doc)]
+use crate::agent::Agent;
 use crate::{
 	context::ArcContext,
 	error::{DimasError, Result},
@@ -274,13 +277,12 @@ where
 			delete_callback,
 			..
 		} = self;
-		Ok(Subscriber {
-			key_expr: key_expr.key_expr,
-			put_callback: put_callback.callback,
+		Ok(Subscriber::new(
+			key_expr.key_expr,
+			put_callback.callback,
 			reliability,
 			delete_callback,
-			handle: None,
-		})
+		))
 	}
 }
 
@@ -335,6 +337,23 @@ impl<P> Subscriber<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// Constructor for a [`Subscriber`].
+	#[must_use]
+	pub fn new(
+		key_expr: String,
+		put_callback: SubscriberPutCallback<P>,
+		reliability: Reliability,
+		delete_callback: Option<SubscriberDeleteCallback<P>>,
+	) -> Self {
+		Self {
+			key_expr,
+			put_callback,
+			reliability,
+			delete_callback,
+			handle: None,
+		}
+	}
+
 	/// Start or restart the subscriber.
 	/// An already running subscriber will be stopped, eventually damaged Mutexes will be repaired
 	#[instrument(level = Level::TRACE, skip_all)]

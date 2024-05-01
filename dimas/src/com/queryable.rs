@@ -78,7 +78,7 @@ where
 	allowed_origin: Locality,
 	prefix: Option<String>,
 	pub(crate) key_expr: K,
-	pub(crate) callback: C,
+	pub(crate) request_callback: C,
 	pub(crate) storage: S,
 	phantom: PhantomData<P>,
 }
@@ -114,7 +114,7 @@ where
 			allowed_origin: Locality::Any,
 			prefix,
 			key_expr: NoKeyExpression,
-			callback: NoRequestCallback,
+			request_callback: NoRequestCallback,
 			storage: NoStorage,
 			phantom: PhantomData,
 		}
@@ -133,7 +133,7 @@ where
 			allowed_origin,
 			prefix,
 			storage,
-			callback,
+			request_callback: callback,
 			phantom,
 			..
 		} = self;
@@ -144,7 +144,7 @@ where
 			key_expr: KeyExpression {
 				key_expr: key_expr.into(),
 			},
-			callback,
+			request_callback: callback,
 			storage,
 			phantom,
 		}
@@ -163,7 +163,7 @@ where
 			allowed_origin,
 			prefix,
 			storage,
-			callback,
+			request_callback: callback,
 			phantom,
 			..
 		} = self;
@@ -172,7 +172,7 @@ where
 			allowed_origin,
 			prefix,
 			key_expr: KeyExpression { key_expr },
-			callback,
+			request_callback: callback,
 			storage,
 			phantom,
 		}
@@ -204,7 +204,7 @@ where
 			allowed_origin,
 			prefix,
 			key_expr,
-			callback: RequestCallback { request },
+			request_callback: RequestCallback { request },
 			storage,
 			phantom,
 		}
@@ -227,7 +227,7 @@ where
 			allowed_origin,
 			prefix,
 			key_expr,
-			callback,
+			request_callback: callback,
 			phantom,
 			..
 		} = self;
@@ -236,7 +236,7 @@ where
 			allowed_origin,
 			prefix,
 			key_expr,
-			callback,
+			request_callback: callback,
 			storage: Storage { storage },
 			phantom,
 		}
@@ -247,7 +247,7 @@ impl<P, S> QueryableBuilder<P, KeyExpression, RequestCallback<P>, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	/// Build the queryable
+	/// Build the [`Queryable`]
 	/// # Errors
 	///
 	pub fn build(self) -> Result<Queryable<P>> {
@@ -255,17 +255,16 @@ where
 			completeness,
 			allowed_origin,
 			key_expr,
-			callback,
+			request_callback,
 			..
 		} = self;
 		let key_expr = key_expr.key_expr;
-		Ok(Queryable {
+		Ok(Queryable::new(
+			key_expr,
+			request_callback.request,
 			completeness,
 			allowed_origin,
-			key_expr,
-			callback: callback.request,
-			handle: None,
-		})
+		))
 	}
 }
 
@@ -297,10 +296,10 @@ pub struct Queryable<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	key_expr: String,
+	request_callback: QueryableCallback<P>,
 	completeness: bool,
 	allowed_origin: Locality,
-	key_expr: String,
-	callback: QueryableCallback<P>,
 	handle: Option<JoinHandle<()>>,
 }
 
@@ -320,6 +319,23 @@ impl<P> Queryable<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// Constructor for a [`Queryable`]
+	#[must_use]
+	pub fn new(
+		key_expr: String,
+		request_callback: QueryableCallback<P>,
+		completeness: bool,
+		allowed_origin: Locality,
+	) -> Self {
+		Self {
+			key_expr,
+			request_callback,
+			completeness,
+			allowed_origin,
+			handle: None,
+		}
+	}
+
 	/// Start or restart the queryable.
 	/// An already running queryable will be stopped, eventually damaged Mutexes will be repaired
 	#[instrument(level = Level::TRACE, skip_all)]
@@ -330,16 +346,16 @@ where
 		drop(tx);
 
 		{
-			if self.callback.lock().is_err() {
+			if self.request_callback.lock().is_err() {
 				warn!("found poisoned put Mutex");
-				self.callback.clear_poison();
+				self.request_callback.clear_poison();
 			}
 		}
 
 		let completeness = self.completeness;
 		let allowed_origin = self.allowed_origin;
 		let key_expr = self.key_expr.clone();
-		let cb = self.callback.clone();
+		let cb = self.request_callback.clone();
 
 		self.handle
 			.replace(tokio::task::spawn(async move {
@@ -355,7 +371,7 @@ where
 					};
 				}));
 				if let Err(error) =
-					run_queryable(completeness, allowed_origin, key_expr, cb, ctx).await
+					run_queryable(key_expr, cb, completeness, allowed_origin, ctx).await
 				{
 					error!("queryable failed with {error}");
 				};
@@ -373,10 +389,10 @@ where
 
 #[instrument(name="queryable", level = Level::ERROR, skip_all)]
 async fn run_queryable<P>(
-	completeness: bool,
-	allowed_origin: Locality,
 	key_expr: String,
 	cb: QueryableCallback<P>,
+	completeness: bool,
+	allowed_origin: Locality,
 	ctx: ArcContext<P>,
 ) -> Result<()>
 where

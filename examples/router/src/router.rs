@@ -20,7 +20,6 @@ async fn main() -> Result<()> {
 		.prefix("examples")
 		.config(Config::router()?)?;
 
-
 	// activate liveliness
 	router.liveliness(true);
 	// start the router agent

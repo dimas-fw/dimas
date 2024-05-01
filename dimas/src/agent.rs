@@ -45,12 +45,21 @@
 //!
 
 // region:		--- modules
+// these ones are only for doc needed
 use crate::com::{
-	liveliness_subscriber::LivelinessSubscriberBuilder, publisher::PublisherBuilder,
-	query::QueryBuilder, queryable::QueryableBuilder, subscriber::SubscriberBuilder,
+	liveliness::LivelinessSubscriberBuilder, publisher::PublisherBuilder, query::QueryBuilder,
+	queryable::QueryableBuilder, subscriber::SubscriberBuilder,
 };
 use crate::timer::TimerBuilder;
 use crate::utils::{wait_for_task_signals, TaskSignal};
+#[cfg(doc)]
+use crate::{
+	com::{
+		liveliness::LivelinessSubscriber, publisher::Publisher, query::Query, queryable::Queryable,
+		subscriber::Subscriber,
+	},
+	timer::Timer,
+};
 use crate::{
 	config::Config,
 	context::{ArcContext, Context},
@@ -170,8 +179,8 @@ where
 		&self,
 	) -> LivelinessSubscriberBuilder<
 		P,
-		crate::com::liveliness_subscriber::NoPutCallback,
-		crate::com::liveliness_subscriber::Storage<P>,
+		crate::com::liveliness::NoPutCallback,
+		crate::com::liveliness::Storage<P>,
 	> {
 		self.context.liveliness_subscriber()
 	}
@@ -182,8 +191,8 @@ where
 		&self,
 	) -> LivelinessSubscriberBuilder<
 		P,
-		crate::com::liveliness_subscriber::NoPutCallback,
-		crate::com::liveliness_subscriber::NoStorage,
+		crate::com::liveliness::NoPutCallback,
+		crate::com::liveliness::NoStorage,
 	> {
 		self.context.liveliness_subscriber()
 	}

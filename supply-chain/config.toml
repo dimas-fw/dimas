@@ -48,10 +48,6 @@ criteria = "safe-to-deploy"
 version = "0.1.1"
 criteria = "safe-to-deploy"
 
-[[exemptions.async-attributes]]
-version = "1.1.2"
-criteria = "safe-to-deploy"
-
 [[exemptions.async-channel]]
 version = "1.9.0"
 criteria = "safe-to-deploy"
@@ -86,10 +82,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.async-process]]
 version = "1.8.1"
-criteria = "safe-to-deploy"
-
-[[exemptions.async-rustls]]
-version = "0.4.2"
 criteria = "safe-to-deploy"
 
 [[exemptions.async-signal]]
@@ -160,10 +152,6 @@ criteria = "safe-to-deploy"
 version = "0.2.32"
 criteria = "safe-to-deploy"
 
-[[exemptions.core-foundation]]
-version = "0.9.4"
-criteria = "safe-to-deploy"
-
 [[exemptions.cpufeatures]]
 version = "0.2.12"
 criteria = "safe-to-deploy"
@@ -194,10 +182,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.dirs-sys]]
 version = "0.4.1"
-criteria = "safe-to-deploy"
-
-[[exemptions.env_logger]]
-version = "0.10.2"
 criteria = "safe-to-deploy"
 
 [[exemptions.event-listener]]
@@ -352,16 +336,8 @@ criteria = "safe-to-deploy"
 version = "0.4.11"
 criteria = "safe-to-deploy"
 
-[[exemptions.log]]
-version = "0.4.21"
-criteria = "safe-to-deploy"
-
 [[exemptions.lz4_flex]]
 version = "0.11.2"
-criteria = "safe-to-deploy"
-
-[[exemptions.miniz_oxide]]
-version = "0.7.2"
 criteria = "safe-to-deploy"
 
 [[exemptions.mio]]
@@ -560,10 +536,6 @@ criteria = "safe-to-deploy"
 version = "2.9.1"
 criteria = "safe-to-deploy"
 
-[[exemptions.semver]]
-version = "1.0.22"
-criteria = "safe-to-deploy"
-
 [[exemptions.sha1]]
 version = "0.10.6"
 criteria = "safe-to-deploy"
@@ -697,14 +669,6 @@ version = "0.4.41"
 criteria = "safe-to-deploy"
 
 [[exemptions.wasm-bindgen-macro]]
-version = "0.2.91"
-criteria = "safe-to-deploy"
-
-[[exemptions.wasm-bindgen-macro-support]]
-version = "0.2.91"
-criteria = "safe-to-deploy"
-
-[[exemptions.wasm-bindgen-shared]]
 version = "0.2.91"
 criteria = "safe-to-deploy"
 

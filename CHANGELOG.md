@@ -16,6 +16,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 
+## [0.1.1] - 2024-05-01
+
+### Added
+- Constructors for Publisher, Query, Queryable, Subscriber, Timer
+
+### Changed
+- renamed module 'liveliness_subscriber' to 'liveliness'
+
+### Fixed
+- compile & doc warnings
+
+
 ## [0.1.0] - 2024-04-25
 
 ### Added
@@ -24,13 +36,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - MSRV bumped to '1.77' due to Mutex::clear_poison()
+- Bumped version of 'zenoh' to '0.11.0-rc'
 - Bumped version of 'bitcode' to '0.6'
 - cleanup coding
 
 ### Fixed
 - tracing initialisation now fits to zenohs usage of tracing crate
-
-### Removed
 
 
 ## [0.0.8] - 2024-03-22  <br>_Has breaking changes!!_

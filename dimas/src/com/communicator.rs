@@ -14,6 +14,10 @@
 //!
 
 // region:		--- modules
+// these ones are only for doc needed
+use super::message::Message;
+#[cfg(doc)]
+use crate::agent::Agent;
 use crate::{
 	context::ArcContext,
 	error::{DimasError, Result},
@@ -24,8 +28,6 @@ use std::sync::Arc;
 use tracing::error;
 use zenoh::prelude::{r#async::*, sync::SyncResolve};
 use zenoh::publication::Publisher;
-
-use super::message::Message;
 // endregion:	--- modules
 
 // region:		--- Communicator
