@@ -82,6 +82,7 @@ The `publisher.rs` should look like this:
 use dimas::prelude::*;
 use std::time::Duration;
 
+/// The Agent's properties
 #[derive(Debug)]
 struct AgentProps {
 	counter: u128,
@@ -146,7 +147,7 @@ The `subscriber.rs` should look like this:
 ```rust,no_run
 use dimas::prelude::*;
 
-/// The Agent's proerties
+/// The Agent's properties
 #[derive(Debug)]
 pub struct AgentProps {}
 
