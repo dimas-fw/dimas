@@ -6,6 +6,7 @@ resolver="2"
 members = [ 
 	"commons/dimas-core",
 	"dimas",
+	"dimasctl",
 	"examples/liveliness",
 	"examples/pingpong",
 	"examples/pubsub",
