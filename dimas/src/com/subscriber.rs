@@ -7,11 +7,8 @@
 // these ones are only for doc needed
 #[cfg(doc)]
 use crate::agent::Agent;
-use crate::{
-	context::ArcContext,
-	error::{DimasError, Result},
-	utils::TaskSignal,
-};
+use crate::context::ArcContext;
+use dimas_core::error::{DimasError, Result};
 #[allow(unused_imports)]
 use std::collections::HashMap;
 #[cfg(feature = "subscriber")]
@@ -22,12 +19,11 @@ use tokio::task::JoinHandle;
 use tracing::info;
 use tracing::{error, instrument, warn, Level};
 use zenoh::{
-	prelude::{r#async::AsyncResolve, SampleKind},
+	prelude::{r#async::AsyncResolve, SampleKind, SessionDeclarations},
 	subscriber::Reliability,
-	SessionDeclarations,
 };
 
-use super::message::Message;
+use super::{message::Message, task_signal::TaskSignal};
 // endregion:	--- modules
 
 // region:		--- types

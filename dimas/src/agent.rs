@@ -44,14 +44,14 @@
 //! A running agent can be properly stopped with `ctrl-c`
 //!
 
+use crate::com::task_signal::{wait_for_task_signals, TaskSignal};
 // region:		--- modules
-// these ones are only for doc needed
 use crate::com::{
 	liveliness::LivelinessSubscriberBuilder, publisher::PublisherBuilder, query::QueryBuilder,
 	queryable::QueryableBuilder, subscriber::SubscriberBuilder,
 };
+use crate::context::{ArcContext, Context};
 use crate::timer::TimerBuilder;
-use crate::utils::{wait_for_task_signals, TaskSignal};
 #[cfg(doc)]
 use crate::{
 	com::{
@@ -60,9 +60,8 @@ use crate::{
 	},
 	timer::Timer,
 };
-use crate::{
+use dimas_core::{
 	config::Config,
-	context::{ArcContext, Context},
 	error::{DimasError, Result},
 };
 use std::sync::RwLock;
@@ -540,7 +539,7 @@ mod tests {
 	//#[serial]
 	async fn agent_build() -> Result<()> {
 		let agent_u = Agent::new(Props {});
-		let config = crate::config::Config::local()?;
+		let config = dimas_core::config::Config::local()?;
 		let _agent_c = agent_u.prefix("test").config(config)?;
 		Ok(())
 	}

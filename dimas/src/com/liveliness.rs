@@ -1,24 +1,27 @@
 // Copyright © 2023 Stephan Kunz
 
-//! Module `liveliness_subscriber` provides a `LivelinessSubscriber` which can be created using the `LivelinessSubscriberBuilder`.
+//! Module `liveliness` provides a `LivelinessSubscriber` which can be created using the `LivelinessSubscriberBuilder`.
 //! A `LivelinessSubscriber` can optional subscribe on a delete message.
 
 // region:		--- modules
-use crate::{prelude::*, utils::TaskSignal};
+use dimas_core::error::{DimasError, Result};
 #[allow(unused_imports)]
 use std::collections::HashMap;
 use std::{
-	sync::{mpsc::Sender, Mutex},
+	sync::{mpsc::Sender, Arc, Mutex},
 	time::Duration,
 };
+#[cfg(feature = "liveliness")]
+use std::sync::RwLock;
 use tokio::task::JoinHandle;
 #[cfg(feature = "liveliness")]
 use tracing::info;
 use tracing::{error, instrument, warn, Level};
-use zenoh::{
-	prelude::{r#async::AsyncResolve, SampleKind},
-	SessionDeclarations,
-};
+use zenoh::prelude::{r#async::AsyncResolve, SampleKind, SessionDeclarations};
+
+use crate::prelude::ArcContext;
+
+use super::task_signal::TaskSignal;
 // endregion:	--- modules
 
 // region:		--- types

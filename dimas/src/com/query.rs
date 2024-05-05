@@ -3,10 +3,8 @@
 //! Module `query` provides an information/compute requestor `Query` which can be created using the `QueryBuilder`.
 
 // region:		--- modules
-use crate::{
-	context::ArcContext,
-	error::{DimasError, Result},
-};
+use crate::context::ArcContext;
+use dimas_core::error::{DimasError, Result};
 #[allow(unused_imports)]
 use std::collections::HashMap;
 #[cfg(feature = "query")]

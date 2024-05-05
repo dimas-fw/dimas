@@ -40,12 +40,11 @@
 //!
 
 // region:		--- modules
-#[allow(unused_imports)]
-use crate::agent::Agent;
 // endregion:	--- modules
 
 // region:		--- modules
-use crate::{error::Result, utils::find_config_file};
+use crate::error::Result;
+use crate::utils::find_config_file;
 use tracing::{error, info, warn};
 // endregion:	--- modules
 

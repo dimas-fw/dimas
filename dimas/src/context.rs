@@ -42,18 +42,18 @@ use crate::com::query::Query;
 use crate::com::queryable::Queryable;
 #[cfg(feature = "subscriber")]
 use crate::com::subscriber::Subscriber;
+use crate::com::task_signal::TaskSignal;
 use crate::com::{
-	communicator::Communicator, liveliness::LivelinessSubscriberBuilder, message::Message,
-	publisher::PublisherBuilder, query::QueryBuilder, queryable::QueryableBuilder,
-	subscriber::SubscriberBuilder,
+	liveliness::LivelinessSubscriberBuilder, message::Message, publisher::PublisherBuilder,
+	query::QueryBuilder, queryable::QueryableBuilder, subscriber::SubscriberBuilder,
 };
-use crate::config::Config;
-use crate::error::{DimasError, Result};
 #[cfg(feature = "timer")]
 use crate::timer::Timer;
 use crate::timer::TimerBuilder;
-use crate::utils::TaskSignal;
 use bitcode::Encode;
+use dimas_core::communicator::Communicator;
+use dimas_core::config::Config;
+use dimas_core::error::{DimasError, Result};
 #[cfg(any(
 	feature = "liveliness",
 	feature = "publisher",
@@ -67,9 +67,10 @@ use std::ops::Deref;
 use std::sync::mpsc::Sender;
 use std::sync::RwLock;
 use std::{fmt::Debug, sync::Arc};
-#[cfg(any(feature = "publisher", feature = "query",))]
 use tracing::error;
 use tracing::{instrument, Level};
+use zenoh::prelude::sync::SyncResolve;
+use zenoh::prelude::SampleKind;
 use zenoh::query::ConsolidationMode;
 // endregion:	--- modules
 
@@ -654,19 +655,53 @@ where
 		Ok(())
 	}
 
-	/// Method to do an ad hoc query without any consolidation of answers.
-	/// Multiple answers may be received for the same timestamp.
-	///
+	/// Send an ad hoc query using the given `topic`.
+	/// The `topic` will be enhanced with the group prefix.
+	/// Response will be handled by `callback`, a closure or function with
+	/// signature Fn(&[`ArcContext`]<AgentProperties>, [`Response`]).
 	/// # Errors
-	///   Error is propagated from [`Communicator::get()`]
-	#[instrument(level = Level::ERROR, skip_all)]
-	pub fn get<F>(&self, ctx: ArcContext<P>, query_name: &str, callback: F) -> Result<()>
+	///
+	pub fn get<F>(
+		&self,
+		ctx: ArcContext<P>,
+		topic: &str,
+		mode: ConsolidationMode,
+		callback: F,
+	) -> Result<()>
 	where
 		P: Send + Sync + Unpin + 'static,
 		F: Fn(&ArcContext<P>, Message) + Send + Sync + Unpin + 'static,
 	{
-		self.communicator
-			.get(ctx, query_name, ConsolidationMode::None, callback)
+		let key_expr = self
+			.prefix()
+			.clone()
+			.take()
+			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
+		let ctx = ctx;
+		let session = self.communicator.session.clone();
+
+		let replies = session
+			.get(&key_expr)
+			.consolidation(mode)
+			//.timeout(Duration::from_millis(1000))
+			.res_sync()
+			.map_err(|_| DimasError::Get)?;
+
+		while let Ok(reply) = replies.recv() {
+			match reply.sample {
+				Ok(sample) => match sample.kind {
+					SampleKind::Put => {
+						let msg = Message(sample);
+						callback(&ctx, msg);
+					}
+					SampleKind::Delete => {
+						println!("Delete in Query");
+					}
+				},
+				Err(err) => error!(">> query receive error: {err})"),
+			}
+		}
+		Ok(())
 	}
 
 	/// Method to query data with a stored Query
