@@ -7,6 +7,7 @@ members = [
 	"commons/dimas-core",
 	"dimas",
 	"dimasctl",
+	"dimasmon",
 	"examples/liveliness",
 	"examples/pingpong",
 	"examples/pubsub",
