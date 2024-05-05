@@ -1,0 +1,27 @@
+# Copyright © 2024 Stephan Kunz
+
+[package]
+name = "dimas-core"
+rust-version.workspace = true
+edition.workspace = true
+version.workspace = true
+authors.workspace = true
+license-file.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lints]
+workspace = true
+
+[dependencies]
+bitcode = { workspace = true}
+dirs = { workspace = true}
+json5 = { workspace = true}
+serde = { workspace = true }
+thiserror = { workspace = true}
+tokio = { workspace = true}
+tracing = { workspace = true}
+tracing-subscriber = { workspace = true}
+zenoh = { workspace = true}

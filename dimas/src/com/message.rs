@@ -3,8 +3,8 @@
 //! Module `message` provides the different types of `Message`s used in callbacks.
 
 // region:		--- modules
-use crate::error::{DimasError, Result};
 use bitcode::{decode, encode, Decode, Encode};
+use dimas_core::error::{DimasError, Result};
 use std::ops::Deref;
 use zenoh::{prelude::sync::SyncResolve, queryable::Query, sample::Sample};
 // endregion:	--- modules
@@ -129,6 +129,8 @@ impl Feedback {
 	/// decode feedback
 	///
 	/// # Errors
+	///
+	#[allow(dead_code)]
 	pub fn decode<T>(self) -> Result<T>
 	where
 		T: for<'a> Decode<'a>,

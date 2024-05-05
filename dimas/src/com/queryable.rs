@@ -3,11 +3,8 @@
 //! Module `queryable` provides an information/compute provider `Queryable` which can be created using the `QueryableBuilder`.
 
 // region:		--- modules
-use crate::{
-	context::ArcContext,
-	error::{DimasError, Result},
-	utils::TaskSignal,
-};
+use crate::context::ArcContext;
+use dimas_core::error::{DimasError, Result};
 #[allow(unused_imports)]
 use std::collections::HashMap;
 #[cfg(feature = "queryable")]
@@ -21,9 +18,10 @@ use tokio::task::JoinHandle;
 #[cfg(feature = "queryable")]
 use tracing::info;
 use tracing::{error, instrument, warn, Level};
-use zenoh::{prelude::r#async::AsyncResolve, sample::Locality, SessionDeclarations};
+use zenoh::prelude::{r#async::AsyncResolve, SessionDeclarations};
+use zenoh::sample::Locality;
 
-use super::message::Request;
+use super::{message::Request, task_signal::TaskSignal};
 // endregion:	--- modules
 
 // region:		--- types

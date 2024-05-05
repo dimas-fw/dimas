@@ -1,31 +1,13 @@
 // Copyright © 2023 Stephan Kunz
 
-//! [`Communicator`] implements the communication capabilities for an [`Agent`].
-//!
-//! # Examples
-//! ```rust,no_run
-//! # use dimas::prelude::*;
-//! # #[tokio::main(flavor = "multi_thread")]
-//! # async fn main() -> Result<()> {
-//! # let agent = Agent::new({});
-//! # Ok(())
-//! # }
-//! ```
+//! [`Communicator`] implements the communication capabilities.
 //!
 
 // region:		--- modules
-// these ones are only for doc needed
-use super::message::Message;
-#[cfg(doc)]
-use crate::agent::Agent;
-use crate::{
-	context::ArcContext,
-	error::{DimasError, Result},
-};
+use crate::error::{DimasError, Result};
 use bitcode::{encode, Encode};
 use std::fmt::Debug;
 use std::sync::Arc;
-use tracing::error;
 use zenoh::prelude::{r#async::*, sync::SyncResolve};
 use zenoh::publication::Publisher;
 // endregion:	--- modules
@@ -35,14 +17,16 @@ use zenoh::publication::Publisher;
 #[derive(Debug)]
 pub struct Communicator {
 	/// The zenoh session
-	pub(crate) session: Arc<Session>,
-	/// A prefix to separate communication for different groups of [`Agent`]s
-	pub(crate) prefix: Option<String>,
+	pub session: Arc<Session>,
+	/// A prefix to separate communication for different groups
+	pub prefix: Option<String>,
 }
 
 impl Communicator {
 	/// Constructor
-	pub(crate) fn new(config: crate::config::Config) -> Result<Self> {
+	/// # Errors
+	///
+	pub fn new(config: crate::config::Config) -> Result<Self> {
 		let cfg = config;
 		let session = Arc::new(
 			zenoh::open(cfg.zenoh_config())
@@ -55,8 +39,9 @@ impl Communicator {
 		})
 	}
 
-	/// Get [`Agent`]s globally unique ID
-	pub(crate) fn uuid(&self) -> String {
+	/// Get globally unique ID
+	#[must_use]
+	pub fn uuid(&self) -> String {
 		self.session.zid().to_string()
 	}
 
@@ -66,12 +51,12 @@ impl Communicator {
 		&self.prefix
 	}
 
-	/// Set [`Agent`]s group prefix
-	pub(crate) fn set_prefix(&mut self, prefix: impl Into<String>) {
+	/// Set group prefix
+	pub fn set_prefix(&mut self, prefix: impl Into<String>) {
 		self.prefix = Some(prefix.into());
 	}
 
-	/// Create a key expression from a topic by adding [`Agent`]s prefix if one is given.
+	/// Create a key expression from a topic by adding prefix if one is given.
 	#[must_use]
 	pub fn key_expr(&self, topic: &str) -> String {
 		self.prefix
@@ -80,7 +65,9 @@ impl Communicator {
 	}
 
 	/// Create a zenoh publisher
-	pub(crate) fn create_publisher<'a>(&self, key_expr: &str) -> Result<Publisher<'a>> {
+	/// # Errors
+	///
+	pub fn create_publisher<'a>(&self, key_expr: &str) -> Result<Publisher<'a>> {
 		let p = self
 			.session
 			.declare_publisher(key_expr.to_owned())
@@ -91,8 +78,10 @@ impl Communicator {
 
 	/// Send an ad hoc put `message` of type `M` using the given `topic`.
 	/// The `topic` will be enhanced with the group prefix.
+	/// # Errors
+	///
 	#[allow(clippy::needless_pass_by_value)]
-	pub(crate) fn put<M>(&self, topic: &str, message: M) -> Result<()>
+	pub fn put<M>(&self, topic: &str, message: M) -> Result<()>
 	where
 		M: Encode,
 	{
@@ -107,56 +96,15 @@ impl Communicator {
 
 	/// Send an ad hoc delete using the given `topic`.
 	/// The `topic` will be enhanced with the group prefix.
-	pub(crate) fn delete(&self, topic: &str) -> Result<()> {
+	/// # Errors
+	///
+	pub fn delete(&self, topic: &str) -> Result<()> {
 		let key_expr = self.key_expr(topic);
 
 		self.session
 			.delete(&key_expr)
 			.res_sync()
 			.map_err(|_| DimasError::Delete.into())
-	}
-
-	/// Send an ad hoc query using the given `topic`.
-	/// The `topic` will be enhanced with the group prefix.
-	/// Response will be handled by `callback`, a closure or function with
-	/// signature Fn(&[`ArcContext`]<AgentProperties>, [`Response`]).
-	pub(crate) fn get<P, F>(
-		&self,
-		ctx: ArcContext<P>,
-		topic: &str,
-		mode: ConsolidationMode,
-		callback: F,
-	) -> Result<()>
-	where
-		P: Send + Sync + Unpin + 'static,
-		F: Fn(&ArcContext<P>, Message) + Send + Sync + Unpin + 'static,
-	{
-		let key_expr = self.key_expr(topic);
-		let ctx = ctx;
-		let session = self.session.clone();
-
-		let replies = session
-			.get(&key_expr)
-			.consolidation(mode)
-			//.timeout(Duration::from_millis(1000))
-			.res_sync()
-			.map_err(|_| DimasError::Get)?;
-
-		while let Ok(reply) = replies.recv() {
-			match reply.sample {
-				Ok(sample) => match sample.kind {
-					SampleKind::Put => {
-						let msg = Message(sample);
-						callback(&ctx, msg);
-					}
-					SampleKind::Delete => {
-						println!("Delete in Query");
-					}
-				},
-				Err(err) => error!(">> query receive error: {err})"),
-			}
-		}
-		Ok(())
 	}
 }
 // endregion:	--- Communicator

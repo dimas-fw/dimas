@@ -28,11 +28,12 @@ pub use crate::com::publisher::{Publisher, PublisherBuilder};
 pub use crate::com::query::{Query, QueryBuilder};
 pub use crate::com::queryable::{Queryable, QueryableBuilder};
 pub use crate::com::subscriber::{Subscriber, SubscriberBuilder};
-pub use crate::config::Config;
 pub use crate::context::ArcContext;
-pub use crate::error::{DimasError, Result};
 pub use crate::timer::{Timer, TimerBuilder};
-pub use crate::utils::init_tracing;
+
+pub use dimas_core::config::Config;
+pub use dimas_core::error::{DimasError, Result};
+pub use dimas_core::utils::init_tracing;
 // endregeion:  --- modules
 
 // region:    --- types

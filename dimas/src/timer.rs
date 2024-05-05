@@ -4,7 +4,7 @@
 //! When fired, a `Timer` calls his assigned `TimerCallback`.
 
 // region:		--- modules
-use crate::{prelude::*, utils::TaskSignal};
+use crate::{com::task_signal::TaskSignal, prelude::*};
 #[allow(unused_imports)]
 use std::collections::HashMap;
 use std::{

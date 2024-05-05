@@ -3,8 +3,11 @@
 [workspace]
 resolver="2"
 
-members = [
+members = [ 
+	"commons/dimas-core",
 	"dimas",
+	"dimasctl",
+	"dimasmon",
 	"examples/liveliness",
 	"examples/pingpong",
 	"examples/pubsub",
@@ -46,6 +49,8 @@ categories = [
 [workspace.dependencies]
 bitcode = "0.6"
 dimas = { path = "dimas" }
+dimas-com = { path = "commons/dimas-com" }
+dimas-core = { path = "commons/dimas-core" }
 dirs = "5"
 json5 = "0.4"
 serde = { version = "1", default-features = false, features = ["derive"] }

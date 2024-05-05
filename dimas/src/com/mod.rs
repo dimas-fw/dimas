@@ -7,22 +7,20 @@
 // to avoid doc warnings
 #[allow(unused_imports)]
 use super::agent::Agent;
-#[allow(unused_imports)]
-use communicator::Communicator;
-/// Communicator
-pub mod communicator;
-/// Liveliness
+/// `Liveliness`
 pub mod liveliness;
-/// Message
+/// `Message`
 pub mod message;
-/// Publisher
+/// `Publisher`
 pub mod publisher;
-/// Query
+/// `Query`
 pub mod query;
-/// Queryable
+/// `Queryable`
 pub mod queryable;
-/// Subscriber
+/// `Subscriber`
 pub mod subscriber;
+/// `TaskSignal`
+pub mod task_signal;
 // endregion: --- modules
 
 #[cfg(test)]

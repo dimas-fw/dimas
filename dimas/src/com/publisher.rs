@@ -6,11 +6,9 @@
 // these ones are only for doc needed
 #[cfg(doc)]
 use crate::agent::Agent;
-use crate::{
-	context::ArcContext,
-	error::{DimasError, Result},
-};
+use crate::context::ArcContext;
 use bitcode::{encode, Encode};
+use dimas_core::error::{DimasError, Result};
 #[allow(unused_imports)]
 use std::collections::HashMap;
 use std::fmt::Debug;
