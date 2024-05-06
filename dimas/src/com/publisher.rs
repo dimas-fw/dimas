@@ -167,13 +167,12 @@ impl<S> PublisherBuilder<KeyExpression, S> {
 	}
 }
 
-#[cfg(feature = "publisher")]
+#[cfg(any(docsrs, doc, feature = "publisher"))]
 impl PublisherBuilder<KeyExpression, Storage> {
 	/// Build and add the [Publisher] to the [`Agent`]s context
 	///
 	/// # Errors
 	/// Currently none
-	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "publisher")))]
 	pub fn add(self) -> Result<Option<Publisher>> {
 		let collection = self.storage.storage.clone();
 		let p = self.build()?;

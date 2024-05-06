@@ -7,12 +7,12 @@
 use dimas_core::error::{DimasError, Result};
 #[allow(unused_imports)]
 use std::collections::HashMap;
+#[cfg(feature = "liveliness")]
+use std::sync::RwLock;
 use std::{
 	sync::{mpsc::Sender, Arc, Mutex},
 	time::Duration,
 };
-#[cfg(feature = "liveliness")]
-use std::sync::RwLock;
 use tokio::task::JoinHandle;
 #[cfg(feature = "liveliness")]
 use tracing::info;
@@ -225,7 +225,7 @@ where
 	}
 }
 
-#[cfg(feature = "liveliness")]
+#[cfg(any(docsrs, doc, feature = "liveliness"))]
 impl<P> LivelinessSubscriberBuilder<P, PutCallback<P>, Storage<P>>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -233,7 +233,6 @@ where
 	/// Build and add the liveliness subscriber to the agent
 	/// # Errors
 	///
-	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "liveliness")))]
 	pub fn add(self) -> Result<Option<LivelinessSubscriber<P>>> {
 		let c = self.storage.storage.clone();
 		let s = self.build()?;

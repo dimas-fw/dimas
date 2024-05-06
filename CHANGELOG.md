@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - dimasmon: binary to monitor DiMAS entities (not yet usable!)
 
 ### Changed
-- moved communicator & config into separate crate 'dimas-com' 
+- moved communicator & config into separate crate 'dimas-core' 
 
 ### Fixed
 

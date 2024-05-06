@@ -1,6 +1,6 @@
 // Copyright © 2024 Stephan Kunz
 
-//! The [`Config`]uration data for an [`Agent`].
+//! The configuration data.
 //!
 //! An Agents configuration can be defined using json5 formated files.
 //! There is a set of read methods for predefined filenames available.
@@ -59,7 +59,7 @@ fn _read_file(filename: &str) -> Result<String> {
 // endregion:	--- utils
 
 // region:		--- Config
-/// Manages the [`Agent`]s configuration
+/// Manages the configuration
 #[repr(transparent)]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Config {
@@ -112,7 +112,7 @@ impl Default for Config {
 impl Config {
 	/// Create a configuration based on file named `local.json5`.<br>
 	/// Will search in the directories mentioned in [`Examples`](index.html#examples).<br>
-	/// This file should contain a configuration that only connects to [`Agent`]s on same host.
+	/// This file should contain a configuration that only connects to entities on same host.
 	///
 	/// # Errors
 	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.
@@ -126,7 +126,7 @@ impl Config {
 
 	/// Create a configuration based on file named `low_latency.json5`.<br>
 	/// Will search in the directories mentioned in [`Examples`](index.html#examples).<br>
-	/// This file should contain a configuration that only connects to [`Agent`]s on same host.
+	/// This file should contain a configuration that only connects to entities on same host.
 	///
 	/// # Errors
 	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.
@@ -140,7 +140,7 @@ impl Config {
 
 	/// Create a configuration based on file named `client.json5`.<br>
 	/// Will search in the directories mentioned in [`Examples`](index.html#examples).<br>
-	/// This file should contain a configuration that creates an [`Agent`] in client mode.
+	/// This file should contain a configuration that creates an entity in client mode.
 	///
 	/// # Errors
 	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.
@@ -154,7 +154,7 @@ impl Config {
 
 	/// Create a configuration based on file named `peer.json5`.<br>
 	/// Will search in the directories mentioned in [`Examples`](index.html#examples).<br>
-	/// This file should contain a configuration that creates an [`Agent`] in peer mode.
+	/// This file should contain a configuration that creates an entity in peer mode.
 	///
 	/// # Errors
 	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.
@@ -168,7 +168,7 @@ impl Config {
 
 	/// Create a configuration based on file named `router.json5`.<br>
 	/// Will search in the directories mentioned in [`Examples`](index.html#examples).<br>
-	/// This file should contain a configuration that creates an [`Agent`] in router mode.
+	/// This file should contain a configuration that creates an entity in router mode.
 	///
 	/// # Errors
 	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.

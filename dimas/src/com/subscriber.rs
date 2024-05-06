@@ -282,7 +282,7 @@ where
 	}
 }
 
-#[cfg(feature = "subscriber")]
+#[cfg(any(docsrs, doc, feature = "subscriber"))]
 impl<P> SubscriberBuilder<P, KeyExpression, PutCallback<P>, Storage<P>>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -291,7 +291,6 @@ where
 	///
 	/// # Errors
 	/// Currently none
-	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "subscriber")))]
 	pub fn add(self) -> Result<Option<Subscriber<P>>> {
 		let c = self.storage.storage.clone();
 		let s = self.build()?;

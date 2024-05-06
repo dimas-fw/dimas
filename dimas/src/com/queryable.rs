@@ -266,7 +266,7 @@ where
 	}
 }
 
-#[cfg(feature = "queryable")]
+#[cfg(any(docsrs, doc, feature = "queryable"))]
 impl<P> QueryableBuilder<P, KeyExpression, RequestCallback<P>, Storage<P>>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -274,7 +274,6 @@ where
 	/// Build and add the queryable to the agents context
 	/// # Errors
 	///
-	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "query")))]
 	pub fn add(self) -> Result<Option<Queryable<P>>> {
 		let collection = self.storage.storage.clone();
 		let q = self.build()?;

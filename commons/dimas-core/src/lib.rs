@@ -2,7 +2,7 @@
 
 //! Core of `DiMAS`
 
-/// Communicator
+/// Communication
 pub mod communicator;
 /// Configuration
 pub mod config;

@@ -292,7 +292,7 @@ where
 	}
 }
 
-#[cfg(feature = "timer")]
+#[cfg(any(docsrs, doc, feature = "timer"))]
 impl<P> TimerBuilder<P, KeyExpression, Interval, IntervalCallback<P>, Storage<P>>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -300,7 +300,6 @@ where
 	/// Build and add the timer to the agents context
 	/// # Errors
 	///
-	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "timer")))]
 	pub fn add(self) -> Result<Option<Timer<P>>> {
 		let name = self.key_expr.key_expr.clone();
 		let collection = self.storage.storage.clone();

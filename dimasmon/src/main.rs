@@ -12,12 +12,12 @@ use std::path::PathBuf;
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 struct Cli {
-    /// Optional prefix to restrict scope
-    prefix: Option<String>,
+	/// Optional prefix to restrict scope
+	prefix: Option<String>,
 
-    /// Use config file
-    #[arg(short, long, value_name = "FILE")]
-    config: Option<PathBuf>,
+	/// Use config file
+	#[arg(short, long, value_name = "FILE")]
+	config: Option<PathBuf>,
 }
 
 // endregion:	--- Cli

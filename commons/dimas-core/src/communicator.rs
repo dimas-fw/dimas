@@ -1,6 +1,6 @@
 // Copyright © 2023 Stephan Kunz
 
-//! [`Communicator`] implements the communication capabilities.
+//! Communicator implements the communication capabilities.
 //!
 
 // region:		--- modules
@@ -45,7 +45,7 @@ impl Communicator {
 		self.session.zid().to_string()
 	}
 
-	/// Get [`Agent`]s group prefix
+	/// Get group prefix
 	#[must_use]
 	pub const fn prefix(&self) -> &Option<String> {
 		&self.prefix

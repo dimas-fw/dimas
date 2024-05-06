@@ -305,7 +305,7 @@ where
 	}
 }
 
-#[cfg(feature = "query")]
+#[cfg(any(docsrs, doc, feature = "query"))]
 impl<P> QueryBuilder<P, KeyExpression, ResponseCallback<P>, Storage<P>>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -313,7 +313,6 @@ where
 	/// Build and add the query to the agents context
 	/// # Errors
 	///
-	#[cfg_attr(any(nightly, docrs), doc, doc(cfg(feature = "query")))]
 	pub fn add(self) -> Result<Option<Query<P>>> {
 		let collection = self.storage.storage.clone();
 		let q = self.build()?;

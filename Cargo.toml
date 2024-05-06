@@ -50,7 +50,6 @@ categories = [
 bitcode = "0.6"
 clap = { version = "4", features = ["derive"] }
 dimas = { path = "dimas" }
-dimas-com = { path = "commons/dimas-com" }
 dimas-core = { path = "commons/dimas-core" }
 dirs = "5"
 json5 = "0.4"
