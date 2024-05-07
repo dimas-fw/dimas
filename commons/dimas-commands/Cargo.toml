@@ -1,5 +1,5 @@
 [package]
-name = "dimasctl"
+name = "dimas-commands"
 rust-version.workspace = true
 edition.workspace = true
 version.workspace = true
@@ -14,7 +14,5 @@ categories.workspace = true
 workspace = true
 
 [dependencies]
-clap = { workspace = true }
-dimas-commands = { workspace = true }
-dimas-config = { workspace = true }
-dimas-core = { workspace = true }
+tracing = { workspace = true}
+zenoh = { workspace = true }

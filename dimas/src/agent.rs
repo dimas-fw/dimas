@@ -60,10 +60,8 @@ use crate::{
 	},
 	timer::Timer,
 };
-use dimas_core::{
-	config::Config,
-	error::{DimasError, Result},
-};
+use dimas_config::Config;
+use dimas_core::error::{DimasError, Result};
 use std::sync::RwLock;
 use std::{
 	fmt::Debug,
@@ -539,7 +537,7 @@ mod tests {
 	//#[serial]
 	async fn agent_build() -> Result<()> {
 		let agent_u = Agent::new(Props {});
-		let config = dimas_core::config::Config::local()?;
+		let config = dimas_config::Config::local()?;
 		let _agent_c = agent_u.prefix("test").config(config)?;
 		Ok(())
 	}

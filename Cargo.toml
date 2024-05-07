@@ -4,6 +4,7 @@
 resolver="2"
 
 members = [ 
+	"commons/dimas-commands", 
 	"commons/dimas-core",
 	"dimas",
 	"dimasctl",
@@ -50,6 +51,9 @@ categories = [
 bitcode = "0.6"
 clap = { version = "4", features = ["derive"] }
 dimas = { path = "dimas" }
+dimas-com = { path = "commons/dimas-com" }
+dimas-commands = { path = "commons/dimas-commands" }
+dimas-config = { path = "commons/dimas-config" }
 dimas-core = { path = "commons/dimas-core" }
 dirs = "5"
 json5 = "0.4"

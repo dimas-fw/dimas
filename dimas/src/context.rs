@@ -51,8 +51,8 @@ use crate::com::{
 use crate::timer::Timer;
 use crate::timer::TimerBuilder;
 use bitcode::Encode;
-use dimas_core::communicator::Communicator;
-use dimas_core::config::Config;
+use dimas_com::Communicator;
+use dimas_config::Config;
 use dimas_core::error::{DimasError, Result};
 #[cfg(any(
 	feature = "liveliness",

@@ -20,6 +20,8 @@ workspace = true
 [dependencies]
 bitcode = { workspace = true }
 dirs = { workspace = true }
+dimas-com = { workspace = true }
+dimas-config = { workspace = true }
 dimas-core = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["signal", "time"]}

@@ -1,5 +1,7 @@
+# Copyright © 2024 Stephan Kunz
+
 [package]
-name = "dimasctl"
+name = "dimas-config"
 rust-version.workspace = true
 edition.workspace = true
 version.workspace = true
@@ -14,7 +16,9 @@ categories.workspace = true
 workspace = true
 
 [dependencies]
-clap = { workspace = true }
-dimas-commands = { workspace = true }
-dimas-config = { workspace = true }
 dimas-core = { workspace = true }
+dirs = { workspace = true}
+json5 = { workspace = true}
+serde = { workspace = true }
+tracing = { workspace = true}
+zenoh = { workspace = true}

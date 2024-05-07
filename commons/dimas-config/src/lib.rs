@@ -39,12 +39,18 @@
 //!  - config directory (`Linux`: `$XDG_CONFIG_HOME` or `$HOME/.config` | `Windows`: `{FOLDERID_RoamingAppData}` | `MacOS`: `$HOME/Library/Application Support`)
 //!
 
+// region:		--- exports
+//pub use Config;
+// endregion:	--- exports
+
 // region:		--- modules
 // endregion:	--- modules
 
+use std::env;
+
 // region:		--- modules
-use crate::error::Result;
-use crate::utils::find_config_file;
+use dimas_core::error::Result;
+use dirs::{config_dir, config_local_dir, home_dir};
 use tracing::{error, info, warn};
 // endregion:	--- modules
 
@@ -194,14 +200,59 @@ impl Config {
 		Ok(cfg)
 	}
 
-	/// Internal method to create a zenoh configuration from [`Config`].<br>
+	/// Method to extract the zenoh configuration from [`Config`].<br>
 	/// Can be passed to `zenoh::open()`.
 	#[must_use]
-	pub(crate) fn zenoh_config(&self) -> zenoh::config::Config {
+	pub fn zenoh_config(&self) -> zenoh::config::Config {
 		self.zenoh.clone()
 	}
 }
 // endregion:	--- Config
+
+// region:		--- functions
+/// find a config file given by name
+/// function will search in following directories for the file (order first to last):
+///  - current working directory
+///  - `.config` directory below current working directory
+///  - `.config` directory below home directory
+///  - local config directory (`Linux`: `$XDG_CONFIG_HOME` or `$HOME/.config` | `Windows`: `{FOLDERID_LocalAppData}` | `MacOS`: `$HOME/Library/Application Support`)
+///  - config directory (`Linux`: `$XDG_CONFIG_HOME` or `$HOME/.config` | `Windows`: `{FOLDERID_RoamingAppData}` | `MacOS`: `$HOME/Library/Application Support`)
+/// # Errors
+///
+pub fn find_config_file(filename: &str) -> Result<std::path::PathBuf> {
+	// handle environment path current working directory `CWD`
+	if let Ok(cwd) = env::current_dir() {
+		#[cfg(not(test))]
+		let path = cwd.join(filename);
+		#[cfg(test)]
+		let path = cwd.join("..").join(filename);
+		if path.is_file() {
+			return Ok(path);
+		}
+
+		#[cfg(not(test))]
+		let path = cwd.join(".config").join(filename);
+		#[cfg(test)]
+		let path = cwd.join("../.config").join(filename);
+		if path.is_file() {
+			return Ok(path);
+		}
+	};
+
+	// handle typical config directories
+	for path in [home_dir(), config_local_dir(), config_dir()]
+		.into_iter()
+		.flatten()
+	{
+		let file = path.join(filename);
+		if file.is_file() {
+			return Ok(path);
+		}
+	}
+
+	Err(dimas_core::error::DimasError::FileNotFound(filename.into()).into())
+}
+// endregion:	--- functions
 
 #[cfg(test)]
 mod tests {

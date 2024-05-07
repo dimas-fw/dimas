@@ -4,7 +4,7 @@
 //!
 
 // region:		--- modules
-use crate::error::{DimasError, Result};
+use dimas_core::error::{DimasError, Result};
 use bitcode::{encode, Encode};
 use std::fmt::Debug;
 use std::sync::Arc;
@@ -26,7 +26,7 @@ impl Communicator {
 	/// Constructor
 	/// # Errors
 	///
-	pub fn new(config: crate::config::Config) -> Result<Self> {
+	pub fn new(config: dimas_config::Config) -> Result<Self> {
 		let cfg = config;
 		let session = Arc::new(
 			zenoh::open(cfg.zenoh_config())
@@ -125,7 +125,7 @@ mod tests {
 	#[tokio::test(flavor = "multi_thread")]
 	//#[serial]
 	async fn communicator_create_multi() -> Result<()> {
-		let mut peer1 = Communicator::new(crate::config::Config::default())?;
+		let mut peer1 = Communicator::new(dimas_config::Config::default())?;
 		peer1.set_prefix("peer1");
 		Ok(())
 	}

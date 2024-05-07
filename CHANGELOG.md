@@ -21,9 +21,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - dimasctl: binary to control DiMAS entities (not yet usable!)
 - dimasmon: binary to monitor DiMAS entities (not yet usable!)
+- crate dimas-commands with commands for usage in dimasctl & dimasmon
 
 ### Changed
-- moved communicator & config into separate crate 'dimas-core' 
+- moved config into separate crate 'dimas-config' 
+- moved communicator into separate crate 'dimas-com' 
+- moved utils & errors into separate crate 'dimas-core' 
 
 ### Fixed
 
