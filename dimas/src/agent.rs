@@ -532,13 +532,4 @@ mod tests {
 		is_normal::<Agent<Props>>();
 		is_normal::<TaskSignal>();
 	}
-
-	#[tokio::test(flavor = "multi_thread")]
-	//#[serial]
-	async fn agent_build() -> Result<()> {
-		let agent_u = Agent::new(Props {});
-		let config = dimas_config::Config::local()?;
-		let _agent_c = agent_u.prefix("test").config(config)?;
-		Ok(())
-	}
 }

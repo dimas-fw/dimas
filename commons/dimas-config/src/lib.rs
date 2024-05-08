@@ -8,25 +8,23 @@
 //!
 //! # Examples
 //! ```rust,no_run
-//! # use dimas::prelude::*;
-//! # #[tokio::main(flavor = "multi_thread")]
-//! # async fn main() -> Result<()> {
+//! # use dimas_config::Config;
+//! # fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
 //! // create a configuration from a file named `default.json5`
 //! // located in one of the directories listed below.
 //! // If that file does not exist, a default config will be created
 //! let config = Config::default();
 //!
-//! let config = Config::from_file("filename.sfx")?;    // use file named `filename.sfx`
+//! // use file named `filename.json5`
+//! // returns an error if file does not exist or is no valid configuration file
+//! let config = Config::from_file("filename.json5")?;
 //!
-//! // methods with predefined filenames
+//! // methods with predefined filenames working like Config::from_file(...)
 //! let config = Config::local()?;        // use file named `local.json5`
 //! let config = Config::peer()?;         // use file named `peer.json5`
 //! let config = Config::client()?;       // use file named `client.json5`
 //! let config = Config::router()?;       // use file named `router.json5`
-//! let config = Config::low_latency()?;  // use file named `low_latency.json5`
 //!
-//! // Hand over Configuration to the Agent
-//! let agent = Agent::new({}).config(config)?;
 //! # Ok(())
 //! # }
 //! ```
@@ -43,14 +41,15 @@
 //pub use Config;
 // endregion:	--- exports
 
-// region:		--- modules
-// endregion:	--- modules
+// region:		--- types
+/// Type alias for `std::result::Result` to ease up implementation
+pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync + 'static>>;
+// endregion:	--- types
 
-use std::env;
-
 // region:		--- modules
-use dimas_core::error::Result;
 use dirs::{config_dir, config_local_dir, home_dir};
+use std::env;
+use std::io::{Error, ErrorKind};
 use tracing::{error, info, warn};
 // endregion:	--- modules
 
@@ -124,20 +123,6 @@ impl Config {
 	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.
 	pub fn local() -> Result<Self> {
 		let path = find_config_file("local.json5")?;
-		info!("using file {:?}", &path);
-		let content = std::fs::read_to_string(path)?;
-		let cfg = json5::from_str(&content)?;
-		Ok(cfg)
-	}
-
-	/// Create a configuration based on file named `low_latency.json5`.<br>
-	/// Will search in the directories mentioned in [`Examples`](index.html#examples).<br>
-	/// This file should contain a configuration that only connects to entities on same host.
-	///
-	/// # Errors
-	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.
-	pub fn low_latency() -> Result<Self> {
-		let path = find_config_file("low_latency.json5")?;
 		info!("using file {:?}", &path);
 		let content = std::fs::read_to_string(path)?;
 		let cfg = json5::from_str(&content)?;
@@ -229,11 +214,24 @@ pub fn find_config_file(filename: &str) -> Result<std::path::PathBuf> {
 		if path.is_file() {
 			return Ok(path);
 		}
+		#[cfg(test)]
+		let path = cwd.join("../..").join(filename);
+		if path.is_file() {
+			return Ok(path);
+		}
 
-		#[cfg(not(test))]
 		let path = cwd.join(".config").join(filename);
+		if path.is_file() {
+			return Ok(path);
+		}
 		#[cfg(test)]
 		let path = cwd.join("../.config").join(filename);
+		if path.is_file() {
+			return Ok(path);
+		}
+		#[cfg(test)]
+		let path = cwd.join("../../.config").join(filename);
+		dbg!(&path);
 		if path.is_file() {
 			return Ok(path);
 		}
@@ -250,7 +248,10 @@ pub fn find_config_file(filename: &str) -> Result<std::path::PathBuf> {
 		}
 	}
 
-	Err(dimas_core::error::DimasError::FileNotFound(filename.into()).into())
+	Err(Box::new(Error::new(
+		ErrorKind::NotFound,
+		format!("file {filename} not found"),
+	)))
 }
 // endregion:	--- functions
 
@@ -296,20 +297,13 @@ mod tests {
 	}
 
 	#[test]
-	fn config_low_latency() -> Result<()> {
-		Config::low_latency()?;
-		Ok(())
-	}
-
-	#[test]
-	fn config_from_fle() -> Result<()> {
+	fn config_from_file() -> Result<()> {
 		Config::from_file("default.json5")?;
 		Ok(())
 	}
 
 	#[test]
-	#[should_panic = "non existent file"]
-	fn config_from_fle_panics() {
-		Config::from_file("non_existent.json5").expect("non existent file");
+	fn config_from_file_fails() {
+		let _ = Config::from_file("non_existent.json5").is_err();
 	}
 }

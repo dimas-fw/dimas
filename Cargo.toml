@@ -4,7 +4,9 @@
 resolver="2"
 
 members = [ 
+	"commons/dimas-com", 
 	"commons/dimas-commands", 
+	"commons/dimas-config", 
 	"commons/dimas-core",
 	"dimas",
 	"dimasctl",
@@ -56,6 +58,7 @@ dimas-commands = { path = "commons/dimas-commands" }
 dimas-config = { path = "commons/dimas-config" }
 dimas-core = { path = "commons/dimas-core" }
 dirs = "5"
+doc-comment = "0.3"
 json5 = "0.4"
 serde = { version = "1", default-features = false, features = ["derive"] }
 slint = "1"

@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 ### Removed
+- low_latency configuration
 
 
 ## [0.1.1] - 2024-05-01

@@ -31,7 +31,7 @@ fn main() {
 		DimasctlCommand::List => {
 			let config = Config::default().zenoh_config();
 			println!("List of available agents:");
-			print!("{}", dimas_commands::list(config));
+			print!("{}", dimas_commands::DimasEntity::fetch(config));
 		}
 	}
 }

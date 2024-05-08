@@ -4,8 +4,8 @@
 //!
 
 // region:		--- modules
-use dimas_core::error::{DimasError, Result};
 use bitcode::{encode, Encode};
+use dimas_core::error::{DimasError, Result};
 use std::fmt::Debug;
 use std::sync::Arc;
 use zenoh::prelude::{r#async::*, sync::SyncResolve};

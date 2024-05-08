@@ -30,6 +30,7 @@ tracing-subscriber = { workspace = true }
 zenoh = { workspace = true }
 
 [dev-dependencies]
+doc-comment = { workspace = true }
 
 [features]
 all = ["liveliness", "publisher", "query", "queryable", "subscriber", "timer"]

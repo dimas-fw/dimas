@@ -16,7 +16,6 @@ categories.workspace = true
 workspace = true
 
 [dependencies]
-dimas-core = { workspace = true }
 dirs = { workspace = true}
 json5 = { workspace = true}
 serde = { workspace = true }
