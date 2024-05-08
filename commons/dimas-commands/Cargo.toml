@@ -14,5 +14,6 @@ categories.workspace = true
 workspace = true
 
 [dependencies]
+derivative = { workspace = true }
 tracing = { workspace = true}
 zenoh = { workspace = true }

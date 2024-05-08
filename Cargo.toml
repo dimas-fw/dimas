@@ -52,6 +52,7 @@ categories = [
 [workspace.dependencies]
 bitcode = "0.6"
 clap = { version = "4", features = ["derive"] }
+derivative = "2"
 dimas = { path = "dimas" }
 dimas-com = { path = "commons/dimas-com" }
 dimas-commands = { path = "commons/dimas-commands" }
