@@ -5,18 +5,20 @@
 
 use std::collections::HashMap;
 // region:		--- modules
+use derivative::Derivative;
+use itertools::Itertools;
 use std::fmt::Display;
 use std::time::Duration;
-use derivative::Derivative;
 use zenoh::config::{Config, WhatAmI};
 use zenoh::prelude::sync::*;
 // endregion:	--- modules
 
 // region:		--- DimasEntity
-/// List of reachable entities
+/// A `DiMAS` entity
 #[derive(Derivative)]
 #[derivative(Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
 pub struct DimasEntity {
+	name: String,
 	zid: String,
 	#[derivative(PartialOrd="ignore", Ord="ignore")]
 	kind: String,
@@ -35,9 +37,9 @@ impl Display for DimasEntity {
 }
 
 impl DimasEntity {
-	/// Fetch the list of reachable entities
+	/// Fetch the list of reachable entities sorted by name of entity
 	/// # Panics
-	///
+	/// if something goes wrong
 	#[must_use]
 	pub fn fetch(config: &Config) -> Vec<Self> {
 		let mut map: HashMap<String, Self> = HashMap::new();
@@ -48,18 +50,22 @@ impl DimasEntity {
 
 		while let Ok(hello) = receiver.recv_timeout(Duration::from_millis(250)) {
 			let zid = hello.zid.to_string();
-			map.insert(zid.clone(), Self {
+			map.entry(zid.clone()).or_insert(Self {
+				name: zid.to_string(),
 				zid,
 				kind: hello.whatami.to_string(),
 				locators: hello.locators,
 			});
 		}
-		//dbg!(&map);
-		let mut result: Vec<Self> = map.values().cloned().collect(); 
-		result.sort();
-		//dbg!(&result);
+		let result: Vec<Self> = map.values().sorted().cloned().collect();
 		
 		result
+	}
+
+	/// Get the Name
+	#[must_use]
+	pub fn name(&self) -> &str {
+		&self.name
 	}
 
 	/// Get the Zenoh ID
@@ -68,7 +74,7 @@ impl DimasEntity {
 		&self.zid
 	}
 
-	/// Get the kind 
+	/// Get the Kind 
 	#[must_use]
 	pub fn kind(&self) -> &str {
 		&self.kind

@@ -15,5 +15,6 @@ workspace = true
 
 [dependencies]
 derivative = { workspace = true }
+itertools = { workspace = true }
 tracing = { workspace = true}
 zenoh = { workspace = true }

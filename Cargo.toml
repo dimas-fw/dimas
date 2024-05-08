@@ -60,6 +60,7 @@ dimas-config = { path = "commons/dimas-config" }
 dimas-core = { path = "commons/dimas-core" }
 dirs = "5"
 doc-comment = "0.3"
+itertools = "0.12"
 json5 = "0.4"
 serde = { version = "1", default-features = false, features = ["derive"] }
 slint = "1"
