@@ -1,5 +1,7 @@
+# Copyright © 2024 Stephan Kunz
+
 [package]
-name = "dimasctl"
+name = "dimas-config"
 rust-version.workspace = true
 edition.workspace = true
 version = "0.0.1"
@@ -10,8 +12,8 @@ keywords.workspace = true
 categories.workspace = true
 homepage.workspace = true
 repository.workspace = true
-description = "dimasctl - a control tool for DiMAS"
-documentation = "https://docs.rs/dimasctl/latest/dimasctl/"
+description = "dimas-config - conofig library for DiMAS"
+documentation = "https://docs.rs/dimas-config/latest/dimas-config/"
 readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -20,8 +22,8 @@ readme = "README.md"
 workspace = true
 
 [dependencies]
-clap = { workspace = true }
-dimas-com = { workspace = true }
-dimas-commands = { workspace = true }
-dimas-config = { workspace = true }
-dimas-core = { workspace = true }
+dirs = { workspace = true}
+json5 = { workspace = true}
+serde = { workspace = true }
+tracing = { workspace = true}
+zenoh = { workspace = true}

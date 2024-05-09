@@ -8,10 +8,10 @@ authors = { workspace = true }
 license-file = { workspace = true }
 keywords = { workspace = true }
 categories = { workspace = true }
-description = "DiMAS - A framework for Distributed Multi Agent Systems"
-homepage = "https://dimas-fw.github.io/"
+homepage.workspace = true
+repository.workspace = true
+description = "dimas - a framework for Distributed Multi Agent Systems"
 documentation = "https://docs.rs/dimas/latest/dimas/"
-repository = "https://github.com/dimas-fw/dimas/"
 readme = "README.md"
 
 [lints]
@@ -20,6 +20,8 @@ workspace = true
 [dependencies]
 bitcode = { workspace = true }
 dirs = { workspace = true }
+dimas-com = { workspace = true }
+dimas-config = { workspace = true }
 dimas-core = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["signal", "time"]}
@@ -28,6 +30,7 @@ tracing-subscriber = { workspace = true }
 zenoh = { workspace = true }
 
 [dev-dependencies]
+doc-comment = { workspace = true }
 
 [features]
 all = ["liveliness", "publisher", "query", "queryable", "subscriber", "timer"]
