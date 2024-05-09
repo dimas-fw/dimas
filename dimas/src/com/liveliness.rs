@@ -367,7 +367,7 @@ where
 {
 	let subscriber = ctx
 		.communicator
-		.session
+		.session()
 		.liveliness()
 		.declare_subscriber(&key_expr)
 		.res_async()
@@ -428,7 +428,7 @@ where
 {
 	let result = ctx
 		.communicator
-		.session
+		.session()
 		.liveliness()
 		.get(&key_expr)
 		.timeout(Duration::from_millis(100))

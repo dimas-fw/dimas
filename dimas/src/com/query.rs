@@ -22,7 +22,7 @@ use zenoh::{
 	sample::Locality,
 };
 
-use super::message::Response;
+use dimas_com::Response;
 // endregion:	--- modules
 
 // region:		--- types
@@ -410,8 +410,8 @@ where
 			.communicator
 			.clone();
 
-		let mut query = communicator
-			.session
+		let session = communicator.session();
+		let mut query = session
 			.get(&self.key_expr)
 			.target(self.target)
 			.consolidation(self.mode)

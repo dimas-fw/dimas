@@ -20,7 +20,6 @@ readme = "README.md"
 workspace = true
 
 [dependencies]
-derivative = { workspace = true }
 dimas-com = { workspace = true }
 dimas-config = { workspace = true }
 itertools = { workspace = true }

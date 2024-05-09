@@ -44,14 +44,16 @@ use crate::com::queryable::Queryable;
 use crate::com::subscriber::Subscriber;
 use crate::com::task_signal::TaskSignal;
 use crate::com::{
-	liveliness::LivelinessSubscriberBuilder, message::Message, publisher::PublisherBuilder,
-	query::QueryBuilder, queryable::QueryableBuilder, subscriber::SubscriberBuilder,
+	liveliness::LivelinessSubscriberBuilder, publisher::PublisherBuilder, query::QueryBuilder,
+	queryable::QueryableBuilder, subscriber::SubscriberBuilder,
 };
+use dimas_com::Message;
+
 #[cfg(feature = "timer")]
 use crate::timer::Timer;
 use crate::timer::TimerBuilder;
 use bitcode::Encode;
-use dimas_com::Communicator;
+use dimas_com::communicator::Communicator;
 use dimas_config::Config;
 use dimas_core::error::{DimasError, Result};
 #[cfg(any(
@@ -509,7 +511,7 @@ where
 {
 	/// Constructor for the [`Context`]
 	pub(crate) fn new(
-		config: Config,
+		config: &Config,
 		props: P,
 		name: Option<String>,
 		prefix: Option<String>,
@@ -566,7 +568,7 @@ where
 	/// Get the [`Agent`]s prefix
 	#[must_use]
 	pub fn prefix(&self) -> &Option<String> {
-		&self.communicator.prefix
+		self.communicator.prefix()
 	}
 
 	/// Gives read access to the [`Agent`]s properties
@@ -692,7 +694,7 @@ where
 			.take()
 			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
 		let ctx = ctx;
-		let session = self.communicator.session.clone();
+		let session = self.communicator.session();
 
 		let replies = session
 			.get(&key_expr)

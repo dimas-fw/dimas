@@ -23,8 +23,10 @@ workspace = true
 
 [dependencies]
 bitcode = { workspace = true}
+derivative = { workspace = true }
 dimas-config = { workspace = true }
 dimas-core = { workspace = true }
+itertools = { workspace = true }
 tokio = { workspace = true}
 tracing = { workspace = true}
 tracing-subscriber = { workspace = true}

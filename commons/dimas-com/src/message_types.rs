@@ -1,6 +1,6 @@
 // Copyright © 2024 Stephan Kunz
 
-//! Module `message` provides the different types of `Message`s used in callbacks.
+//! Module `message_types` provides the different types of `Message`s used in callbacks.
 
 // region:		--- modules
 use bitcode::{decode, encode, Decode, Encode};
@@ -12,7 +12,7 @@ use zenoh::{prelude::sync::SyncResolve, queryable::Query, sample::Sample};
 // region:		--- Message
 /// Implementation of a message received by subscriber callbacks
 #[derive(Debug)]
-pub struct Message(pub(crate) Sample);
+pub struct Message(pub Sample);
 
 impl Deref for Message {
 	type Target = Sample;
@@ -43,7 +43,7 @@ impl Message {
 // region:    --- Request
 /// Implementation of a request for handling within a `Queryable`
 #[derive(Debug)]
-pub struct Request(pub(crate) Query);
+pub struct Request(pub Query);
 
 impl Deref for Request {
 	type Target = Query;
@@ -84,7 +84,7 @@ impl Request {
 // region:		--- Response
 /// Implementation of a response received by query callbacks
 #[derive(Debug)]
-pub struct Response(pub(crate) Sample);
+pub struct Response(pub Sample);
 
 impl Deref for Response {
 	type Target = Sample;
@@ -115,7 +115,7 @@ impl Response {
 // region:		--- Feedback
 /// Implementation of feedback messages
 #[derive(Debug)]
-pub struct Feedback(pub(crate) Sample);
+pub struct Feedback(pub Sample);
 
 impl Deref for Feedback {
 	type Target = Sample;
