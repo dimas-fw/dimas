@@ -549,6 +549,20 @@ where
 		&self.name
 	}
 
+	/// Get the [`Agent`]s fully qualified name
+	#[must_use]
+	pub fn fq_name(&self) -> Option<String> {
+		if self.name().is_some() && self.prefix().is_some() {
+			Some(format!(
+				"{}/{}",
+				self.prefix().clone().expect("snh"),
+				self.name().clone().expect("snh")
+			))
+		} else {
+			self.name().clone()
+		}
+	}
+
 	/// Get the [`Agent`]s prefix
 	#[must_use]
 	pub fn prefix(&self) -> &Option<String> {

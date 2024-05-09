@@ -16,6 +16,7 @@ workspace = true
 
 [dependencies]
 clap = { workspace = true }
+dimas-com = { workspace = true }
 dimas-commands = { workspace = true }
 dimas-config = { workspace = true }
 dimas-core = { workspace = true }

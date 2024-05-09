@@ -44,12 +44,7 @@
 //! A running agent can be properly stopped with `ctrl-c`
 //!
 
-use crate::com::task_signal::{wait_for_task_signals, TaskSignal};
 // region:		--- modules
-use crate::com::{
-	liveliness::LivelinessSubscriberBuilder, publisher::PublisherBuilder, query::QueryBuilder,
-	queryable::QueryableBuilder, subscriber::SubscriberBuilder,
-};
 use crate::context::{ArcContext, Context};
 use crate::timer::TimerBuilder;
 #[cfg(doc)]
@@ -59,6 +54,17 @@ use crate::{
 		subscriber::Subscriber,
 	},
 	timer::Timer,
+};
+use crate::{
+	com::{
+		liveliness::LivelinessSubscriberBuilder,
+		publisher::PublisherBuilder,
+		query::QueryBuilder,
+		queryable::QueryableBuilder,
+		subscriber::SubscriberBuilder,
+		task_signal::{wait_for_task_signals, TaskSignal},
+	},
+	prelude::{Queryable, Request},
 };
 use dimas_config::Config;
 use dimas_core::error::{DimasError, Result};
@@ -73,7 +79,7 @@ use zenoh::{liveliness::LivelinessToken, prelude::sync::SyncResolve, SessionDecl
 // endregion:	--- modules
 
 // region:	   --- UnconfiguredAgent
-/// This is a new Agent without the necessary configuration input
+/// A new Agent without the basic configuration decisions
 #[allow(clippy::module_name_repetitions)]
 #[derive(Debug)]
 pub struct UnconfiguredAgent<P>
@@ -127,7 +133,7 @@ where
 // endregion:   --- UnconfiguredAgent
 
 // region:	   --- Agent
-/// This is a new Agent without the necessary configuration input
+/// An Agent with the basic configuration decisions fixed, but not running
 #[allow(clippy::module_name_repetitions)]
 pub struct Agent<'a, P>
 where
@@ -150,6 +156,7 @@ where
 		f.debug_struct("Agent")
 			.field("id", &self.context.uuid())
 			.field("prefix", self.context.prefix())
+			.field("name", &self.context.name())
 			.finish_non_exhaustive()
 	}
 }
@@ -322,6 +329,16 @@ where
 		self.context.timer()
 	}
 
+	fn about(ctx: &ArcContext<P>, request: Request) -> Result<()> {
+		let value = ctx
+			.fq_name()
+			.unwrap_or_else(|| String::from("NoName"));
+		let query = request.key_expr();
+		info!("Received query for {}, responding with {}", &query, &value);
+		request.reply(value)?;
+		Ok(())
+	}
+
 	/// Start the agent.<br>
 	/// The agent can be stopped properly using `ctrl-c`
 	///
@@ -335,9 +352,18 @@ where
 
 		self.context.start_registered_tasks(&tx)?;
 
+		let session = self.context.communicator.session.clone();
+
+		// create "about" queryable
+		let key_expr = format!("{}/about", session.zid());
+		let mut about_queryable = self
+			.queryable()
+			.key_expr(&key_expr)
+			.callback(Agent::about)
+			.build()?;
+
 		// activate sending liveliness
 		if self.liveliness {
-			let session = self.context.communicator.session.clone();
 			let token_str = self
 				.context
 				.prefix()
@@ -358,12 +384,15 @@ where
 				.replace(token);
 		};
 
+		about_queryable.start(self.context.clone(), tx.clone());
+
 		RunningAgent {
 			rx,
 			tx,
 			context: self.context,
 			liveliness: self.liveliness,
 			liveliness_token: self.liveliness_token,
+			about_queryable,
 		}
 		.run()
 		.await
@@ -372,7 +401,7 @@ where
 // endregion:   --- Agent
 
 // region:	   --- RunningAgent
-/// This is the running Agent
+/// A running Agent, which can't be modified while running
 #[allow(clippy::module_name_repetitions)]
 pub struct RunningAgent<'a, P>
 where
@@ -387,6 +416,9 @@ where
 	/// The liveliness token - typically the uuid sent to other participants<br>
 	/// Is available in the [`LivelinessSubscriber`] callback
 	liveliness_token: RwLock<Option<LivelinessToken<'a>>>,
+	/// Storage for the about queryable
+	#[allow(dead_code)]
+	about_queryable: Queryable<P>,
 }
 
 impl<'a, P> RunningAgent<'a, P>
@@ -499,6 +531,9 @@ where
 	#[tracing::instrument(skip_all)]
 	pub fn stop(mut self) -> Result<Agent<'a, P>> {
 		self.context.stop_registered_tasks()?;
+
+		// stop about queryable
+		self.about_queryable.stop();
 
 		// stop liveliness
 		if self.liveliness {

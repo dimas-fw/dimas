@@ -106,6 +106,20 @@ impl Communicator {
 			.res_sync()
 			.map_err(|_| DimasError::Delete.into())
 	}
+
+	/// Send an ad hoc query using the given `topic`.
+	/// The `topic` will be enhanced with the group prefix.
+	/// Answers are collected via callback
+	/// # Errors
+	///
+	pub fn get(&self, topic: &str) -> Result<()> {
+		let key_expr = self.key_expr(topic);
+
+		self.session
+			.delete(&key_expr)
+			.res_sync()
+			.map_err(|_| DimasError::Delete.into())
+	}
 }
 // endregion:	--- Communicator
 
