@@ -5,7 +5,7 @@
 #![warn(missing_docs)]
 #![doc = include_str!("../README.md")]
 
-#[cfg(feature = "nightly")]
+//#[cfg(feature = "nightly")]
 #[cfg(doctest)]
 doc_comment::doctest!("../README.md");
 

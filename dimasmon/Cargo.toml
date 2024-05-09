@@ -10,7 +10,23 @@ categories.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[lints]
-workspace = true
+[lints.clippy]
+enum_glob_use = "deny"
+pedantic = "deny"
+nursery = "deny"
+unwrap_used = "deny"
+
+[lints.rust]
+unsafe_code = "allow"
+#missing_docs = "warn"
+#unused="allow" # for dev only
+
+[lints.rustdoc]
+private_intra_doc_links = "allow"
 
 [dependencies]
+clap = { workspace = true }
+slint = { workspace = true }
+
+[build-dependencies]
+slint-build = { workspace = true }
