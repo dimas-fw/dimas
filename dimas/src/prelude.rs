@@ -8,8 +8,7 @@ pub extern crate bitcode;
 // region:    --- modules
 // re-exports
 // used std synchronisation primitives
-pub use std::sync::Arc;
-pub use std::sync::RwLock;
+pub use std::sync::{Arc, RwLock};
 // bitcode encoding/decoding
 pub use bitcode::{Decode, Encode};
 // zenoh stuff

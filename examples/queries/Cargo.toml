@@ -22,7 +22,7 @@ name = "query"
 path = "src/query.rs"
 
 [dependencies]
-dimas = { workspace = true, features = ["timer", "query", "queryable"] }
+dimas = { workspace = true }
 tokio = { workspace = true, features = ["macros"] }
 tracing = { workspace = true }
 

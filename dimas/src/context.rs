@@ -32,15 +32,10 @@
 // these ones are only for doc needed
 #[cfg(doc)]
 use crate::agent::Agent;
-#[cfg(feature = "liveliness")]
 use crate::com::liveliness::LivelinessSubscriber;
-#[cfg(feature = "publisher")]
 use crate::com::publisher::Publisher;
-#[cfg(feature = "query")]
 use crate::com::query::Query;
-#[cfg(feature = "queryable")]
 use crate::com::queryable::Queryable;
-#[cfg(feature = "subscriber")]
 use crate::com::subscriber::Subscriber;
 use crate::com::task_signal::TaskSignal;
 use crate::com::{
@@ -49,43 +44,27 @@ use crate::com::{
 };
 use dimas_com::Message;
 
-#[cfg(feature = "timer")]
 use crate::timer::Timer;
 use crate::timer::TimerBuilder;
 use bitcode::Encode;
 use dimas_com::communicator::Communicator;
 use dimas_config::Config;
 use dimas_core::error::{DimasError, Result};
-#[cfg(any(
-	feature = "liveliness",
-	feature = "publisher",
-	feature = "query",
-	feature = "queryable",
-	feature = "subscriber",
-	feature = "timer",
-))]
-use std::collections::HashMap;
-use std::ops::Deref;
-use std::sync::mpsc::Sender;
-use std::sync::RwLock;
-use std::{fmt::Debug, sync::Arc};
-use tracing::error;
-use tracing::{instrument, Level};
-use zenoh::prelude::sync::SyncResolve;
-use zenoh::prelude::SampleKind;
-use zenoh::query::ConsolidationMode;
+use std::{
+	collections::HashMap,
+	fmt::Debug,
+	ops::Deref,
+	sync::{mpsc::Sender, Arc, RwLock},
+};
+use tracing::{error, instrument, Level};
+use zenoh::{
+	prelude::{sync::SyncResolve, SampleKind},
+	query::ConsolidationMode,
+};
 // endregion:	--- modules
 
 // region:		--- types
 // the initial size of the HashMaps
-#[cfg(any(
-	feature = "liveliness",
-	feature = "publisher",
-	feature = "query",
-	feature = "queryable",
-	feature = "subscriber",
-	feature = "timer",
-))]
 const INITIAL_SIZE: usize = 9;
 // endregion:	--- types
 
@@ -153,7 +132,6 @@ where
 	#[allow(unused_variables)]
 	pub(crate) fn start_registered_tasks(&self, tx: &Sender<TaskSignal>) -> Result<()> {
 		// start liveliness subscriber
-		#[cfg(feature = "liveliness")]
 		self.inner
 			.liveliness_subscribers
 			.write()
@@ -164,7 +142,6 @@ where
 			});
 
 		// start all registered queryables
-		#[cfg(feature = "queryable")]
 		self.inner
 			.queryables
 			.write()
@@ -175,7 +152,6 @@ where
 			});
 
 		// start all registered subscribers
-		#[cfg(feature = "subscriber")]
 		self.inner
 			.subscribers
 			.write()
@@ -186,7 +162,6 @@ where
 			});
 
 		// init all registered publishers
-		#[cfg(feature = "publisher")]
 		self.inner
 			.publishers
 			.write()
@@ -202,7 +177,6 @@ where
 			});
 
 		// init all registered queries
-		#[cfg(feature = "query")]
 		self.inner
 			.queries
 			.write()
@@ -218,7 +192,6 @@ where
 			});
 
 		// start all registered timers
-		#[cfg(feature = "timer")]
 		self.inner
 			.timers
 			.write()
@@ -239,7 +212,6 @@ where
 	pub(crate) fn stop_registered_tasks(&mut self) -> Result<()> {
 		// reverse order of start!
 		// stop all registered timers
-		#[cfg(feature = "timer")]
 		self.inner
 			.timers
 			.write()
@@ -250,7 +222,6 @@ where
 			});
 
 		// de-init all registered queries
-		#[cfg(feature = "query")]
 		self.inner
 			.queries
 			.write()
@@ -266,7 +237,6 @@ where
 			});
 
 		// de-init all registered publishers
-		#[cfg(feature = "publisher")]
 		self.inner
 			.publishers
 			.write()
@@ -277,7 +247,6 @@ where
 			});
 
 		// stop all registered subscribers
-		#[cfg(feature = "subscriber")]
 		self.inner
 			.subscribers
 			.write()
@@ -288,7 +257,6 @@ where
 			});
 
 		// stop all registered queryables
-		#[cfg(feature = "queryable")]
 		self.inner
 			.queryables
 			.write()
@@ -298,25 +266,20 @@ where
 				queryable.1.stop();
 			});
 
-		#[cfg(feature = "liveliness")]
-		{
-			// stop all registered liveliness subscribers
-			#[cfg(feature = "liveliness")]
-			self.inner
-				.liveliness_subscribers
-				.write()
-				.map_err(|_| DimasError::ModifyContext("liveliness subscribers".into()))?
-				.iter_mut()
-				.for_each(|subscriber| {
-					subscriber.1.stop();
-				});
-		}
+		// stop all registered liveliness subscribers
+		self.inner
+			.liveliness_subscribers
+			.write()
+			.map_err(|_| DimasError::ModifyContext("liveliness subscribers".into()))?
+			.iter_mut()
+			.for_each(|subscriber| {
+				subscriber.1.stop();
+			});
 
 		Ok(())
 	}
 
 	/// Get a [`LivelinessSubscriberBuilder`], the builder for a [`LivelinessSubscriber`].
-	#[cfg(feature = "liveliness")]
 	#[must_use]
 	pub fn liveliness_subscriber(
 		&self,
@@ -328,39 +291,16 @@ where
 		LivelinessSubscriberBuilder::new(self.prefix().clone())
 			.storage(self.liveliness_subscribers.clone())
 	}
-	/// Get a [`LivelinessSubscriberBuilder`], the builder for a [`LivelinessSubscriber`].
-	#[cfg(not(feature = "liveliness"))]
-	#[must_use]
-	pub fn liveliness_subscriber(
-		&self,
-	) -> LivelinessSubscriberBuilder<
-		P,
-		crate::com::liveliness::NoPutCallback,
-		crate::com::liveliness::NoStorage,
-	> {
-		LivelinessSubscriberBuilder::new(self.prefix().clone())
-	}
 
 	/// Get a [`PublisherBuilder`], the builder for a [`Publisher`].
-	#[cfg(feature = "publisher")]
 	#[must_use]
 	pub fn publisher(
 		&self,
 	) -> PublisherBuilder<crate::com::publisher::NoKeyExpression, crate::com::publisher::Storage> {
 		PublisherBuilder::new(self.prefix().clone()).storage(self.publishers.clone())
 	}
-	/// Get a [`PublisherBuilder`], the builder for a [`Publisher`].
-	#[cfg(not(feature = "publisher"))]
-	#[must_use]
-	pub fn publisher(
-		&self,
-	) -> PublisherBuilder<crate::com::publisher::NoKeyExpression, crate::com::publisher::NoStorage>
-	{
-		PublisherBuilder::new(self.prefix().clone())
-	}
 
 	/// Get a [`QueryBuilder`], the builder for a [`Query`].
-	#[cfg(feature = "query")]
 	#[must_use]
 	pub fn query(
 		&self,
@@ -372,22 +312,8 @@ where
 	> {
 		QueryBuilder::new(self.prefix().clone()).storage(self.queries.clone())
 	}
-	/// Get a [`QueryBuilder`], the builder for a [`Query`].
-	#[cfg(not(feature = "query"))]
-	#[must_use]
-	pub fn query(
-		&self,
-	) -> QueryBuilder<
-		P,
-		crate::com::query::NoKeyExpression,
-		crate::com::query::NoResponseCallback,
-		crate::com::query::NoStorage,
-	> {
-		QueryBuilder::new(self.prefix().clone())
-	}
 
 	/// Get a [`QueryableBuilder`], the builder for a [`Queryable`].
-	#[cfg(feature = "queryable")]
 	#[must_use]
 	pub fn queryable(
 		&self,
@@ -399,22 +325,8 @@ where
 	> {
 		QueryableBuilder::new(self.prefix().clone()).storage(self.queryables.clone())
 	}
-	/// Get a [`QueryableBuilder`], the builder for a [`Queryable`].
-	#[cfg(not(feature = "queryable"))]
-	#[must_use]
-	pub fn queryable(
-		&self,
-	) -> QueryableBuilder<
-		P,
-		crate::com::queryable::NoKeyExpression,
-		crate::com::queryable::NoRequestCallback,
-		crate::com::queryable::NoStorage,
-	> {
-		QueryableBuilder::new(self.prefix().clone())
-	}
 
 	/// Get a [`SubscriberBuilder`], the builder for a [`Subscriber`].
-	#[cfg(feature = "subscriber")]
 	#[must_use]
 	pub fn subscriber(
 		&self,
@@ -426,22 +338,8 @@ where
 	> {
 		SubscriberBuilder::new(self.prefix().clone()).storage(self.subscribers.clone())
 	}
-	/// Get a [`SubscriberBuilder`], the builder for a [`Subscriber`].
-	#[cfg(not(feature = "subscriber"))]
-	#[must_use]
-	pub fn subscriber(
-		&self,
-	) -> SubscriberBuilder<
-		P,
-		crate::com::subscriber::NoKeyExpression,
-		crate::com::subscriber::NoPutCallback,
-		crate::com::subscriber::NoStorage,
-	> {
-		SubscriberBuilder::new(self.prefix().clone())
-	}
 
 	/// Get a [`TimerBuilder`], the builder for a [`Timer`].
-	#[cfg(feature = "timer")]
 	#[must_use]
 	pub fn timer(
 		&self,
@@ -453,20 +351,6 @@ where
 		crate::timer::Storage<P>,
 	> {
 		TimerBuilder::new(self.prefix().clone()).storage(self.timers.clone())
-	}
-	/// Get a [`TimerBuilder`], the builder for a [`Timer`].
-	#[cfg(not(feature = "timer"))]
-	#[must_use]
-	pub fn timer(
-		&self,
-	) -> TimerBuilder<
-		P,
-		crate::timer::NoKeyExpression,
-		crate::timer::NoInterval,
-		crate::timer::NoIntervalCallback,
-		crate::timer::NoStorage,
-	> {
-		TimerBuilder::new(self.prefix().clone())
 	}
 }
 // endregion:	--- ArcContext
@@ -486,22 +370,16 @@ where
 	/// The [`Agent`]s [`Communicator`]
 	pub(crate) communicator: Arc<Communicator>,
 	/// Registered [`LivelinessSubscriber`]
-	#[cfg(feature = "liveliness")]
 	pub(crate) liveliness_subscribers: Arc<RwLock<HashMap<String, LivelinessSubscriber<P>>>>,
 	/// Registered [`Publisher`]
-	#[cfg(feature = "publisher")]
 	pub(crate) publishers: Arc<RwLock<HashMap<String, Publisher>>>,
 	/// Registered [`Query`]s
-	#[cfg(feature = "query")]
 	pub(crate) queries: Arc<RwLock<HashMap<String, Query<P>>>>,
 	/// Registered [`Queryable`]s
-	#[cfg(feature = "queryable")]
 	pub(crate) queryables: Arc<RwLock<HashMap<String, Queryable<P>>>>,
 	/// Registered [`Subscriber`]
-	#[cfg(feature = "subscriber")]
 	pub(crate) subscribers: Arc<RwLock<HashMap<String, Subscriber<P>>>>,
 	/// Registered [`Timer`]
-	#[cfg(feature = "timer")]
 	pub(crate) timers: Arc<RwLock<HashMap<String, Timer<P>>>>,
 }
 
@@ -524,17 +402,11 @@ where
 			name,
 			communicator: Arc::new(communicator),
 			props: Arc::new(RwLock::new(props)),
-			#[cfg(feature = "liveliness")]
 			liveliness_subscribers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
-			#[cfg(feature = "publisher")]
 			publishers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
-			#[cfg(feature = "query")]
 			queries: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
-			#[cfg(feature = "query")]
 			queryables: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
-			#[cfg(feature = "subscriber")]
 			subscribers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
-			#[cfg(feature = "timer")]
 			timers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 		})
 	}
@@ -605,7 +477,6 @@ where
 	///
 	/// # Errors
 	///
-	#[cfg(feature = "publisher")]
 	#[instrument(level = Level::ERROR, skip_all)]
 	pub fn put_with<M>(&self, topic: &str, message: M) -> Result<()>
 	where
@@ -646,7 +517,6 @@ where
 	///
 	/// # Errors
 	///
-	#[cfg(feature = "publisher")]
 	#[instrument(level = Level::ERROR, skip_all)]
 	pub fn delete_with(&self, topic: &str) -> Result<()> {
 		let key_expr = self
@@ -724,7 +594,6 @@ where
 	///
 	/// # Errors
 	///
-	#[cfg(feature = "query")]
 	#[instrument(level = Level::ERROR, skip_all)]
 	pub fn get_with(&self, topic: &str) -> Result<()> {
 		let key_expr = self

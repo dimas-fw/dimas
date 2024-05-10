@@ -31,15 +31,11 @@ impl Display for AboutEntity {
 }
 
 impl AboutEntity {
-  /// Constructor
-  #[must_use]
-  pub const fn new(name: String, kind: String, zid: String) -> Self {
-    Self {
-      name,
-      kind,
-      zid,
-    }
-  }
+	/// Constructor
+	#[must_use]
+	pub const fn new(name: String, kind: String, zid: String) -> Self {
+		Self { name, kind, zid }
+	}
 
 	/// Get the Name
 	#[must_use]
@@ -83,15 +79,15 @@ impl Display for ScoutingEntity {
 }
 
 impl ScoutingEntity {
-  /// Constructor
-  #[must_use]
-  pub fn new(zid: String, kind: String, locators: Vec<Locator>) -> Self {
-    Self {
-      zid,
-      kind,
-      locators,
-    }
-  }
+	/// Constructor
+	#[must_use]
+	pub fn new(zid: String, kind: String, locators: Vec<Locator>) -> Self {
+		Self {
+			zid,
+			kind,
+			locators,
+		}
+	}
 
 	/// Get the Zenoh ID
 	#[must_use]

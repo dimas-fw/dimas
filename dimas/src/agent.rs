@@ -45,6 +45,14 @@
 //!
 
 // region:		--- modules
+use crate::com::{
+	liveliness::LivelinessSubscriberBuilder,
+	publisher::PublisherBuilder,
+	query::QueryBuilder,
+	queryable::{Queryable, QueryableBuilder},
+	subscriber::SubscriberBuilder,
+	task_signal::{wait_for_task_signals, TaskSignal},
+};
 use crate::context::{ArcContext, Context};
 use crate::timer::TimerBuilder;
 #[cfg(doc)]
@@ -55,22 +63,13 @@ use crate::{
 	},
 	timer::Timer,
 };
-use crate::com::{
-	liveliness::LivelinessSubscriberBuilder,
-	publisher::PublisherBuilder,
-	query::QueryBuilder,
-	queryable::{Queryable, QueryableBuilder},
-	subscriber::SubscriberBuilder,
-	task_signal::{wait_for_task_signals, TaskSignal},
-};
 use dimas_com::messages::AboutEntity;
 use dimas_com::Request;
 use dimas_config::Config;
 use dimas_core::error::{DimasError, Result};
-use std::sync::RwLock;
 use std::{
 	fmt::Debug,
-	sync::{mpsc, Mutex},
+	sync::{mpsc, Mutex, RwLock},
 };
 use tokio::{select, signal};
 use tracing::{error, info};
@@ -176,7 +175,6 @@ where
 	}
 
 	/// Get a builder for a [`LivelinessSubscriber`]
-	#[cfg(feature = "liveliness")]
 	#[must_use]
 	pub fn liveliness_subscriber(
 		&self,
@@ -187,39 +185,16 @@ where
 	> {
 		self.context.liveliness_subscriber()
 	}
-	/// Get a builder for a [`LivelinessSubscriber`]
-	#[cfg(not(feature = "liveliness"))]
-	#[must_use]
-	pub fn liveliness_subscriber(
-		&self,
-	) -> LivelinessSubscriberBuilder<
-		P,
-		crate::com::liveliness::NoPutCallback,
-		crate::com::liveliness::NoStorage,
-	> {
-		self.context.liveliness_subscriber()
-	}
 
 	/// Get a builder for a [`Publisher`]
-	#[cfg(feature = "publisher")]
 	#[must_use]
 	pub fn publisher(
 		&self,
 	) -> PublisherBuilder<crate::com::publisher::NoKeyExpression, crate::com::publisher::Storage> {
 		self.context.publisher()
 	}
-	/// Get a builder for a [`Publisher`]
-	#[cfg(not(feature = "publisher"))]
-	#[must_use]
-	pub fn publisher(
-		&self,
-	) -> PublisherBuilder<crate::com::publisher::NoKeyExpression, crate::com::publisher::NoStorage>
-	{
-		self.context.publisher()
-	}
 
 	/// Get a builder for a [`Query`]
-	#[cfg(feature = "query")]
 	#[must_use]
 	pub fn query(
 		&self,
@@ -231,22 +206,8 @@ where
 	> {
 		self.context.query()
 	}
-	/// Get a builder for a [`Query`]
-	#[cfg(not(feature = "query"))]
-	#[must_use]
-	pub fn query(
-		&self,
-	) -> QueryBuilder<
-		P,
-		crate::com::query::NoKeyExpression,
-		crate::com::query::NoResponseCallback,
-		crate::com::query::NoStorage,
-	> {
-		self.context.query()
-	}
 
 	/// Get a builder for a [`Queryable`]
-	#[cfg(feature = "queryable")]
 	#[must_use]
 	pub fn queryable(
 		&self,
@@ -258,22 +219,8 @@ where
 	> {
 		self.context.queryable()
 	}
-	/// Get a builder for a [`Queryable`]
-	#[cfg(not(feature = "queryable"))]
-	#[must_use]
-	pub fn queryable(
-		&self,
-	) -> QueryableBuilder<
-		P,
-		crate::com::queryable::NoKeyExpression,
-		crate::com::queryable::NoRequestCallback,
-		crate::com::queryable::NoStorage,
-	> {
-		self.context.queryable()
-	}
 
 	/// Get a builder for a [`Subscriber`]
-	#[cfg(feature = "subscriber")]
 	#[must_use]
 	pub fn subscriber(
 		&self,
@@ -285,23 +232,8 @@ where
 	> {
 		self.context.subscriber()
 	}
-	/// Get a builder for a [`Subscriber`]
-	#[cfg(not(feature = "subscriber"))]
-	#[must_use]
-	pub fn subscriber(
-		&self,
-	) -> SubscriberBuilder<
-		P,
-		crate::com::subscriber::NoKeyExpression,
-		crate::com::subscriber::NoPutCallback,
-		crate::com::subscriber::NoStorage,
-	> {
-		self.context.subscriber()
-	}
 
 	/// Get a builder for a [`Timer`]
-	#[cfg(feature = "timer")]
-	#[must_use]
 	pub fn timer(
 		&self,
 	) -> TimerBuilder<
@@ -310,20 +242,6 @@ where
 		crate::timer::NoInterval,
 		crate::timer::NoIntervalCallback,
 		crate::timer::Storage<P>,
-	> {
-		self.context.timer()
-	}
-	/// Get a builder for a [`Timer`]
-	#[cfg(not(feature = "timer"))]
-	#[must_use]
-	pub fn timer(
-		&self,
-	) -> TimerBuilder<
-		P,
-		crate::timer::NoKeyExpression,
-		crate::timer::NoInterval,
-		crate::timer::NoIntervalCallback,
-		crate::timer::NoStorage,
 	> {
 		self.context.timer()
 	}
@@ -429,25 +347,12 @@ where
 {
 	/// run
 	async fn run(mut self) -> Result<Agent<'a, P>> {
-		#[cfg(not(any(
-			feature = "liveliness",
-			feature = "publisher",
-			feature = "query",
-			feature = "queryable",
-			feature = "subscriber",
-			feature = "timer",
-		)))]
-		{
-			let tx = self.tx.clone();
-			std::mem::drop(tx);
-		}
 		loop {
 			// different possibilities that can happen
 			select! {
 				// `TaskSignal`s
 				signal = wait_for_task_signals(&self.rx) => {
 					match *signal {
-						#[cfg(feature = "liveliness")]
 						TaskSignal::RestartLiveliness(key_expr) => {
 							self.context.liveliness_subscribers
 								.write()
@@ -456,7 +361,6 @@ where
 								.ok_or(DimasError::ShouldNotHappen)?
 								.start(self.context.clone(), self.tx.clone());
 						},
-						#[cfg(feature = "queryable")]
 						TaskSignal::RestartQueryable(key_expr) => {
 							self.context.queryables
 								.write()
@@ -465,7 +369,6 @@ where
 								.ok_or(DimasError::ShouldNotHappen)?
 								.start(self.context.clone(), self.tx.clone());
 						},
-						#[cfg(feature = "subscriber")]
 						TaskSignal::RestartSubscriber(key_expr) => {
 							self.context.subscribers
 								.write()
@@ -474,7 +377,6 @@ where
 								.ok_or(DimasError::ShouldNotHappen)?
 								.start(self.context.clone(), self.tx.clone());
 						},
-						#[cfg(feature = "timer")]
 						TaskSignal::RestartTimer(key_expr) => {
 							self.context.timers
 								.write()
@@ -483,7 +385,6 @@ where
 								.ok_or(DimasError::ShouldNotHappen)?
 								.start(self.context.clone(), self.tx.clone());
 						},
-						TaskSignal::Dummy => {},
 					};
 				}
 
