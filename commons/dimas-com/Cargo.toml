@@ -4,11 +4,17 @@
 name = "dimas-com"
 rust-version.workspace = true
 edition.workspace = true
-version.workspace = true
+version = "0.0.1"
+#version.workspace = true
 authors.workspace = true
 license-file.workspace = true
 keywords.workspace = true
 categories.workspace = true
+homepage.workspace = true
+repository.workspace = true
+description = "dimas-com - communication library for DiMAS"
+documentation = "https://docs.rs/dimas-com/latest/dimas-com/"
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -17,8 +23,10 @@ workspace = true
 
 [dependencies]
 bitcode = { workspace = true}
+derivative = { workspace = true }
 dimas-config = { workspace = true }
 dimas-core = { workspace = true }
+itertools = { workspace = true }
 tokio = { workspace = true}
 tracing = { workspace = true}
 tracing-subscriber = { workspace = true}

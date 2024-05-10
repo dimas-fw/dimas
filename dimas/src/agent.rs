@@ -30,7 +30,7 @@
 //!   let properties = AgentProps {};
 //!
 //!   // create an agent with the properties and a default configuration
-//!   let mut agent = Agent::new(properties).config(Config::default())?;
+//!   let mut agent = Agent::new(properties).config(&Config::default())?;
 //!
 //!   // configuration of the agent
 //!   // ...
@@ -50,22 +50,21 @@ use crate::timer::TimerBuilder;
 #[cfg(doc)]
 use crate::{
 	com::{
-		liveliness::LivelinessSubscriber, publisher::Publisher, query::Query, queryable::Queryable,
+		liveliness::LivelinessSubscriber, publisher::Publisher, query::Query,
 		subscriber::Subscriber,
 	},
 	timer::Timer,
 };
-use crate::{
-	com::{
-		liveliness::LivelinessSubscriberBuilder,
-		publisher::PublisherBuilder,
-		query::QueryBuilder,
-		queryable::QueryableBuilder,
-		subscriber::SubscriberBuilder,
-		task_signal::{wait_for_task_signals, TaskSignal},
-	},
-	prelude::{Queryable, Request},
+use crate::com::{
+	liveliness::LivelinessSubscriberBuilder,
+	publisher::PublisherBuilder,
+	query::QueryBuilder,
+	queryable::{Queryable, QueryableBuilder},
+	subscriber::SubscriberBuilder,
+	task_signal::{wait_for_task_signals, TaskSignal},
 };
+use dimas_com::messages::AboutEntity;
+use dimas_com::Request;
 use dimas_config::Config;
 use dimas_core::error::{DimasError, Result};
 use std::sync::RwLock;
@@ -121,7 +120,7 @@ where
 	/// Set the [`Config`]uration.
 	///
 	/// # Errors
-	pub fn config(self, config: Config) -> Result<Agent<'a, P>> {
+	pub fn config(self, config: &Config) -> Result<Agent<'a, P>> {
 		let context = Context::new(config, self.props, self.name, self.prefix)?.into();
 		Ok(Agent {
 			context,
@@ -330,9 +329,12 @@ where
 	}
 
 	fn about(ctx: &ArcContext<P>, request: Request) -> Result<()> {
-		let value = ctx
+		let name = ctx
 			.fq_name()
 			.unwrap_or_else(|| String::from("NoName"));
+		let mode = ctx.communicator.mode().to_string();
+		let zid = ctx.communicator.uuid();
+		let value = AboutEntity::new(name, mode, zid);
 		let query = request.key_expr();
 		info!("Received query for {}, responding with {}", &query, &value);
 		request.reply(value)?;
@@ -352,7 +354,7 @@ where
 
 		self.context.start_registered_tasks(&tx)?;
 
-		let session = self.context.communicator.session.clone();
+		let session = self.context.communicator.session();
 
 		// create "about" queryable
 		let key_expr = format!("{}/about", session.zid());

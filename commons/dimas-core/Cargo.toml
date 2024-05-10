@@ -4,11 +4,17 @@
 name = "dimas-core"
 rust-version.workspace = true
 edition.workspace = true
-version.workspace = true
+version = "0.0.1"
+#version.workspace = true
 authors.workspace = true
 license-file.workspace = true
 keywords.workspace = true
 categories.workspace = true
+homepage.workspace = true
+repository.workspace = true
+description = "dimas-core - core library for DiMAS"
+documentation = "https://docs.rs/dimas-core/latest/dimas-core/"
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

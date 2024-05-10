@@ -9,8 +9,6 @@
 use super::agent::Agent;
 /// `Liveliness`
 pub mod liveliness;
-/// `Message`
-pub mod message;
 /// `Publisher`
 pub mod publisher;
 /// `Query`

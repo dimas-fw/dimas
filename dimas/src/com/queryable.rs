@@ -3,7 +3,9 @@
 //! Module `queryable` provides an information/compute provider `Queryable` which can be created using the `QueryableBuilder`.
 
 // region:		--- modules
+use super::task_signal::TaskSignal;
 use crate::context::ArcContext;
+use dimas_com::Request;
 use dimas_core::error::{DimasError, Result};
 #[allow(unused_imports)]
 use std::collections::HashMap;
@@ -20,8 +22,6 @@ use tracing::info;
 use tracing::{error, instrument, warn, Level};
 use zenoh::prelude::{r#async::AsyncResolve, SessionDeclarations};
 use zenoh::sample::Locality;
-
-use super::{message::Request, task_signal::TaskSignal};
 // endregion:	--- modules
 
 // region:		--- types
@@ -397,7 +397,7 @@ where
 {
 	let subscriber = ctx
 		.communicator
-		.session
+		.session()
 		.declare_queryable(&key_expr)
 		.complete(completeness)
 		.allowed_origin(allowed_origin)

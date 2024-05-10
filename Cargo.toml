@@ -35,7 +35,7 @@ unwrap_used = "deny"
 [workspace.package]
 rust-version = "1.77.0"
 edition = "2021"
-version = "0.1.2"
+version = "0.2.0"
 authors = [
 	"stepkun <stephan.kunz@kabelbw.de>",
 ]
@@ -48,6 +48,8 @@ categories = [
 	"science::robotics",
 	"simulation"
 ]
+homepage = "https://dimas-fw.github.io/"
+repository = "https://github.com/dimas-fw/dimas/"
 
 [workspace.dependencies]
 bitcode = "0.6"

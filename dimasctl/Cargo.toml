@@ -8,6 +8,11 @@ authors.workspace = true
 license-file.workspace = true
 keywords.workspace = true
 categories.workspace = true
+homepage.workspace = true
+repository.workspace = true
+description = "dimasctl - a control tool for DiMAS"
+documentation = "https://docs.rs/dimasctl/latest/dimasctl/"
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

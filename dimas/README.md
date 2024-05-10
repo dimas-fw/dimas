@@ -95,7 +95,7 @@ async fn main() -> Result<()> {
 
 	// create an agent with the properties and default configuration
 	let mut agent = Agent::new(properties)
-		.config(Config::default())?;
+		.config(&Config::default())?;
 
 	// create publisher for topic "hello"
 	agent
@@ -164,7 +164,7 @@ async fn main() -> Result<()> {
 
 	// create an agent with the properties and default configuration
 	let agent = Agent::new(properties)
-		.config(Config::default())?;
+		.config(&Config::default())?;
 
 	// subscribe to "hello" messages
 	agent

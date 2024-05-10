@@ -8,10 +8,10 @@ authors = { workspace = true }
 license-file = { workspace = true }
 keywords = { workspace = true }
 categories = { workspace = true }
-description = "DiMAS - A framework for Distributed Multi Agent Systems"
-homepage = "https://dimas-fw.github.io/"
+homepage.workspace = true
+repository.workspace = true
+description = "dimas - a framework for Distributed Multi Agent Systems"
 documentation = "https://docs.rs/dimas/latest/dimas/"
-repository = "https://github.com/dimas-fw/dimas/"
 readme = "README.md"
 
 [lints]

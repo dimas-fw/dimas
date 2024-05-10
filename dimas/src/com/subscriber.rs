@@ -5,9 +5,11 @@
 
 // region:		--- modules
 // these ones are only for doc needed
+use super::task_signal::TaskSignal;
 #[cfg(doc)]
 use crate::agent::Agent;
 use crate::context::ArcContext;
+use dimas_com::Message;
 use dimas_core::error::{DimasError, Result};
 #[allow(unused_imports)]
 use std::collections::HashMap;
@@ -22,8 +24,6 @@ use zenoh::{
 	prelude::{r#async::AsyncResolve, SampleKind, SessionDeclarations},
 	subscriber::Reliability,
 };
-
-use super::{message::Message, task_signal::TaskSignal};
 // endregion:	--- modules
 
 // region:		--- types
@@ -420,7 +420,7 @@ where
 {
 	let subscriber = ctx
 		.communicator
-		.session
+		.session()
 		.declare_subscriber(&key_expr)
 		.reliability(reliability)
 		.res_async()
