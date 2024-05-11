@@ -33,17 +33,23 @@ fn main() {
 
 	match &args.command {
 		DimasctlCommand::List => {
-			let com = Communicator::new(config).expect("failed to create 'Communicator'");
+			let com = Communicator::new(&config).expect("failed to create 'Communicator'");
 			println!("List of running DiMAS entities:");
-			println!("{:32}  {:6}  Name", "ZenohId", "Kind");
+			println!("ZenohId                           Kind    State       Prefix/Name");
 			for item in dimas_commands::about_list(&com) {
-				println!("{item}");
+				println!(
+					"{:32}  {:6}  {:10}  {}",
+					item.zid(),
+					item.kind(),
+					item.state(),
+					item.name()
+				);
 			}
 		}
 		DimasctlCommand::Scout => {
 			println!("List of scouted Zenoh entities:");
-			println!("{:32}  {:6}  Locators", "ZenohId", "Kind");
-			for item in dimas_commands::ScoutingEntity::scout(&config) {
+			println!("ZenohId                           Kind    Locators");
+			for item in dimas_commands::scouting_list(&config) {
 				println!(
 					"{:32}  {:6}  {:?}",
 					item.zid(),

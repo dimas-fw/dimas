@@ -5,14 +5,12 @@
 // region:		--- modules
 use crate::context::ArcContext;
 use dimas_core::error::{DimasError, Result};
-#[allow(unused_imports)]
+#[cfg(doc)]
 use std::collections::HashMap;
-#[cfg(feature = "query")]
-use std::sync::RwLock;
 use std::{
 	fmt::Debug,
 	marker::PhantomData,
-	sync::{Arc, Mutex},
+	sync::{Arc, Mutex, RwLock},
 	time::Duration,
 };
 use tracing::{error, instrument, Level};
@@ -22,7 +20,7 @@ use zenoh::{
 	sample::Locality,
 };
 
-use super::message::Response;
+use dimas_com::Response;
 // endregion:	--- modules
 
 // region:		--- types
@@ -36,7 +34,6 @@ pub type QueryCallback<P> =
 /// State signaling that the [`QueryBuilder`] has no storage value set
 pub struct NoStorage;
 /// State signaling that the [`QueryBuilder`] has the storage value set
-#[cfg(feature = "query")]
 pub struct Storage<P>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -240,7 +237,6 @@ where
 	}
 }
 
-#[cfg(feature = "query")]
 impl<P, K, C> QueryBuilder<P, K, C, NoStorage>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -305,7 +301,6 @@ where
 	}
 }
 
-#[cfg(any(docsrs, doc, feature = "query"))]
 impl<P> QueryBuilder<P, KeyExpression, ResponseCallback<P>, Storage<P>>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -410,8 +405,8 @@ where
 			.communicator
 			.clone();
 
-		let mut query = communicator
-			.session
+		let session = communicator.session();
+		let mut query = session
 			.get(&self.key_expr)
 			.target(self.target)
 			.consolidation(self.mode)

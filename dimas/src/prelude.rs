@@ -8,8 +8,7 @@ pub extern crate bitcode;
 // region:    --- modules
 // re-exports
 // used std synchronisation primitives
-pub use std::sync::Arc;
-pub use std::sync::RwLock;
+pub use std::sync::{Arc, RwLock};
 // bitcode encoding/decoding
 pub use bitcode::{Decode, Encode};
 // zenoh stuff
@@ -23,7 +22,6 @@ pub use zenoh::subscriber::Reliability;
 // dimas stuff
 pub use crate::agent::Agent;
 pub use crate::com::liveliness::{LivelinessSubscriber, LivelinessSubscriberBuilder};
-pub use crate::com::message::{Message, Request, Response};
 pub use crate::com::publisher::{Publisher, PublisherBuilder};
 pub use crate::com::query::{Query, QueryBuilder};
 pub use crate::com::queryable::{Queryable, QueryableBuilder};
@@ -31,6 +29,7 @@ pub use crate::com::subscriber::{Subscriber, SubscriberBuilder};
 pub use crate::context::ArcContext;
 pub use crate::timer::{Timer, TimerBuilder};
 
+pub use dimas_com::{Message, Request, Response};
 pub use dimas_config::Config;
 pub use dimas_core::error::{DimasError, Result};
 pub use dimas_core::utils::init_tracing;

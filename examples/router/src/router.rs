@@ -18,7 +18,8 @@ async fn main() -> Result<()> {
 	// create an agent with the properties and router configuration
 	let mut router = Agent::new(properties)
 		.prefix("examples")
-		.config(Config::router()?)?;
+		.name("router")
+		.config(&Config::router()?)?;
 
 	// activate liveliness
 	router.liveliness(true);

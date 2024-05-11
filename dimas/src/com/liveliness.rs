@@ -5,16 +5,13 @@
 
 // region:		--- modules
 use dimas_core::error::{DimasError, Result};
-#[allow(unused_imports)]
+#[cfg(doc)]
 use std::collections::HashMap;
-#[cfg(feature = "liveliness")]
-use std::sync::RwLock;
 use std::{
-	sync::{mpsc::Sender, Arc, Mutex},
+	sync::{mpsc::Sender, Arc, Mutex, RwLock},
 	time::Duration,
 };
 use tokio::task::JoinHandle;
-#[cfg(feature = "liveliness")]
 use tracing::info;
 use tracing::{error, instrument, warn, Level};
 use zenoh::prelude::{r#async::AsyncResolve, SampleKind, SessionDeclarations};
@@ -35,7 +32,6 @@ pub type LivelinessCallback<P> =
 /// State signaling that the [`LivelinessSubscriberBuilder`] has no storage value set
 pub struct NoStorage;
 /// State signaling that the [`LivelinessSubscriberBuilder`] has the storage value set
-#[cfg(feature = "liveliness")]
 pub struct Storage<P>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -177,7 +173,6 @@ where
 	}
 }
 
-#[cfg(feature = "liveliness")]
 impl<P, C> LivelinessSubscriberBuilder<P, C, NoStorage>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -225,7 +220,6 @@ where
 	}
 }
 
-#[cfg(any(docsrs, doc, feature = "liveliness"))]
 impl<P> LivelinessSubscriberBuilder<P, PutCallback<P>, Storage<P>>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -293,9 +287,6 @@ where
 	pub fn start(&mut self, context: ArcContext<P>, tx: Sender<TaskSignal>) {
 		self.stop();
 
-		#[cfg(not(feature = "liveliness"))]
-		drop(tx);
-
 		{
 			if self.put_callback.lock().is_err() {
 				warn!("found poisoned put Mutex");
@@ -329,11 +320,9 @@ where
 
 		self.handle
 			.replace(tokio::task::spawn(async move {
-				#[cfg(feature = "liveliness")]
 				let key = key_expr.clone();
 				std::panic::set_hook(Box::new(move |reason| {
 					error!("liveliness subscriber panic: {}", reason);
-					#[cfg(feature = "liveliness")]
 					if let Err(reason) = tx.send(TaskSignal::RestartLiveliness(key.clone())) {
 						error!("could not restart liveliness subscriber: {}", reason);
 					} else {
@@ -367,7 +356,7 @@ where
 {
 	let subscriber = ctx
 		.communicator
-		.session
+		.session()
 		.liveliness()
 		.declare_subscriber(&key_expr)
 		.res_async()
@@ -428,7 +417,7 @@ where
 {
 	let result = ctx
 		.communicator
-		.session
+		.session()
 		.liveliness()
 		.get(&key_expr)
 		.timeout(Duration::from_millis(100))

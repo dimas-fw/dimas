@@ -5,25 +5,19 @@
 
 // region:		--- modules
 // these ones are only for doc needed
+use super::task_signal::TaskSignal;
 #[cfg(doc)]
 use crate::agent::Agent;
 use crate::context::ArcContext;
+use dimas_com::Message;
 use dimas_core::error::{DimasError, Result};
-#[allow(unused_imports)]
-use std::collections::HashMap;
-#[cfg(feature = "subscriber")]
-use std::sync::RwLock;
-use std::sync::{mpsc::Sender, Arc, Mutex};
+use std::sync::{mpsc::Sender, Arc, Mutex, RwLock};
 use tokio::task::JoinHandle;
-#[cfg(feature = "subscriber")]
-use tracing::info;
-use tracing::{error, instrument, warn, Level};
+use tracing::{error, info, instrument, warn, Level};
 use zenoh::{
 	prelude::{r#async::AsyncResolve, SampleKind, SessionDeclarations},
 	subscriber::Reliability,
 };
-
-use super::{message::Message, task_signal::TaskSignal};
 // endregion:	--- modules
 
 // region:		--- types
@@ -42,7 +36,6 @@ pub type SubscriberDeleteCallback<P> =
 /// State signaling that the [`SubscriberBuilder`] has no storage value set
 pub struct NoStorage;
 /// State signaling that the [`SubscriberBuilder`] has the storage value set
-#[cfg(feature = "subscriber")]
 pub struct Storage<P>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -227,7 +220,6 @@ where
 	}
 }
 
-#[cfg(feature = "subscriber")]
 impl<P, K, C> SubscriberBuilder<P, K, C, NoStorage>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -282,7 +274,6 @@ where
 	}
 }
 
-#[cfg(any(docsrs, doc, feature = "subscriber"))]
 impl<P> SubscriberBuilder<P, KeyExpression, PutCallback<P>, Storage<P>>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -355,47 +346,40 @@ where
 	pub fn start(&mut self, ctx: ArcContext<P>, tx: Sender<TaskSignal>) {
 		self.stop();
 
-		#[cfg(not(feature = "subscriber"))]
-		drop(tx);
-
 		{
 			if self.put_callback.lock().is_err() {
 				warn!("found poisoned put Mutex");
 				self.put_callback.clear_poison();
 			}
-			{
-				if let Some(dcb) = self.delete_callback.clone() {
-					if dcb.lock().is_err() {
-						warn!("found poisoned delete Mutex");
-						dcb.clear_poison();
-					}
+
+			if let Some(dcb) = self.delete_callback.clone() {
+				if dcb.lock().is_err() {
+					warn!("found poisoned delete Mutex");
+					dcb.clear_poison();
 				}
 			}
+		}
 
-			let key_expr = self.key_expr.clone();
-			let p_cb = self.put_callback.clone();
-			let d_cb = self.delete_callback.clone();
-			let reliability = self.reliability;
+		let key_expr = self.key_expr.clone();
+		let p_cb = self.put_callback.clone();
+		let d_cb = self.delete_callback.clone();
+		let reliability = self.reliability;
 
-			self.handle
-				.replace(tokio::task::spawn(async move {
-					#[cfg(feature = "subscriber")]
-					let key = key_expr.clone();
-					std::panic::set_hook(Box::new(move |reason| {
-						error!("subscriber panic: {}", reason);
-						#[cfg(feature = "subscriber")]
-						if let Err(reason) = tx.send(TaskSignal::RestartSubscriber(key.clone())) {
-							error!("could not restart subscriber: {}", reason);
-						} else {
-							info!("restarting subscriber!");
-						};
-					}));
-					if let Err(error) = run_subscriber(key_expr, p_cb, d_cb, reliability, ctx).await
-					{
-						error!("spawning subscriber failed with {error}");
+		self.handle
+			.replace(tokio::task::spawn(async move {
+				let key = key_expr.clone();
+				std::panic::set_hook(Box::new(move |reason| {
+					error!("subscriber panic: {}", reason);
+					if let Err(reason) = tx.send(TaskSignal::RestartSubscriber(key.clone())) {
+						error!("could not restart subscriber: {}", reason);
+					} else {
+						info!("restarting subscriber!");
 					};
 				}));
-		}
+				if let Err(error) = run_subscriber(key_expr, p_cb, d_cb, reliability, ctx).await {
+					error!("spawning subscriber failed with {error}");
+				};
+			}));
 	}
 
 	/// Stop a running Subscriber
@@ -420,7 +404,7 @@ where
 {
 	let subscriber = ctx
 		.communicator
-		.session
+		.session()
 		.declare_subscriber(&key_expr)
 		.reliability(reliability)
 		.res_async()

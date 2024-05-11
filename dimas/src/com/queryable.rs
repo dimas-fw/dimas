@@ -3,25 +3,19 @@
 //! Module `queryable` provides an information/compute provider `Queryable` which can be created using the `QueryableBuilder`.
 
 // region:		--- modules
+use super::task_signal::TaskSignal;
 use crate::context::ArcContext;
+use dimas_com::Request;
 use dimas_core::error::{DimasError, Result};
-#[allow(unused_imports)]
-use std::collections::HashMap;
-#[cfg(feature = "queryable")]
-use std::sync::RwLock;
 use std::{
 	fmt::Debug,
 	marker::PhantomData,
-	sync::{mpsc::Sender, Arc, Mutex},
+	sync::{mpsc::Sender, Arc, Mutex, RwLock},
 };
 use tokio::task::JoinHandle;
-#[cfg(feature = "queryable")]
-use tracing::info;
-use tracing::{error, instrument, warn, Level};
+use tracing::{error, info, instrument, warn, Level};
 use zenoh::prelude::{r#async::AsyncResolve, SessionDeclarations};
 use zenoh::sample::Locality;
-
-use super::{message::Request, task_signal::TaskSignal};
 // endregion:	--- modules
 
 // region:		--- types
@@ -36,7 +30,6 @@ pub type QueryableCallback<P> = Arc<
 /// State signaling that the [`QueryableBuilder`] has no storage value set
 pub struct NoStorage;
 /// State signaling that the [`QueryableBuilder`] has the storage value set
-#[cfg(feature = "queryable")]
 pub struct Storage<P>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -209,7 +202,6 @@ where
 	}
 }
 
-#[cfg(feature = "queryable")]
 impl<P, K, C> QueryableBuilder<P, K, C, NoStorage>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -266,7 +258,6 @@ where
 	}
 }
 
-#[cfg(any(docsrs, doc, feature = "queryable"))]
 impl<P> QueryableBuilder<P, KeyExpression, RequestCallback<P>, Storage<P>>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -339,9 +330,6 @@ where
 	pub fn start(&mut self, ctx: ArcContext<P>, tx: Sender<TaskSignal>) {
 		self.stop();
 
-		#[cfg(not(feature = "queryable"))]
-		drop(tx);
-
 		{
 			if self.request_callback.lock().is_err() {
 				warn!("found poisoned put Mutex");
@@ -356,11 +344,9 @@ where
 
 		self.handle
 			.replace(tokio::task::spawn(async move {
-				#[cfg(feature = "queryable")]
 				let key = key_expr.clone();
 				std::panic::set_hook(Box::new(move |reason| {
 					error!("queryable panic: {}", reason);
-					#[cfg(feature = "queryable")]
 					if let Err(reason) = tx.send(TaskSignal::RestartQueryable(key.clone())) {
 						error!("could not restart queryable: {}", reason);
 					} else {
@@ -397,7 +383,7 @@ where
 {
 	let subscriber = ctx
 		.communicator
-		.session
+		.session()
 		.declare_queryable(&key_expr)
 		.complete(completeness)
 		.allowed_origin(allowed_origin)

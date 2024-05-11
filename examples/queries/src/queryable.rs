@@ -32,7 +32,8 @@ async fn main() -> Result<()> {
 	// create an agent with the properties and the prefix 'examples'
 	let mut agent = Agent::new(properties)
 		.prefix("examples")
-		.config(Config::default())?;
+		.name("queryable")
+		.config(&Config::default())?;
 
 	// add a queryable
 	agent
