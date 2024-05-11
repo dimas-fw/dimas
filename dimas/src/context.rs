@@ -29,27 +29,27 @@
 //!
 
 // region:		--- modules
-// these ones are only for doc needed
+// only for doc needed
 #[cfg(doc)]
 use crate::agent::Agent;
-use crate::com::liveliness::LivelinessSubscriber;
-use crate::com::publisher::Publisher;
-use crate::com::query::Query;
-use crate::com::queryable::Queryable;
-use crate::com::subscriber::Subscriber;
-use crate::com::task_signal::TaskSignal;
-use crate::com::{
-	liveliness::LivelinessSubscriberBuilder, publisher::PublisherBuilder, query::QueryBuilder,
-	queryable::QueryableBuilder, subscriber::SubscriberBuilder,
+use crate::{
+	com::{
+		liveliness::{LivelinessSubscriber, LivelinessSubscriberBuilder},
+		publisher::{Publisher, PublisherBuilder},
+		query::{Query, QueryBuilder},
+		queryable::{Queryable, QueryableBuilder},
+		subscriber::{Subscriber, SubscriberBuilder},
+		task_signal::TaskSignal,
+	},
+	timer::{Timer, TimerBuilder},
 };
-use dimas_com::Message;
-
-use crate::timer::Timer;
-use crate::timer::TimerBuilder;
 use bitcode::Encode;
-use dimas_com::communicator::Communicator;
+use dimas_com::{communicator::Communicator, Message};
 use dimas_config::Config;
-use dimas_core::error::{DimasError, Result};
+use dimas_core::{
+	error::{DimasError, Result},
+	traits::OperationState,
+};
 use std::{
 	collections::HashMap,
 	fmt::Debug,
@@ -364,17 +364,19 @@ where
 {
 	/// The [`Agent`]s name.
 	/// Name must not, but should be unique.
-	pub(crate) name: Option<String>,
+	name: Option<String>,
+	/// The [`Agent`]s current operational state.
+	state: OperationState,
 	/// The [`Agent`]s property structure
-	pub(crate) props: Arc<RwLock<P>>,
+	props: Arc<RwLock<P>>,
 	/// The [`Agent`]s [`Communicator`]
 	pub(crate) communicator: Arc<Communicator>,
 	/// Registered [`LivelinessSubscriber`]
 	pub(crate) liveliness_subscribers: Arc<RwLock<HashMap<String, LivelinessSubscriber<P>>>>,
 	/// Registered [`Publisher`]
-	pub(crate) publishers: Arc<RwLock<HashMap<String, Publisher>>>,
+	publishers: Arc<RwLock<HashMap<String, Publisher>>>,
 	/// Registered [`Query`]s
-	pub(crate) queries: Arc<RwLock<HashMap<String, Query<P>>>>,
+	queries: Arc<RwLock<HashMap<String, Query<P>>>>,
 	/// Registered [`Queryable`]s
 	pub(crate) queryables: Arc<RwLock<HashMap<String, Queryable<P>>>>,
 	/// Registered [`Subscriber`]
@@ -400,6 +402,7 @@ where
 		}
 		Ok(Self {
 			name,
+			state:OperationState::Created,
 			communicator: Arc::new(communicator),
 			props: Arc::new(RwLock::new(props)),
 			liveliness_subscribers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
@@ -421,6 +424,18 @@ where
 	#[must_use]
 	pub const fn name(&self) -> &Option<String> {
 		&self.name
+	}
+
+	/// Get the [`Agent`]s state
+	#[must_use]
+	pub const fn state(&self) -> &OperationState {
+		&self.state
+	}
+
+	/// Set the [`Agent`]s state
+	pub const fn set_state(mut self, state: OperationState) -> Self {
+		self.state = state;
+		self
 	}
 
 	/// Get the [`Agent`]s fully qualified name

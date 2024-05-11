@@ -66,7 +66,7 @@ use crate::{
 use dimas_com::messages::AboutEntity;
 use dimas_com::Request;
 use dimas_config::Config;
-use dimas_core::error::{DimasError, Result};
+use dimas_core::{error::{DimasError, Result}, traits::OperationState};
 use std::{
 	fmt::Debug,
 	sync::{mpsc, Mutex, RwLock},
@@ -120,7 +120,7 @@ where
 	///
 	/// # Errors
 	pub fn config(self, config: &Config) -> Result<Agent<'a, P>> {
-		let context = Context::new(config, self.props, self.name, self.prefix)?.into();
+		let context = Context::new(config, self.props, self.name, self.prefix)?.set_state(OperationState::Configured).into();
 		Ok(Agent {
 			context,
 			liveliness: false,
@@ -252,7 +252,8 @@ where
 			.unwrap_or_else(|| String::from("NoName"));
 		let mode = ctx.communicator.mode().to_string();
 		let zid = ctx.communicator.uuid();
-		let value = AboutEntity::new(name, mode, zid);
+		let state = ctx.state().clone();
+		let value = AboutEntity::new(name, mode, zid, state);
 		let query = request.key_expr();
 		info!("Received query for {}, responding with {}", &query, &value);
 		request.reply(value)?;

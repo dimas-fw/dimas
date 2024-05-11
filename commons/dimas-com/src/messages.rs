@@ -6,6 +6,7 @@
 use bitcode::{Decode, Encode};
 // region:		--- modules
 use derivative::Derivative;
+use dimas_core::traits::OperationState;
 use std::fmt::Display;
 use zenoh::config::Locator;
 // endregion:	--- modules
@@ -18,6 +19,7 @@ pub struct AboutEntity {
 	name: String,
 	kind: String,
 	zid: String,
+	state: OperationState,
 }
 
 impl Display for AboutEntity {
@@ -26,6 +28,7 @@ impl Display for AboutEntity {
 			.field("name", &self.name)
 			.field("kind", &self.kind)
 			.field("zid", &self.zid)
+			.field("state", &self.state)
 			.finish()
 	}
 }
@@ -33,8 +36,8 @@ impl Display for AboutEntity {
 impl AboutEntity {
 	/// Constructor
 	#[must_use]
-	pub const fn new(name: String, kind: String, zid: String) -> Self {
-		Self { name, kind, zid }
+	pub const fn new(name: String, kind: String, zid: String, state: OperationState) -> Self {
+		Self { name, kind, zid, state }
 	}
 
 	/// Get the Name
@@ -53,6 +56,12 @@ impl AboutEntity {
 	#[must_use]
 	pub fn zid(&self) -> &str {
 		&self.zid
+	}
+
+	/// Get the state
+	#[must_use]
+	pub const fn state(&self) -> &OperationState {
+		&self.state
 	}
 }
 // endregion:	--- AboutEntity
