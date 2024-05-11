@@ -37,7 +37,13 @@ fn main() {
 			println!("List of running DiMAS entities:");
 			println!("ZenohId                           Kind    State       Prefix/Name");
 			for item in dimas_commands::about_list(&com) {
-				println!("{:32}  {:6}  {:10}  {}", item.zid(), item.kind(), item.state(), item.name());
+				println!(
+					"{:32}  {:6}  {:10}  {}",
+					item.zid(),
+					item.kind(),
+					item.state(),
+					item.name()
+				);
 			}
 		}
 		DimasctlCommand::Scout => {

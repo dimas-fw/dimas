@@ -117,6 +117,24 @@ impl<P> ArcContext<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// Get the [`Context`]s state
+	/// # Panics
+	#[must_use]
+	pub fn state(&self) -> OperationState {
+		let val = self.state.read().expect("snh").clone();
+		val
+	}
+
+	/// Set the [`Context`]s state
+	/// # Errors
+	pub fn set_state(&self, state: OperationState) -> Result<()> {
+		*(self
+			.state
+			.write()
+			.map_err(|_| DimasError::ModifyContext("state".into()))?) = state;
+		Ok(())
+	}
+
 	/// Internal function for starting all registered tasks.<br>
 	/// The tasks are started in the order
 	/// - [`Queryable`]s
@@ -366,7 +384,7 @@ where
 	/// Name must not, but should be unique.
 	name: Option<String>,
 	/// The [`Agent`]s current operational state.
-	state: OperationState,
+	state: Arc<RwLock<OperationState>>,
 	/// The [`Agent`]s property structure
 	props: Arc<RwLock<P>>,
 	/// The [`Agent`]s [`Communicator`]
@@ -402,7 +420,7 @@ where
 		}
 		Ok(Self {
 			name,
-			state:OperationState::Created,
+			state: Arc::new(RwLock::new(OperationState::Created)),
 			communicator: Arc::new(communicator),
 			props: Arc::new(RwLock::new(props)),
 			liveliness_subscribers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
@@ -424,18 +442,6 @@ where
 	#[must_use]
 	pub const fn name(&self) -> &Option<String> {
 		&self.name
-	}
-
-	/// Get the [`Agent`]s state
-	#[must_use]
-	pub const fn state(&self) -> &OperationState {
-		&self.state
-	}
-
-	/// Set the [`Agent`]s state
-	pub const fn set_state(mut self, state: OperationState) -> Self {
-		self.state = state;
-		self
 	}
 
 	/// Get the [`Agent`]s fully qualified name

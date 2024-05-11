@@ -37,7 +37,12 @@ impl AboutEntity {
 	/// Constructor
 	#[must_use]
 	pub const fn new(name: String, kind: String, zid: String, state: OperationState) -> Self {
-		Self { name, kind, zid, state }
+		Self {
+			name,
+			kind,
+			zid,
+			state,
+		}
 	}
 
 	/// Get the Name

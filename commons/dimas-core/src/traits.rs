@@ -86,7 +86,7 @@ pub trait StateTransistion {
 // endregion:	--- StateTransistion
 
 // region:		--- OperationState
-/// The possible states a [`DiMAS`] entity can take
+/// The possible states a `DiMAS` entity can take
 #[derive(Debug, Decode, Encode, Clone, Default, Eq, PartialEq, Ord, PartialOrd)]
 pub enum OperationState {
 	/// Entity is in an erronous state
@@ -106,14 +106,14 @@ pub enum OperationState {
 
 impl Display for OperationState {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match *self {
-            Self::Error => f.write_str("error"),
-            Self::Created => f.write_str("created"),
-            Self::Configured => f.write_str("configured"),
-            Self::Inactive => f.write_str("inactive"),
+		match *self {
+			Self::Error => f.write_str("error"),
+			Self::Created => f.write_str("created"),
+			Self::Configured => f.write_str("configured"),
+			Self::Inactive => f.write_str("inactive"),
 			Self::Standby => f.write_str("standby"),
-            Self::Active => f.write_str("active"),
-        }
+			Self::Active => f.write_str("active"),
+		}
 	}
 }
 // endregion:	--- OperationState
