@@ -107,12 +107,12 @@ pub enum OperationState {
 impl Display for OperationState {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match *self {
-			Self::Error => f.write_str("error"),
-			Self::Created => f.write_str("created"),
-			Self::Configured => f.write_str("configured"),
-			Self::Inactive => f.write_str("inactive"),
-			Self::Standby => f.write_str("standby"),
-			Self::Active => f.write_str("active"),
+			Self::Error => Display::fmt("error", f),
+			Self::Created => Display::fmt("created", f),
+			Self::Configured => Display::fmt("configured", f),
+			Self::Inactive => Display::fmt("inactive", f),
+			Self::Standby => Display::fmt("standby", f),
+			Self::Active => Display::fmt("active", f),
 		}
 	}
 }

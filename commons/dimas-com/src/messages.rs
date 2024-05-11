@@ -24,12 +24,7 @@ pub struct AboutEntity {
 
 impl Display for AboutEntity {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		f.debug_struct("ScoutingEntity")
-			.field("name", &self.name)
-			.field("kind", &self.kind)
-			.field("zid", &self.zid)
-			.field("state", &self.state)
-			.finish()
+		write!(f, "name: {} kind: {} state: {} zid: {}", &self.name, &self.kind, &self.state, &self.zid)
 	}
 }
 
