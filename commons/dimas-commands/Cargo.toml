@@ -1,5 +1,5 @@
 [package]
-name = "dimasctl"
+name = "dimas-commands"
 rust-version.workspace = true
 edition.workspace = true
 version = "0.0.1"
@@ -10,8 +10,8 @@ keywords.workspace = true
 categories.workspace = true
 homepage.workspace = true
 repository.workspace = true
-description = "dimasctl - a control tool for DiMAS"
-documentation = "https://docs.rs/dimasctl/latest/dimasctl/"
+description = "dimas-commands - commands library for DiMAS"
+documentation = "https://docs.rs/dimas-commmands/latest/dimas-commands/"
 readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -20,8 +20,9 @@ readme = "README.md"
 workspace = true
 
 [dependencies]
-clap = { workspace = true }
+derivative = { workspace = true }
 dimas-com = { workspace = true }
-dimas-commands = { workspace = true }
 dimas-config = { workspace = true }
-dimas-core = { workspace = true }
+itertools = { workspace = true }
+tracing = { workspace = true}
+zenoh = { workspace = true }

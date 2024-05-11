@@ -51,8 +51,8 @@ use crate::com::{
 use crate::timer::Timer;
 use crate::timer::TimerBuilder;
 use bitcode::Encode;
-use dimas_core::communicator::Communicator;
-use dimas_core::config::Config;
+use dimas_com::Communicator;
+use dimas_config::Config;
 use dimas_core::error::{DimasError, Result};
 #[cfg(any(
 	feature = "liveliness",
@@ -547,6 +547,20 @@ where
 	#[must_use]
 	pub const fn name(&self) -> &Option<String> {
 		&self.name
+	}
+
+	/// Get the [`Agent`]s fully qualified name
+	#[must_use]
+	pub fn fq_name(&self) -> Option<String> {
+		if self.name().is_some() && self.prefix().is_some() {
+			Some(format!(
+				"{}/{}",
+				self.prefix().clone().expect("snh"),
+				self.name().clone().expect("snh")
+			))
+		} else {
+			self.name().clone()
+		}
 	}
 
 	/// Get the [`Agent`]s prefix

@@ -31,7 +31,7 @@ pub use crate::com::subscriber::{Subscriber, SubscriberBuilder};
 pub use crate::context::ArcContext;
 pub use crate::timer::{Timer, TimerBuilder};
 
-pub use dimas_core::config::Config;
+pub use dimas_config::Config;
 pub use dimas_core::error::{DimasError, Result};
 pub use dimas_core::utils::init_tracing;
 // endregeion:  --- modules
