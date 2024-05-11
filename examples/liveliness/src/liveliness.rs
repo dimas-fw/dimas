@@ -40,7 +40,7 @@ async fn main() -> Result<()> {
 	// create an agent with the properties and the prefix 'examples'
 	let mut agent = Agent::new(properties)
 		.prefix("examples")
-		.name("Liveliness")
+		.name("liveliness")
 		.config(&Config::default())?;
 
 	// add a liveliness subscriber to listen for other agents
