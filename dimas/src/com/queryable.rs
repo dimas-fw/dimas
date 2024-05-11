@@ -6,20 +6,17 @@
 use super::task_signal::TaskSignal;
 use crate::context::ArcContext;
 use dimas_com::Request;
-use dimas_core::error::{DimasError, Result};
-#[allow(unused_imports)]
-use std::collections::HashMap;
-#[cfg(feature = "queryable")]
-use std::sync::RwLock;
+use dimas_core::{
+	error::{DimasError, Result},
+	traits::OperationState,
+};
 use std::{
 	fmt::Debug,
 	marker::PhantomData,
-	sync::{mpsc::Sender, Arc, Mutex},
+	sync::{mpsc::Sender, Arc, Mutex, RwLock},
 };
 use tokio::task::JoinHandle;
-#[cfg(feature = "queryable")]
-use tracing::info;
-use tracing::{error, instrument, warn, Level};
+use tracing::{error, info, instrument, warn, Level};
 use zenoh::prelude::{r#async::AsyncResolve, SessionDeclarations};
 use zenoh::sample::Locality;
 // endregion:	--- modules
@@ -36,7 +33,6 @@ pub type QueryableCallback<P> = Arc<
 /// State signaling that the [`QueryableBuilder`] has no storage value set
 pub struct NoStorage;
 /// State signaling that the [`QueryableBuilder`] has the storage value set
-#[cfg(feature = "queryable")]
 pub struct Storage<P>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -63,6 +59,7 @@ where
 	/// Request callback for the [`Queryable`]
 	pub request: QueryableCallback<P>,
 }
+// endregion:   --- states
 
 // region:		--- QueryableBuilder
 /// The builder for a queryable.
@@ -75,9 +72,9 @@ where
 	completeness: bool,
 	allowed_origin: Locality,
 	prefix: Option<String>,
-	pub(crate) key_expr: K,
-	pub(crate) request_callback: C,
-	pub(crate) storage: S,
+	key_expr: K,
+	request_callback: C,
+	storage: S,
 	phantom: PhantomData<P>,
 }
 
@@ -209,7 +206,6 @@ where
 	}
 }
 
-#[cfg(feature = "queryable")]
 impl<P, K, C> QueryableBuilder<P, K, C, NoStorage>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -266,7 +262,6 @@ where
 	}
 }
 
-#[cfg(any(docsrs, doc, feature = "queryable"))]
 impl<P> QueryableBuilder<P, KeyExpression, RequestCallback<P>, Storage<P>>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -294,6 +289,7 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	key_expr: String,
+	activation_state: OperationState,
 	request_callback: QueryableCallback<P>,
 	completeness: bool,
 	allowed_origin: Locality,
@@ -326,6 +322,7 @@ where
 	) -> Self {
 		Self {
 			key_expr,
+			activation_state: OperationState::Active,
 			request_callback,
 			completeness,
 			allowed_origin,
@@ -338,9 +335,6 @@ where
 	#[instrument(level = Level::TRACE, skip_all)]
 	pub fn start(&mut self, ctx: ArcContext<P>, tx: Sender<TaskSignal>) {
 		self.stop();
-
-		#[cfg(not(feature = "queryable"))]
-		drop(tx);
 
 		{
 			if self.request_callback.lock().is_err() {
@@ -356,11 +350,9 @@ where
 
 		self.handle
 			.replace(tokio::task::spawn(async move {
-				#[cfg(feature = "queryable")]
 				let key = key_expr.clone();
 				std::panic::set_hook(Box::new(move |reason| {
 					error!("queryable panic: {}", reason);
-					#[cfg(feature = "queryable")]
 					if let Err(reason) = tx.send(TaskSignal::RestartQueryable(key.clone())) {
 						error!("could not restart queryable: {}", reason);
 					} else {

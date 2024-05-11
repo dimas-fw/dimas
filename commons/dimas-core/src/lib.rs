@@ -4,5 +4,7 @@
 
 /// Error handling
 pub mod error;
+/// Traits
+pub mod traits;
 /// Utilities
 pub mod utils;

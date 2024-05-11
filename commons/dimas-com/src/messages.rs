@@ -6,6 +6,7 @@
 use bitcode::{Decode, Encode};
 // region:		--- modules
 use derivative::Derivative;
+use dimas_core::traits::OperationState;
 use std::fmt::Display;
 use zenoh::config::Locator;
 // endregion:	--- modules
@@ -18,28 +19,30 @@ pub struct AboutEntity {
 	name: String,
 	kind: String,
 	zid: String,
+	state: OperationState,
 }
 
 impl Display for AboutEntity {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		f.debug_struct("ScoutingEntity")
-			.field("name", &self.name)
-			.field("kind", &self.kind)
-			.field("zid", &self.zid)
-			.finish()
+		write!(
+			f,
+			"name: {} kind: {} state: {} zid: {}",
+			&self.name, &self.kind, &self.state, &self.zid
+		)
 	}
 }
 
 impl AboutEntity {
-  /// Constructor
-  #[must_use]
-  pub const fn new(name: String, kind: String, zid: String) -> Self {
-    Self {
-      name,
-      kind,
-      zid,
-    }
-  }
+	/// Constructor
+	#[must_use]
+	pub const fn new(name: String, kind: String, zid: String, state: OperationState) -> Self {
+		Self {
+			name,
+			kind,
+			zid,
+			state,
+		}
+	}
 
 	/// Get the Name
 	#[must_use]
@@ -57,6 +60,12 @@ impl AboutEntity {
 	#[must_use]
 	pub fn zid(&self) -> &str {
 		&self.zid
+	}
+
+	/// Get the state
+	#[must_use]
+	pub const fn state(&self) -> &OperationState {
+		&self.state
 	}
 }
 // endregion:	--- AboutEntity
@@ -83,15 +92,15 @@ impl Display for ScoutingEntity {
 }
 
 impl ScoutingEntity {
-  /// Constructor
-  #[must_use]
-  pub fn new(zid: String, kind: String, locators: Vec<Locator>) -> Self {
-    Self {
-      zid,
-      kind,
-      locators,
-    }
-  }
+	/// Constructor
+	#[must_use]
+	pub fn new(zid: String, kind: String, locators: Vec<Locator>) -> Self {
+		Self {
+			zid,
+			kind,
+			locators,
+		}
+	}
 
 	/// Get the Zenoh ID
 	#[must_use]

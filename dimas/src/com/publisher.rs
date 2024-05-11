@@ -9,10 +9,10 @@ use crate::agent::Agent;
 use crate::context::ArcContext;
 use bitcode::{encode, Encode};
 use dimas_core::error::{DimasError, Result};
-#[allow(unused_imports)]
+use dimas_core::traits::OperationState;
+#[cfg(doc)]
 use std::collections::HashMap;
 use std::fmt::Debug;
-#[cfg(feature = "publisher")]
 use std::sync::{Arc, RwLock};
 use tracing::{instrument, Level};
 use zenoh::{
@@ -24,7 +24,6 @@ use zenoh::{
 // region:		--- states
 /// State signaling that the [`PublisherBuilder`] has no storage value set
 pub struct NoStorage;
-#[cfg(feature = "publisher")]
 /// State signaling that the [`PublisherBuilder`] has the storage value set
 pub struct Storage {
 	/// Thread safe reference to a [`HashMap`] to store the created [`Publisher`]
@@ -47,8 +46,8 @@ pub struct PublisherBuilder<K, S> {
 	prefix: Option<String>,
 	priority: Priority,
 	congestion_control: CongestionControl,
-	pub(crate) key_expr: K,
-	pub(crate) storage: S,
+	key_expr: K,
+	storage: S,
 }
 
 impl PublisherBuilder<NoKeyExpression, NoStorage> {
@@ -81,7 +80,6 @@ impl<K, S> PublisherBuilder<K, S> {
 	}
 }
 
-#[cfg(feature = "publisher")]
 impl<K> PublisherBuilder<K, NoStorage> {
 	/// Provide agents storage for the publisher
 	#[must_use]
@@ -167,7 +165,6 @@ impl<S> PublisherBuilder<KeyExpression, S> {
 	}
 }
 
-#[cfg(any(docsrs, doc, feature = "publisher"))]
 impl PublisherBuilder<KeyExpression, Storage> {
 	/// Build and add the [Publisher] to the [`Agent`]s context
 	///
@@ -188,7 +185,8 @@ impl PublisherBuilder<KeyExpression, Storage> {
 // region:		--- Publisher
 /// Publisher
 pub struct Publisher {
-	pub(crate) key_expr: String,
+	key_expr: String,
+	activation_state: OperationState,
 	priority: Priority,
 	congestion_control: CongestionControl,
 	publisher: Option<zenoh::publication::Publisher<'static>>,
@@ -216,10 +214,17 @@ impl Publisher
 	) -> Self {
 		Self {
 			key_expr,
+			activation_state: OperationState::Active,
 			priority,
 			congestion_control,
 			publisher: None,
 		}
+	}
+
+	/// Get `key_expr`
+	#[must_use]
+	pub fn key_expr(&self) -> &str {
+		&self.key_expr
 	}
 
 	/// Initialize

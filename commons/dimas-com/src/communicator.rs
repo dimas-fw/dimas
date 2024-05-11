@@ -4,6 +4,7 @@
 //!
 
 // region:		--- modules
+use crate::Response;
 use bitcode::{encode, Encode};
 use dimas_core::error::{DimasError, Result};
 use std::fmt::Debug;
@@ -11,7 +12,6 @@ use std::sync::Arc;
 use std::time::Duration;
 use zenoh::prelude::{r#async::*, sync::SyncResolve};
 use zenoh::publication::Publisher;
-use crate::Response;
 // endregion:	--- modules
 
 // region:		--- Communicator
@@ -134,7 +134,7 @@ impl Communicator {
 	#[allow(clippy::needless_pass_by_value)]
 	pub fn get<F>(&self, selector: &str, mut callback: F) -> Result<()>
 	where
-		F: FnMut(Response) + Sized
+		F: FnMut(Response) + Sized,
 	{
 		let replies = self
 			.session
@@ -155,8 +155,8 @@ impl Communicator {
 					SampleKind::Delete => {
 						println!("Delete in Query");
 					}
-				}
-			Err(err) => {
+				},
+				Err(err) => {
 					println!(
 						">> Received (ERROR: '{}')",
 						String::try_from(&err).expect("snh")

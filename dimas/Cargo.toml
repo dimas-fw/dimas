@@ -33,10 +33,3 @@ zenoh = { workspace = true }
 doc-comment = { workspace = true }
 
 [features]
-all = ["liveliness", "publisher", "query", "queryable", "subscriber", "timer"]
-liveliness = []
-publisher = []
-query = []
-queryable = []
-subscriber = []
-timer = []

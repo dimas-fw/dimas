@@ -8,8 +8,7 @@ pub extern crate bitcode;
 // region:    --- modules
 // re-exports
 // used std synchronisation primitives
-pub use std::sync::Arc;
-pub use std::sync::RwLock;
+pub use std::sync::{Arc, RwLock};
 // bitcode encoding/decoding
 pub use bitcode::{Decode, Encode};
 // zenoh stuff
@@ -39,5 +38,5 @@ pub use dimas_core::utils::init_tracing;
 // region:    --- types
 // Generic wrapper tuple struct for newtype pattern
 //#[repr(transparent)]
-//pub(crate) struct Wrap<T>(pub T);
+//pub struct Wrap<T>(pub T);
 // endregion: --- types

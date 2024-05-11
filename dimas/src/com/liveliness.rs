@@ -4,24 +4,22 @@
 //! A `LivelinessSubscriber` can optional subscribe on a delete message.
 
 // region:		--- modules
-use dimas_core::error::{DimasError, Result};
-#[allow(unused_imports)]
+use super::task_signal::TaskSignal;
+use crate::prelude::ArcContext;
+use dimas_core::{
+	error::{DimasError, Result},
+	traits::{ManageState, OperationState},
+};
+#[cfg(doc)]
 use std::collections::HashMap;
-#[cfg(feature = "liveliness")]
-use std::sync::RwLock;
 use std::{
-	sync::{mpsc::Sender, Arc, Mutex},
+	sync::{Arc, Mutex, RwLock},
 	time::Duration,
 };
 use tokio::task::JoinHandle;
-#[cfg(feature = "liveliness")]
 use tracing::info;
 use tracing::{error, instrument, warn, Level};
 use zenoh::prelude::{r#async::AsyncResolve, SampleKind, SessionDeclarations};
-
-use crate::prelude::ArcContext;
-
-use super::task_signal::TaskSignal;
 // endregion:	--- modules
 
 // region:		--- types
@@ -35,7 +33,6 @@ pub type LivelinessCallback<P> =
 /// State signaling that the [`LivelinessSubscriberBuilder`] has no storage value set
 pub struct NoStorage;
 /// State signaling that the [`LivelinessSubscriberBuilder`] has the storage value set
-#[cfg(feature = "liveliness")]
 pub struct Storage<P>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -65,9 +62,10 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	token: String,
-	pub(crate) put_callback: C,
-	pub(crate) storage: S,
-	pub(crate) delete_callback: Option<LivelinessCallback<P>>,
+	context: ArcContext<P>,
+	put_callback: C,
+	storage: S,
+	delete_callback: Option<LivelinessCallback<P>>,
 }
 
 impl<P> LivelinessSubscriberBuilder<P, NoPutCallback, NoStorage>
@@ -76,10 +74,14 @@ where
 {
 	/// Construct a `LivelinessSubscriberBuilder` in initial state
 	#[must_use]
-	pub fn new(prefix: Option<String>) -> Self {
-		let token = prefix.map_or("*".to_string(), |prefix| format!("{prefix}/*"));
+	pub fn new(context: ArcContext<P>) -> Self {
+		let token = context
+			.prefix()
+			.clone()
+			.map_or("*".to_string(), |prefix| format!("{prefix}/*"));
 		Self {
 			token,
+			context,
 			put_callback: NoPutCallback,
 			storage: NoStorage,
 			delete_callback: None,
@@ -94,15 +96,17 @@ where
 	/// Set a different prefix for the liveliness subscriber.
 	#[must_use]
 	pub fn prefix(self, prefix: &str) -> Self {
-		let key_expr = format!("{prefix}/*");
+		let token = format!("{prefix}/*");
 		let Self {
+			context,
 			put_callback,
 			storage,
 			delete_callback,
 			..
 		} = self;
 		Self {
-			token: key_expr,
+			token,
+			context,
 			put_callback,
 			storage,
 			delete_callback,
@@ -113,6 +117,7 @@ where
 	#[must_use]
 	pub fn token(self, token: impl Into<String>) -> Self {
 		let Self {
+			context,
 			put_callback,
 			storage,
 			delete_callback,
@@ -120,6 +125,7 @@ where
 		} = self;
 		Self {
 			token: token.into(),
+			context,
 			put_callback,
 			storage,
 			delete_callback,
@@ -133,7 +139,8 @@ where
 		F: FnMut(&ArcContext<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
-			token: key_expr,
+			token,
+			context,
 			put_callback,
 			storage,
 			..
@@ -141,7 +148,8 @@ where
 		let delete_callback: Option<LivelinessCallback<P>> =
 			Some(Arc::new(Mutex::new(Box::new(callback))));
 		Self {
-			token: key_expr,
+			token,
+			context,
 			put_callback,
 			storage,
 			delete_callback,
@@ -160,14 +168,16 @@ where
 		F: FnMut(&ArcContext<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
-			token: key_expr,
+			token,
+			context,
 			storage,
 			delete_callback,
 			..
 		} = self;
 		let put_callback: LivelinessCallback<P> = Arc::new(Mutex::new(Box::new(callback)));
 		LivelinessSubscriberBuilder {
-			token: key_expr,
+			token,
+			context,
 			put_callback: PutCallback {
 				callback: put_callback,
 			},
@@ -177,7 +187,6 @@ where
 	}
 }
 
-#[cfg(feature = "liveliness")]
 impl<P, C> LivelinessSubscriberBuilder<P, C, NoStorage>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -189,13 +198,15 @@ where
 		storage: Arc<RwLock<std::collections::HashMap<String, LivelinessSubscriber<P>>>>,
 	) -> LivelinessSubscriberBuilder<P, C, Storage<P>> {
 		let Self {
-			token: key_expr,
+			token,
+			context,
 			put_callback,
 			delete_callback,
 			..
 		} = self;
 		LivelinessSubscriberBuilder {
-			token: key_expr,
+			token,
+			context,
 			put_callback,
 			storage: Storage { storage },
 			delete_callback,
@@ -212,20 +223,21 @@ where
 	///
 	pub fn build(self) -> Result<LivelinessSubscriber<P>> {
 		let Self {
-			token: key_expr,
+			token,
+			context,
 			put_callback,
 			delete_callback,
 			..
 		} = self;
 		Ok(LivelinessSubscriber::new(
-			key_expr,
+			token,
+			context,
 			put_callback.callback,
 			delete_callback,
 		))
 	}
 }
 
-#[cfg(any(docsrs, doc, feature = "liveliness"))]
 impl<P> LivelinessSubscriberBuilder<P, PutCallback<P>, Storage<P>>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -240,7 +252,7 @@ where
 		let r = c
 			.write()
 			.map_err(|_| DimasError::ShouldNotHappen)?
-			.insert(s.key_expr.clone(), s);
+			.insert(s.token.clone(), s);
 		Ok(r)
 	}
 }
@@ -253,7 +265,9 @@ pub struct LivelinessSubscriber<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	key_expr: String,
+	token: String,
+	context: ArcContext<P>,
+	activation_state: OperationState,
 	put_callback: LivelinessCallback<P>,
 	delete_callback: Option<LivelinessCallback<P>>,
 	handle: Option<JoinHandle<()>>,
@@ -269,18 +283,36 @@ where
 	}
 }
 
+impl<P> ManageState for LivelinessSubscriber<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	fn manage_state(&mut self, state: &OperationState) -> Result<()> {
+		if (state >= &self.activation_state) && self.handle.is_none() {
+			return self.start();
+		} else if (state < &self.activation_state) && self.handle.is_some() {
+			self.stop();
+			return Ok(());
+		}
+		Ok(())
+	}
+}
+
 impl<P> LivelinessSubscriber<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// Constructor for a [`LivelinessSubscriber`]
 	pub fn new(
-		key_expr: String,
+		token: String,
+		context: ArcContext<P>,
 		put_callback: LivelinessCallback<P>,
 		delete_callback: Option<LivelinessCallback<P>>,
 	) -> Self {
 		Self {
-			key_expr,
+			token,
+			context,
+			activation_state: OperationState::Configured,
 			put_callback,
 			delete_callback,
 			handle: None,
@@ -288,13 +320,11 @@ where
 	}
 
 	/// Start or restart the liveliness subscriber.
-	/// An already running subscriber will be stopped, eventually damaged Mutexes will be repaired
+	/// An already running subscriber will be stopped before,
+	/// eventually damaged Mutexes will be repaired
 	#[instrument(level = Level::TRACE, skip_all)]
-	pub fn start(&mut self, context: ArcContext<P>, tx: Sender<TaskSignal>) {
+	fn start(&mut self) -> Result<()> {
 		self.stop();
-
-		#[cfg(not(feature = "liveliness"))]
-		drop(tx);
 
 		{
 			if self.put_callback.lock().is_err() {
@@ -313,10 +343,10 @@ where
 
 		// the initial liveliness query
 		let p_cb = self.put_callback.clone();
-		let ctx = context.clone();
-		let key_expr = self.key_expr.clone();
+		let ctx = self.context.clone();
+		let token = self.token.clone();
 		tokio::task::spawn(async move {
-			if let Err(error) = run_initial(key_expr, p_cb, ctx).await {
+			if let Err(error) = run_initial(token, p_cb, ctx).await {
 				error!("spawning initial liveliness failed with {error}");
 			};
 		});
@@ -324,31 +354,34 @@ where
 		// the liveliness subscriber
 		let p_cb = self.put_callback.clone();
 		let d_cb = self.delete_callback.clone();
-		let ctx = context;
-		let key_expr = self.key_expr.clone();
+		let ctx1 = self.context.clone();
+		let ctx2 = self.context.clone();
+		let token = self.token.clone();
 
 		self.handle
 			.replace(tokio::task::spawn(async move {
-				#[cfg(feature = "liveliness")]
-				let key = key_expr.clone();
+				let key = token.clone();
 				std::panic::set_hook(Box::new(move |reason| {
 					error!("liveliness subscriber panic: {}", reason);
-					#[cfg(feature = "liveliness")]
-					if let Err(reason) = tx.send(TaskSignal::RestartLiveliness(key.clone())) {
+					if let Err(reason) = ctx1
+						.tx
+						.send(TaskSignal::RestartLiveliness(key.clone()))
+					{
 						error!("could not restart liveliness subscriber: {}", reason);
 					} else {
 						info!("restarting liveliness subscriber!");
 					};
 				}));
-				if let Err(error) = run_liveliness(key_expr, p_cb, d_cb, ctx).await {
+				if let Err(error) = run_liveliness(token, p_cb, d_cb, ctx2).await {
 					error!("spawning liveliness subscriber failed with {error}");
 				};
 			}));
+		Ok(())
 	}
 
 	/// Stop a running LivelinessSubscriber
 	#[instrument(level = Level::TRACE)]
-	pub fn stop(&mut self) {
+	fn stop(&mut self) {
 		if let Some(handle) = self.handle.take() {
 			handle.abort();
 		}
@@ -357,7 +390,7 @@ where
 
 #[instrument(name="liveliness", level = Level::ERROR, skip_all)]
 async fn run_liveliness<P>(
-	key_expr: String,
+	token: String,
 	p_cb: LivelinessCallback<P>,
 	d_cb: Option<LivelinessCallback<P>>,
 	ctx: ArcContext<P>,
@@ -369,7 +402,7 @@ where
 		.communicator
 		.session()
 		.liveliness()
-		.declare_subscriber(&key_expr)
+		.declare_subscriber(&token)
 		.res_async()
 		.await
 		.map_err(|_| DimasError::ShouldNotHappen)?;
@@ -419,7 +452,7 @@ where
 
 #[instrument(name="initial liveliness", level = Level::ERROR, skip_all)]
 async fn run_initial<P>(
-	key_expr: String,
+	token: String,
 	p_cb: LivelinessCallback<P>,
 	ctx: ArcContext<P>,
 ) -> Result<()>
@@ -430,7 +463,7 @@ where
 		.communicator
 		.session()
 		.liveliness()
-		.get(&key_expr)
+		.get(&token)
 		.timeout(Duration::from_millis(100))
 		.res()
 		.await;

@@ -5,8 +5,7 @@
 
 // region:		--- modules
 use crate::{com::task_signal::TaskSignal, prelude::*};
-#[allow(unused_imports)]
-use std::collections::HashMap;
+use dimas_core::traits::OperationState;
 use std::{
 	fmt::Debug,
 	marker::PhantomData,
@@ -14,9 +13,7 @@ use std::{
 	time::Duration,
 };
 use tokio::{task::JoinHandle, time};
-#[cfg(feature = "timer")]
-use tracing::info;
-use tracing::{error, instrument, warn, Level};
+use tracing::{error, info, instrument, warn, Level};
 // endregion:	--- modules
 
 // region:		--- types
@@ -31,7 +28,6 @@ pub type TimerCallback<P> = Arc<
 /// State signaling that the [`TimerBuilder`] has no storage value set
 pub struct NoStorage;
 /// State signaling that the [`TimerBuilder`] has the storage value set
-#[cfg(feature = "timer")]
 pub struct Storage<P>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -78,11 +74,11 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	prefix: Option<String>,
-	pub(crate) key_expr: K,
-	pub(crate) interval: I,
-	pub(crate) callback: C,
-	pub(crate) storage: S,
-	pub(crate) delay: Option<Duration>,
+	key_expr: K,
+	interval: I,
+	callback: C,
+	storage: S,
+	delay: Option<Duration>,
 	phantom: PhantomData<P>,
 }
 
@@ -235,7 +231,6 @@ where
 	}
 }
 
-#[cfg(feature = "timer")]
 impl<P, K, I, C> TimerBuilder<P, K, I, C, NoStorage>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -292,7 +287,6 @@ where
 	}
 }
 
-#[cfg(any(docsrs, doc, feature = "timer"))]
 impl<P> TimerBuilder<P, KeyExpression, Interval, IntervalCallback<P>, Storage<P>>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -324,6 +318,8 @@ where
 	Interval {
 		/// The Timers ID
 		key_expr: String,
+		/// [`OperationState`] on which this timer is started
+		activation_state: OperationState,
 		/// Timers Callback function called, when Timer is fired
 		callback: TimerCallback<P>,
 		/// The interval in which the Timer is fired
@@ -335,6 +331,8 @@ where
 	DelayedInterval {
 		/// The Timers ID
 		key_expr: String,
+		/// [`OperationState`] on which this timer is started
+		activation_state: OperationState,
 		/// Timers Callback function called, when Timer is fired
 		callback: TimerCallback<P>,
 		/// The interval in which the Timer is fired
@@ -382,6 +380,7 @@ where
 		match delay {
 			Some(delay) => Self::DelayedInterval {
 				key_expr: name,
+				activation_state: OperationState::Active,
 				delay,
 				interval,
 				callback,
@@ -389,6 +388,7 @@ where
 			},
 			None => Self::Interval {
 				key_expr: name,
+				activation_state: OperationState::Active,
 				interval,
 				callback,
 				handle: None,
@@ -402,12 +402,10 @@ where
 	pub fn start(&mut self, ctx: ArcContext<P>, tx: Sender<TaskSignal>) {
 		self.stop();
 
-		#[cfg(not(feature = "timer"))]
-		drop(tx);
-
 		match self {
 			Self::Interval {
 				key_expr,
+				activation_state,
 				interval,
 				callback,
 				handle,
@@ -422,14 +420,10 @@ where
 				let interval = *interval;
 				let cb = callback.clone();
 
-				#[cfg(not(feature = "timer"))]
-				let _key = key_expr.clone();
-				#[cfg(feature = "timer")]
 				let key = key_expr.clone();
 				handle.replace(tokio::task::spawn(async move {
 					std::panic::set_hook(Box::new(move |reason| {
 						error!("interval timer panic: {}", reason);
-						#[cfg(feature = "timer")]
 						if let Err(reason) = tx.send(TaskSignal::RestartTimer(key.clone())) {
 							error!("could not restart timer: {}", reason);
 						} else {
@@ -441,6 +435,7 @@ where
 			}
 			Self::DelayedInterval {
 				key_expr,
+				activation_state,
 				delay,
 				interval,
 				callback,
@@ -457,14 +452,10 @@ where
 				let interval = *interval;
 				let cb = callback.clone();
 
-				#[cfg(not(feature = "timer"))]
-				let _key = key_expr.clone();
-				#[cfg(feature = "timer")]
 				let key = key_expr.clone();
 				handle.replace(tokio::task::spawn(async move {
 					std::panic::set_hook(Box::new(move |reason| {
 						error!("delayed timer panic: {}", reason);
-						#[cfg(feature = "timer")]
 						if let Err(reason) = tx.send(TaskSignal::RestartTimer(key.clone())) {
 							error!("could not restart timer: {}", reason);
 						} else {
@@ -484,12 +475,14 @@ where
 		match self {
 			Self::Interval {
 				key_expr: _,
+				activation_state,
 				interval: _,
 				callback: _,
 				handle,
 			}
 			| Self::DelayedInterval {
 				key_expr: _,
+				activation_state,
 				delay: _,
 				interval: _,
 				callback: _,
