@@ -68,7 +68,7 @@ use dimas_com::Request;
 use dimas_config::Config;
 use dimas_core::{
 	error::{DimasError, Result},
-	traits::OperationState,
+	traits::{ManageState, OperationState},
 };
 use std::{
 	fmt::Debug,
@@ -123,10 +123,14 @@ where
 	///
 	/// # Errors
 	pub fn config(self, config: &Config) -> Result<Agent<'a, P>> {
+		// we need an mpsc channel with a receiver behind a mutex guard
+		let (tx, rx) = mpsc::channel();
+		let rx = Mutex::new(rx);
 		let context: ArcContext<P> =
-			Context::new(config, self.props, self.name, self.prefix)?.into();
+			Context::new(config, self.props, self.name, tx, self.prefix)?.into();
 		context.set_state(OperationState::Configured)?;
 		Ok(Agent {
+			rx,
 			context,
 			liveliness: false,
 			liveliness_token: RwLock::new(None),
@@ -142,6 +146,8 @@ pub struct Agent<'a, P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// A reciever for signals from tasks
+	rx: Mutex<mpsc::Receiver<TaskSignal>>,
 	/// The agents context structure
 	context: ArcContext<P>,
 	/// Flag to control whether sending liveliness or not
@@ -272,11 +278,7 @@ where
 	/// Propagation of errors from [`ArcContext::start_registered_tasks()`].
 	#[tracing::instrument(skip_all)]
 	pub async fn start(self) -> Result<Agent<'a, P>> {
-		// we need an mpsc channel with a receiver behind a mutex guard
-		let (tx, rx) = mpsc::channel();
-		let rx = Mutex::new(rx);
-
-		self.context.start_registered_tasks(&tx)?;
+		self.context.start_registered_tasks()?;
 
 		let session = self.context.communicator.session();
 
@@ -310,14 +312,12 @@ where
 				.replace(token);
 		};
 
-		about_queryable.start(self.context.clone(), tx.clone());
-		let context = self.context;
-		context.set_state(OperationState::Active)?;
+		about_queryable.start(self.context.clone(), self.context.tx.clone());
+		self.context.set_state(OperationState::Active)?;
 
 		RunningAgent {
-			rx,
-			tx,
-			context,
+			rx: self.rx,
+			context: self.context,
 			liveliness: self.liveliness,
 			liveliness_token: self.liveliness_token,
 			about_queryable,
@@ -335,8 +335,8 @@ pub struct RunningAgent<'a, P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// A reciever for signals from tasks
 	rx: Mutex<mpsc::Receiver<TaskSignal>>,
-	tx: mpsc::Sender<TaskSignal>,
 	/// The agents context structure
 	context: ArcContext<P>,
 	/// Flag to control whether sending liveliness or not
@@ -367,7 +367,7 @@ where
 								.map_err(|_| DimasError::WriteProperties)?
 								.get_mut(&key_expr)
 								.ok_or(DimasError::ShouldNotHappen)?
-								.start(self.context.clone(), self.tx.clone());
+								.manage_state(&self.context.state())?;
 						},
 						TaskSignal::RestartQueryable(key_expr) => {
 							self.context.queryables
@@ -375,7 +375,7 @@ where
 								.map_err(|_| DimasError::WriteProperties)?
 								.get_mut(&key_expr)
 								.ok_or(DimasError::ShouldNotHappen)?
-								.start(self.context.clone(), self.tx.clone());
+								.start(self.context.clone(), self.context.tx.clone());
 						},
 						TaskSignal::RestartSubscriber(key_expr) => {
 							self.context.subscribers
@@ -383,7 +383,7 @@ where
 								.map_err(|_| DimasError::WriteProperties)?
 								.get_mut(&key_expr)
 								.ok_or(DimasError::ShouldNotHappen)?
-								.start(self.context.clone(), self.tx.clone());
+								.start(self.context.clone(), self.context.tx.clone());
 						},
 						TaskSignal::RestartTimer(key_expr) => {
 							self.context.timers
@@ -391,7 +391,7 @@ where
 								.map_err(|_| DimasError::WriteProperties)?
 								.get_mut(&key_expr)
 								.ok_or(DimasError::ShouldNotHappen)?
-								.start(self.context.clone(), self.tx.clone());
+								.start(self.context.clone(), self.context.tx.clone());
 						},
 					};
 				}
@@ -410,6 +410,7 @@ where
 									.take();
 							}
 							let r = Agent {
+								rx: self.rx,
 								context: self.context,
 								liveliness: self.liveliness,
 								liveliness_token: self.liveliness_token,
@@ -454,6 +455,7 @@ where
 				.take();
 		}
 		let r = Agent {
+			rx: self.rx,
 			context: self.context,
 			liveliness: self.liveliness,
 			liveliness_token: self.liveliness_token,

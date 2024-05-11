@@ -38,5 +38,5 @@ pub use dimas_core::utils::init_tracing;
 // region:    --- types
 // Generic wrapper tuple struct for newtype pattern
 //#[repr(transparent)]
-//pub(crate) struct Wrap<T>(pub T);
+//pub struct Wrap<T>(pub T);
 // endregion: --- types

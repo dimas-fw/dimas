@@ -6,7 +6,10 @@
 use super::task_signal::TaskSignal;
 use crate::context::ArcContext;
 use dimas_com::Request;
-use dimas_core::error::{DimasError, Result};
+use dimas_core::{
+	error::{DimasError, Result},
+	traits::OperationState,
+};
 use std::{
 	fmt::Debug,
 	marker::PhantomData,
@@ -56,6 +59,7 @@ where
 	/// Request callback for the [`Queryable`]
 	pub request: QueryableCallback<P>,
 }
+// endregion:   --- states
 
 // region:		--- QueryableBuilder
 /// The builder for a queryable.
@@ -68,9 +72,9 @@ where
 	completeness: bool,
 	allowed_origin: Locality,
 	prefix: Option<String>,
-	pub(crate) key_expr: K,
-	pub(crate) request_callback: C,
-	pub(crate) storage: S,
+	key_expr: K,
+	request_callback: C,
+	storage: S,
 	phantom: PhantomData<P>,
 }
 
@@ -285,6 +289,7 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	key_expr: String,
+	activation_state: OperationState,
 	request_callback: QueryableCallback<P>,
 	completeness: bool,
 	allowed_origin: Locality,
@@ -317,6 +322,7 @@ where
 	) -> Self {
 		Self {
 			key_expr,
+			activation_state: OperationState::Active,
 			request_callback,
 			completeness,
 			allowed_origin,

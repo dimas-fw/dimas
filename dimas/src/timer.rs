@@ -5,6 +5,7 @@
 
 // region:		--- modules
 use crate::{com::task_signal::TaskSignal, prelude::*};
+use dimas_core::traits::OperationState;
 use std::{
 	fmt::Debug,
 	marker::PhantomData,
@@ -73,11 +74,11 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	prefix: Option<String>,
-	pub(crate) key_expr: K,
-	pub(crate) interval: I,
-	pub(crate) callback: C,
-	pub(crate) storage: S,
-	pub(crate) delay: Option<Duration>,
+	key_expr: K,
+	interval: I,
+	callback: C,
+	storage: S,
+	delay: Option<Duration>,
 	phantom: PhantomData<P>,
 }
 
@@ -317,6 +318,8 @@ where
 	Interval {
 		/// The Timers ID
 		key_expr: String,
+		/// [`OperationState`] on which this timer is started
+		activation_state: OperationState,
 		/// Timers Callback function called, when Timer is fired
 		callback: TimerCallback<P>,
 		/// The interval in which the Timer is fired
@@ -328,6 +331,8 @@ where
 	DelayedInterval {
 		/// The Timers ID
 		key_expr: String,
+		/// [`OperationState`] on which this timer is started
+		activation_state: OperationState,
 		/// Timers Callback function called, when Timer is fired
 		callback: TimerCallback<P>,
 		/// The interval in which the Timer is fired
@@ -375,6 +380,7 @@ where
 		match delay {
 			Some(delay) => Self::DelayedInterval {
 				key_expr: name,
+				activation_state: OperationState::Active,
 				delay,
 				interval,
 				callback,
@@ -382,6 +388,7 @@ where
 			},
 			None => Self::Interval {
 				key_expr: name,
+				activation_state: OperationState::Active,
 				interval,
 				callback,
 				handle: None,
@@ -398,6 +405,7 @@ where
 		match self {
 			Self::Interval {
 				key_expr,
+				activation_state,
 				interval,
 				callback,
 				handle,
@@ -427,6 +435,7 @@ where
 			}
 			Self::DelayedInterval {
 				key_expr,
+				activation_state,
 				delay,
 				interval,
 				callback,
@@ -466,12 +475,14 @@ where
 		match self {
 			Self::Interval {
 				key_expr: _,
+				activation_state,
 				interval: _,
 				callback: _,
 				handle,
 			}
 			| Self::DelayedInterval {
 				key_expr: _,
+				activation_state,
 				delay: _,
 				interval: _,
 				callback: _,

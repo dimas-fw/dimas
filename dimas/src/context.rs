@@ -48,7 +48,7 @@ use dimas_com::{communicator::Communicator, Message};
 use dimas_config::Config;
 use dimas_core::{
 	error::{DimasError, Result},
-	traits::OperationState,
+	traits::{ManageState, OperationState},
 };
 use std::{
 	collections::HashMap,
@@ -148,7 +148,7 @@ where
 	/// # Errors
 	/// Currently none
 	#[allow(unused_variables)]
-	pub(crate) fn start_registered_tasks(&self, tx: &Sender<TaskSignal>) -> Result<()> {
+	pub(crate) fn start_registered_tasks(&self) -> Result<()> {
 		// start liveliness subscriber
 		self.inner
 			.liveliness_subscribers
@@ -156,7 +156,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("liveliness subscribers".into()))?
 			.iter_mut()
 			.for_each(|subscriber| {
-				subscriber.1.start(self.clone(), tx.clone());
+				let _ = subscriber.1.manage_state(&self.state());
 			});
 
 		// start all registered queryables
@@ -166,7 +166,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("queryables".into()))?
 			.iter_mut()
 			.for_each(|queryable| {
-				queryable.1.start(self.clone(), tx.clone());
+				queryable.1.start(self.clone(), self.tx.clone());
 			});
 
 		// start all registered subscribers
@@ -176,7 +176,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("subscribers".into()))?
 			.iter_mut()
 			.for_each(|subscriber| {
-				subscriber.1.start(self.clone(), tx.clone());
+				subscriber.1.start(self.clone(), self.tx.clone());
 			});
 
 		// init all registered publishers
@@ -189,7 +189,8 @@ where
 				if let Err(reason) = publisher.1.init(self) {
 					error!(
 						"could not initialize publisher for {}, reason: {}",
-						publisher.1.key_expr, reason
+						publisher.1.key_expr(),
+						reason
 					);
 				};
 			});
@@ -204,7 +205,8 @@ where
 				if let Err(reason) = query.1.init(self) {
 					error!(
 						"could not initialize query for {}, reason: {}",
-						query.1.key_expr, reason
+						query.1.key_expr(),
+						reason
 					);
 				};
 			});
@@ -216,7 +218,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("timers".into()))?
 			.iter_mut()
 			.for_each(|timer| {
-				timer.1.start(self.clone(), tx.clone());
+				timer.1.start(self.clone(), self.tx.clone());
 			});
 
 		Ok(())
@@ -249,7 +251,8 @@ where
 				if let Err(reason) = query.1.de_init() {
 					error!(
 						"could not de-initialize query for {}, reason: {}",
-						query.1.key_expr, reason
+						query.1.key_expr(),
+						reason
 					);
 				};
 			});
@@ -291,7 +294,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("liveliness subscribers".into()))?
 			.iter_mut()
 			.for_each(|subscriber| {
-				subscriber.1.stop();
+				let _ = subscriber.1.manage_state(&self.state());
 			});
 
 		Ok(())
@@ -306,8 +309,7 @@ where
 		crate::com::liveliness::NoPutCallback,
 		crate::com::liveliness::Storage<P>,
 	> {
-		LivelinessSubscriberBuilder::new(self.prefix().clone())
-			.storage(self.liveliness_subscribers.clone())
+		LivelinessSubscriberBuilder::new(self.clone()).storage(self.liveliness_subscribers.clone())
 	}
 
 	/// Get a [`PublisherBuilder`], the builder for a [`Publisher`].
@@ -385,6 +387,8 @@ where
 	name: Option<String>,
 	/// The [`Agent`]s current operational state.
 	state: Arc<RwLock<OperationState>>,
+	/// a sender for sending signals to owner of context
+	pub(crate) tx: Sender<TaskSignal>,
 	/// The [`Agent`]s property structure
 	props: Arc<RwLock<P>>,
 	/// The [`Agent`]s [`Communicator`]
@@ -412,6 +416,7 @@ where
 		config: &Config,
 		props: P,
 		name: Option<String>,
+		tx: Sender<TaskSignal>,
 		prefix: Option<String>,
 	) -> Result<Self> {
 		let mut communicator = Communicator::new(config)?;
@@ -421,6 +426,7 @@ where
 		Ok(Self {
 			name,
 			state: Arc::new(RwLock::new(OperationState::Created)),
+			tx,
 			communicator: Arc::new(communicator),
 			props: Arc::new(RwLock::new(props)),
 			liveliness_subscribers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),

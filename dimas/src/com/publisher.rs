@@ -9,6 +9,7 @@ use crate::agent::Agent;
 use crate::context::ArcContext;
 use bitcode::{encode, Encode};
 use dimas_core::error::{DimasError, Result};
+use dimas_core::traits::OperationState;
 #[cfg(doc)]
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -45,8 +46,8 @@ pub struct PublisherBuilder<K, S> {
 	prefix: Option<String>,
 	priority: Priority,
 	congestion_control: CongestionControl,
-	pub(crate) key_expr: K,
-	pub(crate) storage: S,
+	key_expr: K,
+	storage: S,
 }
 
 impl PublisherBuilder<NoKeyExpression, NoStorage> {
@@ -184,7 +185,8 @@ impl PublisherBuilder<KeyExpression, Storage> {
 // region:		--- Publisher
 /// Publisher
 pub struct Publisher {
-	pub(crate) key_expr: String,
+	key_expr: String,
+	activation_state: OperationState,
 	priority: Priority,
 	congestion_control: CongestionControl,
 	publisher: Option<zenoh::publication::Publisher<'static>>,
@@ -212,10 +214,17 @@ impl Publisher
 	) -> Self {
 		Self {
 			key_expr,
+			activation_state: OperationState::Active,
 			priority,
 			congestion_control,
 			publisher: None,
 		}
+	}
+
+	/// Get `key_expr`
+	#[must_use]
+	pub fn key_expr(&self) -> &str {
+		&self.key_expr
 	}
 
 	/// Initialize

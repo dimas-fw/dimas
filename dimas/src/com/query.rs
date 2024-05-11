@@ -4,7 +4,11 @@
 
 // region:		--- modules
 use crate::context::ArcContext;
-use dimas_core::error::{DimasError, Result};
+use dimas_com::Response;
+use dimas_core::{
+	error::{DimasError, Result},
+	traits::OperationState,
+};
 #[cfg(doc)]
 use std::collections::HashMap;
 use std::{
@@ -19,8 +23,6 @@ use zenoh::{
 	query::{ConsolidationMode, QueryTarget},
 	sample::Locality,
 };
-
-use dimas_com::Response;
 // endregion:	--- modules
 
 // region:		--- types
@@ -70,14 +72,14 @@ pub struct QueryBuilder<P, K, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	pub(crate) allowed_destination: Locality,
-	pub(crate) prefix: Option<String>,
-	pub(crate) timeout: Option<Duration>,
-	pub(crate) key_expr: K,
-	pub(crate) response_callback: C,
-	pub(crate) storage: S,
-	pub(crate) mode: ConsolidationMode,
-	pub(crate) target: QueryTarget,
+	allowed_destination: Locality,
+	prefix: Option<String>,
+	timeout: Option<Duration>,
+	key_expr: K,
+	response_callback: C,
+	storage: S,
+	mode: ConsolidationMode,
+	target: QueryTarget,
 	phantom: PhantomData<P>,
 }
 
@@ -327,7 +329,8 @@ pub struct Query<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	pub(crate) key_expr: String,
+	key_expr: String,
+	activation_state: OperationState,
 	response_callback: QueryCallback<P>,
 	mode: ConsolidationMode,
 	allowed_destination: Locality,
@@ -365,6 +368,7 @@ where
 	) -> Self {
 		Self {
 			key_expr,
+			activation_state: OperationState::Active,
 			response_callback,
 			mode,
 			allowed_destination,
@@ -372,6 +376,12 @@ where
 			timeout,
 			context: None,
 		}
+	}
+
+	/// Get `key_expr`
+	#[must_use]
+	pub fn key_expr(&self) -> &str {
+		&self.key_expr
 	}
 
 	/// Initialize

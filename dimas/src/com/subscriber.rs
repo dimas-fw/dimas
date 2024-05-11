@@ -10,7 +10,10 @@ use super::task_signal::TaskSignal;
 use crate::agent::Agent;
 use crate::context::ArcContext;
 use dimas_com::Message;
-use dimas_core::error::{DimasError, Result};
+use dimas_core::{
+	error::{DimasError, Result},
+	traits::OperationState,
+};
 use std::sync::{mpsc::Sender, Arc, Mutex, RwLock};
 use tokio::task::JoinHandle;
 use tracing::{error, info, instrument, warn, Level};
@@ -73,11 +76,11 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	prefix: Option<String>,
-	pub(crate) key_expr: K,
-	pub(crate) put_callback: C,
-	pub(crate) storage: S,
-	pub(crate) reliability: Reliability,
-	pub(crate) delete_callback: Option<SubscriberDeleteCallback<P>>,
+	key_expr: K,
+	put_callback: C,
+	storage: S,
+	reliability: Reliability,
+	delete_callback: Option<SubscriberDeleteCallback<P>>,
 }
 
 impl<P> SubscriberBuilder<P, NoKeyExpression, NoPutCallback, NoStorage>
@@ -301,7 +304,10 @@ pub struct Subscriber<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// The subscribers key expression
 	key_expr: String,
+	/// [`OperationState`] on which this subscriber is started
+	activation_state: OperationState,
 	put_callback: SubscriberPutCallback<P>,
 	reliability: Reliability,
 	delete_callback: Option<SubscriberDeleteCallback<P>>,
@@ -333,6 +339,7 @@ where
 	) -> Self {
 		Self {
 			key_expr,
+			activation_state: OperationState::Standby,
 			put_callback,
 			reliability,
 			delete_callback,
