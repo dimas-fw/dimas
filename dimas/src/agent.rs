@@ -201,7 +201,11 @@ where
 	#[must_use]
 	pub fn publisher(
 		&self,
-	) -> PublisherBuilder<crate::com::publisher::NoKeyExpression, crate::com::publisher::Storage> {
+	) -> PublisherBuilder<
+		P,
+		crate::com::publisher::NoKeyExpression,
+		crate::com::publisher::Storage<P>,
+	> {
 		self.context.publisher()
 	}
 
@@ -260,7 +264,7 @@ where
 	fn about(ctx: &ArcContext<P>, request: Request) -> Result<()> {
 		let name = ctx
 			.fq_name()
-			.unwrap_or_else(|| String::from("NoName"));
+			.unwrap_or_else(|| String::from("--"));
 		let mode = ctx.communicator.mode().to_string();
 		let zid = ctx.communicator.uuid();
 		let state = ctx.state();
@@ -278,6 +282,7 @@ where
 	/// Propagation of errors from [`ArcContext::start_registered_tasks()`].
 	#[tracing::instrument(skip_all)]
 	pub async fn start(self) -> Result<Agent<'a, P>> {
+		self.context.set_state(OperationState::Active)?;
 		self.context.start_registered_tasks()?;
 
 		let session = self.context.communicator.session();
@@ -312,7 +317,7 @@ where
 				.replace(token);
 		};
 
-		about_queryable.start(self.context.clone(), self.context.tx.clone());
+		about_queryable.manage_state(&self.context.state())?;
 		self.context.set_state(OperationState::Active)?;
 
 		RunningAgent {
@@ -375,7 +380,7 @@ where
 								.map_err(|_| DimasError::WriteProperties)?
 								.get_mut(&key_expr)
 								.ok_or(DimasError::ShouldNotHappen)?
-								.start(self.context.clone(), self.context.tx.clone());
+								.manage_state(&self.context.state())?;
 						},
 						TaskSignal::RestartSubscriber(key_expr) => {
 							self.context.subscribers
@@ -383,7 +388,7 @@ where
 								.map_err(|_| DimasError::WriteProperties)?
 								.get_mut(&key_expr)
 								.ok_or(DimasError::ShouldNotHappen)?
-								.start(self.context.clone(), self.context.tx.clone());
+								.manage_state(&self.context.state())?;
 						},
 						TaskSignal::RestartTimer(key_expr) => {
 							self.context.timers
@@ -391,7 +396,7 @@ where
 								.map_err(|_| DimasError::WriteProperties)?
 								.get_mut(&key_expr)
 								.ok_or(DimasError::ShouldNotHappen)?
-								.start(self.context.clone(), self.context.tx.clone());
+								.manage_state(&self.context.state())?;
 						},
 					};
 				}

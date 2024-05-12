@@ -166,7 +166,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("queryables".into()))?
 			.iter_mut()
 			.for_each(|queryable| {
-				queryable.1.start(self.clone(), self.tx.clone());
+				let _ = queryable.1.manage_state(&self.state());
 			});
 
 		// start all registered subscribers
@@ -176,7 +176,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("subscribers".into()))?
 			.iter_mut()
 			.for_each(|subscriber| {
-				subscriber.1.start(self.clone(), self.tx.clone());
+				let _ = subscriber.1.manage_state(&self.state());
 			});
 
 		// init all registered publishers
@@ -186,7 +186,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("publishers".into()))?
 			.iter_mut()
 			.for_each(|publisher| {
-				if let Err(reason) = publisher.1.init(self) {
+				if let Err(reason) = publisher.1.manage_state(&self.state()) {
 					error!(
 						"could not initialize publisher for {}, reason: {}",
 						publisher.1.key_expr(),
@@ -202,7 +202,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("queries".into()))?
 			.iter_mut()
 			.for_each(|query| {
-				if let Err(reason) = query.1.init(self) {
+				if let Err(reason) = query.1.manage_state(&self.state()) {
 					error!(
 						"could not initialize query for {}, reason: {}",
 						query.1.key_expr(),
@@ -218,7 +218,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("timers".into()))?
 			.iter_mut()
 			.for_each(|timer| {
-				timer.1.start(self.clone(), self.tx.clone());
+				let _ = timer.1.manage_state(&self.state());
 			});
 
 		Ok(())
@@ -264,7 +264,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("publishers".into()))?
 			.iter_mut()
 			.for_each(|publisher| {
-				publisher.1.de_init();
+				let _ = publisher.1.de_init();
 			});
 
 		// stop all registered subscribers
@@ -316,8 +316,12 @@ where
 	#[must_use]
 	pub fn publisher(
 		&self,
-	) -> PublisherBuilder<crate::com::publisher::NoKeyExpression, crate::com::publisher::Storage> {
-		PublisherBuilder::new(self.prefix().clone()).storage(self.publishers.clone())
+	) -> PublisherBuilder<
+		P,
+		crate::com::publisher::NoKeyExpression,
+		crate::com::publisher::Storage<P>,
+	> {
+		PublisherBuilder::new(self.clone()).storage(self.publishers.clone())
 	}
 
 	/// Get a [`QueryBuilder`], the builder for a [`Query`].
@@ -330,7 +334,7 @@ where
 		crate::com::query::NoResponseCallback,
 		crate::com::query::Storage<P>,
 	> {
-		QueryBuilder::new(self.prefix().clone()).storage(self.queries.clone())
+		QueryBuilder::new(self.clone()).storage(self.queries.clone())
 	}
 
 	/// Get a [`QueryableBuilder`], the builder for a [`Queryable`].
@@ -343,7 +347,7 @@ where
 		crate::com::queryable::NoRequestCallback,
 		crate::com::queryable::Storage<P>,
 	> {
-		QueryableBuilder::new(self.prefix().clone()).storage(self.queryables.clone())
+		QueryableBuilder::new(self.clone()).storage(self.queryables.clone())
 	}
 
 	/// Get a [`SubscriberBuilder`], the builder for a [`Subscriber`].
@@ -356,7 +360,7 @@ where
 		crate::com::subscriber::NoPutCallback,
 		crate::com::subscriber::Storage<P>,
 	> {
-		SubscriberBuilder::new(self.prefix().clone()).storage(self.subscribers.clone())
+		SubscriberBuilder::new(self.clone()).storage(self.subscribers.clone())
 	}
 
 	/// Get a [`TimerBuilder`], the builder for a [`Timer`].
@@ -370,7 +374,7 @@ where
 		crate::timer::NoIntervalCallback,
 		crate::timer::Storage<P>,
 	> {
-		TimerBuilder::new(self.prefix().clone()).storage(self.timers.clone())
+		TimerBuilder::new(self.clone()).storage(self.timers.clone())
 	}
 }
 // endregion:	--- ArcContext
@@ -396,7 +400,7 @@ where
 	/// Registered [`LivelinessSubscriber`]
 	pub(crate) liveliness_subscribers: Arc<RwLock<HashMap<String, LivelinessSubscriber<P>>>>,
 	/// Registered [`Publisher`]
-	publishers: Arc<RwLock<HashMap<String, Publisher>>>,
+	publishers: Arc<RwLock<HashMap<String, Publisher<P>>>>,
 	/// Registered [`Query`]s
 	queries: Arc<RwLock<HashMap<String, Query<P>>>>,
 	/// Registered [`Queryable`]s

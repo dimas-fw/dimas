@@ -46,7 +46,7 @@ impl Display for OperationState {
 /// Trait for state management of components
 pub trait ManageState {
 	/// Checks whether state of component is apropriate.
-	/// If not, adjusts state to needs.
+	/// If not, adjusts components state to needs.
 	/// # Errors
 	fn manage_state(&mut self, state: &OperationState) -> Result<()>;
 }
