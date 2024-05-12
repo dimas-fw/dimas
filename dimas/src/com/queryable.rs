@@ -8,12 +8,11 @@ use crate::context::ArcContext;
 use dimas_com::Request;
 use dimas_core::{
 	error::{DimasError, Result},
-	traits::OperationState,
+	traits::{ManageState, OperationState},
 };
 use std::{
 	fmt::Debug,
-	marker::PhantomData,
-	sync::{mpsc::Sender, Arc, Mutex, RwLock},
+	sync::{Arc, Mutex, RwLock},
 };
 use tokio::task::JoinHandle;
 use tracing::{error, info, instrument, warn, Level};
@@ -69,19 +68,26 @@ pub struct QueryableBuilder<P, K, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	context: ArcContext<P>,
+	activation_state: OperationState,
 	completeness: bool,
 	allowed_origin: Locality,
-	prefix: Option<String>,
 	key_expr: K,
 	request_callback: C,
 	storage: S,
-	phantom: PhantomData<P>,
 }
 
 impl<P, K, C, S> QueryableBuilder<P, K, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// Set the activation state.
+	#[must_use]
+	pub const fn activation_state(mut self, state: OperationState) -> Self {
+		self.activation_state = state;
+		self
+	}
+
 	/// Set the completeness of the [`Queryable`].
 	#[must_use]
 	pub const fn completeness(mut self, completeness: bool) -> Self {
@@ -103,15 +109,15 @@ where
 {
 	/// Construct a `QueryableBuilder` in initial state
 	#[must_use]
-	pub const fn new(prefix: Option<String>) -> Self {
+	pub const fn new(context: ArcContext<P>) -> Self {
 		Self {
+			context,
+			activation_state: OperationState::Standby,
 			completeness: true,
 			allowed_origin: Locality::Any,
-			prefix,
 			key_expr: NoKeyExpression,
 			request_callback: NoRequestCallback,
 			storage: NoStorage,
-			phantom: PhantomData,
 		}
 	}
 }
@@ -124,52 +130,53 @@ where
 	#[must_use]
 	pub fn key_expr(self, key_expr: &str) -> QueryableBuilder<P, KeyExpression, C, S> {
 		let Self {
+			context,
+			activation_state,
 			completeness,
 			allowed_origin,
-			prefix,
 			storage,
 			request_callback: callback,
-			phantom,
 			..
 		} = self;
 		QueryableBuilder {
+			context,
+			activation_state,
 			completeness,
 			allowed_origin,
-			prefix,
 			key_expr: KeyExpression {
 				key_expr: key_expr.into(),
 			},
 			request_callback: callback,
 			storage,
-			phantom,
 		}
 	}
 
 	/// Set only the topic of the [`Queryable`].
 	/// Will be prefixed with agents prefix.
 	#[must_use]
-	pub fn topic(mut self, topic: &str) -> QueryableBuilder<P, KeyExpression, C, S> {
+	pub fn topic(self, topic: &str) -> QueryableBuilder<P, KeyExpression, C, S> {
 		let key_expr = self
-			.prefix
-			.take()
+			.context
+			.prefix()
+			.clone()
 			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
 		let Self {
+			context,
+			activation_state,
 			completeness,
 			allowed_origin,
-			prefix,
 			storage,
 			request_callback: callback,
-			phantom,
 			..
 		} = self;
 		QueryableBuilder {
+			context,
+			activation_state,
 			completeness,
 			allowed_origin,
-			prefix,
 			key_expr: KeyExpression { key_expr },
 			request_callback: callback,
 			storage,
-			phantom,
 		}
 	}
 }
@@ -185,23 +192,23 @@ where
 		F: FnMut(&ArcContext<P>, Request) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
+			context,
+			activation_state,
 			completeness,
 			allowed_origin,
-			prefix,
 			key_expr,
 			storage,
-			phantom,
 			..
 		} = self;
 		let request: QueryableCallback<P> = Arc::new(Mutex::new(Box::new(callback)));
 		QueryableBuilder {
+			context,
+			activation_state,
 			completeness,
 			allowed_origin,
-			prefix,
 			key_expr,
 			request_callback: RequestCallback { request },
 			storage,
-			phantom,
 		}
 	}
 }
@@ -217,22 +224,22 @@ where
 		storage: Arc<RwLock<std::collections::HashMap<String, Queryable<P>>>>,
 	) -> QueryableBuilder<P, K, C, Storage<P>> {
 		let Self {
+			context,
+			activation_state,
 			completeness,
 			allowed_origin,
-			prefix,
 			key_expr,
 			request_callback: callback,
-			phantom,
 			..
 		} = self;
 		QueryableBuilder {
+			context,
+			activation_state,
 			completeness,
 			allowed_origin,
-			prefix,
 			key_expr,
 			request_callback: callback,
 			storage: Storage { storage },
-			phantom,
 		}
 	}
 }
@@ -246,6 +253,8 @@ where
 	///
 	pub fn build(self) -> Result<Queryable<P>> {
 		let Self {
+			context,
+			activation_state,
 			completeness,
 			allowed_origin,
 			key_expr,
@@ -255,6 +264,8 @@ where
 		let key_expr = key_expr.key_expr;
 		Ok(Queryable::new(
 			key_expr,
+			context,
+			activation_state,
 			request_callback.request,
 			completeness,
 			allowed_origin,
@@ -289,6 +300,8 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	key_expr: String,
+	/// Context for the Subscriber
+	context: ArcContext<P>,
 	activation_state: OperationState,
 	request_callback: QueryableCallback<P>,
 	completeness: bool,
@@ -308,6 +321,21 @@ where
 	}
 }
 
+impl<P> ManageState for Queryable<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	fn manage_state(&mut self, state: &OperationState) -> Result<()> {
+		if (state >= &self.activation_state) && self.handle.is_none() {
+			return self.start();
+		} else if (state < &self.activation_state) && self.handle.is_some() {
+			self.stop();
+			return Ok(());
+		}
+		Ok(())
+	}
+}
+
 impl<P> Queryable<P>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -316,13 +344,16 @@ where
 	#[must_use]
 	pub fn new(
 		key_expr: String,
+		context: ArcContext<P>,
+		activation_state: OperationState,
 		request_callback: QueryableCallback<P>,
 		completeness: bool,
 		allowed_origin: Locality,
 	) -> Self {
 		Self {
 			key_expr,
-			activation_state: OperationState::Active,
+			context,
+			activation_state,
 			request_callback,
 			completeness,
 			allowed_origin,
@@ -333,7 +364,7 @@ where
 	/// Start or restart the queryable.
 	/// An already running queryable will be stopped, eventually damaged Mutexes will be repaired
 	#[instrument(level = Level::TRACE, skip_all)]
-	pub fn start(&mut self, ctx: ArcContext<P>, tx: Sender<TaskSignal>) {
+	fn start(&mut self) -> Result<()> {
 		self.stop();
 
 		{
@@ -347,24 +378,30 @@ where
 		let allowed_origin = self.allowed_origin;
 		let key_expr = self.key_expr.clone();
 		let cb = self.request_callback.clone();
+		let ctx1 = self.context.clone();
+		let ctx2 = self.context.clone();
 
 		self.handle
 			.replace(tokio::task::spawn(async move {
 				let key = key_expr.clone();
 				std::panic::set_hook(Box::new(move |reason| {
 					error!("queryable panic: {}", reason);
-					if let Err(reason) = tx.send(TaskSignal::RestartQueryable(key.clone())) {
+					if let Err(reason) = ctx1
+						.tx
+						.send(TaskSignal::RestartQueryable(key.clone()))
+					{
 						error!("could not restart queryable: {}", reason);
 					} else {
 						info!("restarting queryable!");
 					};
 				}));
 				if let Err(error) =
-					run_queryable(key_expr, cb, completeness, allowed_origin, ctx).await
+					run_queryable(key_expr, cb, completeness, allowed_origin, ctx2).await
 				{
 					error!("queryable failed with {error}");
 				};
 			}));
+		Ok(())
 	}
 
 	/// Stop a running Queryable

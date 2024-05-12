@@ -7,13 +7,12 @@ use crate::context::ArcContext;
 use dimas_com::Response;
 use dimas_core::{
 	error::{DimasError, Result},
-	traits::OperationState,
+	traits::{ManageState, OperationState},
 };
 #[cfg(doc)]
 use std::collections::HashMap;
 use std::{
 	fmt::Debug,
-	marker::PhantomData,
 	sync::{Arc, Mutex, RwLock},
 	time::Duration,
 };
@@ -72,15 +71,15 @@ pub struct QueryBuilder<P, K, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	context: ArcContext<P>,
+	activation_state: OperationState,
 	allowed_destination: Locality,
-	prefix: Option<String>,
 	timeout: Option<Duration>,
 	key_expr: K,
 	response_callback: C,
 	storage: S,
 	mode: ConsolidationMode,
 	target: QueryTarget,
-	phantom: PhantomData<P>,
 }
 
 impl<P> QueryBuilder<P, NoKeyExpression, NoResponseCallback, NoStorage>
@@ -89,17 +88,17 @@ where
 {
 	/// Construct a `QueryBuilder` in initial state
 	#[must_use]
-	pub const fn new(prefix: Option<String>) -> Self {
+	pub const fn new(context: ArcContext<P>) -> Self {
 		Self {
+			context,
+			activation_state: OperationState::Active,
 			allowed_destination: Locality::Any,
-			prefix,
 			timeout: None,
 			key_expr: NoKeyExpression,
 			response_callback: NoResponseCallback,
 			storage: NoStorage,
 			mode: ConsolidationMode::None,
 			target: QueryTarget::BestMatching,
-			phantom: PhantomData,
 		}
 	}
 }
@@ -108,6 +107,13 @@ impl<P, K, C, S> QueryBuilder<P, K, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// Set the activation state.
+	#[must_use]
+	pub const fn activation_state(mut self, state: OperationState) -> Self {
+		self.activation_state = state;
+		self
+	}
+
 	/// Set the [`ConsolidationMode`] of the [`Query`].
 	#[must_use]
 	pub const fn mode(mut self, mode: ConsolidationMode) -> Self {
@@ -145,19 +151,20 @@ where
 	#[must_use]
 	pub fn key_expr(self, key_expr: &str) -> QueryBuilder<P, KeyExpression, C, S> {
 		let Self {
+			context,
+			activation_state,
 			allowed_destination,
-			prefix,
 			timeout,
 			storage,
 			response_callback: callback,
 			mode,
 			target,
-			phantom,
 			..
 		} = self;
 		QueryBuilder {
+			context,
+			activation_state,
 			allowed_destination,
-			prefix,
 			timeout,
 			key_expr: KeyExpression {
 				key_expr: key_expr.into(),
@@ -166,39 +173,39 @@ where
 			storage,
 			mode,
 			target,
-			phantom,
 		}
 	}
 
 	/// Set only the message qualifing part of the query.
 	/// Will be prefixed with agents prefix.
 	#[must_use]
-	pub fn topic(mut self, topic: &str) -> QueryBuilder<P, KeyExpression, C, S> {
+	pub fn topic(self, topic: &str) -> QueryBuilder<P, KeyExpression, C, S> {
 		let key_expr = self
-			.prefix
-			.take()
+			.context
+			.prefix()
+			.clone()
 			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
 		let Self {
+			context,
+			activation_state,
 			allowed_destination,
-			prefix,
 			timeout,
 			storage,
 			response_callback: callback,
 			mode,
 			target,
-			phantom,
 			..
 		} = self;
 		QueryBuilder {
+			context,
+			activation_state,
 			allowed_destination,
-			prefix,
 			timeout,
 			key_expr: KeyExpression { key_expr },
 			response_callback: callback,
 			storage,
 			mode,
 			target,
-			phantom,
 		}
 	}
 }
@@ -214,27 +221,27 @@ where
 		F: FnMut(&ArcContext<P>, Response) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
+			context,
+			activation_state,
 			allowed_destination,
-			prefix,
 			timeout,
 			key_expr,
 			storage,
 			mode,
 			target,
-			phantom,
 			..
 		} = self;
 		let callback: QueryCallback<P> = Arc::new(Mutex::new(callback));
 		QueryBuilder {
+			context,
+			activation_state,
 			allowed_destination,
-			prefix,
 			timeout,
 			key_expr,
 			response_callback: ResponseCallback { response: callback },
 			storage,
 			mode,
 			target,
-			phantom,
 		}
 	}
 }
@@ -250,26 +257,26 @@ where
 		storage: Arc<RwLock<std::collections::HashMap<String, Query<P>>>>,
 	) -> QueryBuilder<P, K, C, Storage<P>> {
 		let Self {
+			context,
+			activation_state,
 			allowed_destination,
-			prefix,
 			timeout,
 			key_expr,
 			response_callback: callback,
 			mode,
 			target,
-			phantom,
 			..
 		} = self;
 		QueryBuilder {
+			context,
+			activation_state,
 			allowed_destination,
-			prefix,
 			timeout,
 			key_expr,
 			response_callback: callback,
 			storage: Storage { storage },
 			mode,
 			target,
-			phantom,
 		}
 	}
 }
@@ -283,6 +290,8 @@ where
 	///
 	pub fn build(self) -> Result<Query<P>> {
 		let Self {
+			context,
+			activation_state,
 			allowed_destination,
 			timeout,
 			key_expr,
@@ -294,6 +303,8 @@ where
 		let key_expr = key_expr.key_expr;
 		Ok(Query::new(
 			key_expr,
+			context,
+			activation_state,
 			response_callback.response,
 			mode,
 			allowed_destination,
@@ -330,13 +341,14 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	key_expr: String,
+	/// Context for the Query
+	context: ArcContext<P>,
 	activation_state: OperationState,
 	response_callback: QueryCallback<P>,
 	mode: ConsolidationMode,
 	allowed_destination: Locality,
 	target: QueryTarget,
 	timeout: Option<Duration>,
-	context: Option<ArcContext<P>>,
 }
 
 impl<P> Debug for Query<P>
@@ -352,14 +364,31 @@ where
 	}
 }
 
+impl<P> ManageState for Query<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	fn manage_state(&mut self, state: &OperationState) -> Result<()> {
+		if state >= &self.activation_state {
+			return self.init();
+		} else if state < &self.activation_state {
+			return self.de_init();
+		}
+		Ok(())
+	}
+}
+
 impl<P> Query<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// Constructor for a [`Query`]
 	#[must_use]
+	#[allow(clippy::too_many_arguments)]
 	pub fn new(
 		key_expr: String,
+		context: ArcContext<P>,
+		activation_state: OperationState,
 		response_callback: QueryCallback<P>,
 		mode: ConsolidationMode,
 		allowed_destination: Locality,
@@ -368,13 +397,13 @@ where
 	) -> Self {
 		Self {
 			key_expr,
-			activation_state: OperationState::Active,
+			context,
+			activation_state,
 			response_callback,
 			mode,
 			allowed_destination,
 			target,
 			timeout,
-			context: None,
 		}
 	}
 
@@ -386,11 +415,10 @@ where
 
 	/// Initialize
 	/// # Errors
-	pub fn init(&mut self, context: &ArcContext<P>) -> Result<()>
+	pub fn init(&mut self) -> Result<()>
 	where
 		P: Send + Sync + Unpin + 'static,
 	{
-		self.context.replace(context.clone());
 		Ok(())
 	}
 
@@ -400,7 +428,6 @@ where
 	where
 		P: Send + Sync + Unpin + 'static,
 	{
-		self.context.take();
 		Ok(())
 	}
 
@@ -408,12 +435,7 @@ where
 	#[instrument(name="query", level = Level::ERROR, skip_all)]
 	pub fn get(&self) -> Result<()> {
 		let cb = self.response_callback.clone();
-		let communicator = self
-			.context
-			.clone()
-			.ok_or(DimasError::ShouldNotHappen)?
-			.communicator
-			.clone();
+		let communicator = self.context.clone().communicator.clone();
 
 		let session = communicator.session();
 		let mut query = session
@@ -438,13 +460,7 @@ where
 						let guard = cb.lock();
 						match guard {
 							Ok(mut lock) => {
-								if let Err(error) = lock(
-									&self
-										.context
-										.clone()
-										.ok_or(DimasError::ShouldNotHappen)?,
-									msg,
-								) {
+								if let Err(error) = lock(&self.context.clone(), msg) {
 									error!("callback failed with {error}");
 								}
 							}

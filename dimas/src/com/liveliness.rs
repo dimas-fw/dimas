@@ -63,6 +63,7 @@ where
 {
 	token: String,
 	context: ArcContext<P>,
+	activation_state: OperationState,
 	put_callback: C,
 	storage: S,
 	delete_callback: Option<LivelinessCallback<P>>,
@@ -82,6 +83,7 @@ where
 		Self {
 			token,
 			context,
+			activation_state: OperationState::Configured,
 			put_callback: NoPutCallback,
 			storage: NoStorage,
 			delete_callback: None,
@@ -93,12 +95,20 @@ impl<P, C, S> LivelinessSubscriberBuilder<P, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// Set the activation state.
+	#[must_use]
+	pub const fn activation_state(mut self, state: OperationState) -> Self {
+		self.activation_state = state;
+		self
+	}
+
 	/// Set a different prefix for the liveliness subscriber.
 	#[must_use]
 	pub fn prefix(self, prefix: &str) -> Self {
 		let token = format!("{prefix}/*");
 		let Self {
 			context,
+			activation_state,
 			put_callback,
 			storage,
 			delete_callback,
@@ -107,6 +117,7 @@ where
 		Self {
 			token,
 			context,
+			activation_state,
 			put_callback,
 			storage,
 			delete_callback,
@@ -118,6 +129,7 @@ where
 	pub fn token(self, token: impl Into<String>) -> Self {
 		let Self {
 			context,
+			activation_state,
 			put_callback,
 			storage,
 			delete_callback,
@@ -126,6 +138,7 @@ where
 		Self {
 			token: token.into(),
 			context,
+			activation_state,
 			put_callback,
 			storage,
 			delete_callback,
@@ -141,6 +154,7 @@ where
 		let Self {
 			token,
 			context,
+			activation_state,
 			put_callback,
 			storage,
 			..
@@ -150,6 +164,7 @@ where
 		Self {
 			token,
 			context,
+			activation_state,
 			put_callback,
 			storage,
 			delete_callback,
@@ -170,6 +185,7 @@ where
 		let Self {
 			token,
 			context,
+			activation_state,
 			storage,
 			delete_callback,
 			..
@@ -178,6 +194,7 @@ where
 		LivelinessSubscriberBuilder {
 			token,
 			context,
+			activation_state,
 			put_callback: PutCallback {
 				callback: put_callback,
 			},
@@ -200,6 +217,7 @@ where
 		let Self {
 			token,
 			context,
+			activation_state,
 			put_callback,
 			delete_callback,
 			..
@@ -207,6 +225,7 @@ where
 		LivelinessSubscriberBuilder {
 			token,
 			context,
+			activation_state,
 			put_callback,
 			storage: Storage { storage },
 			delete_callback,
@@ -225,6 +244,7 @@ where
 		let Self {
 			token,
 			context,
+			activation_state,
 			put_callback,
 			delete_callback,
 			..
@@ -232,6 +252,7 @@ where
 		Ok(LivelinessSubscriber::new(
 			token,
 			context,
+			activation_state,
 			put_callback.callback,
 			delete_callback,
 		))
@@ -306,13 +327,14 @@ where
 	pub fn new(
 		token: String,
 		context: ArcContext<P>,
+		activation_state: OperationState,
 		put_callback: LivelinessCallback<P>,
 		delete_callback: Option<LivelinessCallback<P>>,
 	) -> Self {
 		Self {
 			token,
 			context,
-			activation_state: OperationState::Configured,
+			activation_state,
 			put_callback,
 			delete_callback,
 			handle: None,
@@ -352,11 +374,11 @@ where
 		});
 
 		// the liveliness subscriber
+		let token = self.token.clone();
 		let p_cb = self.put_callback.clone();
 		let d_cb = self.delete_callback.clone();
 		let ctx1 = self.context.clone();
 		let ctx2 = self.context.clone();
-		let token = self.token.clone();
 
 		self.handle
 			.replace(tokio::task::spawn(async move {
