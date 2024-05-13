@@ -122,20 +122,5 @@ impl ScoutingEntity {
 }
 // endregion:	--- ScoutingEntity
 
-// region:		--- StateEntity
-/// Send an [`OperationState`] value
-pub struct SetState {
-	state: OperationState,
-}
-
-impl SetState {
-	/// Get the state field
-	#[must_use]
-	pub const fn state(&self) -> &OperationState {
-		&self.state
-	}
-}
-// endregion:	--- StateEntity
-
 // region:		--- ???
 // endregion:	--- ???

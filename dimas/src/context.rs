@@ -145,7 +145,9 @@ where
 		// step up?
 		while self.state() < final_state {
 			match self.state() {
-				OperationState::Error => {return Err(DimasError::ManageState.into());}
+				OperationState::Error => {
+					return Err(DimasError::ManageState.into());
+				}
 				OperationState::Created => {
 					next_state = OperationState::Configured;
 				}
@@ -183,7 +185,9 @@ where
 				OperationState::Created => {
 					return self.modify_state_property(OperationState::Error);
 				}
-				OperationState::Error => {return Err(DimasError::ManageState.into());}
+				OperationState::Error => {
+					return Err(DimasError::ManageState.into());
+				}
 			}
 			self.downgrade_registered_tasks(next_state)?;
 		}
@@ -277,8 +281,8 @@ where
 				let _ = timer.1.manage_state(&new_state);
 			});
 
-			self.modify_state_property(new_state)?;
-			Ok(())
+		self.modify_state_property(new_state)?;
+		Ok(())
 	}
 
 	/// Internal function for stopping all registered tasks.<br>
@@ -353,7 +357,7 @@ where
 			.for_each(|subscriber| {
 				let _ = subscriber.1.manage_state(&new_state);
 			});
-		
+
 		self.modify_state_property(new_state)?;
 		Ok(())
 	}

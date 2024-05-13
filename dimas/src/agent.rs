@@ -49,7 +49,7 @@ use crate::com::{
 	liveliness::LivelinessSubscriberBuilder,
 	publisher::PublisherBuilder,
 	query::QueryBuilder,
-	queryable::{Queryable, QueryableBuilder},
+	queryable::QueryableBuilder,
 	subscriber::SubscriberBuilder,
 	task_signal::{wait_for_task_signals, TaskSignal},
 };
@@ -120,21 +120,60 @@ where
 	}
 
 	/// Set the [`Config`]uration.
+	/// An agent with [`OperationState`] `Configured` can be started
+	/// and will respond to commands from dimasctl/dimasmon
 	///
 	/// # Errors
+	///
 	pub fn config(self, config: &Config) -> Result<Agent<'a, P>> {
 		// we need an mpsc channel with a receiver behind a mutex guard
 		let (tx, rx) = mpsc::channel();
 		let rx = Mutex::new(rx);
 		let context: ArcContext<P> =
 			Context::new(config, self.props, self.name, tx, self.prefix)?.into();
-		context.set_state(OperationState::Configured)?;
-		Ok(Agent {
+
+		let agent = Agent {
 			rx,
 			context,
 			liveliness: false,
 			liveliness_token: RwLock::new(None),
-		})
+		};
+
+		// create basic communication stuff
+		let session = agent.context.communicator.session();
+
+		let prefix = agent
+			.context
+			.prefix()
+			.clone()
+			.map_or(String::new(), |prefix| format!("{prefix}/"));
+
+		// create "about" queryable
+		let key_expr = format!("{}{}/about", &prefix, session.zid());
+		dbg!(&key_expr);
+		agent
+			.queryable()
+			.key_expr(&key_expr)
+			.callback(Agent::about)
+			.activation_state(OperationState::Configured)
+			.add()?;
+
+		// create "state" queryable
+		let key_expr = format!("{}{}/state", &prefix, session.zid());
+		dbg!(&key_expr);
+		agent
+			.queryable()
+			.key_expr(&key_expr)
+			.callback(Agent::state)
+			.activation_state(OperationState::Configured)
+			.add()?;
+
+		// start basic communication stuff
+		agent
+			.context
+			.set_state(OperationState::Configured)?;
+
+		Ok(agent)
 	}
 }
 // endregion:   --- UnconfiguredAgent
@@ -275,6 +314,21 @@ where
 		Ok(())
 	}
 
+	fn state(ctx: &ArcContext<P>, request: Request) -> Result<()> {
+		dbg!(&request);
+		let name = ctx
+			.fq_name()
+			.unwrap_or_else(|| String::from("--"));
+		let mode = ctx.communicator.mode().to_string();
+		let zid = ctx.communicator.uuid();
+		let state = ctx.state();
+		let value = AboutEntity::new(name, mode, zid, state);
+		let query = request.key_expr();
+		info!("Received query for {}, responding with {}", &query, &value);
+		request.reply(value)?;
+		Ok(())
+	}
+
 	/// Start the agent.<br>
 	/// The agent can be stopped properly using `ctrl-c`
 	///
@@ -282,16 +336,7 @@ where
 	/// Propagation of errors from [`ArcContext::start_registered_tasks()`].
 	#[tracing::instrument(skip_all)]
 	pub async fn start(self) -> Result<Agent<'a, P>> {
-
 		let session = self.context.communicator.session();
-
-		// create "about" queryable
-		let key_expr = format!("{}/about", session.zid());
-		let mut about_queryable = self
-			.queryable()
-			.key_expr(&key_expr)
-			.callback(Agent::about)
-			.build()?;
 
 		// activate sending liveliness
 		if self.liveliness {
@@ -315,7 +360,6 @@ where
 				.replace(token);
 		};
 
-		about_queryable.manage_state(&self.context.state())?;
 		self.context.set_state(OperationState::Active)?;
 
 		RunningAgent {
@@ -323,7 +367,6 @@ where
 			context: self.context,
 			liveliness: self.liveliness,
 			liveliness_token: self.liveliness_token,
-			about_queryable,
 		}
 		.run()
 		.await
@@ -347,9 +390,6 @@ where
 	/// The liveliness token - typically the uuid sent to other participants<br>
 	/// Is available in the [`LivelinessSubscriber`] callback
 	liveliness_token: RwLock<Option<LivelinessToken<'a>>>,
-	/// Storage for the about queryable
-	#[allow(dead_code)]
-	about_queryable: Queryable<P>,
 }
 
 impl<'a, P> RunningAgent<'a, P>
@@ -422,11 +462,8 @@ where
 	/// # Errors
 	/// Propagation of errors from [`ArcContext::stop_registered_tasks()`].
 	#[tracing::instrument(skip_all)]
-	pub fn stop(mut self) -> Result<Agent<'a, P>> {
+	pub fn stop(self) -> Result<Agent<'a, P>> {
 		self.context.set_state(OperationState::Created)?;
-
-		// stop about queryable
-		self.about_queryable.manage_state(&self.context.state())?;
 
 		// stop liveliness
 		if self.liveliness {
