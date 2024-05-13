@@ -282,8 +282,6 @@ where
 	/// Propagation of errors from [`ArcContext::start_registered_tasks()`].
 	#[tracing::instrument(skip_all)]
 	pub async fn start(self) -> Result<Agent<'a, P>> {
-		self.context.set_state(OperationState::Active)?;
-		self.context.start_registered_tasks()?;
 
 		let session = self.context.communicator.session();
 
@@ -359,7 +357,7 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// run
-	async fn run(mut self) -> Result<Agent<'a, P>> {
+	async fn run(self) -> Result<Agent<'a, P>> {
 		loop {
 			// different possibilities that can happen
 			select! {
@@ -406,34 +404,12 @@ where
 					match signal {
 						Ok(()) => {
 							info!("shutdown due to 'ctrl-c'");
-							self.context.stop_registered_tasks()?;
-							// stop liveliness
-							if self.liveliness {
-								self.liveliness_token
-									.write()
-									.map_err(|_| DimasError::ModifyContext("liveliness".into()))?
-									.take();
-							}
-							let r = Agent {
-								rx: self.rx,
-								context: self.context,
-								liveliness: self.liveliness,
-								liveliness_token: self.liveliness_token,
-							};
-							return Ok(r);
+							return self.stop();
 						}
 						Err(err) => {
 							error!("Unable to listen for 'Ctrl-C': {err}");
 							// we also try to shut down the agent properly
-							self.context.stop_registered_tasks()?;
-							// stop liveliness
-							if self.liveliness {
-								self.liveliness_token
-									.write()
-									.map_err(|_| DimasError::ModifyContext("liveliness".into()))?
-									.take();
-							}
-							return Err(DimasError::ShouldNotHappen.into());
+							return self.stop();
 						}
 					}
 				}
@@ -447,7 +423,7 @@ where
 	/// Propagation of errors from [`ArcContext::stop_registered_tasks()`].
 	#[tracing::instrument(skip_all)]
 	pub fn stop(mut self) -> Result<Agent<'a, P>> {
-		self.context.stop_registered_tasks()?;
+		self.context.set_state(OperationState::Created)?;
 
 		// stop about queryable
 		self.about_queryable.manage_state(&self.context.state())?;

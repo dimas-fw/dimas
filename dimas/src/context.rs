@@ -56,7 +56,7 @@ use std::{
 	ops::Deref,
 	sync::{mpsc::Sender, Arc, RwLock},
 };
-use tracing::{error, instrument, Level};
+use tracing::{error, info, instrument, Level};
 use zenoh::{
 	prelude::{sync::SyncResolve, SampleKind},
 	query::ConsolidationMode,
@@ -127,11 +127,67 @@ where
 
 	/// Set the [`Context`]s state
 	/// # Errors
-	pub fn set_state(&self, state: OperationState) -> Result<()> {
+	fn modify_state_property(&self, state: OperationState) -> Result<()> {
 		*(self
 			.state
 			.write()
 			.map_err(|_| DimasError::ModifyContext("state".into()))?) = state;
+		Ok(())
+	}
+
+	/// Set the [`OperationState`].<br>
+	/// Setting new state is done step by step
+	/// # Errors
+	pub fn set_state(&self, state: OperationState) -> Result<()> {
+		info!("changing state to {}", &state);
+		let final_state = state;
+		let mut next_state;
+		// step up?
+		while self.state() < final_state {
+			match self.state() {
+				OperationState::Error => {return Err(DimasError::ManageState.into());}
+				OperationState::Created => {
+					next_state = OperationState::Configured;
+				}
+				OperationState::Configured => {
+					next_state = OperationState::Inactive;
+				}
+				OperationState::Inactive => {
+					next_state = OperationState::Standby;
+				}
+				OperationState::Standby => {
+					next_state = OperationState::Active;
+				}
+				OperationState::Active => {
+					return self.modify_state_property(OperationState::Error);
+				}
+			}
+			self.upgrade_registered_tasks(next_state)?;
+		}
+
+		// step down?
+		while self.state() > final_state {
+			match self.state() {
+				OperationState::Active => {
+					next_state = OperationState::Standby;
+				}
+				OperationState::Standby => {
+					next_state = OperationState::Inactive;
+				}
+				OperationState::Inactive => {
+					next_state = OperationState::Configured;
+				}
+				OperationState::Configured => {
+					next_state = OperationState::Created;
+				}
+				OperationState::Created => {
+					return self.modify_state_property(OperationState::Error);
+				}
+				OperationState::Error => {return Err(DimasError::ManageState.into());}
+			}
+			self.downgrade_registered_tasks(next_state)?;
+		}
+
 		Ok(())
 	}
 
@@ -148,7 +204,7 @@ where
 	/// # Errors
 	/// Currently none
 	#[allow(unused_variables)]
-	pub(crate) fn start_registered_tasks(&self) -> Result<()> {
+	fn upgrade_registered_tasks(&self, new_state: OperationState) -> Result<()> {
 		// start liveliness subscriber
 		self.inner
 			.liveliness_subscribers
@@ -156,7 +212,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("liveliness subscribers".into()))?
 			.iter_mut()
 			.for_each(|subscriber| {
-				let _ = subscriber.1.manage_state(&self.state());
+				let _ = subscriber.1.manage_state(&new_state);
 			});
 
 		// start all registered queryables
@@ -166,7 +222,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("queryables".into()))?
 			.iter_mut()
 			.for_each(|queryable| {
-				let _ = queryable.1.manage_state(&self.state());
+				let _ = queryable.1.manage_state(&new_state);
 			});
 
 		// start all registered subscribers
@@ -176,7 +232,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("subscribers".into()))?
 			.iter_mut()
 			.for_each(|subscriber| {
-				let _ = subscriber.1.manage_state(&self.state());
+				let _ = subscriber.1.manage_state(&new_state);
 			});
 
 		// init all registered publishers
@@ -186,7 +242,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("publishers".into()))?
 			.iter_mut()
 			.for_each(|publisher| {
-				if let Err(reason) = publisher.1.manage_state(&self.state()) {
+				if let Err(reason) = publisher.1.manage_state(&new_state) {
 					error!(
 						"could not initialize publisher for {}, reason: {}",
 						publisher.1.key_expr(),
@@ -202,7 +258,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("queries".into()))?
 			.iter_mut()
 			.for_each(|query| {
-				if let Err(reason) = query.1.manage_state(&self.state()) {
+				if let Err(reason) = query.1.manage_state(&new_state) {
 					error!(
 						"could not initialize query for {}, reason: {}",
 						query.1.key_expr(),
@@ -218,10 +274,11 @@ where
 			.map_err(|_| DimasError::ModifyContext("timers".into()))?
 			.iter_mut()
 			.for_each(|timer| {
-				let _ = timer.1.manage_state(&self.state());
+				let _ = timer.1.manage_state(&new_state);
 			});
 
-		Ok(())
+			self.modify_state_property(new_state)?;
+			Ok(())
 	}
 
 	/// Internal function for stopping all registered tasks.<br>
@@ -229,7 +286,7 @@ where
 	///
 	/// # Errors
 	/// Currently none
-	pub(crate) fn stop_registered_tasks(&mut self) -> Result<()> {
+	fn downgrade_registered_tasks(&self, new_state: OperationState) -> Result<()> {
 		// reverse order of start!
 		// stop all registered timers
 		self.inner
@@ -238,7 +295,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("timers".into()))?
 			.iter_mut()
 			.for_each(|timer| {
-				let _ = timer.1.manage_state(&self.state());
+				let _ = timer.1.manage_state(&new_state);
 			});
 
 		// de-init all registered queries
@@ -248,7 +305,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("queries".into()))?
 			.iter_mut()
 			.for_each(|query| {
-				if let Err(reason) = query.1.manage_state(&self.state()) {
+				if let Err(reason) = query.1.manage_state(&new_state) {
 					error!(
 						"could not de-initialize query for {}, reason: {}",
 						query.1.key_expr(),
@@ -264,7 +321,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("publishers".into()))?
 			.iter_mut()
 			.for_each(|publisher| {
-				let _ = publisher.1.manage_state(&self.state());
+				let _ = publisher.1.manage_state(&new_state);
 			});
 
 		// stop all registered subscribers
@@ -274,7 +331,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("subscribers".into()))?
 			.iter_mut()
 			.for_each(|subscriber| {
-				let _ = subscriber.1.manage_state(&self.state());
+				let _ = subscriber.1.manage_state(&new_state);
 			});
 
 		// stop all registered queryables
@@ -284,7 +341,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("queryables".into()))?
 			.iter_mut()
 			.for_each(|queryable| {
-				let _ = queryable.1.manage_state(&self.state());
+				let _ = queryable.1.manage_state(&new_state);
 			});
 
 		// stop all registered liveliness subscribers
@@ -294,9 +351,10 @@ where
 			.map_err(|_| DimasError::ModifyContext("liveliness subscribers".into()))?
 			.iter_mut()
 			.for_each(|subscriber| {
-				let _ = subscriber.1.manage_state(&self.state());
+				let _ = subscriber.1.manage_state(&new_state);
 			});
-
+		
+		self.modify_state_property(new_state)?;
 		Ok(())
 	}
 
