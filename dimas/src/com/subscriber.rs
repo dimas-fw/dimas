@@ -426,7 +426,7 @@ where
 
 	/// Stop a running Subscriber
 	#[instrument(level = Level::TRACE, skip_all)]
-	pub fn stop(&mut self) {
+	fn stop(&mut self) {
 		if let Some(handle) = self.handle.take() {
 			handle.abort();
 		}

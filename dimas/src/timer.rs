@@ -535,7 +535,7 @@ where
 
 	/// Stop a running Timer
 	#[instrument(level = Level::TRACE, skip_all)]
-	pub fn stop(&mut self) {
+	fn stop(&mut self) {
 		match self {
 			Self::Interval {
 				key_expr: _,

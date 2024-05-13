@@ -406,7 +406,7 @@ where
 
 	/// Stop a running Queryable
 	#[instrument(level = Level::TRACE)]
-	pub fn stop(&mut self) {
+	fn stop(&mut self) {
 		if let Some(handle) = self.handle.take() {
 			handle.abort();
 		}

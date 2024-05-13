@@ -415,7 +415,9 @@ where
 
 	/// Initialize
 	/// # Errors
-	pub fn init(&mut self) -> Result<()>
+	#[allow(clippy::unused_self)]
+	#[allow(clippy::unnecessary_wraps)]
+	fn init(&mut self) -> Result<()>
 	where
 		P: Send + Sync + Unpin + 'static,
 	{
@@ -424,7 +426,9 @@ where
 
 	/// De-Initialize
 	/// # Errors
-	pub fn de_init(&mut self) -> Result<()>
+	#[allow(clippy::unused_self)]
+	#[allow(clippy::unnecessary_wraps)]
+	fn de_init(&mut self) -> Result<()>
 	where
 		P: Send + Sync + Unpin + 'static,
 	{

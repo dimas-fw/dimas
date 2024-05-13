@@ -238,7 +238,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("timers".into()))?
 			.iter_mut()
 			.for_each(|timer| {
-				timer.1.stop();
+				let _ = timer.1.manage_state(&self.state());
 			});
 
 		// de-init all registered queries
@@ -248,7 +248,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("queries".into()))?
 			.iter_mut()
 			.for_each(|query| {
-				if let Err(reason) = query.1.de_init() {
+				if let Err(reason) = query.1.manage_state(&self.state()) {
 					error!(
 						"could not de-initialize query for {}, reason: {}",
 						query.1.key_expr(),
@@ -264,7 +264,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("publishers".into()))?
 			.iter_mut()
 			.for_each(|publisher| {
-				let _ = publisher.1.de_init();
+				let _ = publisher.1.manage_state(&self.state());
 			});
 
 		// stop all registered subscribers
@@ -274,7 +274,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("subscribers".into()))?
 			.iter_mut()
 			.for_each(|subscriber| {
-				subscriber.1.stop();
+				let _ = subscriber.1.manage_state(&self.state());
 			});
 
 		// stop all registered queryables
@@ -284,7 +284,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("queryables".into()))?
 			.iter_mut()
 			.for_each(|queryable| {
-				queryable.1.stop();
+				let _ = queryable.1.manage_state(&self.state());
 			});
 
 		// stop all registered liveliness subscribers

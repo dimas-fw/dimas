@@ -450,7 +450,7 @@ where
 		self.context.stop_registered_tasks()?;
 
 		// stop about queryable
-		self.about_queryable.stop();
+		self.about_queryable.manage_state(&self.context.state())?;
 
 		// stop liveliness
 		if self.liveliness {
