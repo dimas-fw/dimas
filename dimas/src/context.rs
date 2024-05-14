@@ -48,7 +48,7 @@ use dimas_com::{communicator::Communicator, Message};
 use dimas_config::Config;
 use dimas_core::{
 	error::{DimasError, Result},
-	traits::OperationState,
+	traits::{ManageState, OperationState},
 };
 use std::{
 	collections::HashMap,
@@ -56,7 +56,7 @@ use std::{
 	ops::Deref,
 	sync::{mpsc::Sender, Arc, RwLock},
 };
-use tracing::{error, instrument, Level};
+use tracing::{error, info, instrument, Level};
 use zenoh::{
 	prelude::{sync::SyncResolve, SampleKind},
 	query::ConsolidationMode,
@@ -127,11 +127,71 @@ where
 
 	/// Set the [`Context`]s state
 	/// # Errors
-	pub fn set_state(&self, state: OperationState) -> Result<()> {
+	fn modify_state_property(&self, state: OperationState) -> Result<()> {
 		*(self
 			.state
 			.write()
 			.map_err(|_| DimasError::ModifyContext("state".into()))?) = state;
+		Ok(())
+	}
+
+	/// Set the [`OperationState`].<br>
+	/// Setting new state is done step by step
+	/// # Errors
+	pub fn set_state(&self, state: OperationState) -> Result<()> {
+		info!("changing state to {}", &state);
+		let final_state = state;
+		let mut next_state;
+		// step up?
+		while self.state() < final_state {
+			match self.state() {
+				OperationState::Error => {
+					return Err(DimasError::ManageState.into());
+				}
+				OperationState::Created => {
+					next_state = OperationState::Configured;
+				}
+				OperationState::Configured => {
+					next_state = OperationState::Inactive;
+				}
+				OperationState::Inactive => {
+					next_state = OperationState::Standby;
+				}
+				OperationState::Standby => {
+					next_state = OperationState::Active;
+				}
+				OperationState::Active => {
+					return self.modify_state_property(OperationState::Error);
+				}
+			}
+			self.upgrade_registered_tasks(next_state)?;
+		}
+
+		// step down?
+		while self.state() > final_state {
+			match self.state() {
+				OperationState::Active => {
+					next_state = OperationState::Standby;
+				}
+				OperationState::Standby => {
+					next_state = OperationState::Inactive;
+				}
+				OperationState::Inactive => {
+					next_state = OperationState::Configured;
+				}
+				OperationState::Configured => {
+					next_state = OperationState::Created;
+				}
+				OperationState::Created => {
+					return self.modify_state_property(OperationState::Error);
+				}
+				OperationState::Error => {
+					return Err(DimasError::ManageState.into());
+				}
+			}
+			self.downgrade_registered_tasks(next_state)?;
+		}
+
 		Ok(())
 	}
 
@@ -148,7 +208,7 @@ where
 	/// # Errors
 	/// Currently none
 	#[allow(unused_variables)]
-	pub(crate) fn start_registered_tasks(&self, tx: &Sender<TaskSignal>) -> Result<()> {
+	fn upgrade_registered_tasks(&self, new_state: OperationState) -> Result<()> {
 		// start liveliness subscriber
 		self.inner
 			.liveliness_subscribers
@@ -156,7 +216,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("liveliness subscribers".into()))?
 			.iter_mut()
 			.for_each(|subscriber| {
-				subscriber.1.start(self.clone(), tx.clone());
+				let _ = subscriber.1.manage_state(&new_state);
 			});
 
 		// start all registered queryables
@@ -166,7 +226,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("queryables".into()))?
 			.iter_mut()
 			.for_each(|queryable| {
-				queryable.1.start(self.clone(), tx.clone());
+				let _ = queryable.1.manage_state(&new_state);
 			});
 
 		// start all registered subscribers
@@ -176,7 +236,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("subscribers".into()))?
 			.iter_mut()
 			.for_each(|subscriber| {
-				subscriber.1.start(self.clone(), tx.clone());
+				let _ = subscriber.1.manage_state(&new_state);
 			});
 
 		// init all registered publishers
@@ -186,10 +246,11 @@ where
 			.map_err(|_| DimasError::ModifyContext("publishers".into()))?
 			.iter_mut()
 			.for_each(|publisher| {
-				if let Err(reason) = publisher.1.init(self) {
+				if let Err(reason) = publisher.1.manage_state(&new_state) {
 					error!(
 						"could not initialize publisher for {}, reason: {}",
-						publisher.1.key_expr, reason
+						publisher.1.key_expr(),
+						reason
 					);
 				};
 			});
@@ -201,10 +262,11 @@ where
 			.map_err(|_| DimasError::ModifyContext("queries".into()))?
 			.iter_mut()
 			.for_each(|query| {
-				if let Err(reason) = query.1.init(self) {
+				if let Err(reason) = query.1.manage_state(&new_state) {
 					error!(
 						"could not initialize query for {}, reason: {}",
-						query.1.key_expr, reason
+						query.1.key_expr(),
+						reason
 					);
 				};
 			});
@@ -216,9 +278,10 @@ where
 			.map_err(|_| DimasError::ModifyContext("timers".into()))?
 			.iter_mut()
 			.for_each(|timer| {
-				timer.1.start(self.clone(), tx.clone());
+				let _ = timer.1.manage_state(&new_state);
 			});
 
+		self.modify_state_property(new_state)?;
 		Ok(())
 	}
 
@@ -227,7 +290,7 @@ where
 	///
 	/// # Errors
 	/// Currently none
-	pub(crate) fn stop_registered_tasks(&mut self) -> Result<()> {
+	fn downgrade_registered_tasks(&self, new_state: OperationState) -> Result<()> {
 		// reverse order of start!
 		// stop all registered timers
 		self.inner
@@ -236,7 +299,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("timers".into()))?
 			.iter_mut()
 			.for_each(|timer| {
-				timer.1.stop();
+				let _ = timer.1.manage_state(&new_state);
 			});
 
 		// de-init all registered queries
@@ -246,10 +309,11 @@ where
 			.map_err(|_| DimasError::ModifyContext("queries".into()))?
 			.iter_mut()
 			.for_each(|query| {
-				if let Err(reason) = query.1.de_init() {
+				if let Err(reason) = query.1.manage_state(&new_state) {
 					error!(
 						"could not de-initialize query for {}, reason: {}",
-						query.1.key_expr, reason
+						query.1.key_expr(),
+						reason
 					);
 				};
 			});
@@ -261,7 +325,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("publishers".into()))?
 			.iter_mut()
 			.for_each(|publisher| {
-				publisher.1.de_init();
+				let _ = publisher.1.manage_state(&new_state);
 			});
 
 		// stop all registered subscribers
@@ -271,7 +335,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("subscribers".into()))?
 			.iter_mut()
 			.for_each(|subscriber| {
-				subscriber.1.stop();
+				let _ = subscriber.1.manage_state(&new_state);
 			});
 
 		// stop all registered queryables
@@ -281,7 +345,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("queryables".into()))?
 			.iter_mut()
 			.for_each(|queryable| {
-				queryable.1.stop();
+				let _ = queryable.1.manage_state(&new_state);
 			});
 
 		// stop all registered liveliness subscribers
@@ -291,9 +355,10 @@ where
 			.map_err(|_| DimasError::ModifyContext("liveliness subscribers".into()))?
 			.iter_mut()
 			.for_each(|subscriber| {
-				subscriber.1.stop();
+				let _ = subscriber.1.manage_state(&new_state);
 			});
 
+		self.modify_state_property(new_state)?;
 		Ok(())
 	}
 
@@ -306,16 +371,19 @@ where
 		crate::com::liveliness::NoPutCallback,
 		crate::com::liveliness::Storage<P>,
 	> {
-		LivelinessSubscriberBuilder::new(self.prefix().clone())
-			.storage(self.liveliness_subscribers.clone())
+		LivelinessSubscriberBuilder::new(self.clone()).storage(self.liveliness_subscribers.clone())
 	}
 
 	/// Get a [`PublisherBuilder`], the builder for a [`Publisher`].
 	#[must_use]
 	pub fn publisher(
 		&self,
-	) -> PublisherBuilder<crate::com::publisher::NoKeyExpression, crate::com::publisher::Storage> {
-		PublisherBuilder::new(self.prefix().clone()).storage(self.publishers.clone())
+	) -> PublisherBuilder<
+		P,
+		crate::com::publisher::NoKeyExpression,
+		crate::com::publisher::Storage<P>,
+	> {
+		PublisherBuilder::new(self.clone()).storage(self.publishers.clone())
 	}
 
 	/// Get a [`QueryBuilder`], the builder for a [`Query`].
@@ -328,7 +396,7 @@ where
 		crate::com::query::NoResponseCallback,
 		crate::com::query::Storage<P>,
 	> {
-		QueryBuilder::new(self.prefix().clone()).storage(self.queries.clone())
+		QueryBuilder::new(self.clone()).storage(self.queries.clone())
 	}
 
 	/// Get a [`QueryableBuilder`], the builder for a [`Queryable`].
@@ -341,7 +409,7 @@ where
 		crate::com::queryable::NoRequestCallback,
 		crate::com::queryable::Storage<P>,
 	> {
-		QueryableBuilder::new(self.prefix().clone()).storage(self.queryables.clone())
+		QueryableBuilder::new(self.clone()).storage(self.queryables.clone())
 	}
 
 	/// Get a [`SubscriberBuilder`], the builder for a [`Subscriber`].
@@ -354,7 +422,7 @@ where
 		crate::com::subscriber::NoPutCallback,
 		crate::com::subscriber::Storage<P>,
 	> {
-		SubscriberBuilder::new(self.prefix().clone()).storage(self.subscribers.clone())
+		SubscriberBuilder::new(self.clone()).storage(self.subscribers.clone())
 	}
 
 	/// Get a [`TimerBuilder`], the builder for a [`Timer`].
@@ -368,7 +436,7 @@ where
 		crate::timer::NoIntervalCallback,
 		crate::timer::Storage<P>,
 	> {
-		TimerBuilder::new(self.prefix().clone()).storage(self.timers.clone())
+		TimerBuilder::new(self.clone()).storage(self.timers.clone())
 	}
 }
 // endregion:	--- ArcContext
@@ -385,6 +453,8 @@ where
 	name: Option<String>,
 	/// The [`Agent`]s current operational state.
 	state: Arc<RwLock<OperationState>>,
+	/// a sender for sending signals to owner of context
+	pub(crate) tx: Sender<TaskSignal>,
 	/// The [`Agent`]s property structure
 	props: Arc<RwLock<P>>,
 	/// The [`Agent`]s [`Communicator`]
@@ -392,7 +462,7 @@ where
 	/// Registered [`LivelinessSubscriber`]
 	pub(crate) liveliness_subscribers: Arc<RwLock<HashMap<String, LivelinessSubscriber<P>>>>,
 	/// Registered [`Publisher`]
-	publishers: Arc<RwLock<HashMap<String, Publisher>>>,
+	publishers: Arc<RwLock<HashMap<String, Publisher<P>>>>,
 	/// Registered [`Query`]s
 	queries: Arc<RwLock<HashMap<String, Query<P>>>>,
 	/// Registered [`Queryable`]s
@@ -412,6 +482,7 @@ where
 		config: &Config,
 		props: P,
 		name: Option<String>,
+		tx: Sender<TaskSignal>,
 		prefix: Option<String>,
 	) -> Result<Self> {
 		let mut communicator = Communicator::new(config)?;
@@ -421,6 +492,7 @@ where
 		Ok(Self {
 			name,
 			state: Arc::new(RwLock::new(OperationState::Created)),
+			tx,
 			communicator: Arc::new(communicator),
 			props: Arc::new(RwLock::new(props)),
 			liveliness_subscribers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),

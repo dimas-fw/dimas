@@ -24,7 +24,11 @@ pub struct AboutEntity {
 
 impl Display for AboutEntity {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "name: {} kind: {} state: {} zid: {}", &self.name, &self.kind, &self.state, &self.zid)
+		write!(
+			f,
+			"name: {} kind: {} state: {} zid: {}",
+			&self.name, &self.kind, &self.state, &self.zid
+		)
 	}
 }
 
@@ -117,3 +121,6 @@ impl ScoutingEntity {
 	}
 }
 // endregion:	--- ScoutingEntity
+
+// region:		--- ???
+// endregion:	--- ???

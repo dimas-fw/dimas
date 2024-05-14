@@ -8,6 +8,7 @@ use dimas_com::{
 	Communicator,
 };
 use dimas_config::Config;
+use dimas_core::traits::OperationState;
 use itertools::Itertools;
 use std::collections::HashMap;
 use std::time::Duration;
@@ -16,27 +17,6 @@ use zenoh::prelude::sync::*;
 // endregion:	--- modules
 
 // region:		--- command functions
-/// Fetch a list of about messages from all reachable `DiMAS` entities
-/// # Panics
-#[must_use]
-pub fn about_list(com: &Communicator) -> Vec<AboutEntity> {
-	let mut map: HashMap<String, AboutEntity> = HashMap::new();
-
-	let selector = String::from("**/about");
-
-	// fetch about from all entities
-	com.get(&selector, |response| {
-		let response: AboutEntity = response.decode().expect("decode failed");
-		map.entry(response.zid().to_string())
-			.or_insert(response);
-	})
-	.expect("query '**/about failed");
-
-	let result: Vec<AboutEntity> = map.values().sorted().cloned().collect();
-
-	result
-}
-
 /// Scout for `DiMAS` entities, sorted by zid of entity
 /// # Panics
 /// if something goes wrong
@@ -54,6 +34,56 @@ pub fn scouting_list(config: &Config) -> Vec<ScoutingEntity> {
 		map.entry(zid).or_insert(entry);
 	}
 	let result: Vec<ScoutingEntity> = map.values().sorted().cloned().collect();
+
+	result
+}
+
+/// Fetch a list of about messages from all reachable `DiMAS` entities
+/// # Panics
+#[must_use]
+pub fn about_list(com: &Communicator, base_selector: &String) -> Vec<AboutEntity> {
+	let mut map: HashMap<String, AboutEntity> = HashMap::new();
+
+	let selector = format!("{base_selector}/about");
+
+	// fetch about from all entities matching the selector
+	com.get(&selector, |response| {
+		let response: AboutEntity = response.decode().expect("decode failed");
+		map.entry(response.zid().to_string())
+			.or_insert(response);
+	})
+	.expect("querying 'about' failed");
+
+	let result: Vec<AboutEntity> = map.values().sorted().cloned().collect();
+
+	result
+}
+
+/// Set the [`OperationState`] of a `DiMAS` entities
+/// # Panics
+/// if something goes wrong
+#[must_use]
+pub fn set_state(
+	com: &Communicator,
+	base_selector: &String,
+	state: Option<OperationState>,
+) -> Vec<AboutEntity> {
+	let mut map: HashMap<String, AboutEntity> = HashMap::new();
+
+	let selector = state.map_or_else(
+		|| format!("{base_selector}/state"),
+		|state| format!("{base_selector}/state?(state={state})"),
+	);
+
+	// set state for entities matching the selector
+	com.get(&selector, |response| {
+		let response: AboutEntity = response.decode().expect("decode failed");
+		map.entry(response.zid().to_string())
+			.or_insert(response);
+	})
+	.expect("querying 'state' failed");
+
+	let result: Vec<AboutEntity> = map.values().sorted().cloned().collect();
 
 	result
 }

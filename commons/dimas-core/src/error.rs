@@ -45,12 +45,18 @@ pub enum DimasError {
 	#[error("could not execute callback")]
 	ExecuteCallback,
 
+	/// Invalid OperationState
+	#[error("invalid OperationState {0}")]
+	OperationState(String),
 	/// File not found
 	#[error("could not find file: {0}")]
 	FileNotFound(String),
 	/// Modifying context failed
-	#[error("modifiying context for {0} failed")]
+	#[error("modifying context for {0} failed")]
 	ModifyContext(String),
+	/// The `set_state` failed
+	#[error("setting the 'OperationState' failed")]
+	ManageState,
 	/// Reading context failed
 	#[error("reading context for {0} failed")]
 	ReadContext(String),

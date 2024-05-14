@@ -49,7 +49,7 @@ use crate::com::{
 	liveliness::LivelinessSubscriberBuilder,
 	publisher::PublisherBuilder,
 	query::QueryBuilder,
-	queryable::{Queryable, QueryableBuilder},
+	queryable::QueryableBuilder,
 	subscriber::SubscriberBuilder,
 	task_signal::{wait_for_task_signals, TaskSignal},
 };
@@ -68,7 +68,7 @@ use dimas_com::Request;
 use dimas_config::Config;
 use dimas_core::{
 	error::{DimasError, Result},
-	traits::OperationState,
+	traits::{ManageState, OperationState},
 };
 use std::{
 	fmt::Debug,
@@ -120,17 +120,72 @@ where
 	}
 
 	/// Set the [`Config`]uration.
+	/// An agent with [`OperationState`] `Configured` can be started
+	/// and will respond to commands from dimasctl/dimasmon
 	///
 	/// # Errors
+	///
 	pub fn config(self, config: &Config) -> Result<Agent<'a, P>> {
+		// we need an mpsc channel with a receiver behind a mutex guard
+		let (tx, rx) = mpsc::channel();
+		let rx = Mutex::new(rx);
 		let context: ArcContext<P> =
-			Context::new(config, self.props, self.name, self.prefix)?.into();
-		context.set_state(OperationState::Configured)?;
-		Ok(Agent {
+			Context::new(config, self.props, self.name, tx, self.prefix)?.into();
+
+		let agent = Agent {
+			rx,
 			context,
 			liveliness: false,
 			liveliness_token: RwLock::new(None),
-		})
+		};
+
+		// create "about" queryables
+		// for zid
+		let key_expr = format!("{}/about", agent.context.uuid());
+		agent
+			.queryable()
+			.key_expr(&key_expr)
+			.callback(Agent::about)
+			.activation_state(OperationState::Created)
+			.add()?;
+		// for fully qualified name
+		if let Some(fq_name) = agent.context.fq_name() {
+			let key_expr = format!("{fq_name}/about");
+			agent
+				.queryable()
+				.key_expr(&key_expr)
+				.callback(Agent::about)
+				.activation_state(OperationState::Created)
+				.add()?;
+		}
+
+		// create "state" queryables
+		// for zid
+		let key_expr = format!("{}/state", agent.context.uuid());
+		agent
+			.queryable()
+			.key_expr(&key_expr)
+			.callback(Agent::state)
+			.activation_state(OperationState::Created)
+			.add()?;
+		// for fully qualified name
+		if let Some(fq_name) = agent.context.fq_name() {
+			let key_expr = format!("{fq_name}/state");
+			agent
+				.queryable()
+				.key_expr(&key_expr)
+				.callback(Agent::state)
+				.activation_state(OperationState::Created)
+				.add()?;
+		}
+
+		// set agents [`OperationState`] to Configured
+		// This will also start the basic queryables
+		agent
+			.context
+			.set_state(OperationState::Configured)?;
+
+		Ok(agent)
 	}
 }
 // endregion:   --- UnconfiguredAgent
@@ -142,6 +197,8 @@ pub struct Agent<'a, P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// A reciever for signals from tasks
+	rx: Mutex<mpsc::Receiver<TaskSignal>>,
 	/// The agents context structure
 	context: ArcContext<P>,
 	/// Flag to control whether sending liveliness or not
@@ -195,7 +252,11 @@ where
 	#[must_use]
 	pub fn publisher(
 		&self,
-	) -> PublisherBuilder<crate::com::publisher::NoKeyExpression, crate::com::publisher::Storage> {
+	) -> PublisherBuilder<
+		P,
+		crate::com::publisher::NoKeyExpression,
+		crate::com::publisher::Storage<P>,
+	> {
 		self.context.publisher()
 	}
 
@@ -254,13 +315,38 @@ where
 	fn about(ctx: &ArcContext<P>, request: Request) -> Result<()> {
 		let name = ctx
 			.fq_name()
-			.unwrap_or_else(|| String::from("NoName"));
+			.unwrap_or_else(|| String::from("--"));
 		let mode = ctx.communicator.mode().to_string();
 		let zid = ctx.communicator.uuid();
 		let state = ctx.state();
 		let value = AboutEntity::new(name, mode, zid, state);
-		let query = request.key_expr();
-		info!("Received query for {}, responding with {}", &query, &value);
+		request.reply(value)?;
+		Ok(())
+	}
+
+	fn state(ctx: &ArcContext<P>, request: Request) -> Result<()> {
+		let parms = request
+			.parameters()
+			.to_string()
+			.replace("(state=", "")
+			.replace(')', "");
+		let _ = match parms.as_str() {
+			"Created" | "created" => ctx.set_state(OperationState::Created),
+			"Configured" | "configured" => ctx.set_state(OperationState::Configured),
+			"Inactive" | "inactive" => ctx.set_state(OperationState::Inactive),
+			"Standby" | "standby" => ctx.set_state(OperationState::Standby),
+			"Active" | "active" => ctx.set_state(OperationState::Active),
+			_ => {Ok(())},
+		};
+
+		// send back result
+		let name = ctx
+			.fq_name()
+			.unwrap_or_else(|| String::from("--"));
+		let mode = ctx.communicator.mode().to_string();
+		let zid = ctx.communicator.uuid();
+		let state = ctx.state();
+		let value = AboutEntity::new(name, mode, zid, state);
 		request.reply(value)?;
 		Ok(())
 	}
@@ -272,21 +358,7 @@ where
 	/// Propagation of errors from [`ArcContext::start_registered_tasks()`].
 	#[tracing::instrument(skip_all)]
 	pub async fn start(self) -> Result<Agent<'a, P>> {
-		// we need an mpsc channel with a receiver behind a mutex guard
-		let (tx, rx) = mpsc::channel();
-		let rx = Mutex::new(rx);
-
-		self.context.start_registered_tasks(&tx)?;
-
 		let session = self.context.communicator.session();
-
-		// create "about" queryable
-		let key_expr = format!("{}/about", session.zid());
-		let mut about_queryable = self
-			.queryable()
-			.key_expr(&key_expr)
-			.callback(Agent::about)
-			.build()?;
 
 		// activate sending liveliness
 		if self.liveliness {
@@ -310,17 +382,13 @@ where
 				.replace(token);
 		};
 
-		about_queryable.start(self.context.clone(), tx.clone());
-		let context = self.context;
-		context.set_state(OperationState::Active)?;
+		self.context.set_state(OperationState::Active)?;
 
 		RunningAgent {
-			rx,
-			tx,
-			context,
+			rx: self.rx,
+			context: self.context,
 			liveliness: self.liveliness,
 			liveliness_token: self.liveliness_token,
-			about_queryable,
 		}
 		.run()
 		.await
@@ -335,8 +403,8 @@ pub struct RunningAgent<'a, P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// A reciever for signals from tasks
 	rx: Mutex<mpsc::Receiver<TaskSignal>>,
-	tx: mpsc::Sender<TaskSignal>,
 	/// The agents context structure
 	context: ArcContext<P>,
 	/// Flag to control whether sending liveliness or not
@@ -344,9 +412,6 @@ where
 	/// The liveliness token - typically the uuid sent to other participants<br>
 	/// Is available in the [`LivelinessSubscriber`] callback
 	liveliness_token: RwLock<Option<LivelinessToken<'a>>>,
-	/// Storage for the about queryable
-	#[allow(dead_code)]
-	about_queryable: Queryable<P>,
 }
 
 impl<'a, P> RunningAgent<'a, P>
@@ -354,7 +419,7 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// run
-	async fn run(mut self) -> Result<Agent<'a, P>> {
+	async fn run(self) -> Result<Agent<'a, P>> {
 		loop {
 			// different possibilities that can happen
 			select! {
@@ -367,7 +432,7 @@ where
 								.map_err(|_| DimasError::WriteProperties)?
 								.get_mut(&key_expr)
 								.ok_or(DimasError::ShouldNotHappen)?
-								.start(self.context.clone(), self.tx.clone());
+								.manage_state(&self.context.state())?;
 						},
 						TaskSignal::RestartQueryable(key_expr) => {
 							self.context.queryables
@@ -375,7 +440,7 @@ where
 								.map_err(|_| DimasError::WriteProperties)?
 								.get_mut(&key_expr)
 								.ok_or(DimasError::ShouldNotHappen)?
-								.start(self.context.clone(), self.tx.clone());
+								.manage_state(&self.context.state())?;
 						},
 						TaskSignal::RestartSubscriber(key_expr) => {
 							self.context.subscribers
@@ -383,7 +448,7 @@ where
 								.map_err(|_| DimasError::WriteProperties)?
 								.get_mut(&key_expr)
 								.ok_or(DimasError::ShouldNotHappen)?
-								.start(self.context.clone(), self.tx.clone());
+								.manage_state(&self.context.state())?;
 						},
 						TaskSignal::RestartTimer(key_expr) => {
 							self.context.timers
@@ -391,7 +456,7 @@ where
 								.map_err(|_| DimasError::WriteProperties)?
 								.get_mut(&key_expr)
 								.ok_or(DimasError::ShouldNotHappen)?
-								.start(self.context.clone(), self.tx.clone());
+								.manage_state(&self.context.state())?;
 						},
 					};
 				}
@@ -401,33 +466,12 @@ where
 					match signal {
 						Ok(()) => {
 							info!("shutdown due to 'ctrl-c'");
-							self.context.stop_registered_tasks()?;
-							// stop liveliness
-							if self.liveliness {
-								self.liveliness_token
-									.write()
-									.map_err(|_| DimasError::ModifyContext("liveliness".into()))?
-									.take();
-							}
-							let r = Agent {
-								context: self.context,
-								liveliness: self.liveliness,
-								liveliness_token: self.liveliness_token,
-							};
-							return Ok(r);
+							return self.stop();
 						}
 						Err(err) => {
 							error!("Unable to listen for 'Ctrl-C': {err}");
 							// we also try to shut down the agent properly
-							self.context.stop_registered_tasks()?;
-							// stop liveliness
-							if self.liveliness {
-								self.liveliness_token
-									.write()
-									.map_err(|_| DimasError::ModifyContext("liveliness".into()))?
-									.take();
-							}
-							return Err(DimasError::ShouldNotHappen.into());
+							return self.stop();
 						}
 					}
 				}
@@ -440,11 +484,8 @@ where
 	/// # Errors
 	/// Propagation of errors from [`ArcContext::stop_registered_tasks()`].
 	#[tracing::instrument(skip_all)]
-	pub fn stop(mut self) -> Result<Agent<'a, P>> {
-		self.context.stop_registered_tasks()?;
-
-		// stop about queryable
-		self.about_queryable.stop();
+	pub fn stop(self) -> Result<Agent<'a, P>> {
+		self.context.set_state(OperationState::Created)?;
 
 		// stop liveliness
 		if self.liveliness {
@@ -454,6 +495,7 @@ where
 				.take();
 		}
 		let r = Agent {
+			rx: self.rx,
 			context: self.context,
 			liveliness: self.liveliness,
 			liveliness_token: self.liveliness_token,
