@@ -139,36 +139,48 @@ where
 			liveliness_token: RwLock::new(None),
 		};
 
-		// create basic communication stuff
-		let session = agent.context.communicator.session();
-
-		let prefix = agent
-			.context
-			.prefix()
-			.clone()
-			.map_or(String::new(), |prefix| format!("{prefix}/"));
-
-		// create "about" queryable
-		let key_expr = format!("{}{}/about", &prefix, session.zid());
-		dbg!(&key_expr);
+		// create "about" queryables
+		// for zid
+		let key_expr = format!("{}/about", agent.context.uuid());
 		agent
 			.queryable()
 			.key_expr(&key_expr)
 			.callback(Agent::about)
-			.activation_state(OperationState::Configured)
+			.activation_state(OperationState::Created)
 			.add()?;
+		// for fully qualified name
+		if let Some(fq_name) = agent.context.fq_name() {
+			let key_expr = format!("{fq_name}/about");
+			agent
+				.queryable()
+				.key_expr(&key_expr)
+				.callback(Agent::about)
+				.activation_state(OperationState::Created)
+				.add()?;
+		}
 
-		// create "state" queryable
-		let key_expr = format!("{}{}/state", &prefix, session.zid());
-		dbg!(&key_expr);
+		// create "state" queryables
+		// for zid
+		let key_expr = format!("{}/state", agent.context.uuid());
 		agent
 			.queryable()
 			.key_expr(&key_expr)
 			.callback(Agent::state)
-			.activation_state(OperationState::Configured)
+			.activation_state(OperationState::Created)
 			.add()?;
+		// for fully qualified name
+		if let Some(fq_name) = agent.context.fq_name() {
+			let key_expr = format!("{fq_name}/state");
+			agent
+				.queryable()
+				.key_expr(&key_expr)
+				.callback(Agent::state)
+				.activation_state(OperationState::Created)
+				.add()?;
+		}
 
-		// start basic communication stuff
+		// set agents [`OperationState`] to Configured
+		// This will also start the basic queryables
 		agent
 			.context
 			.set_state(OperationState::Configured)?;
@@ -308,14 +320,26 @@ where
 		let zid = ctx.communicator.uuid();
 		let state = ctx.state();
 		let value = AboutEntity::new(name, mode, zid, state);
-		let query = request.key_expr();
-		info!("Received query for {}, responding with {}", &query, &value);
 		request.reply(value)?;
 		Ok(())
 	}
 
 	fn state(ctx: &ArcContext<P>, request: Request) -> Result<()> {
-		dbg!(&request);
+		let parms = request
+			.parameters()
+			.to_string()
+			.replace("(state=", "")
+			.replace(')', "");
+		let _ = match parms.as_str() {
+			"Created" | "created" => ctx.set_state(OperationState::Created),
+			"Configured" | "configured" => ctx.set_state(OperationState::Configured),
+			"Inactive" | "inactive" => ctx.set_state(OperationState::Inactive),
+			"Standby" | "standby" => ctx.set_state(OperationState::Standby),
+			"Active" | "active" => ctx.set_state(OperationState::Active),
+			_ => {Ok(())},
+		};
+
+		// send back result
 		let name = ctx
 			.fq_name()
 			.unwrap_or_else(|| String::from("--"));
@@ -323,8 +347,6 @@ where
 		let zid = ctx.communicator.uuid();
 		let state = ctx.state();
 		let value = AboutEntity::new(name, mode, zid, state);
-		let query = request.key_expr();
-		info!("Received query for {}, responding with {}", &query, &value);
 		request.reply(value)?;
 		Ok(())
 	}

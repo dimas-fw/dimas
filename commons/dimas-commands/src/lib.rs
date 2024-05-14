@@ -44,7 +44,7 @@ pub fn scouting_list(config: &Config) -> Vec<ScoutingEntity> {
 pub fn about_list(com: &Communicator, base_selector: &String) -> Vec<AboutEntity> {
 	let mut map: HashMap<String, AboutEntity> = HashMap::new();
 
-	let selector = format!("{base_selector}about");
+	let selector = format!("{base_selector}/about");
 
 	// fetch about from all entities matching the selector
 	com.get(&selector, |response| {
@@ -70,8 +70,10 @@ pub fn set_state(
 ) -> Vec<AboutEntity> {
 	let mut map: HashMap<String, AboutEntity> = HashMap::new();
 
-	let selector = format!("{base_selector}state");
-	dbg!(&selector);
+	let selector = state.map_or_else(
+		|| format!("{base_selector}/state"),
+		|state| format!("{base_selector}/state?(state={state})"),
+	);
 
 	// set state for entities matching the selector
 	com.get(&selector, |response| {
