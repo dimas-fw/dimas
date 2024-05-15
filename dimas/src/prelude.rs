@@ -26,7 +26,7 @@ pub use crate::com::publisher::{Publisher, PublisherBuilder};
 pub use crate::com::query::{Query, QueryBuilder};
 pub use crate::com::queryable::{Queryable, QueryableBuilder};
 pub use crate::com::subscriber::{Subscriber, SubscriberBuilder};
-pub use crate::context::ArcContext;
+pub use crate::context::Context;
 pub use crate::timer::{Timer, TimerBuilder};
 
 pub use dimas_com::{Message, Request, Response};

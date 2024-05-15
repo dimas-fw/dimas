@@ -6,11 +6,11 @@
 // these ones are only for doc needed
 #[cfg(doc)]
 use crate::agent::Agent;
-use crate::context::ArcContext;
+use crate::context::Context;
 use bitcode::{encode, Encode};
 use dimas_core::{
 	error::{DimasError, Result},
-	traits::{ManageState, OperationState},
+	traits::{ManageOperationState, OperationState},
 };
 #[cfg(doc)]
 use std::collections::HashMap;
@@ -51,7 +51,7 @@ pub struct PublisherBuilder<P, K, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	context: ArcContext<P>,
+	context: Context<P>,
 	activation_state: OperationState,
 	priority: Priority,
 	congestion_control: CongestionControl,
@@ -65,7 +65,7 @@ where
 {
 	/// Construct a [`PublisherBuilder`] in initial state
 	#[must_use]
-	pub const fn new(context: ArcContext<P>) -> Self {
+	pub const fn new(context: Context<P>) -> Self {
 		Self {
 			context,
 			activation_state: OperationState::Active,
@@ -234,7 +234,7 @@ where
 {
 	key_expr: String,
 	/// Context for the Publisher
-	context: ArcContext<P>,
+	context: Context<P>,
 	activation_state: OperationState,
 	priority: Priority,
 	congestion_control: CongestionControl,
@@ -253,11 +253,11 @@ where
 	}
 }
 
-impl<P> ManageState for Publisher<P>
+impl<P> ManageOperationState for Publisher<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	fn manage_state(&mut self, state: &OperationState) -> Result<()> {
+	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()> {
 		if state >= &self.activation_state {
 			return self.init();
 		} else if state < &self.activation_state {
@@ -275,7 +275,7 @@ where
 	#[must_use]
 	pub const fn new(
 		key_expr: String,
-		context: ArcContext<P>,
+		context: Context<P>,
 		activation_state: OperationState,
 		priority: Priority,
 		congestion_control: CongestionControl,

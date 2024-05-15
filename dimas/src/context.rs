@@ -1,7 +1,7 @@
 // Copyright © 2023 Stephan Kunz
 
 //! [`Context`] is the representation of an [`Agent`]'s internal and user defined properties.
-//! Never use it directly but through the created [`ArcContext`], which provides thread safe access.
+//! Never use it directly but through the created [`Context`], which provides thread safe access.
 //! A reference to this wrapper is handed into every callback function.
 //!
 //! # Examples
@@ -13,7 +13,7 @@
 //!   counter: i32,
 //! }
 //! // A [`Timer`] callback
-//! fn timer_callback(context: &ArcContext<AgentProps>) -> Result<()> {
+//! fn timer_callback(context: &Context<AgentProps>) -> Result<()> {
 //!   // reading properties
 //!   let mut value = context.read()?.counter;
 //!   value +=1;
@@ -48,7 +48,7 @@ use dimas_com::{communicator::Communicator, Message};
 use dimas_config::Config;
 use dimas_core::{
 	error::{DimasError, Result},
-	traits::{ManageState, OperationState},
+	traits::{ManageOperationState, OperationState},
 };
 use std::{
 	collections::HashMap,
@@ -68,19 +68,19 @@ use zenoh::{
 const INITIAL_SIZE: usize = 9;
 // endregion:	--- types
 
-// region:		--- ArcContext
-/// `ArcContext` is a thread safe atomic reference counted [`Context`].<br>
+// region:		--- Context
+/// `Context` is a thread safe atomic reference counted [`Context`].<br>
 /// It makes all relevant data of the agent accessible in a thread safe way via accessor methods.
 #[derive(Debug)]
 #[allow(clippy::module_name_repetitions)]
-pub struct ArcContext<P>
+pub struct Context<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	inner: Arc<Context<P>>,
+	inner: Arc<ContextInner<P>>,
 }
 
-impl<P> Clone for ArcContext<P>
+impl<P> Clone for Context<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -91,29 +91,29 @@ where
 	}
 }
 
-impl<P> Deref for ArcContext<P>
+impl<P> Deref for Context<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	type Target = Context<P>;
+	type Target = ContextInner<P>;
 
 	fn deref(&self) -> &Self::Target {
 		&self.inner
 	}
 }
 
-impl<P> From<Context<P>> for ArcContext<P>
+impl<P> From<ContextInner<P>> for Context<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	fn from(value: Context<P>) -> Self {
+	fn from(value: ContextInner<P>) -> Self {
 		Self {
 			inner: Arc::new(value),
 		}
 	}
 }
 
-impl<P> ArcContext<P>
+impl<P> Context<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -216,7 +216,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("liveliness subscribers".into()))?
 			.iter_mut()
 			.for_each(|subscriber| {
-				let _ = subscriber.1.manage_state(&new_state);
+				let _ = subscriber.1.manage_operation_state(&new_state);
 			});
 
 		// start all registered queryables
@@ -226,7 +226,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("queryables".into()))?
 			.iter_mut()
 			.for_each(|queryable| {
-				let _ = queryable.1.manage_state(&new_state);
+				let _ = queryable.1.manage_operation_state(&new_state);
 			});
 
 		// start all registered subscribers
@@ -236,7 +236,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("subscribers".into()))?
 			.iter_mut()
 			.for_each(|subscriber| {
-				let _ = subscriber.1.manage_state(&new_state);
+				let _ = subscriber.1.manage_operation_state(&new_state);
 			});
 
 		// init all registered publishers
@@ -246,7 +246,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("publishers".into()))?
 			.iter_mut()
 			.for_each(|publisher| {
-				if let Err(reason) = publisher.1.manage_state(&new_state) {
+				if let Err(reason) = publisher.1.manage_operation_state(&new_state) {
 					error!(
 						"could not initialize publisher for {}, reason: {}",
 						publisher.1.key_expr(),
@@ -262,7 +262,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("queries".into()))?
 			.iter_mut()
 			.for_each(|query| {
-				if let Err(reason) = query.1.manage_state(&new_state) {
+				if let Err(reason) = query.1.manage_operation_state(&new_state) {
 					error!(
 						"could not initialize query for {}, reason: {}",
 						query.1.key_expr(),
@@ -278,7 +278,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("timers".into()))?
 			.iter_mut()
 			.for_each(|timer| {
-				let _ = timer.1.manage_state(&new_state);
+				let _ = timer.1.manage_operation_state(&new_state);
 			});
 
 		self.modify_state_property(new_state)?;
@@ -286,7 +286,7 @@ where
 	}
 
 	/// Internal function for stopping all registered tasks.<br>
-	/// The tasks are stopped in reverse order of their start in [`ArcContext::start_registered_tasks()`]
+	/// The tasks are stopped in reverse order of their start in [`Context::start_registered_tasks()`]
 	///
 	/// # Errors
 	/// Currently none
@@ -299,7 +299,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("timers".into()))?
 			.iter_mut()
 			.for_each(|timer| {
-				let _ = timer.1.manage_state(&new_state);
+				let _ = timer.1.manage_operation_state(&new_state);
 			});
 
 		// de-init all registered queries
@@ -309,7 +309,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("queries".into()))?
 			.iter_mut()
 			.for_each(|query| {
-				if let Err(reason) = query.1.manage_state(&new_state) {
+				if let Err(reason) = query.1.manage_operation_state(&new_state) {
 					error!(
 						"could not de-initialize query for {}, reason: {}",
 						query.1.key_expr(),
@@ -325,7 +325,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("publishers".into()))?
 			.iter_mut()
 			.for_each(|publisher| {
-				let _ = publisher.1.manage_state(&new_state);
+				let _ = publisher.1.manage_operation_state(&new_state);
 			});
 
 		// stop all registered subscribers
@@ -335,7 +335,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("subscribers".into()))?
 			.iter_mut()
 			.for_each(|subscriber| {
-				let _ = subscriber.1.manage_state(&new_state);
+				let _ = subscriber.1.manage_operation_state(&new_state);
 			});
 
 		// stop all registered queryables
@@ -345,7 +345,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("queryables".into()))?
 			.iter_mut()
 			.for_each(|queryable| {
-				let _ = queryable.1.manage_state(&new_state);
+				let _ = queryable.1.manage_operation_state(&new_state);
 			});
 
 		// stop all registered liveliness subscribers
@@ -355,7 +355,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("liveliness subscribers".into()))?
 			.iter_mut()
 			.for_each(|subscriber| {
-				let _ = subscriber.1.manage_state(&new_state);
+				let _ = subscriber.1.manage_operation_state(&new_state);
 			});
 
 		self.modify_state_property(new_state)?;
@@ -439,12 +439,13 @@ where
 		TimerBuilder::new(self.clone()).storage(self.timers.clone())
 	}
 }
-// endregion:	--- ArcContext
+// endregion:	--- Context
 
-// region:		--- Context
-/// [`Context`] makes all relevant data of the [`Agent`] accessible via accessor methods.
+// region:		--- ContextInner
+/// [`ContextInner`] makes all relevant data of the [`Agent`] accessible via accessor methods.
 #[derive(Debug, Clone)]
-pub struct Context<P>
+#[allow(clippy::module_name_repetitions)]
+pub struct ContextInner<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -473,11 +474,11 @@ where
 	pub(crate) timers: Arc<RwLock<HashMap<String, Timer<P>>>>,
 }
 
-impl<P> Context<P>
+impl<P> ContextInner<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	/// Constructor for the [`Context`]
+	/// Constructor for the [`ContextInner`]
 	pub(crate) fn new(
 		config: &Config,
 		props: P,
@@ -637,19 +638,19 @@ where
 	/// Send an ad hoc query using the given `topic`.
 	/// The `topic` will be enhanced with the group prefix.
 	/// Response will be handled by `callback`, a closure or function with
-	/// signature Fn(&[`ArcContext`]<AgentProperties>, [`Response`]).
+	/// signature Fn(&[`Context`]<AgentProperties>, [`Response`]).
 	/// # Errors
 	///
 	pub fn get<F>(
 		&self,
-		ctx: ArcContext<P>,
+		ctx: Context<P>,
 		topic: &str,
 		mode: ConsolidationMode,
 		callback: F,
 	) -> Result<()>
 	where
 		P: Send + Sync + Unpin + 'static,
-		F: Fn(&ArcContext<P>, Message) + Send + Sync + Unpin + 'static,
+		F: Fn(&Context<P>, Message) + Send + Sync + Unpin + 'static,
 	{
 		let key_expr = self
 			.prefix()
@@ -725,6 +726,6 @@ mod tests {
 
 	#[test]
 	const fn normal_types() {
-		is_normal::<Context<Props>>();
+		is_normal::<ContextInner<Props>>();
 	}
 }

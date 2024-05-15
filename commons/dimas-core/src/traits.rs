@@ -40,14 +40,13 @@ impl Display for OperationState {
 		}
 	}
 }
-// endregion:	--- OperationState
 
-// region:		--- ManageState
 /// Trait for state management of components
-pub trait ManageState {
+pub trait ManageOperationState {
 	/// Checks whether state of component is appropriate for the given [`OperationState`].
 	/// If not, adjusts components state to needs.
 	/// # Errors
-	fn manage_state(&mut self, state: &OperationState) -> Result<()>;
+	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()>;
 }
-// endregion:	--- ManageState
+// endregion:	--- OperationState
+

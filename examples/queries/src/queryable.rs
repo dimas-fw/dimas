@@ -11,7 +11,7 @@ struct AgentProps {
 	counter: u128,
 }
 
-fn queryable(ctx: &ArcContext<AgentProps>, request: Request) -> Result<()> {
+fn queryable(ctx: &Context<AgentProps>, request: Request) -> Result<()> {
 	let value = ctx.read()?.counter;
 	let query = request.key_expr();
 	info!("Received query for {}, responding with {}", &query, &value);
