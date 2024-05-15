@@ -8,7 +8,7 @@ use crate::context::Context;
 use dimas_com::Request;
 use dimas_core::{
 	error::{DimasError, Result},
-	traits::{ManageState, OperationState},
+	traits::{ManageOperationState, OperationState},
 };
 use std::{
 	fmt::Debug,
@@ -23,9 +23,8 @@ use zenoh::sample::Locality;
 // region:		--- types
 /// type defnition for the queryables callback function.
 #[allow(clippy::module_name_repetitions)]
-pub type QueryableCallback<P> = Arc<
-	Mutex<Box<dyn FnMut(&Context<P>, Request) -> Result<()> + Send + Sync + Unpin + 'static>>,
->;
+pub type QueryableCallback<P> =
+	Arc<Mutex<Box<dyn FnMut(&Context<P>, Request) -> Result<()> + Send + Sync + Unpin + 'static>>>;
 // endregion:	--- types
 
 // region:		--- states
@@ -321,11 +320,11 @@ where
 	}
 }
 
-impl<P> ManageState for Queryable<P>
+impl<P> ManageOperationState for Queryable<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	fn manage_state(&mut self, state: &OperationState) -> Result<()> {
+	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()> {
 		if (state >= &self.activation_state) && self.handle.is_none() {
 			return self.start();
 		} else if (state < &self.activation_state) && self.handle.is_some() {

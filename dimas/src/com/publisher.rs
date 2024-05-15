@@ -10,7 +10,7 @@ use crate::context::Context;
 use bitcode::{encode, Encode};
 use dimas_core::{
 	error::{DimasError, Result},
-	traits::{ManageState, OperationState},
+	traits::{ManageOperationState, OperationState},
 };
 #[cfg(doc)]
 use std::collections::HashMap;
@@ -253,11 +253,11 @@ where
 	}
 }
 
-impl<P> ManageState for Publisher<P>
+impl<P> ManageOperationState for Publisher<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	fn manage_state(&mut self, state: &OperationState) -> Result<()> {
+	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()> {
 		if state >= &self.activation_state {
 			return self.init();
 		} else if state < &self.activation_state {

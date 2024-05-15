@@ -12,7 +12,7 @@ use crate::context::Context;
 use dimas_com::Message;
 use dimas_core::{
 	error::{DimasError, Result},
-	traits::{ManageState, OperationState},
+	traits::{ManageOperationState, OperationState},
 };
 use std::sync::{Arc, Mutex, RwLock};
 use tokio::task::JoinHandle;
@@ -26,9 +26,8 @@ use zenoh::{
 // region:		--- types
 /// Type definition for a subscribers `put` callback function
 #[allow(clippy::module_name_repetitions)]
-pub type SubscriberPutCallback<P> = Arc<
-	Mutex<Box<dyn FnMut(&Context<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static>>,
->;
+pub type SubscriberPutCallback<P> =
+	Arc<Mutex<Box<dyn FnMut(&Context<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static>>>;
 /// Type definition for a subscribers `delete` callback function
 #[allow(clippy::module_name_repetitions)]
 pub type SubscriberDeleteCallback<P> =
@@ -334,11 +333,11 @@ where
 	}
 }
 
-impl<P> ManageState for Subscriber<P>
+impl<P> ManageOperationState for Subscriber<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	fn manage_state(&mut self, state: &OperationState) -> Result<()> {
+	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()> {
 		if (state >= &self.activation_state) && self.handle.is_none() {
 			return self.start();
 		} else if (state < &self.activation_state) && self.handle.is_some() {

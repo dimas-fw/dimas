@@ -5,7 +5,7 @@
 
 // region:		--- modules
 use crate::{com::task_signal::TaskSignal, prelude::*};
-use dimas_core::traits::{ManageState, OperationState};
+use dimas_core::traits::{ManageOperationState, OperationState};
 use std::{fmt::Debug, sync::Mutex, time::Duration};
 use tokio::{task::JoinHandle, time};
 use tracing::{error, info, instrument, warn, Level};
@@ -14,9 +14,8 @@ use tracing::{error, info, instrument, warn, Level};
 // region:		--- types
 /// type definition for the functions called by a timer
 #[allow(clippy::module_name_repetitions)]
-pub type TimerCallback<P> = Arc<
-	Mutex<Option<Box<dyn FnMut(&Context<P>) -> Result<()> + Send + Sync + Unpin + 'static>>>,
->;
+pub type TimerCallback<P> =
+	Arc<Mutex<Option<Box<dyn FnMut(&Context<P>) -> Result<()> + Send + Sync + Unpin + 'static>>>>;
 // endregion:	--- types
 
 // region:		--- states
@@ -376,11 +375,11 @@ where
 	}
 }
 
-impl<P> ManageState for Timer<P>
+impl<P> ManageOperationState for Timer<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	fn manage_state(&mut self, state: &OperationState) -> Result<()> {
+	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()> {
 		match self {
 			Self::Interval {
 				key_expr: _,

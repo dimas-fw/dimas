@@ -8,7 +8,7 @@ use super::task_signal::TaskSignal;
 use crate::prelude::Context;
 use dimas_core::{
 	error::{DimasError, Result},
-	traits::{ManageState, OperationState},
+	traits::{ManageOperationState, OperationState},
 };
 #[cfg(doc)]
 use std::collections::HashMap;
@@ -304,11 +304,11 @@ where
 	}
 }
 
-impl<P> ManageState for LivelinessSubscriber<P>
+impl<P> ManageOperationState for LivelinessSubscriber<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	fn manage_state(&mut self, state: &OperationState) -> Result<()> {
+	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()> {
 		if (state >= &self.activation_state) && self.handle.is_none() {
 			return self.start();
 		} else if (state < &self.activation_state) && self.handle.is_some() {
@@ -473,11 +473,7 @@ where
 }
 
 #[instrument(name="initial liveliness", level = Level::ERROR, skip_all)]
-async fn run_initial<P>(
-	token: String,
-	p_cb: LivelinessCallback<P>,
-	ctx: Context<P>,
-) -> Result<()>
+async fn run_initial<P>(token: String, p_cb: LivelinessCallback<P>, ctx: Context<P>) -> Result<()>
 where
 	P: Send + Sync + Unpin + 'static,
 {

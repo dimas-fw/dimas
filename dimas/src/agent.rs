@@ -68,7 +68,7 @@ use dimas_com::Request;
 use dimas_config::Config;
 use dimas_core::{
 	error::{DimasError, Result},
-	traits::{ManageState, OperationState},
+	traits::{ManageOperationState, OperationState},
 };
 use std::{
 	fmt::Debug,
@@ -430,7 +430,7 @@ where
 								.map_err(|_| DimasError::WriteProperties)?
 								.get_mut(&key_expr)
 								.ok_or(DimasError::ShouldNotHappen)?
-								.manage_state(&self.context.state())?;
+								.manage_operation_state(&self.context.state())?;
 						},
 						TaskSignal::RestartQueryable(key_expr) => {
 							self.context.queryables
@@ -438,7 +438,7 @@ where
 								.map_err(|_| DimasError::WriteProperties)?
 								.get_mut(&key_expr)
 								.ok_or(DimasError::ShouldNotHappen)?
-								.manage_state(&self.context.state())?;
+								.manage_operation_state(&self.context.state())?;
 						},
 						TaskSignal::RestartSubscriber(key_expr) => {
 							self.context.subscribers
@@ -446,7 +446,7 @@ where
 								.map_err(|_| DimasError::WriteProperties)?
 								.get_mut(&key_expr)
 								.ok_or(DimasError::ShouldNotHappen)?
-								.manage_state(&self.context.state())?;
+								.manage_operation_state(&self.context.state())?;
 						},
 						TaskSignal::RestartTimer(key_expr) => {
 							self.context.timers
@@ -454,7 +454,7 @@ where
 								.map_err(|_| DimasError::WriteProperties)?
 								.get_mut(&key_expr)
 								.ok_or(DimasError::ShouldNotHappen)?
-								.manage_state(&self.context.state())?;
+								.manage_operation_state(&self.context.state())?;
 						},
 					};
 				}

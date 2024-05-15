@@ -48,7 +48,7 @@ use dimas_com::{communicator::Communicator, Message};
 use dimas_config::Config;
 use dimas_core::{
 	error::{DimasError, Result},
-	traits::{ManageState, OperationState},
+	traits::{ManageOperationState, OperationState},
 };
 use std::{
 	collections::HashMap,
@@ -216,7 +216,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("liveliness subscribers".into()))?
 			.iter_mut()
 			.for_each(|subscriber| {
-				let _ = subscriber.1.manage_state(&new_state);
+				let _ = subscriber.1.manage_operation_state(&new_state);
 			});
 
 		// start all registered queryables
@@ -226,7 +226,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("queryables".into()))?
 			.iter_mut()
 			.for_each(|queryable| {
-				let _ = queryable.1.manage_state(&new_state);
+				let _ = queryable.1.manage_operation_state(&new_state);
 			});
 
 		// start all registered subscribers
@@ -236,7 +236,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("subscribers".into()))?
 			.iter_mut()
 			.for_each(|subscriber| {
-				let _ = subscriber.1.manage_state(&new_state);
+				let _ = subscriber.1.manage_operation_state(&new_state);
 			});
 
 		// init all registered publishers
@@ -246,7 +246,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("publishers".into()))?
 			.iter_mut()
 			.for_each(|publisher| {
-				if let Err(reason) = publisher.1.manage_state(&new_state) {
+				if let Err(reason) = publisher.1.manage_operation_state(&new_state) {
 					error!(
 						"could not initialize publisher for {}, reason: {}",
 						publisher.1.key_expr(),
@@ -262,7 +262,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("queries".into()))?
 			.iter_mut()
 			.for_each(|query| {
-				if let Err(reason) = query.1.manage_state(&new_state) {
+				if let Err(reason) = query.1.manage_operation_state(&new_state) {
 					error!(
 						"could not initialize query for {}, reason: {}",
 						query.1.key_expr(),
@@ -278,7 +278,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("timers".into()))?
 			.iter_mut()
 			.for_each(|timer| {
-				let _ = timer.1.manage_state(&new_state);
+				let _ = timer.1.manage_operation_state(&new_state);
 			});
 
 		self.modify_state_property(new_state)?;
@@ -299,7 +299,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("timers".into()))?
 			.iter_mut()
 			.for_each(|timer| {
-				let _ = timer.1.manage_state(&new_state);
+				let _ = timer.1.manage_operation_state(&new_state);
 			});
 
 		// de-init all registered queries
@@ -309,7 +309,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("queries".into()))?
 			.iter_mut()
 			.for_each(|query| {
-				if let Err(reason) = query.1.manage_state(&new_state) {
+				if let Err(reason) = query.1.manage_operation_state(&new_state) {
 					error!(
 						"could not de-initialize query for {}, reason: {}",
 						query.1.key_expr(),
@@ -325,7 +325,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("publishers".into()))?
 			.iter_mut()
 			.for_each(|publisher| {
-				let _ = publisher.1.manage_state(&new_state);
+				let _ = publisher.1.manage_operation_state(&new_state);
 			});
 
 		// stop all registered subscribers
@@ -335,7 +335,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("subscribers".into()))?
 			.iter_mut()
 			.for_each(|subscriber| {
-				let _ = subscriber.1.manage_state(&new_state);
+				let _ = subscriber.1.manage_operation_state(&new_state);
 			});
 
 		// stop all registered queryables
@@ -345,7 +345,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("queryables".into()))?
 			.iter_mut()
 			.for_each(|queryable| {
-				let _ = queryable.1.manage_state(&new_state);
+				let _ = queryable.1.manage_operation_state(&new_state);
 			});
 
 		// stop all registered liveliness subscribers
@@ -355,7 +355,7 @@ where
 			.map_err(|_| DimasError::ModifyContext("liveliness subscribers".into()))?
 			.iter_mut()
 			.for_each(|subscriber| {
-				let _ = subscriber.1.manage_state(&new_state);
+				let _ = subscriber.1.manage_operation_state(&new_state);
 			});
 
 		self.modify_state_property(new_state)?;
