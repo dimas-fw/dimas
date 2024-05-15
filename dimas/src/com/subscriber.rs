@@ -8,7 +8,7 @@
 use super::task_signal::TaskSignal;
 #[cfg(doc)]
 use crate::agent::Agent;
-use crate::context::ArcContext;
+use crate::context::Context;
 use dimas_com::Message;
 use dimas_core::{
 	error::{DimasError, Result},
@@ -27,12 +27,12 @@ use zenoh::{
 /// Type definition for a subscribers `put` callback function
 #[allow(clippy::module_name_repetitions)]
 pub type SubscriberPutCallback<P> = Arc<
-	Mutex<Box<dyn FnMut(&ArcContext<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static>>,
+	Mutex<Box<dyn FnMut(&Context<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static>>,
 >;
 /// Type definition for a subscribers `delete` callback function
 #[allow(clippy::module_name_repetitions)]
 pub type SubscriberDeleteCallback<P> =
-	Arc<Mutex<Box<dyn FnMut(&ArcContext<P>) -> Result<()> + Send + Sync + Unpin + 'static>>>;
+	Arc<Mutex<Box<dyn FnMut(&Context<P>) -> Result<()> + Send + Sync + Unpin + 'static>>>;
 // endregion:	--- types
 
 // region:		--- states
@@ -75,7 +75,7 @@ pub struct SubscriberBuilder<P, K, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	context: ArcContext<P>,
+	context: Context<P>,
 	activation_state: OperationState,
 	key_expr: K,
 	put_callback: C,
@@ -90,7 +90,7 @@ where
 {
 	/// Construct a `SubscriberBuilder` in initial state
 	#[must_use]
-	pub const fn new(context: ArcContext<P>) -> Self {
+	pub const fn new(context: Context<P>) -> Self {
 		Self {
 			context,
 			activation_state: OperationState::Standby,
@@ -125,7 +125,7 @@ where
 	#[must_use]
 	pub fn delete_callback<F>(mut self, callback: F) -> Self
 	where
-		F: FnMut(&ArcContext<P>) -> Result<()> + Send + Sync + Unpin + 'static,
+		F: FnMut(&Context<P>) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		self.delete_callback
 			.replace(Arc::new(Mutex::new(Box::new(callback))));
@@ -200,7 +200,7 @@ where
 	#[must_use]
 	pub fn put_callback<F>(self, callback: F) -> SubscriberBuilder<P, K, PutCallback<P>, S>
 	where
-		F: FnMut(&ArcContext<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static,
+		F: FnMut(&Context<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
 			context,
@@ -314,7 +314,7 @@ where
 	/// The subscribers key expression
 	key_expr: String,
 	/// Context for the Subscriber
-	context: ArcContext<P>,
+	context: Context<P>,
 	/// [`OperationState`] on which this subscriber is started
 	activation_state: OperationState,
 	put_callback: SubscriberPutCallback<P>,
@@ -357,7 +357,7 @@ where
 	#[must_use]
 	pub fn new(
 		key_expr: String,
-		context: ArcContext<P>,
+		context: Context<P>,
 		activation_state: OperationState,
 		put_callback: SubscriberPutCallback<P>,
 		reliability: Reliability,
@@ -439,7 +439,7 @@ async fn run_subscriber<P>(
 	p_cb: SubscriberPutCallback<P>,
 	d_cb: Option<SubscriberDeleteCallback<P>>,
 	reliability: Reliability,
-	ctx: ArcContext<P>,
+	ctx: Context<P>,
 ) -> Result<()>
 where
 	P: Send + Sync + Unpin + 'static,

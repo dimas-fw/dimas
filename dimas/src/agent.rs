@@ -53,7 +53,7 @@ use crate::com::{
 	subscriber::SubscriberBuilder,
 	task_signal::{wait_for_task_signals, TaskSignal},
 };
-use crate::context::{ArcContext, Context};
+use crate::context::{Context, ContextInner};
 use crate::timer::TimerBuilder;
 #[cfg(doc)]
 use crate::{
@@ -129,8 +129,8 @@ where
 		// we need an mpsc channel with a receiver behind a mutex guard
 		let (tx, rx) = mpsc::channel();
 		let rx = Mutex::new(rx);
-		let context: ArcContext<P> =
-			Context::new(config, self.props, self.name, tx, self.prefix)?.into();
+		let context: Context<P> =
+			ContextInner::new(config, self.props, self.name, tx, self.prefix)?.into();
 
 		let agent = Agent {
 			rx,
@@ -179,11 +179,9 @@ where
 				.add()?;
 		}
 
-		// set agents [`OperationState`] to Configured
+		// set agents [`OperationState`] to Created
 		// This will also start the basic queryables
-		agent
-			.context
-			.set_state(OperationState::Configured)?;
+		agent.context.set_state(OperationState::Created)?;
 
 		Ok(agent)
 	}
@@ -200,7 +198,7 @@ where
 	/// A reciever for signals from tasks
 	rx: Mutex<mpsc::Receiver<TaskSignal>>,
 	/// The agents context structure
-	context: ArcContext<P>,
+	context: Context<P>,
 	/// Flag to control whether sending liveliness or not
 	liveliness: bool,
 	/// The liveliness token - typically the uuid sent to other participants<br>
@@ -312,7 +310,7 @@ where
 		self.context.timer()
 	}
 
-	fn about(ctx: &ArcContext<P>, request: Request) -> Result<()> {
+	fn about(ctx: &Context<P>, request: Request) -> Result<()> {
 		let name = ctx
 			.fq_name()
 			.unwrap_or_else(|| String::from("--"));
@@ -324,7 +322,7 @@ where
 		Ok(())
 	}
 
-	fn state(ctx: &ArcContext<P>, request: Request) -> Result<()> {
+	fn state(ctx: &Context<P>, request: Request) -> Result<()> {
 		let parms = request
 			.parameters()
 			.to_string()
@@ -336,7 +334,7 @@ where
 			"Inactive" | "inactive" => ctx.set_state(OperationState::Inactive),
 			"Standby" | "standby" => ctx.set_state(OperationState::Standby),
 			"Active" | "active" => ctx.set_state(OperationState::Active),
-			_ => {Ok(())},
+			_ => Ok(()),
 		};
 
 		// send back result
@@ -355,7 +353,7 @@ where
 	/// The agent can be stopped properly using `ctrl-c`
 	///
 	/// # Errors
-	/// Propagation of errors from [`ArcContext::start_registered_tasks()`].
+	/// Propagation of errors from [`Context::start_registered_tasks()`].
 	#[tracing::instrument(skip_all)]
 	pub async fn start(self) -> Result<Agent<'a, P>> {
 		let session = self.context.communicator.session();
@@ -406,7 +404,7 @@ where
 	/// A reciever for signals from tasks
 	rx: Mutex<mpsc::Receiver<TaskSignal>>,
 	/// The agents context structure
-	context: ArcContext<P>,
+	context: Context<P>,
 	/// Flag to control whether sending liveliness or not
 	liveliness: bool,
 	/// The liveliness token - typically the uuid sent to other participants<br>
@@ -482,7 +480,7 @@ where
 	/// Stop the agent
 	///
 	/// # Errors
-	/// Propagation of errors from [`ArcContext::stop_registered_tasks()`].
+	/// Propagation of errors from [`Context::stop_registered_tasks()`].
 	#[tracing::instrument(skip_all)]
 	pub fn stop(self) -> Result<Agent<'a, P>> {
 		self.context.set_state(OperationState::Created)?;

@@ -11,7 +11,7 @@ struct AgentProps {
 	num: u32,
 }
 
-fn liveliness_subscription(ctx: &ArcContext<AgentProps>, id: &str) -> Result<()> {
+fn liveliness_subscription(ctx: &Context<AgentProps>, id: &str) -> Result<()> {
 	info!("{id} is alive");
 	let mut val = ctx.read()?.num;
 	val += 1;
@@ -20,7 +20,7 @@ fn liveliness_subscription(ctx: &ArcContext<AgentProps>, id: &str) -> Result<()>
 	Ok(())
 }
 
-fn delete_subscription(ctx: &ArcContext<AgentProps>, id: &str) -> Result<()> {
+fn delete_subscription(ctx: &Context<AgentProps>, id: &str) -> Result<()> {
 	info!("{id} died");
 	let mut val = ctx.read()?.num;
 	val -= 1;

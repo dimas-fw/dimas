@@ -10,7 +10,7 @@ use tracing::info;
 #[derive(Debug)]
 struct AgentProps {}
 
-fn query_callback(_ctx: &ArcContext<AgentProps>, response: Response) -> Result<()> {
+fn query_callback(_ctx: &Context<AgentProps>, response: Response) -> Result<()> {
 	let message: u128 = response.decode()?;
 	println!("Response is '{message}'");
 	Ok(())

@@ -6,7 +6,7 @@
 // these ones are only for doc needed
 #[cfg(doc)]
 use crate::agent::Agent;
-use crate::context::ArcContext;
+use crate::context::Context;
 use bitcode::{encode, Encode};
 use dimas_core::{
 	error::{DimasError, Result},
@@ -51,7 +51,7 @@ pub struct PublisherBuilder<P, K, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	context: ArcContext<P>,
+	context: Context<P>,
 	activation_state: OperationState,
 	priority: Priority,
 	congestion_control: CongestionControl,
@@ -65,7 +65,7 @@ where
 {
 	/// Construct a [`PublisherBuilder`] in initial state
 	#[must_use]
-	pub const fn new(context: ArcContext<P>) -> Self {
+	pub const fn new(context: Context<P>) -> Self {
 		Self {
 			context,
 			activation_state: OperationState::Active,
@@ -234,7 +234,7 @@ where
 {
 	key_expr: String,
 	/// Context for the Publisher
-	context: ArcContext<P>,
+	context: Context<P>,
 	activation_state: OperationState,
 	priority: Priority,
 	congestion_control: CongestionControl,
@@ -275,7 +275,7 @@ where
 	#[must_use]
 	pub const fn new(
 		key_expr: String,
-		context: ArcContext<P>,
+		context: Context<P>,
 		activation_state: OperationState,
 		priority: Priority,
 		congestion_control: CongestionControl,

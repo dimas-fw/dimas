@@ -1,7 +1,7 @@
 // Copyright © 2023 Stephan Kunz
 
 //! [`Context`] is the representation of an [`Agent`]'s internal and user defined properties.
-//! Never use it directly but through the created [`ArcContext`], which provides thread safe access.
+//! Never use it directly but through the created [`Context`], which provides thread safe access.
 //! A reference to this wrapper is handed into every callback function.
 //!
 //! # Examples
@@ -13,7 +13,7 @@
 //!   counter: i32,
 //! }
 //! // A [`Timer`] callback
-//! fn timer_callback(context: &ArcContext<AgentProps>) -> Result<()> {
+//! fn timer_callback(context: &Context<AgentProps>) -> Result<()> {
 //!   // reading properties
 //!   let mut value = context.read()?.counter;
 //!   value +=1;
@@ -68,19 +68,19 @@ use zenoh::{
 const INITIAL_SIZE: usize = 9;
 // endregion:	--- types
 
-// region:		--- ArcContext
-/// `ArcContext` is a thread safe atomic reference counted [`Context`].<br>
+// region:		--- Context
+/// `Context` is a thread safe atomic reference counted [`Context`].<br>
 /// It makes all relevant data of the agent accessible in a thread safe way via accessor methods.
 #[derive(Debug)]
 #[allow(clippy::module_name_repetitions)]
-pub struct ArcContext<P>
+pub struct Context<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	inner: Arc<Context<P>>,
+	inner: Arc<ContextInner<P>>,
 }
 
-impl<P> Clone for ArcContext<P>
+impl<P> Clone for Context<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -91,29 +91,29 @@ where
 	}
 }
 
-impl<P> Deref for ArcContext<P>
+impl<P> Deref for Context<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	type Target = Context<P>;
+	type Target = ContextInner<P>;
 
 	fn deref(&self) -> &Self::Target {
 		&self.inner
 	}
 }
 
-impl<P> From<Context<P>> for ArcContext<P>
+impl<P> From<ContextInner<P>> for Context<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	fn from(value: Context<P>) -> Self {
+	fn from(value: ContextInner<P>) -> Self {
 		Self {
 			inner: Arc::new(value),
 		}
 	}
 }
 
-impl<P> ArcContext<P>
+impl<P> Context<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -286,7 +286,7 @@ where
 	}
 
 	/// Internal function for stopping all registered tasks.<br>
-	/// The tasks are stopped in reverse order of their start in [`ArcContext::start_registered_tasks()`]
+	/// The tasks are stopped in reverse order of their start in [`Context::start_registered_tasks()`]
 	///
 	/// # Errors
 	/// Currently none
@@ -439,12 +439,13 @@ where
 		TimerBuilder::new(self.clone()).storage(self.timers.clone())
 	}
 }
-// endregion:	--- ArcContext
+// endregion:	--- Context
 
-// region:		--- Context
-/// [`Context`] makes all relevant data of the [`Agent`] accessible via accessor methods.
+// region:		--- ContextInner
+/// [`ContextInner`] makes all relevant data of the [`Agent`] accessible via accessor methods.
 #[derive(Debug, Clone)]
-pub struct Context<P>
+#[allow(clippy::module_name_repetitions)]
+pub struct ContextInner<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -473,11 +474,11 @@ where
 	pub(crate) timers: Arc<RwLock<HashMap<String, Timer<P>>>>,
 }
 
-impl<P> Context<P>
+impl<P> ContextInner<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	/// Constructor for the [`Context`]
+	/// Constructor for the [`ContextInner`]
 	pub(crate) fn new(
 		config: &Config,
 		props: P,
@@ -637,19 +638,19 @@ where
 	/// Send an ad hoc query using the given `topic`.
 	/// The `topic` will be enhanced with the group prefix.
 	/// Response will be handled by `callback`, a closure or function with
-	/// signature Fn(&[`ArcContext`]<AgentProperties>, [`Response`]).
+	/// signature Fn(&[`Context`]<AgentProperties>, [`Response`]).
 	/// # Errors
 	///
 	pub fn get<F>(
 		&self,
-		ctx: ArcContext<P>,
+		ctx: Context<P>,
 		topic: &str,
 		mode: ConsolidationMode,
 		callback: F,
 	) -> Result<()>
 	where
 		P: Send + Sync + Unpin + 'static,
-		F: Fn(&ArcContext<P>, Message) + Send + Sync + Unpin + 'static,
+		F: Fn(&Context<P>, Message) + Send + Sync + Unpin + 'static,
 	{
 		let key_expr = self
 			.prefix()
@@ -725,6 +726,6 @@ mod tests {
 
 	#[test]
 	const fn normal_types() {
-		is_normal::<Context<Props>>();
+		is_normal::<ContextInner<Props>>();
 	}
 }

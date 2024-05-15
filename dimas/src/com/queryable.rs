@@ -4,7 +4,7 @@
 
 // region:		--- modules
 use super::task_signal::TaskSignal;
-use crate::context::ArcContext;
+use crate::context::Context;
 use dimas_com::Request;
 use dimas_core::{
 	error::{DimasError, Result},
@@ -24,7 +24,7 @@ use zenoh::sample::Locality;
 /// type defnition for the queryables callback function.
 #[allow(clippy::module_name_repetitions)]
 pub type QueryableCallback<P> = Arc<
-	Mutex<Box<dyn FnMut(&ArcContext<P>, Request) -> Result<()> + Send + Sync + Unpin + 'static>>,
+	Mutex<Box<dyn FnMut(&Context<P>, Request) -> Result<()> + Send + Sync + Unpin + 'static>>,
 >;
 // endregion:	--- types
 
@@ -68,7 +68,7 @@ pub struct QueryableBuilder<P, K, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	context: ArcContext<P>,
+	context: Context<P>,
 	activation_state: OperationState,
 	completeness: bool,
 	allowed_origin: Locality,
@@ -109,7 +109,7 @@ where
 {
 	/// Construct a `QueryableBuilder` in initial state
 	#[must_use]
-	pub const fn new(context: ArcContext<P>) -> Self {
+	pub const fn new(context: Context<P>) -> Self {
 		Self {
 			context,
 			activation_state: OperationState::Standby,
@@ -189,7 +189,7 @@ where
 	#[must_use]
 	pub fn callback<F>(self, callback: F) -> QueryableBuilder<P, K, RequestCallback<P>, S>
 	where
-		F: FnMut(&ArcContext<P>, Request) -> Result<()> + Send + Sync + Unpin + 'static,
+		F: FnMut(&Context<P>, Request) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
 			context,
@@ -301,7 +301,7 @@ where
 {
 	key_expr: String,
 	/// Context for the Subscriber
-	context: ArcContext<P>,
+	context: Context<P>,
 	activation_state: OperationState,
 	request_callback: QueryableCallback<P>,
 	completeness: bool,
@@ -344,7 +344,7 @@ where
 	#[must_use]
 	pub fn new(
 		key_expr: String,
-		context: ArcContext<P>,
+		context: Context<P>,
 		activation_state: OperationState,
 		request_callback: QueryableCallback<P>,
 		completeness: bool,
@@ -419,7 +419,7 @@ async fn run_queryable<P>(
 	cb: QueryableCallback<P>,
 	completeness: bool,
 	allowed_origin: Locality,
-	ctx: ArcContext<P>,
+	ctx: Context<P>,
 ) -> Result<()>
 where
 	P: Send + Sync + Unpin + 'static,

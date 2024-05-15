@@ -15,7 +15,7 @@ use tracing::{error, info, instrument, warn, Level};
 /// type definition for the functions called by a timer
 #[allow(clippy::module_name_repetitions)]
 pub type TimerCallback<P> = Arc<
-	Mutex<Option<Box<dyn FnMut(&ArcContext<P>) -> Result<()> + Send + Sync + Unpin + 'static>>>,
+	Mutex<Option<Box<dyn FnMut(&Context<P>) -> Result<()> + Send + Sync + Unpin + 'static>>>,
 >;
 // endregion:	--- types
 
@@ -68,7 +68,7 @@ pub struct TimerBuilder<P, K, I, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	context: ArcContext<P>,
+	context: Context<P>,
 	activation_state: OperationState,
 	key_expr: K,
 	interval: I,
@@ -83,7 +83,7 @@ where
 {
 	/// Construct a `TimerBuilder` in initial state
 	#[must_use]
-	pub const fn new(context: ArcContext<P>) -> Self {
+	pub const fn new(context: Context<P>) -> Self {
 		Self {
 			context,
 			activation_state: OperationState::Active,
@@ -210,7 +210,7 @@ where
 	#[must_use]
 	pub fn callback<F>(self, callback: F) -> TimerBuilder<P, K, I, IntervalCallback<P>, S>
 	where
-		F: FnMut(&ArcContext<P>) -> Result<()> + Send + Sync + Unpin + 'static,
+		F: FnMut(&Context<P>) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
 			context,
@@ -326,7 +326,7 @@ where
 		/// The Timers ID
 		key_expr: String,
 		/// Context for the Timer
-		context: ArcContext<P>,
+		context: Context<P>,
 		/// [`OperationState`] on which this timer is started
 		activation_state: OperationState,
 		/// Timers Callback function called, when Timer is fired
@@ -341,7 +341,7 @@ where
 		/// The Timers ID
 		key_expr: String,
 		/// Context for the Timer
-		context: ArcContext<P>,
+		context: Context<P>,
 		/// [`OperationState`] on which this timer is started
 		activation_state: OperationState,
 		/// Timers Callback function called, when Timer is fired
@@ -419,7 +419,7 @@ where
 	#[must_use]
 	pub fn new(
 		name: String,
-		context: ArcContext<P>,
+		context: Context<P>,
 		activation_state: OperationState,
 		callback: TimerCallback<P>,
 		interval: Duration,
@@ -563,7 +563,7 @@ where
 }
 
 #[instrument(name="timer", level = Level::ERROR, skip_all)]
-async fn run_timer<P>(interval: Duration, cb: TimerCallback<P>, ctx: ArcContext<P>)
+async fn run_timer<P>(interval: Duration, cb: TimerCallback<P>, ctx: Context<P>)
 where
 	P: Send + Sync + Unpin + 'static,
 {
