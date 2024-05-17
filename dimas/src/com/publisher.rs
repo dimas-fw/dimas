@@ -10,7 +10,7 @@ use crate::context::ContextImpl;
 use bitcode::{encode, Encode};
 use dimas_core::{
 	error::{DimasError, Result},
-	traits::{Capability, OperationState},
+	traits::{Capability, CommunicationCapability, OperationState},
 };
 #[cfg(doc)]
 use std::collections::HashMap;
@@ -267,6 +267,12 @@ where
 	}
 }
 
+impl<P> CommunicationCapability for Publisher<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+}
+
 impl<P> Publisher<P>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -305,7 +311,7 @@ where
 	{
 		let publ = self
 			.context
-			.communicator
+			.communicator()
 			.create_publisher(&self.key_expr)?
 			.congestion_control(self.congestion_control)
 			.priority(self.priority);

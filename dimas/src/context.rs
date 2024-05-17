@@ -13,7 +13,7 @@
 //!   counter: i32,
 //! }
 //! // A [`Timer`] callback
-//! fn timer_callback(context: &Context<AgentProps>) -> Result<()> {
+//! fn timer_callback(context: &ContextImpl<AgentProps>) -> Result<()> {
 //!   // reading properties
 //!   let mut value = context.read()?.counter;
 //!   value +=1;
@@ -48,7 +48,7 @@ use dimas_com::{communicator::Communicator, Message};
 use dimas_config::Config;
 use dimas_core::{
 	error::{DimasError, Result},
-	traits::{Capability, Context, OperationState},
+	traits::{Capability, OperationState},
 };
 use std::{
 	collections::HashMap,
@@ -112,8 +112,6 @@ where
 		}
 	}
 }
-
-impl<P> Context for ContextImpl<P> where P: Send + Sync + Unpin + 'static {}
 
 impl<P> ContextImpl<P>
 where
@@ -457,23 +455,23 @@ where
 	/// The [`Agent`]s current operational state.
 	state: Arc<RwLock<OperationState>>,
 	/// a sender for sending signals to owner of context
-	pub(crate) tx: Sender<TaskSignal>,
+	tx: Sender<TaskSignal>,
 	/// The [`Agent`]s property structure
 	props: Arc<RwLock<P>>,
 	/// The [`Agent`]s [`Communicator`]
-	pub(crate) communicator: Arc<Communicator>,
+	communicator: Arc<Communicator>,
 	/// Registered [`LivelinessSubscriber`]
-	pub(crate) liveliness_subscribers: Arc<RwLock<HashMap<String, LivelinessSubscriber<P>>>>,
+	liveliness_subscribers: Arc<RwLock<HashMap<String, LivelinessSubscriber<P>>>>,
 	/// Registered [`Publisher`]
 	publishers: Arc<RwLock<HashMap<String, Publisher<P>>>>,
 	/// Registered [`Query`]s
 	queries: Arc<RwLock<HashMap<String, Query<P>>>>,
 	/// Registered [`Queryable`]s
-	pub(crate) queryables: Arc<RwLock<HashMap<String, Queryable<P>>>>,
+	queryables: Arc<RwLock<HashMap<String, Queryable<P>>>>,
 	/// Registered [`Subscriber`]
-	pub(crate) subscribers: Arc<RwLock<HashMap<String, Subscriber<P>>>>,
+	subscribers: Arc<RwLock<HashMap<String, Subscriber<P>>>>,
 	/// Registered [`Timer`]
-	pub(crate) timers: Arc<RwLock<HashMap<String, Timer<P>>>>,
+	timers: Arc<RwLock<HashMap<String, Timer<P>>>>,
 }
 
 impl<P> ContextInner<P>
@@ -481,7 +479,7 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// Constructor for the [`ContextInner`]
-	pub(crate) fn new(
+	pub fn new(
 		config: &Config,
 		props: P,
 		name: Option<String>,
@@ -507,19 +505,19 @@ where
 		})
 	}
 
-	/// Get the [`Agent`]s uuid
+	/// Get the uuid
 	#[must_use]
 	pub fn uuid(&self) -> String {
 		self.communicator.uuid()
 	}
 
-	/// Get the [`Agent`]s name
+	/// Get the name
 	#[must_use]
 	pub const fn name(&self) -> &Option<String> {
 		&self.name
 	}
 
-	/// Get the [`Agent`]s fully qualified name
+	/// Get the fully qualified name
 	#[must_use]
 	pub fn fq_name(&self) -> Option<String> {
 		if self.name().is_some() && self.prefix().is_some() {
@@ -533,13 +531,49 @@ where
 		}
 	}
 
-	/// Get the [`Agent`]s prefix
+	/// Get the prefix
 	#[must_use]
 	pub fn prefix(&self) -> &Option<String> {
 		self.communicator.prefix()
 	}
 
-	/// Gives read access to the [`Agent`]s properties
+	/// Get the sender
+	#[must_use]
+	pub const fn sender(&self) -> &Sender<TaskSignal> {
+		&self.tx
+	}
+
+	/// Get the communicator
+	#[must_use]
+	pub fn communicator(&self) -> &Communicator {
+		&self.communicator
+	}
+
+	/// Get the liveliness subsribers
+	#[must_use]
+	pub const fn liveliness_subscribers(&self) -> &Arc<RwLock<HashMap<String, LivelinessSubscriber<P>>>> {
+		&self.liveliness_subscribers
+	}
+
+	/// Get the queryables
+	#[must_use]
+	pub const fn queryables(&self) -> &Arc<RwLock<HashMap<String, Queryable<P>>>> {
+		&self.queryables
+	}
+
+	/// Get the subsribers
+	#[must_use]
+	pub const fn subscribers(&self) -> &Arc<RwLock<HashMap<String, Subscriber<P>>>> {
+		&self.subscribers
+	}
+
+	/// Get the timers
+	#[must_use]
+	pub const fn timers(&self) -> &Arc<RwLock<HashMap<String, Timer<P>>>> {
+		&self.timers
+	}
+
+	/// Gives read access to the properties
 	///
 	/// # Errors
 	pub fn read(&self) -> Result<std::sync::RwLockReadGuard<'_, P>> {
@@ -548,7 +582,7 @@ where
 			.map_err(|_| DimasError::ReadProperties.into())
 	}
 
-	/// Gives write access to the [`Agent`]s properties
+	/// Gives write access to the properties
 	///
 	/// # Errors
 	pub fn write(&self) -> Result<std::sync::RwLockWriteGuard<'_, P>> {
@@ -728,6 +762,7 @@ mod tests {
 
 	#[test]
 	const fn normal_types() {
+		is_normal::<ContextImpl<Props>>();
 		is_normal::<ContextInner<Props>>();
 	}
 }

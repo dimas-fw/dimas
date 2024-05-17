@@ -7,7 +7,7 @@ use crate::context::ContextImpl;
 use dimas_com::Response;
 use dimas_core::{
 	error::{DimasError, Result},
-	traits::{Capability, OperationState},
+	traits::{Capability, CommunicationCapability, OperationState},
 };
 #[cfg(doc)]
 use std::collections::HashMap;
@@ -378,6 +378,12 @@ where
 	}
 }
 
+impl<P> CommunicationCapability for Query<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+}
+
 impl<P> Query<P>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -439,7 +445,8 @@ where
 	#[instrument(name="query", level = Level::ERROR, skip_all)]
 	pub fn get(&self) -> Result<()> {
 		let cb = self.response_callback.clone();
-		let communicator = self.context.clone().communicator.clone();
+		let context = self.context.clone();
+		let communicator = context.communicator();
 
 		let session = communicator.session();
 		let mut query = session

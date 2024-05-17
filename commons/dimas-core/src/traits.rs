@@ -104,19 +104,19 @@ pub trait OperationStateHooks {
 // endregion:	--- OperationState
 
 // region:		--- Context
-/// Commonalities for an [`Agent`]'s context
+/// Commonalities for the context
 pub trait Context {}
 // endregion:	--- Context
 
 // region:		--- Capability
-/// Commonalities for [`Agent`]'s capability components
+/// Commonalities for capability components
 pub trait Capability {
 	/// Checks whether state of capability component is appropriate for the given [`OperationState`].
-	/// If not, adjusts components state to needs.
+	/// If not, implementation has to adjusts components state to needs.
 	/// # Errors
 	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()>;
 }
 
-/// Commonalities for [`Agent`]'s communication capability components
-pub trait CommunicationCapability {}
+/// Commonalities for communication capability components
+pub trait CommunicationCapability : Capability {}
 // endregion:	--- Capability

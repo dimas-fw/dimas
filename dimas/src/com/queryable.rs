@@ -8,7 +8,7 @@ use crate::context::ContextImpl;
 use dimas_com::Request;
 use dimas_core::{
 	error::{DimasError, Result},
-	traits::{Capability, OperationState},
+	traits::{Capability, CommunicationCapability, OperationState},
 };
 use std::{
 	fmt::Debug,
@@ -336,6 +336,12 @@ where
 	}
 }
 
+impl<P> CommunicationCapability for Queryable<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+}
+
 impl<P> Queryable<P>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -387,7 +393,7 @@ where
 				std::panic::set_hook(Box::new(move |reason| {
 					error!("queryable panic: {}", reason);
 					if let Err(reason) = ctx1
-						.tx
+						.sender()
 						.send(TaskSignal::RestartQueryable(key.clone()))
 					{
 						error!("could not restart queryable: {}", reason);
@@ -425,7 +431,7 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	let subscriber = ctx
-		.communicator
+		.communicator()
 		.session()
 		.declare_queryable(&key_expr)
 		.complete(completeness)

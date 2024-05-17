@@ -478,7 +478,7 @@ where
 					std::panic::set_hook(Box::new(move |reason| {
 						error!("interval timer panic: {}", reason);
 						if let Err(reason) = ctx1
-							.tx
+							.sender()
 							.send(TaskSignal::RestartTimer(key.clone()))
 						{
 							error!("could not restart timer: {}", reason);
@@ -517,7 +517,7 @@ where
 					std::panic::set_hook(Box::new(move |reason| {
 						error!("delayed timer panic: {}", reason);
 						if let Err(reason) = ctx1
-							.tx
+							.sender()
 							.send(TaskSignal::RestartTimer(key.clone()))
 						{
 							error!("could not restart timer: {}", reason);

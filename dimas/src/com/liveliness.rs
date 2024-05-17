@@ -8,7 +8,7 @@ use super::task_signal::TaskSignal;
 use crate::prelude::ContextImpl;
 use dimas_core::{
 	error::{DimasError, Result},
-	traits::{Capability, OperationState},
+	traits::{Capability, CommunicationCapability, OperationState},
 };
 #[cfg(doc)]
 use std::collections::HashMap;
@@ -319,6 +319,12 @@ where
 	}
 }
 
+impl<P> CommunicationCapability for LivelinessSubscriber<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+}
+
 impl<P> LivelinessSubscriber<P>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -386,7 +392,7 @@ where
 				std::panic::set_hook(Box::new(move |reason| {
 					error!("liveliness subscriber panic: {}", reason);
 					if let Err(reason) = ctx1
-						.tx
+						.sender()
 						.send(TaskSignal::RestartLiveliness(key.clone()))
 					{
 						error!("could not restart liveliness subscriber: {}", reason);
@@ -421,7 +427,7 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	let subscriber = ctx
-		.communicator
+		.communicator()
 		.session()
 		.liveliness()
 		.declare_subscriber(&token)
@@ -482,7 +488,7 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	let result = ctx
-		.communicator
+		.communicator()
 		.session()
 		.liveliness()
 		.get(&token)

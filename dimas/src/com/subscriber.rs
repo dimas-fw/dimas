@@ -12,7 +12,7 @@ use crate::context::ContextImpl;
 use dimas_com::Message;
 use dimas_core::{
 	error::{DimasError, Result},
-	traits::{Capability, OperationState},
+	traits::{Capability, CommunicationCapability, OperationState},
 };
 use std::sync::{Arc, Mutex, RwLock};
 use tokio::task::JoinHandle;
@@ -349,6 +349,12 @@ where
 	}
 }
 
+impl<P> CommunicationCapability for Subscriber<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+}
+
 impl<P> Subscriber<P>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -407,7 +413,7 @@ where
 				std::panic::set_hook(Box::new(move |reason| {
 					error!("subscriber panic: {}", reason);
 					if let Err(reason) = ctx1
-						.tx
+						.sender()
 						.send(TaskSignal::RestartSubscriber(key.clone()))
 					{
 						error!("could not restart subscriber: {}", reason);
@@ -445,7 +451,7 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	let subscriber = ctx
-		.communicator
+		.communicator()
 		.session()
 		.declare_subscriber(&key_expr)
 		.reliability(reliability)

@@ -79,6 +79,53 @@ use tracing::{error, info};
 use zenoh::{liveliness::LivelinessToken, prelude::sync::SyncResolve, SessionDeclarations};
 // endregion:	--- modules
 
+// region:	   --- callbacks
+fn about_callback<P>(ctx: &ContextImpl<P>, request: Request) -> Result<()>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	let name = ctx
+		.fq_name()
+		.unwrap_or_else(|| String::from("--"));
+	let mode = ctx.communicator().mode().to_string();
+	let zid = ctx.communicator().uuid();
+	let state = ctx.state();
+	let value = AboutEntity::new(name, mode, zid, state);
+	request.reply(value)?;
+	Ok(())
+}
+
+fn state_callback<P>(ctx: &ContextImpl<P>, request: Request) -> Result<()>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	let parms = request
+		.parameters()
+		.to_string()
+		.replace("(state=", "")
+		.replace(')', "");
+	let _ = match parms.as_str() {
+		"Created" | "created" => ctx.set_state(OperationState::Created),
+		"Configured" | "configured" => ctx.set_state(OperationState::Configured),
+		"Inactive" | "inactive" => ctx.set_state(OperationState::Inactive),
+		"Standby" | "standby" => ctx.set_state(OperationState::Standby),
+		"Active" | "active" => ctx.set_state(OperationState::Active),
+		_ => Ok(()),
+	};
+
+	// send back result
+	let name = ctx
+		.fq_name()
+		.unwrap_or_else(|| String::from("--"));
+	let mode = ctx.communicator().mode().to_string();
+	let zid = ctx.communicator().uuid();
+	let state = ctx.state();
+	let value = AboutEntity::new(name, mode, zid, state);
+	request.reply(value)?;
+	Ok(())
+}
+// endregion:	--- callbacks
+
 // region:	   --- UnconfiguredAgent
 /// A new Agent without the basic configuration decisions
 #[allow(clippy::module_name_repetitions)]
@@ -132,57 +179,56 @@ where
 		let context: ContextImpl<P> =
 			ContextInner::new(config, self.props, self.name, tx, self.prefix)?.into();
 
+		// add "about" queryables
+		// for zid
+		let key_expr = format!("{}/about", context.uuid());
+		context
+			.queryable()
+			.key_expr(&key_expr)
+			.callback(about_callback)
+			.activation_state(OperationState::Created)
+			.add()?;
+		// for fully qualified name
+		if let Some(fq_name) = context.fq_name() {
+			let key_expr = format!("{fq_name}/about");
+			context
+				.queryable()
+				.key_expr(&key_expr)
+				.callback(about_callback)
+				.activation_state(OperationState::Created)
+				.add()?;
+		}
+
+		// add "state" queryables
+		// for zid
+		let key_expr = format!("{}/state", context.uuid());
+		context
+			.queryable()
+			.key_expr(&key_expr)
+			.callback(state_callback)
+			.activation_state(OperationState::Created)
+			.add()?;
+		// for fully qualified name
+		if let Some(fq_name) = context.fq_name() {
+			let key_expr = format!("{fq_name}/state");
+			context
+				.queryable()
+				.key_expr(&key_expr)
+				.callback(state_callback)
+				.activation_state(OperationState::Created)
+				.add()?;
+		}
+
+		// set [`OperationState`] to Created
+		// This will also start the basic queryables
+		context.set_state(OperationState::Created)?;
+
 		let agent = Agent {
 			rx,
 			context,
 			liveliness: false,
 			liveliness_token: RwLock::new(None),
 		};
-
-		// create "about" queryables
-		// for zid
-		let key_expr = format!("{}/about", agent.context.uuid());
-		agent
-			.queryable()
-			.key_expr(&key_expr)
-			.callback(Agent::about)
-			.activation_state(OperationState::Created)
-			.add()?;
-		// for fully qualified name
-		if let Some(fq_name) = agent.context.fq_name() {
-			let key_expr = format!("{fq_name}/about");
-			agent
-				.queryable()
-				.key_expr(&key_expr)
-				.callback(Agent::about)
-				.activation_state(OperationState::Created)
-				.add()?;
-		}
-
-		// create "state" queryables
-		// for zid
-		let key_expr = format!("{}/state", agent.context.uuid());
-		agent
-			.queryable()
-			.key_expr(&key_expr)
-			.callback(Agent::state)
-			.activation_state(OperationState::Created)
-			.add()?;
-		// for fully qualified name
-		if let Some(fq_name) = agent.context.fq_name() {
-			let key_expr = format!("{fq_name}/state");
-			agent
-				.queryable()
-				.key_expr(&key_expr)
-				.callback(Agent::state)
-				.activation_state(OperationState::Created)
-				.add()?;
-		}
-
-		// set agents [`OperationState`] to Created
-		// This will also start the basic queryables
-		agent.context.set_state(OperationState::Created)?;
-
 		Ok(agent)
 	}
 }
@@ -310,45 +356,6 @@ where
 		self.context.timer()
 	}
 
-	fn about(ctx: &ContextImpl<P>, request: Request) -> Result<()> {
-		let name = ctx
-			.fq_name()
-			.unwrap_or_else(|| String::from("--"));
-		let mode = ctx.communicator.mode().to_string();
-		let zid = ctx.communicator.uuid();
-		let state = ctx.state();
-		let value = AboutEntity::new(name, mode, zid, state);
-		request.reply(value)?;
-		Ok(())
-	}
-
-	fn state(ctx: &ContextImpl<P>, request: Request) -> Result<()> {
-		let parms = request
-			.parameters()
-			.to_string()
-			.replace("(state=", "")
-			.replace(')', "");
-		let _ = match parms.as_str() {
-			"Created" | "created" => ctx.set_state(OperationState::Created),
-			"Configured" | "configured" => ctx.set_state(OperationState::Configured),
-			"Inactive" | "inactive" => ctx.set_state(OperationState::Inactive),
-			"Standby" | "standby" => ctx.set_state(OperationState::Standby),
-			"Active" | "active" => ctx.set_state(OperationState::Active),
-			_ => Ok(()),
-		};
-
-		// send back result
-		let name = ctx
-			.fq_name()
-			.unwrap_or_else(|| String::from("--"));
-		let mode = ctx.communicator.mode().to_string();
-		let zid = ctx.communicator.uuid();
-		let state = ctx.state();
-		let value = AboutEntity::new(name, mode, zid, state);
-		request.reply(value)?;
-		Ok(())
-	}
-
 	/// Start the agent.<br>
 	/// The agent can be stopped properly using `ctrl-c`
 	///
@@ -356,7 +363,7 @@ where
 	/// Propagation of errors from [`Context::start_registered_tasks()`].
 	#[tracing::instrument(skip_all)]
 	pub async fn start(self) -> Result<Agent<'a, P>> {
-		let session = self.context.communicator.session();
+		let session = self.context.communicator().session();
 
 		// activate sending liveliness
 		if self.liveliness {
@@ -364,8 +371,8 @@ where
 				.context
 				.prefix()
 				.clone()
-				.map_or(self.context.communicator.uuid(), |prefix| {
-					format!("{}/{}", prefix, self.context.communicator.uuid())
+				.map_or(self.context.communicator().uuid(), |prefix| {
+					format!("{}/{}", prefix, self.context.communicator().uuid())
 				});
 
 			let token = session
@@ -425,7 +432,7 @@ where
 				signal = wait_for_task_signals(&self.rx) => {
 					match *signal {
 						TaskSignal::RestartLiveliness(key_expr) => {
-							self.context.liveliness_subscribers
+							self.context.liveliness_subscribers()
 								.write()
 								.map_err(|_| DimasError::WriteProperties)?
 								.get_mut(&key_expr)
@@ -433,7 +440,7 @@ where
 								.manage_operation_state(&self.context.state())?;
 						},
 						TaskSignal::RestartQueryable(key_expr) => {
-							self.context.queryables
+							self.context.queryables()
 								.write()
 								.map_err(|_| DimasError::WriteProperties)?
 								.get_mut(&key_expr)
@@ -441,7 +448,7 @@ where
 								.manage_operation_state(&self.context.state())?;
 						},
 						TaskSignal::RestartSubscriber(key_expr) => {
-							self.context.subscribers
+							self.context.subscribers()
 								.write()
 								.map_err(|_| DimasError::WriteProperties)?
 								.get_mut(&key_expr)
@@ -449,7 +456,7 @@ where
 								.manage_operation_state(&self.context.state())?;
 						},
 						TaskSignal::RestartTimer(key_expr) => {
-							self.context.timers
+							self.context.timers()
 								.write()
 								.map_err(|_| DimasError::WriteProperties)?
 								.get_mut(&key_expr)
@@ -515,7 +522,9 @@ mod tests {
 
 	#[test]
 	const fn normal_types() {
+		is_normal::<UnconfiguredAgent<Props>>();
 		is_normal::<Agent<Props>>();
+		is_normal::<RunningAgent<Props>>();
 		is_normal::<TaskSignal>();
 	}
 }
