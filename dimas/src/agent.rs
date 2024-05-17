@@ -53,7 +53,7 @@ use crate::com::{
 	subscriber::SubscriberBuilder,
 	task_signal::{wait_for_task_signals, TaskSignal},
 };
-use crate::context::{Context, ContextInner};
+use crate::context::{ContextImpl, ContextInner};
 use crate::timer::TimerBuilder;
 #[cfg(doc)]
 use crate::{
@@ -68,7 +68,7 @@ use dimas_com::Request;
 use dimas_config::Config;
 use dimas_core::{
 	error::{DimasError, Result},
-	traits::{ManageOperationState, OperationState},
+	traits::{Capability, OperationState},
 };
 use std::{
 	fmt::Debug,
@@ -129,7 +129,7 @@ where
 		// we need an mpsc channel with a receiver behind a mutex guard
 		let (tx, rx) = mpsc::channel();
 		let rx = Mutex::new(rx);
-		let context: Context<P> =
+		let context: ContextImpl<P> =
 			ContextInner::new(config, self.props, self.name, tx, self.prefix)?.into();
 
 		let agent = Agent {
@@ -198,7 +198,7 @@ where
 	/// A reciever for signals from tasks
 	rx: Mutex<mpsc::Receiver<TaskSignal>>,
 	/// The agents context structure
-	context: Context<P>,
+	context: ContextImpl<P>,
 	/// Flag to control whether sending liveliness or not
 	liveliness: bool,
 	/// The liveliness token - typically the uuid sent to other participants<br>
@@ -310,7 +310,7 @@ where
 		self.context.timer()
 	}
 
-	fn about(ctx: &Context<P>, request: Request) -> Result<()> {
+	fn about(ctx: &ContextImpl<P>, request: Request) -> Result<()> {
 		let name = ctx
 			.fq_name()
 			.unwrap_or_else(|| String::from("--"));
@@ -322,7 +322,7 @@ where
 		Ok(())
 	}
 
-	fn state(ctx: &Context<P>, request: Request) -> Result<()> {
+	fn state(ctx: &ContextImpl<P>, request: Request) -> Result<()> {
 		let parms = request
 			.parameters()
 			.to_string()
@@ -404,7 +404,7 @@ where
 	/// A reciever for signals from tasks
 	rx: Mutex<mpsc::Receiver<TaskSignal>>,
 	/// The agents context structure
-	context: Context<P>,
+	context: ContextImpl<P>,
 	/// Flag to control whether sending liveliness or not
 	liveliness: bool,
 	/// The liveliness token - typically the uuid sent to other participants<br>

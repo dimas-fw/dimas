@@ -6,11 +6,11 @@
 // these ones are only for doc needed
 #[cfg(doc)]
 use crate::agent::Agent;
-use crate::context::Context;
+use crate::context::ContextImpl;
 use bitcode::{encode, Encode};
 use dimas_core::{
 	error::{DimasError, Result},
-	traits::{ManageOperationState, OperationState},
+	traits::{Capability, OperationState},
 };
 #[cfg(doc)]
 use std::collections::HashMap;
@@ -51,7 +51,7 @@ pub struct PublisherBuilder<P, K, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	context: Context<P>,
+	context: ContextImpl<P>,
 	activation_state: OperationState,
 	priority: Priority,
 	congestion_control: CongestionControl,
@@ -65,7 +65,7 @@ where
 {
 	/// Construct a [`PublisherBuilder`] in initial state
 	#[must_use]
-	pub const fn new(context: Context<P>) -> Self {
+	pub const fn new(context: ContextImpl<P>) -> Self {
 		Self {
 			context,
 			activation_state: OperationState::Active,
@@ -234,7 +234,7 @@ where
 {
 	key_expr: String,
 	/// Context for the Publisher
-	context: Context<P>,
+	context: ContextImpl<P>,
 	activation_state: OperationState,
 	priority: Priority,
 	congestion_control: CongestionControl,
@@ -253,7 +253,7 @@ where
 	}
 }
 
-impl<P> ManageOperationState for Publisher<P>
+impl<P> Capability for Publisher<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -275,7 +275,7 @@ where
 	#[must_use]
 	pub const fn new(
 		key_expr: String,
-		context: Context<P>,
+		context: ContextImpl<P>,
 		activation_state: OperationState,
 		priority: Priority,
 		congestion_control: CongestionControl,

@@ -1,6 +1,6 @@
 // Copyright © 2023 Stephan Kunz
 
-//! [`Context`] is the representation of an [`Agent`]'s internal and user defined properties.
+//! Implementation of an [`Agent`]'s internal and user defined properties [`Context`].
 //! Never use it directly but through the created [`Context`], which provides thread safe access.
 //! A reference to this wrapper is handed into every callback function.
 //!
@@ -48,7 +48,7 @@ use dimas_com::{communicator::Communicator, Message};
 use dimas_config::Config;
 use dimas_core::{
 	error::{DimasError, Result},
-	traits::{ManageOperationState, OperationState},
+	traits::{Capability, Context, OperationState},
 };
 use std::{
 	collections::HashMap,
@@ -68,19 +68,19 @@ use zenoh::{
 const INITIAL_SIZE: usize = 9;
 // endregion:	--- types
 
-// region:		--- Context
-/// `Context` is a thread safe atomic reference counted [`Context`].<br>
+// region:		--- ContextImpl
+/// `ContextImpl` is a thread safe atomic reference counted implementation of [`Context`].<br>
 /// It makes all relevant data of the agent accessible in a thread safe way via accessor methods.
 #[derive(Debug)]
 #[allow(clippy::module_name_repetitions)]
-pub struct Context<P>
+pub struct ContextImpl<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
 	inner: Arc<ContextInner<P>>,
 }
 
-impl<P> Clone for Context<P>
+impl<P> Clone for ContextImpl<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -91,7 +91,7 @@ where
 	}
 }
 
-impl<P> Deref for Context<P>
+impl<P> Deref for ContextImpl<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -102,7 +102,7 @@ where
 	}
 }
 
-impl<P> From<ContextInner<P>> for Context<P>
+impl<P> From<ContextInner<P>> for ContextImpl<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -113,7 +113,9 @@ where
 	}
 }
 
-impl<P> Context<P>
+impl<P> Context for ContextImpl<P> where P: Send + Sync + Unpin + 'static {}
+
+impl<P> ContextImpl<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -439,7 +441,7 @@ where
 		TimerBuilder::new(self.clone()).storage(self.timers.clone())
 	}
 }
-// endregion:	--- Context
+// endregion:	--- ContextImpl
 
 // region:		--- ContextInner
 /// [`ContextInner`] makes all relevant data of the [`Agent`] accessible via accessor methods.
@@ -643,14 +645,14 @@ where
 	///
 	pub fn get<F>(
 		&self,
-		ctx: Context<P>,
+		ctx: ContextImpl<P>,
 		topic: &str,
 		mode: ConsolidationMode,
 		callback: F,
 	) -> Result<()>
 	where
 		P: Send + Sync + Unpin + 'static,
-		F: Fn(&Context<P>, Message) + Send + Sync + Unpin + 'static,
+		F: Fn(&ContextImpl<P>, Message) + Send + Sync + Unpin + 'static,
 	{
 		let key_expr = self
 			.prefix()

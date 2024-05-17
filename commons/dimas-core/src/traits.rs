@@ -41,12 +41,82 @@ impl Display for OperationState {
 	}
 }
 
-/// Trait for state management of components
-pub trait ManageOperationState {
-	/// Checks whether state of component is appropriate for the given [`OperationState`].
+/// Trait for hooks into management of [`OperationState`]
+pub trait OperationStateHooks {
+	/// Transition for unrecovable Error
+	/// # Panics
+	fn perish(&mut self) -> ! {
+		panic!("recovery not defined/possible, process exits")
+	}
+	/// Transition from Error to Created
+	/// Default implementation dies
+	/// # Errors
+	fn recover(&mut self, wanted: &OperationState) -> Result<()> {
+		let _ = wanted;
+		self.perish()
+	}
+	/// Transition from any state to Error
+	/// Default implementation tries to recover
+	/// # Errors
+	fn error(&mut self, state: &OperationState) -> Result<()> {
+		self.recover(state)
+	}
+
+	/// Transition from Created to Configured
+	/// Default implementation does nothing
+	/// # Errors
+	fn configure(&mut self) -> Result<()> {
+		Ok(())
+	}
+	/// Transition from Configured to Created
+	/// Default implementation does nothing
+	/// # Errors
+	fn deconfigure(&mut self) -> Result<()> {
+		Ok(())
+	}
+
+	/// Transition from Configured to Inactive
+	/// Default implementation does nothing
+	/// # Errors
+	fn attend(&mut self) -> Result<()> {
+		Ok(())
+	}
+	/// Transtion from Inactive to Configured
+	/// Default implementation does nothing
+	/// # Errors
+	fn deattend(&mut self) -> Result<()> {
+		Ok(())
+	}
+
+	/// Transition from Inactive to Standby
+	/// # Errors
+	/// Default implementation does nothing
+	fn standby(&mut self) -> Result<()> {
+		Ok(())
+	}
+	/// Transition from Standby to Inactive
+	/// # Errors
+	/// Default implementation does nothing
+	fn destandby(&mut self) -> Result<()> {
+		Ok(())
+	}
+}
+// endregion:	--- OperationState
+
+// region:		--- Context
+/// Commonalities for an [`Agent`]'s context
+pub trait Context {}
+// endregion:	--- Context
+
+// region:		--- Capability
+/// Commonalities for [`Agent`]'s capability components
+pub trait Capability {
+	/// Checks whether state of capability component is appropriate for the given [`OperationState`].
 	/// If not, adjusts components state to needs.
 	/// # Errors
 	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()>;
 }
-// endregion:	--- OperationState
 
+/// Commonalities for [`Agent`]'s communication capability components
+pub trait CommunicationCapability {}
+// endregion:	--- Capability

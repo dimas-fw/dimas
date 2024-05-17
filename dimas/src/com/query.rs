@@ -3,11 +3,11 @@
 //! Module `query` provides an information/compute requestor `Query` which can be created using the `QueryBuilder`.
 
 // region:		--- modules
-use crate::context::Context;
+use crate::context::ContextImpl;
 use dimas_com::Response;
 use dimas_core::{
 	error::{DimasError, Result},
-	traits::{ManageOperationState, OperationState},
+	traits::{Capability, OperationState},
 };
 #[cfg(doc)]
 use std::collections::HashMap;
@@ -28,7 +28,7 @@ use zenoh::{
 /// type definition for the queries callback function
 #[allow(clippy::module_name_repetitions)]
 pub type QueryCallback<P> =
-	Arc<Mutex<dyn FnMut(&Context<P>, Response) -> Result<()> + Send + Sync + Unpin + 'static>>;
+	Arc<Mutex<dyn FnMut(&ContextImpl<P>, Response) -> Result<()> + Send + Sync + Unpin + 'static>>;
 // endregion:	--- types
 
 // region:		--- states
@@ -71,7 +71,7 @@ pub struct QueryBuilder<P, K, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	context: Context<P>,
+	context: ContextImpl<P>,
 	activation_state: OperationState,
 	allowed_destination: Locality,
 	timeout: Option<Duration>,
@@ -88,7 +88,7 @@ where
 {
 	/// Construct a `QueryBuilder` in initial state
 	#[must_use]
-	pub const fn new(context: Context<P>) -> Self {
+	pub const fn new(context: ContextImpl<P>) -> Self {
 		Self {
 			context,
 			activation_state: OperationState::Active,
@@ -218,7 +218,7 @@ where
 	#[must_use]
 	pub fn callback<F>(self, callback: F) -> QueryBuilder<P, K, ResponseCallback<P>, S>
 	where
-		F: FnMut(&Context<P>, Response) -> Result<()> + Send + Sync + Unpin + 'static,
+		F: FnMut(&ContextImpl<P>, Response) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
 			context,
@@ -342,7 +342,7 @@ where
 {
 	key_expr: String,
 	/// Context for the Query
-	context: Context<P>,
+	context: ContextImpl<P>,
 	activation_state: OperationState,
 	response_callback: QueryCallback<P>,
 	mode: ConsolidationMode,
@@ -364,7 +364,7 @@ where
 	}
 }
 
-impl<P> ManageOperationState for Query<P>
+impl<P> Capability for Query<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -387,7 +387,7 @@ where
 	#[allow(clippy::too_many_arguments)]
 	pub fn new(
 		key_expr: String,
-		context: Context<P>,
+		context: ContextImpl<P>,
 		activation_state: OperationState,
 		response_callback: QueryCallback<P>,
 		mode: ConsolidationMode,
