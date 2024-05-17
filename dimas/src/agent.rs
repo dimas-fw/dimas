@@ -51,7 +51,6 @@ use crate::com::{
 	query::QueryBuilder,
 	queryable::QueryableBuilder,
 	subscriber::SubscriberBuilder,
-	task_signal::{wait_for_task_signals, TaskSignal},
 };
 use crate::context::{ContextImpl, ContextInner};
 use crate::timer::TimerBuilder;
@@ -63,8 +62,11 @@ use crate::{
 	},
 	timer::Timer,
 };
-use dimas_com::messages::AboutEntity;
-use dimas_com::Request;
+use dimas_com::{
+	messages::AboutEntity,
+	task_signal::{wait_for_task_signals, TaskSignal},
+	Request,
+};
 use dimas_config::Config;
 use dimas_core::{
 	error::{DimasError, Result},

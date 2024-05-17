@@ -4,8 +4,8 @@
 //! A `LivelinessSubscriber` can optional subscribe on a delete message.
 
 // region:		--- modules
-use super::task_signal::TaskSignal;
 use crate::prelude::ContextImpl;
+use dimas_com::task_signal::TaskSignal;
 use dimas_core::{
 	error::{DimasError, Result},
 	traits::{Capability, CommunicationCapability, OperationState},

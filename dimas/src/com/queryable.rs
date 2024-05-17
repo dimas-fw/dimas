@@ -3,9 +3,8 @@
 //! Module `queryable` provides an information/compute provider `Queryable` which can be created using the `QueryableBuilder`.
 
 // region:		--- modules
-use super::task_signal::TaskSignal;
 use crate::context::ContextImpl;
-use dimas_com::Request;
+use dimas_com::{Request, task_signal::TaskSignal};
 use dimas_core::{
 	error::{DimasError, Result},
 	traits::{Capability, CommunicationCapability, OperationState},

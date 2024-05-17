@@ -5,11 +5,10 @@
 
 // region:		--- modules
 // these ones are only for doc needed
-use super::task_signal::TaskSignal;
 #[cfg(doc)]
 use crate::agent::Agent;
 use crate::context::ContextImpl;
-use dimas_com::Message;
+use dimas_com::{Message, task_signal::TaskSignal};
 use dimas_core::{
 	error::{DimasError, Result},
 	traits::{Capability, CommunicationCapability, OperationState},

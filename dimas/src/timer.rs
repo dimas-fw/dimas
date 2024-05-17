@@ -4,9 +4,13 @@
 //! When fired, a `Timer` calls his assigned `TimerCallback`.
 
 // region:		--- modules
-use crate::{com::task_signal::TaskSignal, prelude::*};
-use dimas_core::traits::{Capability, OperationState};
-use std::{fmt::Debug, sync::Mutex, time::Duration};
+use crate::context::ContextImpl;
+use dimas_com::task_signal::TaskSignal;
+use dimas_core::{
+	error::{DimasError, Result},
+	traits::{Capability, OperationState}
+};
+use std::{fmt::Debug, sync::{Arc, Mutex, RwLock}, time::Duration};
 use tokio::{task::JoinHandle, time};
 use tracing::{error, info, instrument, warn, Level};
 // endregion:	--- modules

@@ -39,12 +39,15 @@ use crate::{
 		query::{Query, QueryBuilder},
 		queryable::{Queryable, QueryableBuilder},
 		subscriber::{Subscriber, SubscriberBuilder},
-		task_signal::TaskSignal,
 	},
 	timer::{Timer, TimerBuilder},
 };
 use bitcode::Encode;
-use dimas_com::{communicator::Communicator, Message};
+use dimas_com::{
+	communicator::Communicator, 
+	Message,
+	task_signal::TaskSignal,
+};
 use dimas_config::Config;
 use dimas_core::{
 	error::{DimasError, Result},
@@ -117,24 +120,6 @@ impl<P> ContextImpl<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	/// Get the [`Context`]s state
-	/// # Panics
-	#[must_use]
-	pub fn state(&self) -> OperationState {
-		let val = self.state.read().expect("snh").clone();
-		val
-	}
-
-	/// Set the [`Context`]s state
-	/// # Errors
-	fn modify_state_property(&self, state: OperationState) -> Result<()> {
-		*(self
-			.state
-			.write()
-			.map_err(|_| DimasError::ModifyContext("state".into()))?) = state;
-		Ok(())
-	}
-
 	/// Set the [`OperationState`].<br>
 	/// Setting new state is done step by step
 	/// # Errors
@@ -454,8 +439,8 @@ where
 	name: Option<String>,
 	/// The [`Agent`]s current operational state.
 	state: Arc<RwLock<OperationState>>,
-	/// a sender for sending signals to owner of context
-	tx: Sender<TaskSignal>,
+	/// A sender for sending signals to owner of context
+	sender: Sender<TaskSignal>,
 	/// The [`Agent`]s property structure
 	props: Arc<RwLock<P>>,
 	/// The [`Agent`]s [`Communicator`]
@@ -483,7 +468,7 @@ where
 		config: &Config,
 		props: P,
 		name: Option<String>,
-		tx: Sender<TaskSignal>,
+		sender: Sender<TaskSignal>,
 		prefix: Option<String>,
 	) -> Result<Self> {
 		let mut communicator = Communicator::new(config)?;
@@ -493,7 +478,7 @@ where
 		Ok(Self {
 			name,
 			state: Arc::new(RwLock::new(OperationState::Created)),
-			tx,
+			sender,
 			communicator: Arc::new(communicator),
 			props: Arc::new(RwLock::new(props)),
 			liveliness_subscribers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
@@ -503,12 +488,6 @@ where
 			subscribers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 			timers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 		})
-	}
-
-	/// Get the uuid
-	#[must_use]
-	pub fn uuid(&self) -> String {
-		self.communicator.uuid()
 	}
 
 	/// Get the name
@@ -531,16 +510,28 @@ where
 		}
 	}
 
-	/// Get the prefix
+	/// Get the [`Context`]s state
+	/// # Panics
 	#[must_use]
-	pub fn prefix(&self) -> &Option<String> {
-		self.communicator.prefix()
+	pub fn state(&self) -> OperationState {
+		let val = self.state.read().expect("snh").clone();
+		val
+	}
+
+	/// Set the [`Context`]s state
+	/// # Errors
+	fn modify_state_property(&self, state: OperationState) -> Result<()> {
+		*(self
+			.state
+			.write()
+			.map_err(|_| DimasError::ModifyContext("state".into()))?) = state;
+		Ok(())
 	}
 
 	/// Get the sender
 	#[must_use]
 	pub const fn sender(&self) -> &Sender<TaskSignal> {
-		&self.tx
+		&self.sender
 	}
 
 	/// Get the communicator
@@ -549,7 +540,19 @@ where
 		&self.communicator
 	}
 
-	/// Get the liveliness subsribers
+	/// Get the uuid
+	#[must_use]
+	pub fn uuid(&self) -> String {
+		self.communicator.uuid()
+	}
+
+	/// Get the prefix
+	#[must_use]
+	pub fn prefix(&self) -> &Option<String> {
+		self.communicator.prefix()
+	}
+
+	/// Get the liveliness subscribers
 	#[must_use]
 	pub const fn liveliness_subscribers(&self) -> &Arc<RwLock<HashMap<String, LivelinessSubscriber<P>>>> {
 		&self.liveliness_subscribers
@@ -561,7 +564,7 @@ where
 		&self.queryables
 	}
 
-	/// Get the subsribers
+	/// Get the subscribers
 	#[must_use]
 	pub const fn subscribers(&self) -> &Arc<RwLock<HashMap<String, Subscriber<P>>>> {
 		&self.subscribers

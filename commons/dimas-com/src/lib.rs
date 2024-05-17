@@ -9,6 +9,8 @@ pub mod communicator;
 pub mod message_types;
 /// the core messages
 pub mod messages;
+/// Task signals
+pub mod task_signal;
 
 // re-exports
 pub use communicator::Communicator;

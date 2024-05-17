@@ -17,8 +17,6 @@ pub mod query;
 pub mod queryable;
 /// `Subscriber`
 pub mod subscriber;
-/// `TaskSignal`
-pub mod task_signal;
 // endregion: --- modules
 
 #[cfg(test)]
