@@ -8,7 +8,7 @@ use std::{
 // endregion:	--- modules
 
 // region:		--- TaskSignal
-/// Internal signals, used by panic hooks to inform the [`Agent`] that someting has happened.
+/// Internal signals, used by panic hooks to inform that someting has happened.
 #[derive(Debug, Clone)]
 #[allow(clippy::enum_variant_names)]
 pub enum TaskSignal {
@@ -23,9 +23,7 @@ pub enum TaskSignal {
 }
 
 /// Wait non-blocking for [`TaskSignal`]s.<br>
-/// Used by the `select!` macro within the [`Agent`]s main loop in [`Agent::start`].
 /// # Panics
-///
 pub async fn wait_for_task_signals(rx: &Mutex<Receiver<TaskSignal>>) -> Box<TaskSignal> {
 	loop {
 		if let Ok(signal) = rx.lock().expect("snh").try_recv() {

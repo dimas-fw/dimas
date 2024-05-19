@@ -46,7 +46,7 @@ use dimas_com::communicator::Communicator;
 use dimas_config::Config;
 use dimas_core::{
 	error::{DimasError, Result},
-	message_types::Message,
+	message_types::{Message, Response},
 	task_signal::TaskSignal,
 	traits::{Capability, ContextAbstraction, OperationState},
 };
@@ -236,7 +236,6 @@ where
 		&self.name
 	}
 
-	/// Get the fully qualified name
 	#[must_use]
 	fn fq_name(&self) -> Option<String> {
 		if self.name().is_some() && self.prefix().is_some() {
@@ -250,33 +249,27 @@ where
 		}
 	}
 
-	/// Get the [`Context`]s state
-	/// # Panics
 	#[must_use]
 	fn state(&self) -> OperationState {
 		let val = self.state.read().expect("snh").clone();
 		val
 	}
 
-	/// Get the uuid
 	#[must_use]
 	fn uuid(&self) -> String {
 		self.communicator.uuid()
 	}
 
-	/// Get the prefix
 	#[must_use]
 	fn prefix(&self) -> &Option<String> {
 		self.communicator.prefix()
 	}
 
-	/// Get the sender
 	#[must_use]
 	fn sender(&self) -> &Sender<TaskSignal> {
 		&self.sender
 	}
 
-	/// Get session mode
 	#[must_use]
 	fn mode(&self) -> &String {
 		self.communicator.mode()
@@ -286,27 +279,18 @@ where
 		self.communicator.session()
 	}
 
-	/// Gives read access to the properties
-	///
-	/// # Errors
 	fn read(&self) -> Result<std::sync::RwLockReadGuard<'_, P>> {
 		self.props
 			.read()
 			.map_err(|_| DimasError::ReadProperties.into())
 	}
 
-	/// Gives write access to the properties
-	///
-	/// # Errors
 	fn write(&self) -> Result<std::sync::RwLockWriteGuard<'_, P>> {
 		self.props
 			.write()
 			.map_err(|_| DimasError::WriteProperties.into())
 	}
 
-	/// Set the [`OperationState`].<br>
-	/// Setting new state is done step by step
-	/// # Errors
 	fn set_state(&self, state: OperationState) -> Result<()> {
 		info!("changing state to {}", &state);
 		let final_state = state;
@@ -394,19 +378,11 @@ where
 		Ok(())
 	}
 
-	/// Method to do an ad hoc deletion for the `topic`
-	///
-	/// # Errors
-	///   Error is propagated from [`Communicator::delete()`]
 	#[instrument(level = Level::ERROR, skip_all)]
 	fn delete(&self, topic: &str) -> Result<()> {
 		self.communicator.delete(topic)
 	}
 
-	/// Method to delete data with a stored [`Publisher`]
-	///
-	/// # Errors
-	///
 	#[instrument(level = Level::ERROR, skip_all)]
 	fn delete_with(&self, topic: &str) -> Result<()> {
 		let key_expr = self
@@ -431,57 +407,14 @@ where
 		Ok(())
 	}
 
-	/*
-		/// Send an ad hoc query using the given `topic`.
-		/// The `topic` will be enhanced with the group prefix.
-		/// Response will be handled by `callback`, a closure or function with
-		/// signature Fn(&[`Context`]<AgentProperties>, [`Response`]).
-		/// # Errors
-		///
-		#[instrument(level = Level::ERROR, skip_all)]
-		fn get<F>(
-			&self,
-			ctx: Arc<Self>,
-			topic: &str,
-			mode: ConsolidationMode,
-			callback: F,
-		) -> Result<()>
-		where
-			P: Send + Sync + Unpin + 'static,
-			F: Fn(&Context<P>, Response) + Send + Sync + Unpin + 'static,
-		{
-			let key_expr = self
-				.prefix()
-				.clone()
-				.take()
-				.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
-			let ctx = ctx;
-			let session = self.communicator.session();
-
-			let replies = session
-				.get(&key_expr)
-				.consolidation(mode)
-				//.timeout(Duration::from_millis(1000))
-				.res_sync()
-				.map_err(|_| DimasError::Get)?;
-
-			while let Ok(reply) = replies.recv() {
-				match reply.sample {
-					Ok(sample) => match sample.kind {
-						SampleKind::Put => {
-							let msg = Response(sample);
-							callback(&ctx, msg);
-						}
-						SampleKind::Delete => {
-							println!("Delete in Query");
-						}
-					},
-					Err(err) => error!(">> query receive error: {err})"),
-				}
-			}
-			Ok(())
-		}
-	*/
+	fn get(&self, topic: &str, callback: Box<dyn FnMut(Response)>) -> Result<()> {
+		let selector = self
+			.prefix()
+			.clone()
+			.take()
+			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
+		self.communicator.get(&selector, callback)
+	}
 
 	/// Method to query data with a stored Query
 	///

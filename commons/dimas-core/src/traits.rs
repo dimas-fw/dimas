@@ -4,7 +4,11 @@
 //!
 
 // region:		--- modules
-use crate::{error::Result, message_types::Message, task_signal::TaskSignal};
+use crate::{
+	error::Result,
+	message_types::{Message, Response},
+	task_signal::TaskSignal,
+};
 use bitcode::{Decode, Encode};
 use std::{
 	fmt::{Debug, Display},
@@ -164,10 +168,9 @@ pub trait ContextAbstraction<P>: Send + Sync {
 	/// Method to do an ad hoc publishing for a `topic`
 	///
 	/// # Errors
-	///   Error is propagated from [`Communicator::put()`]
 	fn put(&self, topic: &str, message: Message) -> Result<()>;
 
-	/// Method to publish data with a stored [`Publisher`]
+	/// Method to publish data with a stored Publisher
 	///
 	/// # Errors
 	///
@@ -176,24 +179,18 @@ pub trait ContextAbstraction<P>: Send + Sync {
 	/// Method to do an ad hoc deletion for the `topic`
 	///
 	/// # Errors
-	///   Error is propagated from [`Communicator::delete()`]
 	fn delete(&self, topic: &str) -> Result<()>;
 
-	/// Method to delete data with a stored [`Publisher`]
+	/// Method to delete data with a stored Publisher
 	///
 	/// # Errors
 	///
 	fn delete_with(&self, topic: &str) -> Result<()>;
 
-	//	/// Send an ad hoc query using the given `topic`.
-	//	/// The `topic` will be enhanced with the group prefix.
-	//	/// Response will be handled by `callback`, a closure or function with
-	//	/// signature Fn(&[`Context`]<AgentProperties>, [`Response`]).
-	//	/// # Errors
-	//	///
-	//	fn get<F>(&self, ctx: Arc<Self>, topic: &str, mode: ConsolidationMode, callback: F) -> Result<()>
-	//	where
-	//		F: Fn(&Context<P>, Response) + Send + Sync + Unpin + 'static;
+	/// Send an ad hoc query using the given `topic`.
+	/// The `topic` will be enhanced with the group prefix.
+	/// # Errors
+	fn get(&self, topic: &str, callback: Box<dyn FnMut(Response)>) -> Result<()>;
 
 	/// Method to query data with a stored Query
 	///

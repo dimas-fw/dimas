@@ -55,7 +55,7 @@ use crate::timer::TimerBuilder;
 use crate::{
 	com::{
 		liveliness::LivelinessSubscriber, publisher::Publisher, query::Query,
-		subscriber::Subscriber,
+		queryable::Queryable, subscriber::Subscriber,
 	},
 	timer::Timer,
 };
@@ -358,7 +358,6 @@ where
 	/// The agent can be stopped properly using `ctrl-c`
 	///
 	/// # Errors
-	/// Propagation of errors from [`Context::start_registered_tasks()`].
 	#[tracing::instrument(skip_all)]
 	pub async fn start(self) -> Result<Agent<'a, P>> {
 		let session = self.context.session();
