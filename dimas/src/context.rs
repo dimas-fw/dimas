@@ -13,7 +13,7 @@
 //!   counter: i32,
 //! }
 //! // A [`Timer`] callback
-//! fn timer_callback(context: &ContextImpl<AgentProps>) -> Result<()> {
+//! fn timer_callback(context: &Context<AgentProps>) -> Result<()> {
 //!   // reading properties
 //!   let mut value = context.read()?.counter;
 //!   value +=1;
@@ -42,16 +42,13 @@ use crate::{
 	},
 	timer::{Timer, TimerBuilder},
 };
-use bitcode::Encode;
-use dimas_com::{
-	communicator::Communicator, 
-	Message,
-	task_signal::TaskSignal,
-};
+use dimas_com::communicator::Communicator;
 use dimas_config::Config;
 use dimas_core::{
 	error::{DimasError, Result},
-	traits::{Capability, OperationState},
+	message_types::Message,
+	task_signal::TaskSignal,
+	traits::{Capability, ContextAbstraction, OperationState},
 };
 use std::{
 	collections::HashMap,
@@ -60,10 +57,6 @@ use std::{
 	sync::{mpsc::Sender, Arc, RwLock},
 };
 use tracing::{error, info, instrument, Level};
-use zenoh::{
-	prelude::{sync::SyncResolve, SampleKind},
-	query::ConsolidationMode,
-};
 // endregion:	--- modules
 
 // region:		--- types
@@ -71,19 +64,19 @@ use zenoh::{
 const INITIAL_SIZE: usize = 9;
 // endregion:	--- types
 
-// region:		--- ContextImpl
-/// `ContextImpl` is a thread safe atomic reference counted implementation of [`Context`].<br>
+// region:		--- ArcContextImpl
+/// `ArcContextImpl` is a thread safe atomic reference counted implementation of [`Context`].<br>
 /// It makes all relevant data of the agent accessible in a thread safe way via accessor methods.
 #[derive(Debug)]
 #[allow(clippy::module_name_repetitions)]
-pub struct ContextImpl<P>
+pub struct ArcContextImpl<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	inner: Arc<ContextInner<P>>,
+	inner: Arc<ContextImpl<P>>,
 }
 
-impl<P> Clone for ContextImpl<P>
+impl<P> Clone for ArcContextImpl<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -94,36 +87,227 @@ where
 	}
 }
 
-impl<P> Deref for ContextImpl<P>
+impl<P> Deref for ArcContextImpl<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	type Target = ContextInner<P>;
+	type Target = ContextImpl<P>;
 
 	fn deref(&self) -> &Self::Target {
 		&self.inner
 	}
 }
 
-impl<P> From<ContextInner<P>> for ContextImpl<P>
+impl<P> From<ContextImpl<P>> for ArcContextImpl<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	fn from(value: ContextInner<P>) -> Self {
+	fn from(value: ContextImpl<P>) -> Self {
 		Self {
 			inner: Arc::new(value),
 		}
 	}
 }
 
-impl<P> ContextImpl<P>
+impl<P> ArcContextImpl<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	/// Get a [`LivelinessSubscriberBuilder`], the builder for a [`LivelinessSubscriber`].
+	#[must_use]
+	pub fn liveliness_subscriber(
+		&self,
+	) -> LivelinessSubscriberBuilder<
+		P,
+		crate::com::liveliness::NoPutCallback,
+		crate::com::liveliness::Storage<P>,
+	> {
+		LivelinessSubscriberBuilder::new(self.inner.clone())
+			.storage(self.inner.liveliness_subscribers.clone())
+	}
+
+	/// Get a [`PublisherBuilder`], the builder for a [`Publisher`].
+	#[must_use]
+	pub fn publisher(
+		&self,
+	) -> PublisherBuilder<
+		P,
+		crate::com::publisher::NoKeyExpression,
+		crate::com::publisher::Storage<P>,
+	> {
+		PublisherBuilder::new(self.inner.clone()).storage(self.inner.publishers.clone())
+	}
+
+	/// Get a [`QueryBuilder`], the builder for a [`Query`].
+	#[must_use]
+	pub fn query(
+		&self,
+	) -> QueryBuilder<
+		P,
+		crate::com::query::NoKeyExpression,
+		crate::com::query::NoResponseCallback,
+		crate::com::query::Storage<P>,
+	> {
+		QueryBuilder::new(self.inner.clone()).storage(self.inner.queries.clone())
+	}
+
+	/// Get a [`QueryableBuilder`], the builder for a [`Queryable`].
+	#[must_use]
+	pub fn queryable(
+		&self,
+	) -> QueryableBuilder<
+		P,
+		crate::com::queryable::NoKeyExpression,
+		crate::com::queryable::NoRequestCallback,
+		crate::com::queryable::Storage<P>,
+	> {
+		QueryableBuilder::new(self.inner.clone()).storage(self.inner.queryables.clone())
+	}
+
+	/// Get a [`SubscriberBuilder`], the builder for a [`Subscriber`].
+	#[must_use]
+	pub fn subscriber(
+		&self,
+	) -> SubscriberBuilder<
+		P,
+		crate::com::subscriber::NoKeyExpression,
+		crate::com::subscriber::NoPutCallback,
+		crate::com::subscriber::Storage<P>,
+	> {
+		SubscriberBuilder::new(self.inner.clone()).storage(self.inner.subscribers.clone())
+	}
+
+	/// Get a [`TimerBuilder`], the builder for a [`Timer`].
+	#[must_use]
+	pub fn timer(
+		&self,
+	) -> TimerBuilder<
+		P,
+		crate::timer::NoKeyExpression,
+		crate::timer::NoInterval,
+		crate::timer::NoIntervalCallback,
+		crate::timer::Storage<P>,
+	> {
+		TimerBuilder::new(self.inner.clone()).storage(self.inner.timers.clone())
+	}
+}
+// endregion:	--- ArcContextImpl
+
+// region:		--- ContextImpl
+/// [`ContextImpl`] makes all relevant data of the [`Agent`] accessible via accessor methods.
+#[derive(Debug, Clone)]
+#[allow(clippy::module_name_repetitions)]
+pub struct ContextImpl<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	/// The [`Agent`]s name.
+	/// Name must not, but should be unique.
+	name: Option<String>,
+	/// The [`Agent`]s current operational state.
+	state: Arc<RwLock<OperationState>>,
+	/// A sender for sending signals to owner of context
+	sender: Sender<TaskSignal>,
+	/// The [`Agent`]s property structure
+	props: Arc<RwLock<P>>,
+	/// The [`Agent`]s [`Communicator`]
+	communicator: Arc<Communicator>,
+	/// Registered [`LivelinessSubscriber`]
+	liveliness_subscribers: Arc<RwLock<HashMap<String, LivelinessSubscriber<P>>>>,
+	/// Registered [`Publisher`]
+	publishers: Arc<RwLock<HashMap<String, Publisher<P>>>>,
+	/// Registered [`Query`]s
+	queries: Arc<RwLock<HashMap<String, Query<P>>>>,
+	/// Registered [`Queryable`]s
+	queryables: Arc<RwLock<HashMap<String, Queryable<P>>>>,
+	/// Registered [`Subscriber`]
+	subscribers: Arc<RwLock<HashMap<String, Subscriber<P>>>>,
+	/// Registered [`Timer`]
+	timers: Arc<RwLock<HashMap<String, Timer<P>>>>,
+}
+
+impl<P> ContextAbstraction<P> for ContextImpl<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	/// Get the name
+	#[must_use]
+	fn name(&self) -> &Option<String> {
+		&self.name
+	}
+
+	/// Get the fully qualified name
+	#[must_use]
+	fn fq_name(&self) -> Option<String> {
+		if self.name().is_some() && self.prefix().is_some() {
+			Some(format!(
+				"{}/{}",
+				self.prefix().clone().expect("snh"),
+				self.name().clone().expect("snh")
+			))
+		} else {
+			self.name().clone()
+		}
+	}
+
+	/// Get the [`Context`]s state
+	/// # Panics
+	#[must_use]
+	fn state(&self) -> OperationState {
+		let val = self.state.read().expect("snh").clone();
+		val
+	}
+
+	/// Get the uuid
+	#[must_use]
+	fn uuid(&self) -> String {
+		self.communicator.uuid()
+	}
+
+	/// Get the prefix
+	#[must_use]
+	fn prefix(&self) -> &Option<String> {
+		self.communicator.prefix()
+	}
+
+	/// Get the sender
+	#[must_use]
+	fn sender(&self) -> &Sender<TaskSignal> {
+		&self.sender
+	}
+
+	/// Get session mode
+	#[must_use]
+	fn mode(&self) -> &String {
+		self.communicator.mode()
+	}
+
+	fn session(&self) -> Arc<zenoh::prelude::Session> {
+		self.communicator.session()
+	}
+
+	/// Gives read access to the properties
+	///
+	/// # Errors
+	fn read(&self) -> Result<std::sync::RwLockReadGuard<'_, P>> {
+		self.props
+			.read()
+			.map_err(|_| DimasError::ReadProperties.into())
+	}
+
+	/// Gives write access to the properties
+	///
+	/// # Errors
+	fn write(&self) -> Result<std::sync::RwLockWriteGuard<'_, P>> {
+		self.props
+			.write()
+			.map_err(|_| DimasError::WriteProperties.into())
+	}
+
 	/// Set the [`OperationState`].<br>
 	/// Setting new state is done step by step
 	/// # Errors
-	pub fn set_state(&self, state: OperationState) -> Result<()> {
+	fn set_state(&self, state: OperationState) -> Result<()> {
 		info!("changing state to {}", &state);
 		let final_state = state;
 		let mut next_state;
@@ -180,286 +364,155 @@ where
 		Ok(())
 	}
 
-	/// Internal function for starting all registered tasks.<br>
-	/// The tasks are started in the order
-	/// - [`Queryable`]s
-	/// - [`Subscriber`]s
-	/// - [`LivelinessSubscriber`]s and last
-	/// - [`Timer`]s
-	/// Beforehand of starting the [`Timer`]s ther is the initialisation of the
-	/// - [`Publisher`]s and the
-	/// - [`Query`]s
-	///
-	/// # Errors
-	/// Currently none
-	#[allow(unused_variables)]
-	fn upgrade_registered_tasks(&self, new_state: OperationState) -> Result<()> {
-		// start liveliness subscriber
-		self.inner
-			.liveliness_subscribers
-			.write()
-			.map_err(|_| DimasError::ModifyContext("liveliness subscribers".into()))?
-			.iter_mut()
-			.for_each(|subscriber| {
-				let _ = subscriber.1.manage_operation_state(&new_state);
-			});
+	#[instrument(level = Level::ERROR, skip_all)]
+	fn put(&self, topic: &str, message: Message) -> Result<()> {
+		self.communicator.put(topic, message)
+	}
 
-		// start all registered queryables
-		self.inner
-			.queryables
-			.write()
-			.map_err(|_| DimasError::ModifyContext("queryables".into()))?
-			.iter_mut()
-			.for_each(|queryable| {
-				let _ = queryable.1.manage_operation_state(&new_state);
-			});
-
-		// start all registered subscribers
-		self.inner
-			.subscribers
-			.write()
-			.map_err(|_| DimasError::ModifyContext("subscribers".into()))?
-			.iter_mut()
-			.for_each(|subscriber| {
-				let _ = subscriber.1.manage_operation_state(&new_state);
-			});
-
-		// init all registered publishers
-		self.inner
+	#[instrument(level = Level::ERROR, skip_all)]
+	#[instrument(level = Level::ERROR, skip_all)]
+	fn put_with(&self, topic: &str, message: Message) -> Result<()> {
+		let key_expr = self
+			.prefix()
+			.clone()
+			.take()
+			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
+		if self
 			.publishers
-			.write()
-			.map_err(|_| DimasError::ModifyContext("publishers".into()))?
-			.iter_mut()
-			.for_each(|publisher| {
-				if let Err(reason) = publisher.1.manage_operation_state(&new_state) {
-					error!(
-						"could not initialize publisher for {}, reason: {}",
-						publisher.1.key_expr(),
-						reason
-					);
-				};
-			});
-
-		// init all registered queries
-		self.inner
-			.queries
-			.write()
-			.map_err(|_| DimasError::ModifyContext("queries".into()))?
-			.iter_mut()
-			.for_each(|query| {
-				if let Err(reason) = query.1.manage_operation_state(&new_state) {
-					error!(
-						"could not initialize query for {}, reason: {}",
-						query.1.key_expr(),
-						reason
-					);
-				};
-			});
-
-		// start all registered timers
-		self.inner
-			.timers
-			.write()
-			.map_err(|_| DimasError::ModifyContext("timers".into()))?
-			.iter_mut()
-			.for_each(|timer| {
-				let _ = timer.1.manage_operation_state(&new_state);
-			});
-
-		self.modify_state_property(new_state)?;
+			.read()
+			.map_err(|_| DimasError::ReadContext("publishers".into()))?
+			.get(&key_expr)
+			.is_some()
+		{
+			self.publishers
+				.read()
+				.map_err(|_| DimasError::ReadContext("publishers".into()))?
+				.get(&key_expr)
+				.ok_or(DimasError::ShouldNotHappen)?
+				.put(message)?;
+		};
 		Ok(())
 	}
 
-	/// Internal function for stopping all registered tasks.<br>
-	/// The tasks are stopped in reverse order of their start in [`Context::start_registered_tasks()`]
+	/// Method to do an ad hoc deletion for the `topic`
 	///
 	/// # Errors
-	/// Currently none
-	fn downgrade_registered_tasks(&self, new_state: OperationState) -> Result<()> {
-		// reverse order of start!
-		// stop all registered timers
-		self.inner
-			.timers
-			.write()
-			.map_err(|_| DimasError::ModifyContext("timers".into()))?
-			.iter_mut()
-			.for_each(|timer| {
-				let _ = timer.1.manage_operation_state(&new_state);
-			});
+	///   Error is propagated from [`Communicator::delete()`]
+	#[instrument(level = Level::ERROR, skip_all)]
+	fn delete(&self, topic: &str) -> Result<()> {
+		self.communicator.delete(topic)
+	}
 
-		// de-init all registered queries
-		self.inner
-			.queries
-			.write()
-			.map_err(|_| DimasError::ModifyContext("queries".into()))?
-			.iter_mut()
-			.for_each(|query| {
-				if let Err(reason) = query.1.manage_operation_state(&new_state) {
-					error!(
-						"could not de-initialize query for {}, reason: {}",
-						query.1.key_expr(),
-						reason
-					);
-				};
-			});
-
-		// de-init all registered publishers
-		self.inner
+	/// Method to delete data with a stored [`Publisher`]
+	///
+	/// # Errors
+	///
+	#[instrument(level = Level::ERROR, skip_all)]
+	fn delete_with(&self, topic: &str) -> Result<()> {
+		let key_expr = self
+			.prefix()
+			.clone()
+			.take()
+			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
+		if self
 			.publishers
-			.write()
-			.map_err(|_| DimasError::ModifyContext("publishers".into()))?
-			.iter_mut()
-			.for_each(|publisher| {
-				let _ = publisher.1.manage_operation_state(&new_state);
-			});
-
-		// stop all registered subscribers
-		self.inner
-			.subscribers
-			.write()
-			.map_err(|_| DimasError::ModifyContext("subscribers".into()))?
-			.iter_mut()
-			.for_each(|subscriber| {
-				let _ = subscriber.1.manage_operation_state(&new_state);
-			});
-
-		// stop all registered queryables
-		self.inner
-			.queryables
-			.write()
-			.map_err(|_| DimasError::ModifyContext("queryables".into()))?
-			.iter_mut()
-			.for_each(|queryable| {
-				let _ = queryable.1.manage_operation_state(&new_state);
-			});
-
-		// stop all registered liveliness subscribers
-		self.inner
-			.liveliness_subscribers
-			.write()
-			.map_err(|_| DimasError::ModifyContext("liveliness subscribers".into()))?
-			.iter_mut()
-			.for_each(|subscriber| {
-				let _ = subscriber.1.manage_operation_state(&new_state);
-			});
-
-		self.modify_state_property(new_state)?;
+			.read()
+			.map_err(|_| DimasError::ReadContext("publishers".into()))?
+			.get(&key_expr)
+			.is_some()
+		{
+			self.publishers
+				.read()
+				.map_err(|_| DimasError::ReadContext("publishers".into()))?
+				.get(&key_expr)
+				.ok_or(DimasError::ShouldNotHappen)?
+				.delete()?;
+		}
 		Ok(())
 	}
 
-	/// Get a [`LivelinessSubscriberBuilder`], the builder for a [`LivelinessSubscriber`].
-	#[must_use]
-	pub fn liveliness_subscriber(
-		&self,
-	) -> LivelinessSubscriberBuilder<
-		P,
-		crate::com::liveliness::NoPutCallback,
-		crate::com::liveliness::Storage<P>,
-	> {
-		LivelinessSubscriberBuilder::new(self.clone()).storage(self.liveliness_subscribers.clone())
-	}
+	/*
+		/// Send an ad hoc query using the given `topic`.
+		/// The `topic` will be enhanced with the group prefix.
+		/// Response will be handled by `callback`, a closure or function with
+		/// signature Fn(&[`Context`]<AgentProperties>, [`Response`]).
+		/// # Errors
+		///
+		#[instrument(level = Level::ERROR, skip_all)]
+		fn get<F>(
+			&self,
+			ctx: Arc<Self>,
+			topic: &str,
+			mode: ConsolidationMode,
+			callback: F,
+		) -> Result<()>
+		where
+			P: Send + Sync + Unpin + 'static,
+			F: Fn(&Context<P>, Response) + Send + Sync + Unpin + 'static,
+		{
+			let key_expr = self
+				.prefix()
+				.clone()
+				.take()
+				.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
+			let ctx = ctx;
+			let session = self.communicator.session();
 
-	/// Get a [`PublisherBuilder`], the builder for a [`Publisher`].
-	#[must_use]
-	pub fn publisher(
-		&self,
-	) -> PublisherBuilder<
-		P,
-		crate::com::publisher::NoKeyExpression,
-		crate::com::publisher::Storage<P>,
-	> {
-		PublisherBuilder::new(self.clone()).storage(self.publishers.clone())
-	}
+			let replies = session
+				.get(&key_expr)
+				.consolidation(mode)
+				//.timeout(Duration::from_millis(1000))
+				.res_sync()
+				.map_err(|_| DimasError::Get)?;
 
-	/// Get a [`QueryBuilder`], the builder for a [`Query`].
-	#[must_use]
-	pub fn query(
-		&self,
-	) -> QueryBuilder<
-		P,
-		crate::com::query::NoKeyExpression,
-		crate::com::query::NoResponseCallback,
-		crate::com::query::Storage<P>,
-	> {
-		QueryBuilder::new(self.clone()).storage(self.queries.clone())
-	}
+			while let Ok(reply) = replies.recv() {
+				match reply.sample {
+					Ok(sample) => match sample.kind {
+						SampleKind::Put => {
+							let msg = Response(sample);
+							callback(&ctx, msg);
+						}
+						SampleKind::Delete => {
+							println!("Delete in Query");
+						}
+					},
+					Err(err) => error!(">> query receive error: {err})"),
+				}
+			}
+			Ok(())
+		}
+	*/
 
-	/// Get a [`QueryableBuilder`], the builder for a [`Queryable`].
-	#[must_use]
-	pub fn queryable(
-		&self,
-	) -> QueryableBuilder<
-		P,
-		crate::com::queryable::NoKeyExpression,
-		crate::com::queryable::NoRequestCallback,
-		crate::com::queryable::Storage<P>,
-	> {
-		QueryableBuilder::new(self.clone()).storage(self.queryables.clone())
-	}
-
-	/// Get a [`SubscriberBuilder`], the builder for a [`Subscriber`].
-	#[must_use]
-	pub fn subscriber(
-		&self,
-	) -> SubscriberBuilder<
-		P,
-		crate::com::subscriber::NoKeyExpression,
-		crate::com::subscriber::NoPutCallback,
-		crate::com::subscriber::Storage<P>,
-	> {
-		SubscriberBuilder::new(self.clone()).storage(self.subscribers.clone())
-	}
-
-	/// Get a [`TimerBuilder`], the builder for a [`Timer`].
-	#[must_use]
-	pub fn timer(
-		&self,
-	) -> TimerBuilder<
-		P,
-		crate::timer::NoKeyExpression,
-		crate::timer::NoInterval,
-		crate::timer::NoIntervalCallback,
-		crate::timer::Storage<P>,
-	> {
-		TimerBuilder::new(self.clone()).storage(self.timers.clone())
+	/// Method to query data with a stored Query
+	///
+	/// # Errors
+	///
+	#[instrument(level = Level::ERROR, skip_all)]
+	fn get_with(&self, topic: &str) -> Result<()> {
+		let key_expr = self
+			.prefix()
+			.clone()
+			.take()
+			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
+		if self
+			.queries
+			.read()
+			.map_err(|_| DimasError::ReadContext("queries".into()))?
+			.get(&key_expr)
+			.is_some()
+		{
+			self.queries
+				.read()
+				.map_err(|_| DimasError::ReadContext("queries".into()))?
+				.get(&key_expr)
+				.ok_or(DimasError::ShouldNotHappen)?
+				.get()?;
+		};
+		Ok(())
 	}
 }
-// endregion:	--- ContextImpl
 
-// region:		--- ContextInner
-/// [`ContextInner`] makes all relevant data of the [`Agent`] accessible via accessor methods.
-#[derive(Debug, Clone)]
-#[allow(clippy::module_name_repetitions)]
-pub struct ContextInner<P>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-	/// The [`Agent`]s name.
-	/// Name must not, but should be unique.
-	name: Option<String>,
-	/// The [`Agent`]s current operational state.
-	state: Arc<RwLock<OperationState>>,
-	/// A sender for sending signals to owner of context
-	sender: Sender<TaskSignal>,
-	/// The [`Agent`]s property structure
-	props: Arc<RwLock<P>>,
-	/// The [`Agent`]s [`Communicator`]
-	communicator: Arc<Communicator>,
-	/// Registered [`LivelinessSubscriber`]
-	liveliness_subscribers: Arc<RwLock<HashMap<String, LivelinessSubscriber<P>>>>,
-	/// Registered [`Publisher`]
-	publishers: Arc<RwLock<HashMap<String, Publisher<P>>>>,
-	/// Registered [`Query`]s
-	queries: Arc<RwLock<HashMap<String, Query<P>>>>,
-	/// Registered [`Queryable`]s
-	queryables: Arc<RwLock<HashMap<String, Queryable<P>>>>,
-	/// Registered [`Subscriber`]
-	subscribers: Arc<RwLock<HashMap<String, Subscriber<P>>>>,
-	/// Registered [`Timer`]
-	timers: Arc<RwLock<HashMap<String, Timer<P>>>>,
-}
-
-impl<P> ContextInner<P>
+impl<P> ContextImpl<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -490,34 +543,6 @@ where
 		})
 	}
 
-	/// Get the name
-	#[must_use]
-	pub const fn name(&self) -> &Option<String> {
-		&self.name
-	}
-
-	/// Get the fully qualified name
-	#[must_use]
-	pub fn fq_name(&self) -> Option<String> {
-		if self.name().is_some() && self.prefix().is_some() {
-			Some(format!(
-				"{}/{}",
-				self.prefix().clone().expect("snh"),
-				self.name().clone().expect("snh")
-			))
-		} else {
-			self.name().clone()
-		}
-	}
-
-	/// Get the [`Context`]s state
-	/// # Panics
-	#[must_use]
-	pub fn state(&self) -> OperationState {
-		let val = self.state.read().expect("snh").clone();
-		val
-	}
-
 	/// Set the [`Context`]s state
 	/// # Errors
 	fn modify_state_property(&self, state: OperationState) -> Result<()> {
@@ -528,33 +553,11 @@ where
 		Ok(())
 	}
 
-	/// Get the sender
-	#[must_use]
-	pub const fn sender(&self) -> &Sender<TaskSignal> {
-		&self.sender
-	}
-
-	/// Get the communicator
-	#[must_use]
-	pub fn communicator(&self) -> &Communicator {
-		&self.communicator
-	}
-
-	/// Get the uuid
-	#[must_use]
-	pub fn uuid(&self) -> String {
-		self.communicator.uuid()
-	}
-
-	/// Get the prefix
-	#[must_use]
-	pub fn prefix(&self) -> &Option<String> {
-		self.communicator.prefix()
-	}
-
 	/// Get the liveliness subscribers
 	#[must_use]
-	pub const fn liveliness_subscribers(&self) -> &Arc<RwLock<HashMap<String, LivelinessSubscriber<P>>>> {
+	pub const fn liveliness_subscribers(
+		&self,
+	) -> &Arc<RwLock<HashMap<String, LivelinessSubscriber<P>>>> {
 		&self.liveliness_subscribers
 	}
 
@@ -576,182 +579,162 @@ where
 		&self.timers
 	}
 
-	/// Gives read access to the properties
+	/// Internal function for starting all registered tasks.<br>
+	/// The tasks are started in the order
+	/// - [`Queryable`]s
+	/// - [`Subscriber`]s
+	/// - [`LivelinessSubscriber`]s and last
+	/// - [`Timer`]s
+	/// Beforehand of starting the [`Timer`]s ther is the initialisation of the
+	/// - [`Publisher`]s and the
+	/// - [`Query`]s
 	///
 	/// # Errors
-	pub fn read(&self) -> Result<std::sync::RwLockReadGuard<'_, P>> {
-		self.props
-			.read()
-			.map_err(|_| DimasError::ReadProperties.into())
-	}
-
-	/// Gives write access to the properties
-	///
-	/// # Errors
-	pub fn write(&self) -> Result<std::sync::RwLockWriteGuard<'_, P>> {
-		self.props
+	/// Currently none
+	#[allow(unused_variables)]
+	fn upgrade_registered_tasks(&self, new_state: OperationState) -> Result<()> {
+		// start liveliness subscriber
+		self.liveliness_subscribers
 			.write()
-			.map_err(|_| DimasError::WriteProperties.into())
-	}
+			.map_err(|_| DimasError::ModifyContext("liveliness subscribers".into()))?
+			.iter_mut()
+			.for_each(|subscriber| {
+				let _ = subscriber.1.manage_operation_state(&new_state);
+			});
 
-	/// Method to do an ad hoc publishing for a `topic`
-	///
-	/// # Errors
-	///   Error is propagated from [`Communicator::put()`]
-	#[instrument(level = Level::ERROR, skip_all)]
-	pub fn put<M>(&self, topic: &str, message: M) -> Result<()>
-	where
-		M: Encode,
-	{
-		self.communicator.put(topic, message)
-	}
+		// start all registered queryables
+		self.queryables
+			.write()
+			.map_err(|_| DimasError::ModifyContext("queryables".into()))?
+			.iter_mut()
+			.for_each(|queryable| {
+				let _ = queryable.1.manage_operation_state(&new_state);
+			});
 
-	/// Method to publish data with a stored [`Publisher`]
-	///
-	/// # Errors
-	///
-	#[instrument(level = Level::ERROR, skip_all)]
-	pub fn put_with<M>(&self, topic: &str, message: M) -> Result<()>
-	where
-		M: Debug + Encode,
-	{
-		let key_expr = self
-			.prefix()
-			.clone()
-			.take()
-			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
-		if self
-			.publishers
-			.read()
-			.map_err(|_| DimasError::ReadContext("publishers".into()))?
-			.get(&key_expr)
-			.is_some()
-		{
-			self.publishers
-				.read()
-				.map_err(|_| DimasError::ReadContext("publishers".into()))?
-				.get(&key_expr)
-				.ok_or(DimasError::ShouldNotHappen)?
-				.put(message)?;
-		};
+		// start all registered subscribers
+		self.subscribers
+			.write()
+			.map_err(|_| DimasError::ModifyContext("subscribers".into()))?
+			.iter_mut()
+			.for_each(|subscriber| {
+				let _ = subscriber.1.manage_operation_state(&new_state);
+			});
+
+		// init all registered publishers
+		self.publishers
+			.write()
+			.map_err(|_| DimasError::ModifyContext("publishers".into()))?
+			.iter_mut()
+			.for_each(|publisher| {
+				if let Err(reason) = publisher.1.manage_operation_state(&new_state) {
+					error!(
+						"could not initialize publisher for {}, reason: {}",
+						publisher.1.key_expr(),
+						reason
+					);
+				};
+			});
+
+		// init all registered queries
+		self.queries
+			.write()
+			.map_err(|_| DimasError::ModifyContext("queries".into()))?
+			.iter_mut()
+			.for_each(|query| {
+				if let Err(reason) = query.1.manage_operation_state(&new_state) {
+					error!(
+						"could not initialize query for {}, reason: {}",
+						query.1.key_expr(),
+						reason
+					);
+				};
+			});
+
+		// start all registered timers
+		self.timers
+			.write()
+			.map_err(|_| DimasError::ModifyContext("timers".into()))?
+			.iter_mut()
+			.for_each(|timer| {
+				let _ = timer.1.manage_operation_state(&new_state);
+			});
+
+		self.modify_state_property(new_state)?;
 		Ok(())
 	}
 
-	/// Method to do an ad hoc deletion for the `topic`
+	/// Internal function for stopping all registered tasks.<br>
+	/// The tasks are stopped in reverse order of their start in [`Context::start_registered_tasks()`]
 	///
 	/// # Errors
-	///   Error is propagated from [`Communicator::delete()`]
-	#[instrument(level = Level::ERROR, skip_all)]
-	pub fn delete(&self, topic: &str) -> Result<()> {
-		self.communicator.delete(topic)
-	}
+	/// Currently none
+	fn downgrade_registered_tasks(&self, new_state: OperationState) -> Result<()> {
+		// reverse order of start!
+		// stop all registered timers
+		self.timers
+			.write()
+			.map_err(|_| DimasError::ModifyContext("timers".into()))?
+			.iter_mut()
+			.for_each(|timer| {
+				let _ = timer.1.manage_operation_state(&new_state);
+			});
 
-	/// Method to delete data with a stored [`Publisher`]
-	///
-	/// # Errors
-	///
-	#[instrument(level = Level::ERROR, skip_all)]
-	pub fn delete_with(&self, topic: &str) -> Result<()> {
-		let key_expr = self
-			.prefix()
-			.clone()
-			.take()
-			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
-		if self
-			.publishers
-			.read()
-			.map_err(|_| DimasError::ReadContext("publishers".into()))?
-			.get(&key_expr)
-			.is_some()
-		{
-			self.publishers
-				.read()
-				.map_err(|_| DimasError::ReadContext("publishers".into()))?
-				.get(&key_expr)
-				.ok_or(DimasError::ShouldNotHappen)?
-				.delete()?;
-		}
-		Ok(())
-	}
+		// de-init all registered queries
+		self.queries
+			.write()
+			.map_err(|_| DimasError::ModifyContext("queries".into()))?
+			.iter_mut()
+			.for_each(|query| {
+				if let Err(reason) = query.1.manage_operation_state(&new_state) {
+					error!(
+						"could not de-initialize query for {}, reason: {}",
+						query.1.key_expr(),
+						reason
+					);
+				};
+			});
 
-	/// Send an ad hoc query using the given `topic`.
-	/// The `topic` will be enhanced with the group prefix.
-	/// Response will be handled by `callback`, a closure or function with
-	/// signature Fn(&[`Context`]<AgentProperties>, [`Response`]).
-	/// # Errors
-	///
-	pub fn get<F>(
-		&self,
-		ctx: ContextImpl<P>,
-		topic: &str,
-		mode: ConsolidationMode,
-		callback: F,
-	) -> Result<()>
-	where
-		P: Send + Sync + Unpin + 'static,
-		F: Fn(&ContextImpl<P>, Message) + Send + Sync + Unpin + 'static,
-	{
-		let key_expr = self
-			.prefix()
-			.clone()
-			.take()
-			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
-		let ctx = ctx;
-		let session = self.communicator.session();
+		// de-init all registered publishers
+		self.publishers
+			.write()
+			.map_err(|_| DimasError::ModifyContext("publishers".into()))?
+			.iter_mut()
+			.for_each(|publisher| {
+				let _ = publisher.1.manage_operation_state(&new_state);
+			});
 
-		let replies = session
-			.get(&key_expr)
-			.consolidation(mode)
-			//.timeout(Duration::from_millis(1000))
-			.res_sync()
-			.map_err(|_| DimasError::Get)?;
+		// stop all registered subscribers
+		self.subscribers
+			.write()
+			.map_err(|_| DimasError::ModifyContext("subscribers".into()))?
+			.iter_mut()
+			.for_each(|subscriber| {
+				let _ = subscriber.1.manage_operation_state(&new_state);
+			});
 
-		while let Ok(reply) = replies.recv() {
-			match reply.sample {
-				Ok(sample) => match sample.kind {
-					SampleKind::Put => {
-						let msg = Message(sample);
-						callback(&ctx, msg);
-					}
-					SampleKind::Delete => {
-						println!("Delete in Query");
-					}
-				},
-				Err(err) => error!(">> query receive error: {err})"),
-			}
-		}
-		Ok(())
-	}
+		// stop all registered queryables
+		self.queryables
+			.write()
+			.map_err(|_| DimasError::ModifyContext("queryables".into()))?
+			.iter_mut()
+			.for_each(|queryable| {
+				let _ = queryable.1.manage_operation_state(&new_state);
+			});
 
-	/// Method to query data with a stored Query
-	///
-	/// # Errors
-	///
-	#[instrument(level = Level::ERROR, skip_all)]
-	pub fn get_with(&self, topic: &str) -> Result<()> {
-		let key_expr = self
-			.prefix()
-			.clone()
-			.take()
-			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
-		if self
-			.queries
-			.read()
-			.map_err(|_| DimasError::ReadContext("queries".into()))?
-			.get(&key_expr)
-			.is_some()
-		{
-			self.queries
-				.read()
-				.map_err(|_| DimasError::ReadContext("queries".into()))?
-				.get(&key_expr)
-				.ok_or(DimasError::ShouldNotHappen)?
-				.get()?;
-		};
+		// stop all registered liveliness subscribers
+		self.liveliness_subscribers
+			.write()
+			.map_err(|_| DimasError::ModifyContext("liveliness subscribers".into()))?
+			.iter_mut()
+			.for_each(|subscriber| {
+				let _ = subscriber.1.manage_operation_state(&new_state);
+			});
+
+		self.modify_state_property(new_state)?;
 		Ok(())
 	}
 }
-// endregion:	--- Context
+// endregion:	--- ContextImpl
 
 #[cfg(test)]
 mod tests {
@@ -765,7 +748,7 @@ mod tests {
 
 	#[test]
 	const fn normal_types() {
+		is_normal::<ArcContextImpl<Props>>();
 		is_normal::<ContextImpl<Props>>();
-		is_normal::<ContextInner<Props>>();
 	}
 }

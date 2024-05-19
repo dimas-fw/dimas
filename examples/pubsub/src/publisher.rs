@@ -40,7 +40,8 @@ async fn main() -> Result<()> {
 			let text = format!("Hello World! [{counter}]");
 			info!("Sending '{}'", &text);
 			// publishing with stored publisher
-			let _ = ctx.put_with("hello", text);
+			let message = Message::encode(&text);
+			let _ = ctx.put_with("hello", message);
 			ctx.write()?.counter += 1;
 			Ok(())
 		})

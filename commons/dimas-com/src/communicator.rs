@@ -4,9 +4,10 @@
 //!
 
 // region:		--- modules
-use crate::Response;
-use bitcode::{encode, Encode};
-use dimas_core::error::{DimasError, Result};
+use dimas_core::{
+	error::{DimasError, Result},
+	message_types::{Message, Response},
+};
 use std::fmt::Debug;
 use std::sync::Arc;
 use std::time::Duration;
@@ -94,20 +95,16 @@ impl Communicator {
 		Ok(p)
 	}
 
-	/// Send an ad hoc put `message` of type `M` using the given `topic`.
+	/// Send an ad hoc put `message` of type `Message` using the given `topic`.
 	/// The `topic` will be enhanced with the group prefix.
 	/// # Errors
 	///
 	#[allow(clippy::needless_pass_by_value)]
-	pub fn put<M>(&self, topic: &str, message: M) -> Result<()>
-	where
-		M: Encode,
-	{
-		let value: Vec<u8> = encode(&message);
+	pub fn put(&self, topic: &str, message: Message) -> Result<()> {
 		let key_expr = self.key_expr(topic);
 
 		self.session
-			.put(&key_expr, value)
+			.put(&key_expr, message.0)
 			.res_sync()
 			.map_err(|_| DimasError::Put.into())
 	}
@@ -150,7 +147,8 @@ impl Communicator {
 			match reply.sample {
 				Ok(sample) => match sample.kind {
 					SampleKind::Put => {
-						callback(Response(sample));
+						let content: Vec<u8> = sample.value.try_into()?;
+						callback(Response(content));
 					}
 					SampleKind::Delete => {
 						println!("Delete in Query");

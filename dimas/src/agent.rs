@@ -46,13 +46,10 @@
 
 // region:		--- modules
 use crate::com::{
-	liveliness::LivelinessSubscriberBuilder,
-	publisher::PublisherBuilder,
-	query::QueryBuilder,
-	queryable::QueryableBuilder,
-	subscriber::SubscriberBuilder,
+	liveliness::LivelinessSubscriberBuilder, publisher::PublisherBuilder, query::QueryBuilder,
+	queryable::QueryableBuilder, subscriber::SubscriberBuilder,
 };
-use crate::context::{ContextImpl, ContextInner};
+use crate::context::{ArcContextImpl, ContextImpl};
 use crate::timer::TimerBuilder;
 #[cfg(doc)]
 use crate::{
@@ -62,15 +59,14 @@ use crate::{
 	},
 	timer::Timer,
 };
-use dimas_com::{
-	messages::AboutEntity,
-	task_signal::{wait_for_task_signals, TaskSignal},
-	Request,
-};
+use dimas_com::messages::AboutEntity;
 use dimas_config::Config;
+use dimas_core::traits::ContextAbstraction;
 use dimas_core::{
 	error::{DimasError, Result},
-	traits::{Capability, OperationState},
+	message_types::Request,
+	task_signal::{wait_for_task_signals, TaskSignal},
+	traits::{Capability, Context, OperationState},
 };
 use std::{
 	fmt::Debug,
@@ -82,22 +78,22 @@ use zenoh::{liveliness::LivelinessToken, prelude::sync::SyncResolve, SessionDecl
 // endregion:	--- modules
 
 // region:	   --- callbacks
-fn about_callback<P>(ctx: &ContextImpl<P>, request: Request) -> Result<()>
+fn about_callback<P>(ctx: &Context<P>, request: Request) -> Result<()>
 where
 	P: Send + Sync + Unpin + 'static,
 {
 	let name = ctx
 		.fq_name()
 		.unwrap_or_else(|| String::from("--"));
-	let mode = ctx.communicator().mode().to_string();
-	let zid = ctx.communicator().uuid();
+	let mode = ctx.mode().to_string();
+	let zid = ctx.uuid();
 	let state = ctx.state();
 	let value = AboutEntity::new(name, mode, zid, state);
 	request.reply(value)?;
 	Ok(())
 }
 
-fn state_callback<P>(ctx: &ContextImpl<P>, request: Request) -> Result<()>
+fn state_callback<P>(ctx: &Context<P>, request: Request) -> Result<()>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -119,8 +115,8 @@ where
 	let name = ctx
 		.fq_name()
 		.unwrap_or_else(|| String::from("--"));
-	let mode = ctx.communicator().mode().to_string();
-	let zid = ctx.communicator().uuid();
+	let mode = ctx.mode().to_string();
+	let zid = ctx.uuid();
 	let state = ctx.state();
 	let value = AboutEntity::new(name, mode, zid, state);
 	request.reply(value)?;
@@ -178,8 +174,8 @@ where
 		// we need an mpsc channel with a receiver behind a mutex guard
 		let (tx, rx) = mpsc::channel();
 		let rx = Mutex::new(rx);
-		let context: ContextImpl<P> =
-			ContextInner::new(config, self.props, self.name, tx, self.prefix)?.into();
+		let context: ArcContextImpl<P> =
+			ContextImpl::new(config, self.props, self.name, tx, self.prefix)?.into();
 
 		// add "about" queryables
 		// for zid
@@ -246,7 +242,7 @@ where
 	/// A reciever for signals from tasks
 	rx: Mutex<mpsc::Receiver<TaskSignal>>,
 	/// The agents context structure
-	context: ContextImpl<P>,
+	context: ArcContextImpl<P>,
 	/// Flag to control whether sending liveliness or not
 	liveliness: bool,
 	/// The liveliness token - typically the uuid sent to other participants<br>
@@ -365,7 +361,7 @@ where
 	/// Propagation of errors from [`Context::start_registered_tasks()`].
 	#[tracing::instrument(skip_all)]
 	pub async fn start(self) -> Result<Agent<'a, P>> {
-		let session = self.context.communicator().session();
+		let session = self.context.session();
 
 		// activate sending liveliness
 		if self.liveliness {
@@ -373,8 +369,8 @@ where
 				.context
 				.prefix()
 				.clone()
-				.map_or(self.context.communicator().uuid(), |prefix| {
-					format!("{}/{}", prefix, self.context.communicator().uuid())
+				.map_or(self.context.uuid(), |prefix| {
+					format!("{}/{}", prefix, self.context.uuid())
 				});
 
 			let token = session
@@ -413,7 +409,7 @@ where
 	/// A reciever for signals from tasks
 	rx: Mutex<mpsc::Receiver<TaskSignal>>,
 	/// The agents context structure
-	context: ContextImpl<P>,
+	context: ArcContextImpl<P>,
 	/// Flag to control whether sending liveliness or not
 	liveliness: bool,
 	/// The liveliness token - typically the uuid sent to other participants<br>

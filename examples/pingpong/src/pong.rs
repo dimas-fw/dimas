@@ -17,7 +17,7 @@ struct PingPongMessage {
 	received: Option<i64>,
 }
 
-fn ping_received(ctx: &ContextImpl<AgentProps>, message: Message) -> Result<()> {
+fn ping_received(ctx: &Context<AgentProps>, message: Message) -> Result<()> {
 	let mut message: PingPongMessage = message.decode()?;
 
 	// set receive-timestamp
@@ -28,6 +28,7 @@ fn ping_received(ctx: &ContextImpl<AgentProps>, message: Message) -> Result<()> 
 
 	let text = format!("pong! [{}]", message.counter);
 
+	let message = Message::encode(&message);
 	// publishing with ad-hoc publisher
 	ctx.put_with("pong", message)?;
 

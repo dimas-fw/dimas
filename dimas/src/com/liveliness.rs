@@ -4,11 +4,10 @@
 //! A `LivelinessSubscriber` can optional subscribe on a delete message.
 
 // region:		--- modules
-use crate::prelude::ContextImpl;
-use dimas_com::task_signal::TaskSignal;
 use dimas_core::{
 	error::{DimasError, Result},
-	traits::{Capability, CommunicationCapability, OperationState},
+	task_signal::TaskSignal,
+	traits::{Capability, CommunicationCapability, Context, OperationState},
 };
 #[cfg(doc)]
 use std::collections::HashMap;
@@ -26,7 +25,9 @@ use zenoh::prelude::{r#async::AsyncResolve, SampleKind, SessionDeclarations};
 /// Type definition for liveliness callback function
 #[allow(clippy::module_name_repetitions)]
 pub type LivelinessCallback<P> =
-	Arc<Mutex<Box<dyn FnMut(&ContextImpl<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static>>>;
+	Box<dyn FnMut(&Context<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static>;
+type ArcCallback<P> =
+	Arc<Mutex<dyn FnMut(&Context<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static>>;
 // endregion:	--- types
 
 // region:		--- states
@@ -49,24 +50,23 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// The callback to use when receiving a put message
-	pub callback: LivelinessCallback<P>,
+	pub callback: ArcCallback<P>,
 }
 // endregion:	--- states
 
 // region:		--- LivelinessSubscriberBuilder
 /// The builder for the liveliness subscriber
 #[allow(clippy::module_name_repetitions)]
-#[derive(Clone)]
 pub struct LivelinessSubscriberBuilder<P, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
 	token: String,
-	context: ContextImpl<P>,
+	context: Context<P>,
 	activation_state: OperationState,
 	put_callback: C,
 	storage: S,
-	delete_callback: Option<LivelinessCallback<P>>,
+	delete_callback: Option<ArcCallback<P>>,
 }
 
 impl<P> LivelinessSubscriberBuilder<P, NoPutCallback, NoStorage>
@@ -75,7 +75,7 @@ where
 {
 	/// Construct a `LivelinessSubscriberBuilder` in initial state
 	#[must_use]
-	pub fn new(context: ContextImpl<P>) -> Self {
+	pub fn new(context: Context<P>) -> Self {
 		let token = context
 			.prefix()
 			.clone()
@@ -147,10 +147,7 @@ where
 
 	/// Set liveliness subscribers callback for `delete` messages
 	#[must_use]
-	pub fn delete_callback<F>(self, callback: F) -> Self
-	where
-		F: FnMut(&ContextImpl<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static,
-	{
+	pub fn delete_callback(self, callback: LivelinessCallback<P>) -> Self {
 		let Self {
 			token,
 			context,
@@ -159,7 +156,7 @@ where
 			storage,
 			..
 		} = self;
-		let delete_callback: Option<LivelinessCallback<P>> =
+		let delete_callback: Option<ArcCallback<P>> =
 			Some(Arc::new(Mutex::new(Box::new(callback))));
 		Self {
 			token,
@@ -178,10 +175,10 @@ where
 {
 	/// Set liveliness subscribers callback for `put` messages
 	#[must_use]
-	pub fn put_callback<F>(self, callback: F) -> LivelinessSubscriberBuilder<P, PutCallback<P>, S>
-	where
-		F: FnMut(&ContextImpl<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static,
-	{
+	pub fn put_callback(
+		self,
+		callback: LivelinessCallback<P>,
+	) -> LivelinessSubscriberBuilder<P, PutCallback<P>, S> {
 		let Self {
 			token,
 			context,
@@ -190,7 +187,7 @@ where
 			delete_callback,
 			..
 		} = self;
-		let put_callback: LivelinessCallback<P> = Arc::new(Mutex::new(Box::new(callback)));
+		let put_callback: ArcCallback<P> = Arc::new(Mutex::new(Box::new(callback)));
 		LivelinessSubscriberBuilder {
 			token,
 			context,
@@ -287,10 +284,10 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	token: String,
-	context: ContextImpl<P>,
+	context: Context<P>,
 	activation_state: OperationState,
-	put_callback: LivelinessCallback<P>,
-	delete_callback: Option<LivelinessCallback<P>>,
+	put_callback: ArcCallback<P>,
+	delete_callback: Option<ArcCallback<P>>,
 	handle: Option<JoinHandle<()>>,
 }
 
@@ -319,11 +316,7 @@ where
 	}
 }
 
-impl<P> CommunicationCapability for LivelinessSubscriber<P>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-}
+impl<P> CommunicationCapability for LivelinessSubscriber<P> where P: Send + Sync + Unpin + 'static {}
 
 impl<P> LivelinessSubscriber<P>
 where
@@ -332,10 +325,10 @@ where
 	/// Constructor for a [`LivelinessSubscriber`]
 	pub fn new(
 		token: String,
-		context: ContextImpl<P>,
+		context: Context<P>,
 		activation_state: OperationState,
-		put_callback: LivelinessCallback<P>,
-		delete_callback: Option<LivelinessCallback<P>>,
+		put_callback: ArcCallback<P>,
+		delete_callback: Option<ArcCallback<P>>,
 	) -> Self {
 		Self {
 			token,
@@ -419,15 +412,11 @@ where
 #[instrument(name="liveliness", level = Level::ERROR, skip_all)]
 async fn run_liveliness<P>(
 	token: String,
-	p_cb: LivelinessCallback<P>,
-	d_cb: Option<LivelinessCallback<P>>,
-	ctx: ContextImpl<P>,
-) -> Result<()>
-where
-	P: Send + Sync + Unpin + 'static,
-{
+	p_cb: ArcCallback<P>,
+	d_cb: Option<ArcCallback<P>>,
+	ctx: Context<P>,
+) -> Result<()> {
 	let subscriber = ctx
-		.communicator()
 		.session()
 		.liveliness()
 		.declare_subscriber(&token)
@@ -479,16 +468,8 @@ where
 }
 
 #[instrument(name="initial liveliness", level = Level::ERROR, skip_all)]
-async fn run_initial<P>(
-	token: String,
-	p_cb: LivelinessCallback<P>,
-	ctx: ContextImpl<P>,
-) -> Result<()>
-where
-	P: Send + Sync + Unpin + 'static,
-{
+async fn run_initial<P>(token: String, p_cb: ArcCallback<P>, ctx: Context<P>) -> Result<()> {
 	let result = ctx
-		.communicator()
 		.session()
 		.liveliness()
 		.get(&token)

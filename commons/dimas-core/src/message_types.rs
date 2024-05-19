@@ -3,8 +3,8 @@
 //! Module `message_types` provides the different types of `Message`s used in callbacks.
 
 // region:		--- modules
+use crate::error::{DimasError, Result};
 use bitcode::{decode, encode, Decode, Encode};
-use dimas_core::error::{DimasError, Result};
 use std::ops::Deref;
 use zenoh::{prelude::sync::SyncResolve, queryable::Query, sample::Sample};
 // endregion:	--- modules
@@ -12,10 +12,10 @@ use zenoh::{prelude::sync::SyncResolve, queryable::Query, sample::Sample};
 // region:		--- Message
 /// Implementation of a message received by subscriber callbacks
 #[derive(Debug)]
-pub struct Message(pub Sample);
+pub struct Message(pub Vec<u8>);
 
 impl Deref for Message {
-	type Target = Sample;
+	type Target = Vec<u8>;
 
 	fn deref(&self) -> &Self::Target {
 		&self.0
@@ -23,6 +23,15 @@ impl Deref for Message {
 }
 
 impl Message {
+	/// encode message
+	pub fn encode<T>(message: &T) -> Self
+	where
+		T: Encode,
+	{
+		let content = encode(message);
+		Self(content)
+	}
+
 	/// decode message
 	///
 	/// # Errors
@@ -30,11 +39,7 @@ impl Message {
 	where
 		T: for<'a> Decode<'a>,
 	{
-		let value: Vec<u8> = self
-			.0
-			.value
-			.try_into()
-			.map_err(|_| DimasError::ConvertingValue)?;
+		let value: Vec<u8> = self.0;
 		decode::<T>(value.as_slice()).map_err(|_| DimasError::Decoding.into())
 	}
 }
@@ -84,10 +89,10 @@ impl Request {
 // region:		--- Response
 /// Implementation of a response received by query callbacks
 #[derive(Debug)]
-pub struct Response(pub Sample);
+pub struct Response(pub Vec<u8>);
 
 impl Deref for Response {
-	type Target = Sample;
+	type Target = Vec<u8>;
 
 	fn deref(&self) -> &Self::Target {
 		&self.0
@@ -95,6 +100,15 @@ impl Deref for Response {
 }
 
 impl Response {
+	/// encode response
+	pub fn encode<T>(message: &T) -> Self
+	where
+		T: Encode,
+	{
+		let content = encode(message);
+		Self(content)
+	}
+
 	/// decode response
 	///
 	/// # Errors
@@ -102,11 +116,7 @@ impl Response {
 	where
 		T: for<'a> Decode<'a>,
 	{
-		let value: Vec<u8> = self
-			.0
-			.value
-			.try_into()
-			.map_err(|_| DimasError::ConvertingValue)?;
+		let value: Vec<u8> = self.0;
 		decode::<T>(value.as_slice()).map_err(|_| DimasError::Decoding.into())
 	}
 }
@@ -115,10 +125,10 @@ impl Response {
 // region:		--- Feedback
 /// Implementation of feedback messages
 #[derive(Debug)]
-pub struct Feedback(pub Sample);
+pub struct Feedback(pub Vec<u8>);
 
 impl Deref for Feedback {
-	type Target = Sample;
+	type Target = Vec<u8>;
 
 	fn deref(&self) -> &Self::Target {
 		&self.0
@@ -126,20 +136,24 @@ impl Deref for Feedback {
 }
 
 impl Feedback {
+	/// encode response
+	pub fn encode<T>(message: &T) -> Self
+	where
+		T: Encode,
+	{
+		let content = encode(message);
+		Self(content)
+	}
+
 	/// decode feedback
 	///
 	/// # Errors
 	///
-	#[allow(dead_code)]
 	pub fn decode<T>(self) -> Result<T>
 	where
 		T: for<'a> Decode<'a>,
 	{
-		let value: Vec<u8> = self
-			.0
-			.value
-			.try_into()
-			.map_err(|_| DimasError::ConvertingValue)?;
+		let value: Vec<u8> = self.0;
 		decode::<T>(value.as_slice()).map_err(|_| DimasError::Decoding.into())
 	}
 }

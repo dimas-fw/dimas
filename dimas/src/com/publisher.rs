@@ -6,11 +6,10 @@
 // these ones are only for doc needed
 #[cfg(doc)]
 use crate::agent::Agent;
-use crate::context::ContextImpl;
-use bitcode::{encode, Encode};
 use dimas_core::{
 	error::{DimasError, Result},
-	traits::{Capability, CommunicationCapability, OperationState},
+	message_types::Message,
+	traits::{Capability, CommunicationCapability, Context, OperationState},
 };
 #[cfg(doc)]
 use std::collections::HashMap;
@@ -20,6 +19,7 @@ use tracing::{instrument, Level};
 use zenoh::{
 	prelude::sync::SyncResolve,
 	publication::{CongestionControl, Priority},
+	SessionDeclarations,
 };
 // endregion:	--- modules
 
@@ -51,7 +51,7 @@ pub struct PublisherBuilder<P, K, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	context: ContextImpl<P>,
+	context: Context<P>,
 	activation_state: OperationState,
 	priority: Priority,
 	congestion_control: CongestionControl,
@@ -65,7 +65,7 @@ where
 {
 	/// Construct a [`PublisherBuilder`] in initial state
 	#[must_use]
-	pub const fn new(context: ContextImpl<P>) -> Self {
+	pub const fn new(context: Context<P>) -> Self {
 		Self {
 			context,
 			activation_state: OperationState::Active,
@@ -234,7 +234,7 @@ where
 {
 	key_expr: String,
 	/// Context for the Publisher
-	context: ContextImpl<P>,
+	context: Context<P>,
 	activation_state: OperationState,
 	priority: Priority,
 	congestion_control: CongestionControl,
@@ -267,11 +267,7 @@ where
 	}
 }
 
-impl<P> CommunicationCapability for Publisher<P>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-}
+impl<P> CommunicationCapability for Publisher<P> where P: Send + Sync + Unpin + 'static {}
 
 impl<P> Publisher<P>
 where
@@ -281,7 +277,7 @@ where
 	#[must_use]
 	pub const fn new(
 		key_expr: String,
-		context: ContextImpl<P>,
+		context: Context<P>,
 		activation_state: OperationState,
 		priority: Priority,
 		congestion_control: CongestionControl,
@@ -311,10 +307,12 @@ where
 	{
 		let publ = self
 			.context
-			.communicator()
-			.create_publisher(&self.key_expr)?
+			.session()
+			.declare_publisher(self.key_expr.clone())
 			.congestion_control(self.congestion_control)
-			.priority(self.priority);
+			.priority(self.priority)
+			.res_sync()?;
+		//.map_err(|_| DimasError::Put.into())?;
 		self.publisher.replace(publ);
 		Ok(())
 	}
@@ -332,16 +330,12 @@ where
 	/// # Errors
 	///
 	#[instrument(name="publish", level = Level::ERROR, skip_all)]
-	pub fn put<T>(&self, message: T) -> Result<()>
-	where
-		T: Debug + Encode,
-	{
-		let value: Vec<u8> = encode(&message);
+	pub fn put(&self, message: Message) -> Result<()> {
 		match self
 			.publisher
 			.clone()
 			.ok_or(DimasError::ShouldNotHappen)?
-			.put(value)
+			.put(message.0)
 			.res_sync()
 		{
 			Ok(()) => Ok(()),

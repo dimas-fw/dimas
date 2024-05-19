@@ -3,11 +3,11 @@
 //! Module `queryable` provides an information/compute provider `Queryable` which can be created using the `QueryableBuilder`.
 
 // region:		--- modules
-use crate::context::ContextImpl;
-use dimas_com::{Request, task_signal::TaskSignal};
 use dimas_core::{
 	error::{DimasError, Result},
-	traits::{Capability, CommunicationCapability, OperationState},
+	message_types::Request,
+	task_signal::TaskSignal,
+	traits::{Capability, CommunicationCapability, Context, OperationState},
 };
 use std::{
 	fmt::Debug,
@@ -22,9 +22,8 @@ use zenoh::sample::Locality;
 // region:		--- types
 /// type defnition for the queryables callback function.
 #[allow(clippy::module_name_repetitions)]
-pub type QueryableCallback<P> = Arc<
-	Mutex<Box<dyn FnMut(&ContextImpl<P>, Request) -> Result<()> + Send + Sync + Unpin + 'static>>,
->;
+pub type QueryableCallback<P> =
+	Arc<Mutex<Box<dyn FnMut(&Context<P>, Request) -> Result<()> + Send + Sync + Unpin + 'static>>>;
 // endregion:	--- types
 
 // region:		--- states
@@ -67,7 +66,7 @@ pub struct QueryableBuilder<P, K, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	context: ContextImpl<P>,
+	context: Context<P>,
 	activation_state: OperationState,
 	completeness: bool,
 	allowed_origin: Locality,
@@ -108,7 +107,7 @@ where
 {
 	/// Construct a `QueryableBuilder` in initial state
 	#[must_use]
-	pub const fn new(context: ContextImpl<P>) -> Self {
+	pub const fn new(context: Context<P>) -> Self {
 		Self {
 			context,
 			activation_state: OperationState::Standby,
@@ -188,7 +187,7 @@ where
 	#[must_use]
 	pub fn callback<F>(self, callback: F) -> QueryableBuilder<P, K, RequestCallback<P>, S>
 	where
-		F: FnMut(&ContextImpl<P>, Request) -> Result<()> + Send + Sync + Unpin + 'static,
+		F: FnMut(&Context<P>, Request) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
 			context,
@@ -300,7 +299,7 @@ where
 {
 	key_expr: String,
 	/// Context for the Subscriber
-	context: ContextImpl<P>,
+	context: Context<P>,
 	activation_state: OperationState,
 	request_callback: QueryableCallback<P>,
 	completeness: bool,
@@ -335,11 +334,7 @@ where
 	}
 }
 
-impl<P> CommunicationCapability for Queryable<P>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-}
+impl<P> CommunicationCapability for Queryable<P> where P: Send + Sync + Unpin + 'static {}
 
 impl<P> Queryable<P>
 where
@@ -349,7 +344,7 @@ where
 	#[must_use]
 	pub fn new(
 		key_expr: String,
-		context: ContextImpl<P>,
+		context: Context<P>,
 		activation_state: OperationState,
 		request_callback: QueryableCallback<P>,
 		completeness: bool,
@@ -424,13 +419,12 @@ async fn run_queryable<P>(
 	cb: QueryableCallback<P>,
 	completeness: bool,
 	allowed_origin: Locality,
-	ctx: ContextImpl<P>,
+	ctx: Context<P>,
 ) -> Result<()>
 where
 	P: Send + Sync + Unpin + 'static,
 {
 	let subscriber = ctx
-		.communicator()
 		.session()
 		.declare_queryable(&key_expr)
 		.complete(completeness)

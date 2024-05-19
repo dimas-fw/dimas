@@ -4,9 +4,13 @@
 //!
 
 // region:		--- modules
-use crate::error::Result;
+use crate::{error::Result, message_types::Message, task_signal::TaskSignal};
 use bitcode::{Decode, Encode};
-use std::fmt::Display;
+use std::{
+	fmt::{Debug, Display},
+	sync::{mpsc::Sender, Arc},
+};
+use zenoh::Session;
 // endregion:	--- modules
 
 // region:		--- OperationState
@@ -104,8 +108,99 @@ pub trait OperationStateHooks {
 // endregion:	--- OperationState
 
 // region:		--- Context
+/// Typedef for simplified usage
+pub type Context<P> = Arc<dyn ContextAbstraction<P>>;
+
 /// Commonalities for the context
-pub trait Context {}
+pub trait ContextAbstraction<P>: Send + Sync {
+	/// Get the name
+	#[must_use]
+	fn name(&self) -> &Option<String>;
+
+	/// Get the fully qualified name
+	#[must_use]
+	fn fq_name(&self) -> Option<String>;
+
+	/// Get the [`Context`]s state
+	/// # Panics
+	#[must_use]
+	fn state(&self) -> OperationState;
+
+	/// Set the [`OperationState`].<br>
+	/// Setting new state is done step by step
+	/// # Errors
+	fn set_state(&self, state: OperationState) -> Result<()>;
+
+	/// Get the uuid
+	#[must_use]
+	fn uuid(&self) -> String;
+
+	/// Get prefix
+	#[must_use]
+	fn prefix(&self) -> &Option<String>;
+
+	/// Get session mode
+	#[must_use]
+	fn mode(&self) -> &String;
+
+	/// Get zenoh session reference
+	#[must_use]
+	fn session(&self) -> Arc<Session>;
+
+	/// Get sender reference
+	#[must_use]
+	fn sender(&self) -> &Sender<TaskSignal>;
+
+	/// Gives read access to the properties
+	///
+	/// # Errors
+	fn read(&self) -> Result<std::sync::RwLockReadGuard<'_, P>>;
+
+	/// Gives write access to the properties
+	///
+	/// # Errors
+	fn write(&self) -> Result<std::sync::RwLockWriteGuard<'_, P>>;
+
+	/// Method to do an ad hoc publishing for a `topic`
+	///
+	/// # Errors
+	///   Error is propagated from [`Communicator::put()`]
+	fn put(&self, topic: &str, message: Message) -> Result<()>;
+
+	/// Method to publish data with a stored [`Publisher`]
+	///
+	/// # Errors
+	///
+	fn put_with(&self, topic: &str, message: Message) -> Result<()>;
+
+	/// Method to do an ad hoc deletion for the `topic`
+	///
+	/// # Errors
+	///   Error is propagated from [`Communicator::delete()`]
+	fn delete(&self, topic: &str) -> Result<()>;
+
+	/// Method to delete data with a stored [`Publisher`]
+	///
+	/// # Errors
+	///
+	fn delete_with(&self, topic: &str) -> Result<()>;
+
+	//	/// Send an ad hoc query using the given `topic`.
+	//	/// The `topic` will be enhanced with the group prefix.
+	//	/// Response will be handled by `callback`, a closure or function with
+	//	/// signature Fn(&[`Context`]<AgentProperties>, [`Response`]).
+	//	/// # Errors
+	//	///
+	//	fn get<F>(&self, ctx: Arc<Self>, topic: &str, mode: ConsolidationMode, callback: F) -> Result<()>
+	//	where
+	//		F: Fn(&Context<P>, Response) + Send + Sync + Unpin + 'static;
+
+	/// Method to query data with a stored Query
+	///
+	/// # Errors
+	///
+	fn get_with(&self, topic: &str) -> Result<()>;
+}
 // endregion:	--- Context
 
 // region:		--- Capability
@@ -118,5 +213,5 @@ pub trait Capability {
 }
 
 /// Commonalities for communication capability components
-pub trait CommunicationCapability : Capability {}
+pub trait CommunicationCapability: Capability {}
 // endregion:	--- Capability

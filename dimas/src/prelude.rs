@@ -21,17 +21,19 @@ pub use zenoh::subscriber::Reliability;
 
 // dimas stuff
 pub use crate::agent::Agent;
-pub use crate::com::liveliness::{LivelinessSubscriber, LivelinessSubscriberBuilder};
+pub use crate::com::liveliness::{
+	LivelinessCallback, LivelinessSubscriber, LivelinessSubscriberBuilder,
+};
 pub use crate::com::publisher::{Publisher, PublisherBuilder};
 pub use crate::com::query::{Query, QueryBuilder};
 pub use crate::com::queryable::{Queryable, QueryableBuilder};
 pub use crate::com::subscriber::{Subscriber, SubscriberBuilder};
-pub use crate::context::ContextImpl;
 pub use crate::timer::{Timer, TimerBuilder};
 
-pub use dimas_com::{Message, Request, Response};
 pub use dimas_config::Config;
 pub use dimas_core::error::{DimasError, Result};
+pub use dimas_core::message_types::{Message, Request, Response};
+pub use dimas_core::traits::Context;
 pub use dimas_core::utils::init_tracing;
 // endregeion:  --- modules
 
