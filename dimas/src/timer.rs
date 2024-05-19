@@ -4,9 +4,16 @@
 //! When fired, a `Timer` calls his assigned `TimerCallback`.
 
 // region:		--- modules
-use crate::{com::task_signal::TaskSignal, prelude::*};
-use dimas_core::traits::{ManageOperationState, OperationState};
-use std::{fmt::Debug, sync::Mutex, time::Duration};
+use dimas_core::{
+	error::{DimasError, Result},
+	task_signal::TaskSignal,
+	traits::{Capability, Context, OperationState},
+};
+use std::{
+	fmt::Debug,
+	sync::{Arc, Mutex, RwLock},
+	time::Duration,
+};
 use tokio::{task::JoinHandle, time};
 use tracing::{error, info, instrument, warn, Level};
 // endregion:	--- modules
@@ -375,7 +382,7 @@ where
 	}
 }
 
-impl<P> ManageOperationState for Timer<P>
+impl<P> Capability for Timer<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -477,7 +484,7 @@ where
 					std::panic::set_hook(Box::new(move |reason| {
 						error!("interval timer panic: {}", reason);
 						if let Err(reason) = ctx1
-							.tx
+							.sender()
 							.send(TaskSignal::RestartTimer(key.clone()))
 						{
 							error!("could not restart timer: {}", reason);
@@ -516,7 +523,7 @@ where
 					std::panic::set_hook(Box::new(move |reason| {
 						error!("delayed timer panic: {}", reason);
 						if let Err(reason) = ctx1
-							.tx
+							.sender()
 							.send(TaskSignal::RestartTimer(key.clone()))
 						{
 							error!("could not restart timer: {}", reason);

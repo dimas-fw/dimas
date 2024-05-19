@@ -4,8 +4,7 @@
 name = "dimas-config"
 rust-version.workspace = true
 edition.workspace = true
-version = "0.0.1"
-#version.workspace = true
+version.workspace = true
 authors.workspace = true
 license-file.workspace = true
 keywords.workspace = true

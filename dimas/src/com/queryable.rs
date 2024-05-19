@@ -3,12 +3,11 @@
 //! Module `queryable` provides an information/compute provider `Queryable` which can be created using the `QueryableBuilder`.
 
 // region:		--- modules
-use super::task_signal::TaskSignal;
-use crate::context::Context;
-use dimas_com::Request;
 use dimas_core::{
 	error::{DimasError, Result},
-	traits::{ManageOperationState, OperationState},
+	message_types::Request,
+	task_signal::TaskSignal,
+	traits::{Capability, CommunicationCapability, Context, OperationState},
 };
 use std::{
 	fmt::Debug,
@@ -320,7 +319,7 @@ where
 	}
 }
 
-impl<P> ManageOperationState for Queryable<P>
+impl<P> Capability for Queryable<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -334,6 +333,8 @@ where
 		Ok(())
 	}
 }
+
+impl<P> CommunicationCapability for Queryable<P> where P: Send + Sync + Unpin + 'static {}
 
 impl<P> Queryable<P>
 where
@@ -386,7 +387,7 @@ where
 				std::panic::set_hook(Box::new(move |reason| {
 					error!("queryable panic: {}", reason);
 					if let Err(reason) = ctx1
-						.tx
+						.sender()
 						.send(TaskSignal::RestartQueryable(key.clone()))
 					{
 						error!("could not restart queryable: {}", reason);
@@ -424,7 +425,6 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	let subscriber = ctx
-		.communicator
 		.session()
 		.declare_queryable(&key_expr)
 		.complete(completeness)

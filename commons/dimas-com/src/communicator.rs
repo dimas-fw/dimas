@@ -4,14 +4,14 @@
 //!
 
 // region:		--- modules
-use crate::Response;
-use bitcode::{encode, Encode};
-use dimas_core::error::{DimasError, Result};
+use dimas_core::{
+	error::{DimasError, Result},
+	message_types::{Message, Response},
+};
 use std::fmt::Debug;
 use std::sync::Arc;
 use std::time::Duration;
 use zenoh::prelude::{r#async::*, sync::SyncResolve};
-use zenoh::publication::Publisher;
 // endregion:	--- modules
 
 // region:		--- Communicator
@@ -29,7 +29,6 @@ pub struct Communicator {
 impl Communicator {
 	/// Constructor
 	/// # Errors
-	///
 	pub fn new(config: &dimas_config::Config) -> Result<Self> {
 		let cfg = config.zenoh_config();
 		let kind = cfg.mode().unwrap_or(WhatAmI::Peer).to_string();
@@ -82,32 +81,15 @@ impl Communicator {
 			.map_or_else(|| topic.into(), |prefix| format!("{prefix}/{topic}"))
 	}
 
-	/// Create a zenoh publisher
-	/// # Errors
-	///
-	pub fn create_publisher<'a>(&self, key_expr: &str) -> Result<Publisher<'a>> {
-		let p = self
-			.session
-			.declare_publisher(key_expr.to_owned())
-			.res_sync()
-			.map_err(DimasError::DeclarePublisher)?;
-		Ok(p)
-	}
-
-	/// Send an ad hoc put `message` of type `M` using the given `topic`.
+	/// Send an ad hoc put `message` of type `Message` using the given `topic`.
 	/// The `topic` will be enhanced with the group prefix.
 	/// # Errors
-	///
 	#[allow(clippy::needless_pass_by_value)]
-	pub fn put<M>(&self, topic: &str, message: M) -> Result<()>
-	where
-		M: Encode,
-	{
-		let value: Vec<u8> = encode(&message);
+	pub fn put(&self, topic: &str, message: Message) -> Result<()> {
 		let key_expr = self.key_expr(topic);
 
 		self.session
-			.put(&key_expr, value)
+			.put(&key_expr, message.0)
 			.res_sync()
 			.map_err(|_| DimasError::Put.into())
 	}
@@ -115,7 +97,6 @@ impl Communicator {
 	/// Send an ad hoc delete using the given `topic`.
 	/// The `topic` will be enhanced with the group prefix.
 	/// # Errors
-	///
 	pub fn delete(&self, topic: &str) -> Result<()> {
 		let key_expr = self.key_expr(topic);
 
@@ -128,10 +109,7 @@ impl Communicator {
 	/// Send an ad hoc query using the given `selector`.
 	/// Answers are collected via callback
 	/// # Errors
-	///
 	/// # Panics
-	///
-	#[allow(clippy::needless_pass_by_value)]
 	pub fn get<F>(&self, selector: &str, mut callback: F) -> Result<()>
 	where
 		F: FnMut(Response) + Sized,
@@ -150,7 +128,8 @@ impl Communicator {
 			match reply.sample {
 				Ok(sample) => match sample.kind {
 					SampleKind::Put => {
-						callback(Response(sample));
+						let content: Vec<u8> = sample.value.try_into()?;
+						callback(Response(content));
 					}
 					SampleKind::Delete => {
 						println!("Delete in Query");

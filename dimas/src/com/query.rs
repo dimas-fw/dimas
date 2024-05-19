@@ -3,11 +3,10 @@
 //! Module `query` provides an information/compute requestor `Query` which can be created using the `QueryBuilder`.
 
 // region:		--- modules
-use crate::context::Context;
-use dimas_com::Response;
 use dimas_core::{
 	error::{DimasError, Result},
-	traits::{ManageOperationState, OperationState},
+	message_types::Response,
+	traits::{Capability, CommunicationCapability, Context, OperationState},
 };
 #[cfg(doc)]
 use std::collections::HashMap;
@@ -364,7 +363,7 @@ where
 	}
 }
 
-impl<P> ManageOperationState for Query<P>
+impl<P> Capability for Query<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -377,6 +376,8 @@ where
 		Ok(())
 	}
 }
+
+impl<P> CommunicationCapability for Query<P> where P: Send + Sync + Unpin + 'static {}
 
 impl<P> Query<P>
 where
@@ -439,9 +440,7 @@ where
 	#[instrument(name="query", level = Level::ERROR, skip_all)]
 	pub fn get(&self) -> Result<()> {
 		let cb = self.response_callback.clone();
-		let communicator = self.context.clone().communicator.clone();
-
-		let session = communicator.session();
+		let session = self.context.session();
 		let mut query = session
 			.get(&self.key_expr)
 			.target(self.target)
@@ -460,7 +459,8 @@ where
 			match reply.sample {
 				Ok(sample) => match sample.kind {
 					SampleKind::Put => {
-						let msg = Response(sample);
+						let content: Vec<u8> = sample.value.try_into()?;
+						let msg = Response(content);
 						let guard = cb.lock();
 						match guard {
 							Ok(mut lock) => {

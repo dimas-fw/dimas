@@ -8,7 +8,7 @@ use dimas_com::{
 	Communicator,
 };
 use dimas_config::Config;
-use dimas_core::traits::OperationState;
+use dimas_core::{message_types::Response, traits::OperationState};
 use itertools::Itertools;
 use std::collections::HashMap;
 use std::time::Duration;
@@ -47,7 +47,7 @@ pub fn about_list(com: &Communicator, base_selector: &String) -> Vec<AboutEntity
 	let selector = format!("{base_selector}/about");
 
 	// fetch about from all entities matching the selector
-	com.get(&selector, |response| {
+	com.get(&selector, |response: Response| {
 		let response: AboutEntity = response.decode().expect("decode failed");
 		map.entry(response.zid().to_string())
 			.or_insert(response);

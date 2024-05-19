@@ -5,14 +5,13 @@
 
 // region:		--- modules
 // these ones are only for doc needed
-use super::task_signal::TaskSignal;
 #[cfg(doc)]
 use crate::agent::Agent;
-use crate::context::Context;
-use dimas_com::Message;
 use dimas_core::{
 	error::{DimasError, Result},
-	traits::{ManageOperationState, OperationState},
+	message_types::Message,
+	task_signal::TaskSignal,
+	traits::{Capability, CommunicationCapability, Context, OperationState},
 };
 use std::sync::{Arc, Mutex, RwLock};
 use tokio::task::JoinHandle;
@@ -333,7 +332,7 @@ where
 	}
 }
 
-impl<P> ManageOperationState for Subscriber<P>
+impl<P> Capability for Subscriber<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -347,6 +346,8 @@ where
 		Ok(())
 	}
 }
+
+impl<P> CommunicationCapability for Subscriber<P> where P: Send + Sync + Unpin + 'static {}
 
 impl<P> Subscriber<P>
 where
@@ -406,7 +407,7 @@ where
 				std::panic::set_hook(Box::new(move |reason| {
 					error!("subscriber panic: {}", reason);
 					if let Err(reason) = ctx1
-						.tx
+						.sender()
 						.send(TaskSignal::RestartSubscriber(key.clone()))
 					{
 						error!("could not restart subscriber: {}", reason);
@@ -444,7 +445,6 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	let subscriber = ctx
-		.communicator
 		.session()
 		.declare_subscriber(&key_expr)
 		.reliability(reliability)
@@ -460,7 +460,8 @@ where
 
 		match sample.kind {
 			SampleKind::Put => {
-				let msg = Message(sample);
+				let content: Vec<u8> = sample.value.try_into()?;
+				let msg = Message(content);
 				match p_cb.lock() {
 					Ok(mut lock) => {
 						if let Err(error) = lock(&ctx, msg) {

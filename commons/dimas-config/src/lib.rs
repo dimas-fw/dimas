@@ -203,7 +203,6 @@ impl Config {
 ///  - local config directory (`Linux`: `$XDG_CONFIG_HOME` or `$HOME/.config` | `Windows`: `{FOLDERID_LocalAppData}` | `MacOS`: `$HOME/Library/Application Support`)
 ///  - config directory (`Linux`: `$XDG_CONFIG_HOME` or `$HOME/.config` | `Windows`: `{FOLDERID_RoamingAppData}` | `MacOS`: `$HOME/Library/Application Support`)
 /// # Errors
-///
 pub fn find_config_file(filename: &str) -> Result<std::path::PathBuf> {
 	// handle environment path current working directory `CWD`
 	if let Ok(cwd) = env::current_dir() {

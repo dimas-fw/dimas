@@ -82,7 +82,7 @@ async fn main() -> Result<()> {
 					.unwrap_or(0),
 				received: None,
 			};
-
+			let message = Message::encode(&message);
 			// publishing with stored publisher
 			ctx.put_with("ping", message)?;
 

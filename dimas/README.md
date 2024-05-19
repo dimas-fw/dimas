@@ -119,7 +119,8 @@ async fn main() -> Result<()> {
 				// just to see what will be sent
 				println!("Sending '{}'", &text);
 				// publishing with stored publisher for topic "hello"
-				ctx.put_with("hello", text)?;
+				let message = Message::encode(&text);
+				ctx.put_with("hello", message)?;
 				// modify counter in properties
 				ctx
 					.write()?
