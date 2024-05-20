@@ -8,10 +8,11 @@
 #[cfg(doc)]
 use crate::agent::Agent;
 use dimas_core::{
+	enums::OperationState,
 	error::{DimasError, Result},
 	message_types::Message,
 	task_signal::TaskSignal,
-	traits::{Capability, CommunicationCapability, Context, OperationState},
+	traits::{Capability, CommunicationCapability, Context},
 };
 use std::sync::{Arc, Mutex, RwLock};
 use tokio::task::JoinHandle;

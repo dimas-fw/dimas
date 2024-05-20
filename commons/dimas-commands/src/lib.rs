@@ -8,7 +8,7 @@ use dimas_com::{
 	Communicator,
 };
 use dimas_config::Config;
-use dimas_core::{message_types::Response, traits::OperationState};
+use dimas_core::{enums::OperationState, message_types::Response};
 use itertools::Itertools;
 use std::collections::HashMap;
 use std::time::Duration;

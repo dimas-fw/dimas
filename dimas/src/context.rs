@@ -34,26 +34,23 @@
 use crate::agent::Agent;
 use crate::{
 	com::{
-		liveliness::{LivelinessSubscriber, LivelinessSubscriberBuilder},
-		publisher::{Publisher, PublisherBuilder},
-		query::{Query, QueryBuilder},
-		queryable::{Queryable, QueryableBuilder},
-		subscriber::{Subscriber, SubscriberBuilder},
+		liveliness::LivelinessSubscriber, publisher::Publisher, query::Query, queryable::Queryable,
+		subscriber::Subscriber,
 	},
-	timer::{Timer, TimerBuilder},
+	timer::Timer,
 };
 use dimas_com::communicator::Communicator;
 use dimas_config::Config;
 use dimas_core::{
+	enums::OperationState,
 	error::{DimasError, Result},
 	message_types::{Message, Response},
 	task_signal::TaskSignal,
-	traits::{Capability, ContextAbstraction, OperationState},
+	traits::{Capability, ContextAbstraction},
 };
 use std::{
 	collections::HashMap,
 	fmt::Debug,
-	ops::Deref,
 	sync::{mpsc::Sender, Arc, RwLock},
 };
 use tracing::{error, info, instrument, Level};
@@ -63,135 +60,6 @@ use tracing::{error, info, instrument, Level};
 // the initial size of the HashMaps
 const INITIAL_SIZE: usize = 9;
 // endregion:	--- types
-
-// region:		--- ArcContextImpl
-/// `ArcContextImpl` is a thread safe atomic reference counted implementation of [`Context`].<br>
-/// It makes all relevant data of the agent accessible in a thread safe way via accessor methods.
-#[derive(Debug)]
-#[allow(clippy::module_name_repetitions)]
-pub struct ArcContextImpl<P>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-	inner: Arc<ContextImpl<P>>,
-}
-
-impl<P> Clone for ArcContextImpl<P>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-	fn clone(&self) -> Self {
-		Self {
-			inner: self.inner.clone(),
-		}
-	}
-}
-
-impl<P> Deref for ArcContextImpl<P>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-	type Target = ContextImpl<P>;
-
-	fn deref(&self) -> &Self::Target {
-		&self.inner
-	}
-}
-
-impl<P> From<ContextImpl<P>> for ArcContextImpl<P>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-	fn from(value: ContextImpl<P>) -> Self {
-		Self {
-			inner: Arc::new(value),
-		}
-	}
-}
-
-impl<P> ArcContextImpl<P>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-	/// Get a [`LivelinessSubscriberBuilder`], the builder for a [`LivelinessSubscriber`].
-	#[must_use]
-	pub fn liveliness_subscriber(
-		&self,
-	) -> LivelinessSubscriberBuilder<
-		P,
-		crate::com::liveliness::NoPutCallback,
-		crate::com::liveliness::Storage<P>,
-	> {
-		LivelinessSubscriberBuilder::new(self.inner.clone())
-			.storage(self.inner.liveliness_subscribers.clone())
-	}
-
-	/// Get a [`PublisherBuilder`], the builder for a [`Publisher`].
-	#[must_use]
-	pub fn publisher(
-		&self,
-	) -> PublisherBuilder<
-		P,
-		crate::com::publisher::NoKeyExpression,
-		crate::com::publisher::Storage<P>,
-	> {
-		PublisherBuilder::new(self.inner.clone()).storage(self.inner.publishers.clone())
-	}
-
-	/// Get a [`QueryBuilder`], the builder for a [`Query`].
-	#[must_use]
-	pub fn query(
-		&self,
-	) -> QueryBuilder<
-		P,
-		crate::com::query::NoKeyExpression,
-		crate::com::query::NoResponseCallback,
-		crate::com::query::Storage<P>,
-	> {
-		QueryBuilder::new(self.inner.clone()).storage(self.inner.queries.clone())
-	}
-
-	/// Get a [`QueryableBuilder`], the builder for a [`Queryable`].
-	#[must_use]
-	pub fn queryable(
-		&self,
-	) -> QueryableBuilder<
-		P,
-		crate::com::queryable::NoKeyExpression,
-		crate::com::queryable::NoRequestCallback,
-		crate::com::queryable::Storage<P>,
-	> {
-		QueryableBuilder::new(self.inner.clone()).storage(self.inner.queryables.clone())
-	}
-
-	/// Get a [`SubscriberBuilder`], the builder for a [`Subscriber`].
-	#[must_use]
-	pub fn subscriber(
-		&self,
-	) -> SubscriberBuilder<
-		P,
-		crate::com::subscriber::NoKeyExpression,
-		crate::com::subscriber::NoPutCallback,
-		crate::com::subscriber::Storage<P>,
-	> {
-		SubscriberBuilder::new(self.inner.clone()).storage(self.inner.subscribers.clone())
-	}
-
-	/// Get a [`TimerBuilder`], the builder for a [`Timer`].
-	#[must_use]
-	pub fn timer(
-		&self,
-	) -> TimerBuilder<
-		P,
-		crate::timer::NoKeyExpression,
-		crate::timer::NoInterval,
-		crate::timer::NoIntervalCallback,
-		crate::timer::Storage<P>,
-	> {
-		TimerBuilder::new(self.inner.clone()).storage(self.inner.timers.clone())
-	}
-}
-// endregion:	--- ArcContextImpl
 
 // region:		--- ContextImpl
 /// [`ContextImpl`] makes all relevant data of the [`Agent`] accessible via accessor methods.
@@ -494,6 +362,18 @@ where
 		&self.liveliness_subscribers
 	}
 
+	/// Get the publishers
+	#[must_use]
+	pub const fn publishers(&self) -> &Arc<RwLock<HashMap<String, Publisher<P>>>> {
+		&self.publishers
+	}
+
+	/// Get the queries
+	#[must_use]
+	pub const fn queries(&self) -> &Arc<RwLock<HashMap<String, Query<P>>>> {
+		&self.queries
+	}
+
 	/// Get the queryables
 	#[must_use]
 	pub const fn queryables(&self) -> &Arc<RwLock<HashMap<String, Queryable<P>>>> {
@@ -681,7 +561,6 @@ mod tests {
 
 	#[test]
 	const fn normal_types() {
-		is_normal::<ArcContextImpl<Props>>();
 		is_normal::<ContextImpl<Props>>();
 	}
 }

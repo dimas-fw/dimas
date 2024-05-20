@@ -5,9 +5,10 @@
 
 // region:		--- modules
 use dimas_core::{
+	enums::OperationState,
 	error::{DimasError, Result},
 	task_signal::TaskSignal,
-	traits::{Capability, CommunicationCapability, Context, OperationState},
+	traits::{Capability, CommunicationCapability, Context},
 };
 #[cfg(doc)]
 use std::collections::HashMap;

@@ -4,10 +4,11 @@
 
 // region:		--- modules
 use dimas_core::{
+	enums::OperationState,
 	error::{DimasError, Result},
 	message_types::Request,
 	task_signal::TaskSignal,
-	traits::{Capability, CommunicationCapability, Context, OperationState},
+	traits::{Capability, CommunicationCapability, Context},
 };
 use std::{
 	fmt::Debug,

@@ -7,8 +7,8 @@ use clap::{Parser, Subcommand};
 use dimas_com::Communicator;
 use dimas_config::Config;
 use dimas_core::{
+	enums::OperationState,
 	error::{DimasError, Result},
-	traits::OperationState,
 };
 // endregion:	--- modules
 

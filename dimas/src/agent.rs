@@ -49,13 +49,13 @@ use crate::com::{
 	liveliness::LivelinessSubscriberBuilder, publisher::PublisherBuilder, query::QueryBuilder,
 	queryable::QueryableBuilder, subscriber::SubscriberBuilder,
 };
-use crate::context::{ArcContextImpl, ContextImpl};
+use crate::context::ContextImpl;
 use crate::timer::TimerBuilder;
 #[cfg(doc)]
 use crate::{
 	com::{
-		liveliness::LivelinessSubscriber, publisher::Publisher, query::Query,
-		queryable::Queryable, subscriber::Subscriber,
+		liveliness::LivelinessSubscriber, publisher::Publisher, query::Query, queryable::Queryable,
+		subscriber::Subscriber,
 	},
 	timer::Timer,
 };
@@ -63,11 +63,13 @@ use dimas_com::messages::AboutEntity;
 use dimas_config::Config;
 use dimas_core::traits::ContextAbstraction;
 use dimas_core::{
+	enums::OperationState,
 	error::{DimasError, Result},
 	message_types::Request,
 	task_signal::{wait_for_task_signals, TaskSignal},
-	traits::{Capability, Context, OperationState},
+	traits::{Capability, Context},
 };
+use std::sync::Arc;
 use std::{
 	fmt::Debug,
 	sync::{mpsc, Mutex, RwLock},
@@ -78,6 +80,18 @@ use zenoh::{liveliness::LivelinessToken, prelude::sync::SyncResolve, SessionDecl
 // endregion:	--- modules
 
 // region:	   --- callbacks
+fn callback_dispatcher<P>(ctx: &Context<P>, request: Request) -> Result<()>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	let command = request.key_expr().split('/').last().expect("snh");
+	match command {
+		"about" => about_callback(ctx, request),
+		"state" => state_callback(ctx, request),
+		_ => Ok(()),
+	}
+}
+
 fn about_callback<P>(ctx: &Context<P>, request: Request) -> Result<()>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -174,52 +188,13 @@ where
 		// we need an mpsc channel with a receiver behind a mutex guard
 		let (tx, rx) = mpsc::channel();
 		let rx = Mutex::new(rx);
-		let context: ArcContextImpl<P> =
-			ContextImpl::new(config, self.props, self.name, tx, self.prefix)?.into();
-
-		// add "about" queryables
-		// for zid
-		let key_expr = format!("{}/about", context.uuid());
-		context
-			.queryable()
-			.key_expr(&key_expr)
-			.callback(about_callback)
-			.activation_state(OperationState::Created)
-			.add()?;
-		// for fully qualified name
-		if let Some(fq_name) = context.fq_name() {
-			let key_expr = format!("{fq_name}/about");
-			context
-				.queryable()
-				.key_expr(&key_expr)
-				.callback(about_callback)
-				.activation_state(OperationState::Created)
-				.add()?;
-		}
-
-		// add "state" queryables
-		// for zid
-		let key_expr = format!("{}/state", context.uuid());
-		context
-			.queryable()
-			.key_expr(&key_expr)
-			.callback(state_callback)
-			.activation_state(OperationState::Created)
-			.add()?;
-		// for fully qualified name
-		if let Some(fq_name) = context.fq_name() {
-			let key_expr = format!("{fq_name}/state");
-			context
-				.queryable()
-				.key_expr(&key_expr)
-				.callback(state_callback)
-				.activation_state(OperationState::Created)
-				.add()?;
-		}
-
-		// set [`OperationState`] to Created
-		// This will also start the basic queryables
-		context.set_state(OperationState::Created)?;
+		let context: Arc<ContextImpl<P>> = Arc::new(ContextImpl::new(
+			config,
+			self.props,
+			self.name,
+			tx,
+			self.prefix,
+		)?);
 
 		let agent = Agent {
 			rx,
@@ -227,6 +202,31 @@ where
 			liveliness: false,
 			liveliness_token: RwLock::new(None),
 		};
+
+		// add command queryables
+		// for zid
+		let key_expr = format!("{}/*", agent.context.uuid());
+		agent
+			.queryable()
+			.key_expr(&key_expr)
+			.callback(callback_dispatcher)
+			.activation_state(OperationState::Created)
+			.add()?;
+		// for fully qualified name
+		if let Some(fq_name) = agent.context.fq_name() {
+			let key_expr = format!("{fq_name}/*");
+			agent
+				.queryable()
+				.key_expr(&key_expr)
+				.callback(callback_dispatcher)
+				.activation_state(OperationState::Created)
+				.add()?;
+		}
+
+		// set [`OperationState`] to Created
+		// This will also start the basic queryables
+		agent.context.set_state(OperationState::Created)?;
+
 		Ok(agent)
 	}
 }
@@ -242,7 +242,7 @@ where
 	/// A reciever for signals from tasks
 	rx: Mutex<mpsc::Receiver<TaskSignal>>,
 	/// The agents context structure
-	context: ArcContextImpl<P>,
+	context: Arc<ContextImpl<P>>,
 	/// Flag to control whether sending liveliness or not
 	liveliness: bool,
 	/// The liveliness token - typically the uuid sent to other participants<br>
@@ -278,7 +278,7 @@ where
 		self.liveliness = activate;
 	}
 
-	/// Get a builder for a [`LivelinessSubscriber`]
+	/// Get a [`LivelinessSubscriberBuilder`], the builder for a [`LivelinessSubscriber`].
 	#[must_use]
 	pub fn liveliness_subscriber(
 		&self,
@@ -287,10 +287,11 @@ where
 		crate::com::liveliness::NoPutCallback,
 		crate::com::liveliness::Storage<P>,
 	> {
-		self.context.liveliness_subscriber()
+		LivelinessSubscriberBuilder::new(self.context.clone())
+			.storage(self.context.liveliness_subscribers().clone())
 	}
 
-	/// Get a builder for a [`Publisher`]
+	/// Get a [`PublisherBuilder`], the builder for a [`Publisher`].
 	#[must_use]
 	pub fn publisher(
 		&self,
@@ -299,10 +300,10 @@ where
 		crate::com::publisher::NoKeyExpression,
 		crate::com::publisher::Storage<P>,
 	> {
-		self.context.publisher()
+		PublisherBuilder::new(self.context.clone()).storage(self.context.publishers().clone())
 	}
 
-	/// Get a builder for a [`Query`]
+	/// Get a [`QueryBuilder`], the builder for a [`Query`].
 	#[must_use]
 	pub fn query(
 		&self,
@@ -312,10 +313,10 @@ where
 		crate::com::query::NoResponseCallback,
 		crate::com::query::Storage<P>,
 	> {
-		self.context.query()
+		QueryBuilder::new(self.context.clone()).storage(self.context.queries().clone())
 	}
 
-	/// Get a builder for a [`Queryable`]
+	/// Get a [`QueryableBuilder`], the builder for a [`Queryable`].
 	#[must_use]
 	pub fn queryable(
 		&self,
@@ -325,10 +326,10 @@ where
 		crate::com::queryable::NoRequestCallback,
 		crate::com::queryable::Storage<P>,
 	> {
-		self.context.queryable()
+		QueryableBuilder::new(self.context.clone()).storage(self.context.queryables().clone())
 	}
 
-	/// Get a builder for a [`Subscriber`]
+	/// Get a [`SubscriberBuilder`], the builder for a [`Subscriber`].
 	#[must_use]
 	pub fn subscriber(
 		&self,
@@ -338,10 +339,11 @@ where
 		crate::com::subscriber::NoPutCallback,
 		crate::com::subscriber::Storage<P>,
 	> {
-		self.context.subscriber()
+		SubscriberBuilder::new(self.context.clone()).storage(self.context.subscribers().clone())
 	}
 
-	/// Get a builder for a [`Timer`]
+	/// Get a [`TimerBuilder`], the builder for a [`Timer`].
+	#[must_use]
 	pub fn timer(
 		&self,
 	) -> TimerBuilder<
@@ -351,7 +353,7 @@ where
 		crate::timer::NoIntervalCallback,
 		crate::timer::Storage<P>,
 	> {
-		self.context.timer()
+		TimerBuilder::new(self.context.clone()).storage(self.context.timers().clone())
 	}
 
 	/// Start the agent.<br>
@@ -408,7 +410,7 @@ where
 	/// A reciever for signals from tasks
 	rx: Mutex<mpsc::Receiver<TaskSignal>>,
 	/// The agents context structure
-	context: ArcContextImpl<P>,
+	context: Arc<ContextImpl<P>>,
 	/// Flag to control whether sending liveliness or not
 	liveliness: bool,
 	/// The liveliness token - typically the uuid sent to other participants<br>

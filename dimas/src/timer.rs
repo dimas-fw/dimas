@@ -5,9 +5,10 @@
 
 // region:		--- modules
 use dimas_core::{
+	enums::OperationState,
 	error::{DimasError, Result},
 	task_signal::TaskSignal,
-	traits::{Capability, Context, OperationState},
+	traits::{Capability, Context},
 };
 use std::{
 	fmt::Debug,

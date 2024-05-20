@@ -2,6 +2,8 @@
 
 //! Core of `DiMAS`
 
+/// Enums
+pub mod enums;
 /// Error handling
 pub mod error;
 /// `Message`, `Request`, `Response`, `Feedback`
