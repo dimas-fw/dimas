@@ -1,6 +1,6 @@
 // Copyright © 2024 Stephan Kunz
 
-//! Commands for `DiMAS`
+//! Commands for `DiMAS` control & monitoring programs
 
 // region:		--- modules
 use dimas_com::{
@@ -8,12 +8,10 @@ use dimas_com::{
 	Communicator,
 };
 use dimas_config::Config;
-use dimas_core::{enums::OperationState, message_types::Response};
+use dimas_core::{enums::{OperationState, Signal}, message_types::Message};
 use itertools::Itertools;
-use std::collections::HashMap;
-use std::time::Duration;
-use zenoh::config::WhatAmI;
-use zenoh::prelude::sync::*;
+use std::{collections::HashMap, time::Duration};
+use zenoh::{config::WhatAmI, prelude::sync::*};
 // endregion:	--- modules
 
 // region:		--- command functions
@@ -44,10 +42,10 @@ pub fn scouting_list(config: &Config) -> Vec<ScoutingEntity> {
 pub fn about_list(com: &Communicator, base_selector: &String) -> Vec<AboutEntity> {
 	let mut map: HashMap<String, AboutEntity> = HashMap::new();
 
-	let selector = format!("{base_selector}/about");
-
-	// fetch about from all entities matching the selector
-	com.get(&selector, |response: Response| {
+	let selector = format!("{base_selector}/signal");
+	let message = Message::encode(&Signal::About);
+	// set state for entities matching the selector
+	com.get_with_value(&selector, &message, |response| {
 		let response: AboutEntity = response.decode().expect("decode failed");
 		map.entry(response.zid().to_string())
 			.or_insert(response);
@@ -70,13 +68,10 @@ pub fn set_state(
 ) -> Vec<AboutEntity> {
 	let mut map: HashMap<String, AboutEntity> = HashMap::new();
 
-	let selector = state.map_or_else(
-		|| format!("{base_selector}/state"),
-		|state| format!("{base_selector}/state?(state={state})"),
-	);
-
+	let selector = format!("{base_selector}/signal");
+	let message = Message::encode(&Signal::State { state });
 	// set state for entities matching the selector
-	com.get(&selector, |response| {
+	com.get_with_value(&selector, &message, |response| {
 		let response: AboutEntity = response.decode().expect("decode failed");
 		map.entry(response.zid().to_string())
 			.or_insert(response);
@@ -87,5 +82,4 @@ pub fn set_state(
 
 	result
 }
-
 // endregion:	--- command functions

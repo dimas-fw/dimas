@@ -42,6 +42,12 @@ impl Message {
 		let value: Vec<u8> = self.0;
 		decode::<T>(value.as_slice()).map_err(|_| DimasError::Decoding.into())
 	}
+
+	/// decode message
+	#[must_use]
+	pub const fn value(&self) -> &Vec<u8> {
+		&self.0
+	}
 }
 // endregion:	--- Message
 

@@ -8,7 +8,7 @@ use dimas_com::Communicator;
 use dimas_config::Config;
 use dimas_core::{
 	enums::OperationState,
-	error::{DimasError, Result},
+	error::Result,
 };
 // endregion:	--- modules
 
@@ -25,14 +25,7 @@ struct DimasctlArgs {
 // endregion:	--- Cli
 
 fn operation_state_parser(s: &str) -> Result<OperationState> {
-	match s {
-		"Created" | "created" => Ok(OperationState::Created),
-		"Configured" | "configured" => Ok(OperationState::Configured),
-		"Inactive" | "inactive" => Ok(OperationState::Inactive),
-		"Standby" | "standby" => Ok(OperationState::Standby),
-		"Active" | "active" => Ok(OperationState::Active),
-		_ => Err(DimasError::OperationState(s.to_string()).into()),
-	}
+	OperationState::try_from(s)
 }
 
 // region:		--- Commands

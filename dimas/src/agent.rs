@@ -61,13 +61,12 @@ use crate::{
 };
 use dimas_com::messages::AboutEntity;
 use dimas_config::Config;
-use dimas_core::traits::ContextAbstraction;
 use dimas_core::{
-	enums::OperationState,
+	enums::{OperationState, Signal},
 	error::{DimasError, Result},
-	message_types::Request,
+	message_types::{Message, Request},
 	task_signal::{wait_for_task_signals, TaskSignal},
-	traits::{Capability, Context},
+	traits::{Capability, Context, ContextAbstraction},
 };
 use std::sync::Arc;
 use std::{
@@ -75,7 +74,7 @@ use std::{
 	sync::{mpsc, Mutex, RwLock},
 };
 use tokio::{select, signal};
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use zenoh::{liveliness::LivelinessToken, prelude::sync::SyncResolve, SessionDeclarations};
 // endregion:	--- modules
 
@@ -84,15 +83,21 @@ fn callback_dispatcher<P>(ctx: &Context<P>, request: Request) -> Result<()>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	let command = request.key_expr().split('/').last().expect("snh");
-	match command {
-		"about" => about_callback(ctx, request),
-		"state" => state_callback(ctx, request),
-		_ => Ok(()),
+	if let Some(value) = request.value() {
+		let content: Vec<u8> = value.try_into()?;
+		let msg = Message(content);
+		let signal: Signal = Message::decode(msg)?;
+		#[allow(clippy::match_wildcard_for_single_variants)]
+		match signal {
+			Signal::About => about_handler(ctx, request)?,
+			Signal::State { state } => state_handler(ctx, request, state)?,
+			_ => warn!("received unknown Signal"),
+		}
 	}
+	Ok(())
 }
 
-fn about_callback<P>(ctx: &Context<P>, request: Request) -> Result<()>
+fn about_handler<P>(ctx: &Context<P>, request: Request) -> Result<()>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -107,23 +112,14 @@ where
 	Ok(())
 }
 
-fn state_callback<P>(ctx: &Context<P>, request: Request) -> Result<()>
+fn state_handler<P>(ctx: &Context<P>, request: Request, state: Option<OperationState>) -> Result<()>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	let parms = request
-		.parameters()
-		.to_string()
-		.replace("(state=", "")
-		.replace(')', "");
-	let _ = match parms.as_str() {
-		"Created" | "created" => ctx.set_state(OperationState::Created),
-		"Configured" | "configured" => ctx.set_state(OperationState::Configured),
-		"Inactive" | "inactive" => ctx.set_state(OperationState::Inactive),
-		"Standby" | "standby" => ctx.set_state(OperationState::Standby),
-		"Active" | "active" => ctx.set_state(OperationState::Active),
-		_ => Ok(()),
-	};
+	// is a state value given?
+	if let Some(value) = state {
+		let _ = ctx.set_state(value);
+	}
 
 	// send back result
 	let name = ctx
@@ -203,7 +199,7 @@ where
 			liveliness_token: RwLock::new(None),
 		};
 
-		// add command queryables
+		// add signal queryables
 		// for zid
 		let key_expr = format!("{}/*", agent.context.uuid());
 		agent
