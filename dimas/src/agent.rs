@@ -87,11 +87,10 @@ where
 		let content: Vec<u8> = value.try_into()?;
 		let msg = Message(content);
 		let signal: Signal = Message::decode(msg)?;
-		#[allow(clippy::match_wildcard_for_single_variants)]
 		match signal {
 			Signal::About => about_handler(ctx, request)?,
+			Signal::Shutdown => shutdown_handler(ctx, request)?,
 			Signal::State { state } => state_handler(ctx, request, state)?,
-			_ => warn!("received unknown Signal"),
 		}
 	}
 	Ok(())
@@ -109,6 +108,25 @@ where
 	let state = ctx.state();
 	let value = AboutEntity::new(name, mode, zid, state);
 	request.reply(value)?;
+	Ok(())
+}
+
+fn shutdown_handler<P>(ctx: &Context<P>, request: Request) -> Result<()>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	// send back current infos
+	let name = ctx
+		.fq_name()
+		.unwrap_or_else(|| String::from("--"));
+	let mode = ctx.mode().to_string();
+	let zid = ctx.uuid();
+	let state = ctx.state();
+	let value = AboutEntity::new(name, mode, zid, state);
+	request.reply(value)?;
+	
+	// shutdown agent
+	let _ = ctx.sender().send(TaskSignal::Shutdown);
 	Ok(())
 }
 
@@ -140,7 +158,7 @@ where
 #[derive(Debug)]
 pub struct UnconfiguredAgent<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	name: Option<String>,
 	prefix: Option<String>,
@@ -149,7 +167,7 @@ where
 
 impl<'a, P> UnconfiguredAgent<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// Constructor
 	const fn new(properties: P) -> Self {
@@ -233,7 +251,7 @@ where
 #[allow(clippy::module_name_repetitions)]
 pub struct Agent<'a, P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// A reciever for signals from tasks
 	rx: Mutex<mpsc::Receiver<TaskSignal>>,
@@ -248,7 +266,7 @@ where
 
 impl<'a, P> Debug for Agent<'a, P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Agent")
@@ -261,7 +279,7 @@ where
 
 impl<'a, P> Agent<'a, P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// Builder
 	#[allow(clippy::new_ret_no_self)]
@@ -401,7 +419,7 @@ where
 #[allow(clippy::module_name_repetitions)]
 pub struct RunningAgent<'a, P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// A reciever for signals from tasks
 	rx: Mutex<mpsc::Receiver<TaskSignal>>,
@@ -416,7 +434,7 @@ where
 
 impl<'a, P> RunningAgent<'a, P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// run
 	async fn run(self) -> Result<Agent<'a, P>> {
@@ -458,6 +476,9 @@ where
 								.ok_or(DimasError::ShouldNotHappen)?
 								.manage_operation_state(&self.context.state())?;
 						},
+						TaskSignal::Shutdown => {
+							return self.stop();
+						}
 					};
 				}
 

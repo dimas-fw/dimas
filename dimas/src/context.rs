@@ -96,7 +96,7 @@ where
 
 impl<P> ContextAbstraction<P> for ContextImpl<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// Get the name
 	#[must_use]

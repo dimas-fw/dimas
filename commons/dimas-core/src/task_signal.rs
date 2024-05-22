@@ -12,14 +12,16 @@ use std::{
 #[derive(Debug, Clone)]
 #[allow(clippy::enum_variant_names)]
 pub enum TaskSignal {
-	/// Restart a certain liveliness subscriber, identified by its key expression.
+	/// Restart a certain liveliness subscriber, identified by its key expression
 	RestartLiveliness(String),
-	/// Restart a certain queryable, identified by its key expression.
+	/// Restart a certain queryable, identified by its key expression
 	RestartQueryable(String),
-	/// Restart a certain lsubscriber, identified by its key expression.
+	/// Restart a certain lsubscriber, identified by its key expression
 	RestartSubscriber(String),
-	/// Restart a certain timer, identified by its key expression.
+	/// Restart a certain timer, identified by its key expression
 	RestartTimer(String),
+	/// Shutdown whole process
+	Shutdown,
 }
 
 /// Wait non-blocking for [`TaskSignal`]s.<br>

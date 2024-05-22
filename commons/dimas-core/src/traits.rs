@@ -10,14 +10,17 @@ use crate::{
 	message_types::{Message, Response},
 	task_signal::TaskSignal,
 };
-use std::sync::{mpsc::Sender, Arc};
+use std::{
+	fmt::Debug,
+	sync::{mpsc::Sender, Arc},
+};
 use zenoh::Session;
 // endregion:	--- modules
 
 // region:		--- OperationStateHooks
 /*
 /// Trait for hooks into management of [`OperationState`]
-pub trait OperationStateHooks {
+pub trait OperationStateHooks: Debug {
 	/// Transition for unrecovable Error
 	/// # Panics
 	fn perish(&mut self) -> ! {
@@ -84,7 +87,7 @@ pub trait OperationStateHooks {
 pub type Context<P> = Arc<dyn ContextAbstraction<P>>;
 
 /// Commonalities for the context
-pub trait ContextAbstraction<P>: Send + Sync {
+pub trait ContextAbstraction<P>: Debug + Send + Sync {
 	/// Get the name
 	#[must_use]
 	fn name(&self) -> &Option<String>;
@@ -170,7 +173,7 @@ pub trait ContextAbstraction<P>: Send + Sync {
 
 // region:		--- Capability
 /// Commonalities for capability components
-pub trait Capability {
+pub trait Capability: Debug {
 	/// Checks whether state of capability component is appropriate for the given [`OperationState`].
 	/// If not, implementation has to adjusts components state to needs.
 	/// # Errors

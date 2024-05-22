@@ -32,12 +32,13 @@ impl TryFrom<&str> for OperationState {
 	type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
 	fn try_from(value: &str) -> Result<Self> {
-		match value {
-			"Created" | "created" => Ok(Self::Created),
-			"Configured" | "configured" => Ok(Self::Configured),
-			"Inactive" | "inactive" => Ok(Self::Inactive),
-			"Standby" | "standby" => Ok(Self::Standby),
-			"Active" | "active" => Ok(Self::Active),
+		let v = value.to_lowercase();
+		match v.as_str() {
+			"created" => Ok(Self::Created),
+			"configured" => Ok(Self::Configured),
+			"inactive" => Ok(Self::Inactive),
+			"standby" => Ok(Self::Standby),
+			"active" => Ok(Self::Active),
 			_ => Err(DimasError::OperationState(value.to_string()).into()),
 		}
 	}
@@ -45,13 +46,13 @@ impl TryFrom<&str> for OperationState {
 
 impl Display for OperationState {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		match *self {
-			Self::Error => Display::fmt("error", f),
-			Self::Created => Display::fmt("created", f),
-			Self::Configured => Display::fmt("configured", f),
-			Self::Inactive => Display::fmt("inactive", f),
-			Self::Standby => Display::fmt("standby", f),
-			Self::Active => Display::fmt("active", f),
+		match self {
+			Self::Error => write!(f, "Error"),
+			Self::Created => write!(f, "Created"),
+			Self::Configured => write!(f, "Configured"),
+			Self::Inactive => write!(f, "Inactive"),
+			Self::Standby => write!(f, "Standby"),
+			Self::Active => write!(f, "Active"),
 		}
 	}
 }
@@ -63,13 +64,13 @@ impl Display for OperationState {
 pub enum Signal {
 	/// About
 	About,
+	/// Shutdown application
+	Shutdown,
 	/// State
 	State {
 		/// Optional OperationState to set
 		state: Option<OperationState>,
 	},
-	/// Allows better implementation of new signals, must be last!
-	Unknown
 }
 // endregion:	--- Signal
 

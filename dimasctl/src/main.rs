@@ -35,12 +35,14 @@ enum DimasctlCommand {
 	List,
 	/// Scout for `Zenoh` entities
 	Scout,
-	/// Set state of `Zenoh` entities
+	/// Set state of entities
 	SetState {
 		/// The new state
 		#[arg(value_parser = operation_state_parser)]
 		state: Option<OperationState>,
 	},
+	/// Shurdown entities
+	Shutdown,
 }
 // endregion:	--- Commands
 
@@ -54,18 +56,6 @@ fn main() {
 		.map_or_else(|| String::from("**"), |selector| selector);
 
 	match &args.command {
-		DimasctlCommand::Scout => {
-			println!("List of scouted Zenoh entities:");
-			println!("ZenohId                           Kind    Locators");
-			for item in dimas_commands::scouting_list(&config) {
-				println!(
-					"{:32}  {:6}  {:?}",
-					item.zid(),
-					item.kind(),
-					item.locators()
-				);
-			}
-		}
 		DimasctlCommand::List => {
 			let com = Communicator::new(&config).expect("failed to create 'Communicator'");
 			println!("List of found DiMAS entities:");
@@ -80,11 +70,37 @@ fn main() {
 				);
 			}
 		}
+		DimasctlCommand::Scout => {
+			println!("List of scouted Zenoh entities:");
+			println!("ZenohId                           Kind    Locators");
+			for item in dimas_commands::scouting_list(&config) {
+				println!(
+					"{:32}  {:6}  {:?}",
+					item.zid(),
+					item.kind(),
+					item.locators()
+				);
+			}
+		}
 		DimasctlCommand::SetState { state } => {
 			let com = Communicator::new(&config).expect("failed to create 'Communicator'");
 			println!("List of current states of DiMAS entities:");
 			println!("{header}");
 			for item in dimas_commands::set_state(&com, &base_selector, state.to_owned()) {
+				println!(
+					"{:32}  {:6}  {:10}  {}",
+					item.zid(),
+					item.kind(),
+					item.state(),
+					item.name()
+				);
+			}
+		}
+		DimasctlCommand::Shutdown => {
+			let com = Communicator::new(&config).expect("failed to create 'Communicator'");
+			println!("List of shut down DiMAS entities:");
+			println!("{header}");
+			for item in dimas_commands::shutdown(&com, &base_selector) {
 				println!(
 					"{:32}  {:6}  {:10}  {}",
 					item.zid(),
