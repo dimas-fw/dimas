@@ -35,6 +35,9 @@ pub enum DimasError {
 	/// Decoding of message failed
 	#[error("message decoding failed")]
 	Decoding,
+	/// Decoding of message failed
+	#[error("no message received")]
+	NoMessage,
 	/// Read access to properties failed
 	#[error("read of properties failed")]
 	ReadProperties,

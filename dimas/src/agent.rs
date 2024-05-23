@@ -69,6 +69,7 @@ use dimas_core::{
 	traits::{Capability, Context, ContextAbstraction},
 };
 use std::sync::Arc;
+use std::time::Duration;
 use std::{
 	fmt::Debug,
 	sync::{mpsc, Mutex, RwLock},
@@ -125,8 +126,12 @@ where
 	let value = AboutEntity::new(name, mode, zid, state);
 	request.reply(value)?;
 	
-	// shutdown agent
-	let _ = ctx.sender().send(TaskSignal::Shutdown);
+	// shutdown agent after a short wait time to be able to send response
+	let ctx = ctx.clone();
+	tokio::task::spawn(async move {
+		tokio::time::sleep(Duration::from_millis(2)).await;
+		let _ = ctx.sender().send(TaskSignal::Shutdown);
+	});
 	Ok(())
 }
 
