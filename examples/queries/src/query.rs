@@ -47,7 +47,7 @@ async fn main() -> Result<()> {
 		.callback(move |ctx| -> Result<()> {
 			info!("Querying [{counter}]");
 			// querying with stored query
-			ctx.get_with("query")?;
+			ctx.get_with("query", None)?;
 			counter += 1;
 			Ok(())
 		})

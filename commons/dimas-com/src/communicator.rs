@@ -106,63 +106,28 @@ impl Communicator {
 			.map_err(|_| DimasError::Delete.into())
 	}
 
-	/// Send an ad hoc query using the given `selector`.
+	/// Send an ad hoc query with an optional [`Message`] using the given `selector`.
 	/// Answers are collected via callback
 	/// # Errors
 	/// # Panics
-	pub fn get<F>(&self, selector: &str, mut callback: F) -> Result<()>
+	pub fn get<F>(&self, selector: &str, message: Option<&Message>, mut callback: F) -> Result<()>
 	where
 		F: FnMut(Response) + Sized,
 	{
-		let replies = self
+		let mut query = self
 			.session
 			.get(selector)
 			.consolidation(ConsolidationMode::None)
 			.target(QueryTarget::All)
 			.allowed_destination(Locality::Any)
-			.timeout(Duration::from_millis(1000))
-			.res_sync()
-			.map_err(|_| DimasError::ShouldNotHappen)?;
+			.timeout(Duration::from_millis(200));
 
-		while let Ok(reply) = replies.recv() {
-			match reply.sample {
-				Ok(sample) => match sample.kind {
-					SampleKind::Put => {
-						let content: Vec<u8> = sample.value.try_into()?;
-						callback(Response(content));
-					}
-					SampleKind::Delete => {
-						println!("Delete in Query");
-					}
-				},
-				Err(err) => {
-					println!(
-						">> Received (ERROR: '{}')",
-						String::try_from(&err).expect("snh")
-					);
-				}
-			}
-		}
-		Ok(())
-	}
-
-	/// Send an ad hoc query with a [`Message`] using the given `selector`.
-	/// Answers are collected via callback
-	/// # Errors
-	/// # Panics
-	pub fn get_with_value<F>(&self, selector: &str, message: &Message, mut callback: F) -> Result<()>
-	where
-		F: FnMut(Response) + Sized,
-	{
-		let value = message.value().to_owned();
-		let replies = self
-			.session
-			.get(selector)
-			.consolidation(ConsolidationMode::None)
-			.target(QueryTarget::All)
-			.allowed_destination(Locality::Any)
-			.timeout(Duration::from_millis(1000))
-			.with_value(value)
+		if let Some(message) = message {
+			let value = message.value().to_owned();
+			query = query.with_value(value);
+		};
+	
+		let replies = query
 			.res_sync()
 			.map_err(|_| DimasError::ShouldNotHappen)?;
 

@@ -69,7 +69,7 @@ where
 	pub const fn new(context: Context<P>) -> Self {
 		Self {
 			context,
-			activation_state: OperationState::Active,
+			activation_state: OperationState::Standby,
 			priority: Priority::Data,
 			congestion_control: CongestionControl::Drop,
 			key_expr: NoKeyExpression,

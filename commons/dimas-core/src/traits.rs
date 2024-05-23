@@ -158,16 +158,16 @@ pub trait ContextAbstraction<P>: Debug + Send + Sync {
 	///
 	fn delete_with(&self, topic: &str) -> Result<()>;
 
-	/// Send an ad hoc query using the given `topic`.
+	/// Send an ad hoc query using the given `topic` with an optional [`Message`].
 	/// The `topic` will be enhanced with the group prefix.
 	/// # Errors
-	fn get(&self, topic: &str, callback: Box<dyn FnMut(Response)>) -> Result<()>;
+	fn get(&self, topic: &str, message: Option<&Message>, callback: Box<dyn FnMut(Response)>) -> Result<()>;
 
-	/// Method to query data with a stored Query
+	/// Method to query data with a stored Query and an optional [`Message`]
 	///
 	/// # Errors
 	///
-	fn get_with(&self, topic: &str) -> Result<()>;
+	fn get_with(&self, topic: &str, message: Option<&Message>) -> Result<()>;
 }
 // endregion:	--- Context
 

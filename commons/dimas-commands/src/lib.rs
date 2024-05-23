@@ -24,7 +24,7 @@ pub fn about_list(com: &Communicator, base_selector: &String) -> Vec<AboutEntity
 	let selector = format!("{base_selector}/signal");
 	let message = Message::encode(&Signal::About);
 	// set state for entities matching the selector
-	com.get_with_value(&selector, &message, |response| {
+	com.get(&selector, Some(&message), |response| {
 		let response: AboutEntity = response.decode().expect("decode failed");
 		map.entry(response.zid().to_string())
 			.or_insert(response);
@@ -71,7 +71,7 @@ pub fn set_state(
 	let selector = format!("{base_selector}/signal");
 	let message = Message::encode(&Signal::State { state });
 	// set state for entities matching the selector
-	com.get_with_value(&selector, &message, |response| {
+	com.get(&selector, Some(&message), |response| {
 		let response: AboutEntity = response.decode().expect("decode failed");
 		map.entry(response.zid().to_string())
 			.or_insert(response);
@@ -96,7 +96,7 @@ pub fn shutdown(
 	let selector = format!("{base_selector}/signal");
 	let message = Message::encode(&Signal::Shutdown);
 	// set state for entities matching the selector
-	com.get_with_value(&selector, &message, |response| {
+	com.get(&selector, Some(&message), |response| {
 		let response: AboutEntity = response.decode().expect("decode failed");
 		map.entry(response.zid().to_string())
 			.or_insert(response);

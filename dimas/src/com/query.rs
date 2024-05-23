@@ -6,7 +6,7 @@
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
-	message_types::Response,
+	message_types::{Message, Response},
 	traits::{Capability, CommunicationCapability, Context},
 };
 #[cfg(doc)]
@@ -91,7 +91,7 @@ where
 	pub const fn new(context: Context<P>) -> Self {
 		Self {
 			context,
-			activation_state: OperationState::Active,
+			activation_state: OperationState::Standby,
 			allowed_destination: Locality::Any,
 			timeout: None,
 			key_expr: NoKeyExpression,
@@ -437,9 +437,9 @@ where
 		Ok(())
 	}
 
-	/// run a query
-	#[instrument(name="query", level = Level::ERROR, skip_all)]
-	pub fn get(&self) -> Result<()> {
+	/// Run a Query with an optional [`Message`].
+	#[instrument(name="query with message", level = Level::ERROR, skip_all)]
+	pub fn get(&self, message: Option<&Message>) -> Result<()> {
 		let cb = self.response_callback.clone();
 		let session = self.context.session();
 		let mut query = session
@@ -450,6 +450,11 @@ where
 
 		if let Some(timeout) = self.timeout {
 			query = query.timeout(timeout);
+		};
+
+		if let Some(message) = message {
+			let value = message.value().to_owned();
+			query = query.with_value(value);
 		};
 
 		let replies = query
