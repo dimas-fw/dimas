@@ -132,7 +132,7 @@ where
 
 	/// Run a Query with an optional [`Message`].
 	#[instrument(name="query with message", level = Level::ERROR, skip_all)]
-	pub fn get(&self, message: Option<&Message>) -> Result<()> {
+	pub fn get(&self, message: Option<&Message>, mut callback: Option<Box<dyn FnMut(Response) -> Result<()>>>) -> Result<()> {
 		let cb = self.response_callback.clone();
 		let session = self.context.session();
 		let mut query = session
@@ -160,16 +160,20 @@ where
 					SampleKind::Put => {
 						let content: Vec<u8> = sample.value.try_into()?;
 						let msg = Response(content);
-						let guard = cb.lock();
-						match guard {
-							Ok(mut lock) => {
-								if let Err(error) = lock(&self.context.clone(), msg) {
-									error!("callback failed with {error}");
+						if callback.is_none() {
+							let guard = cb.lock();
+							match guard {
+								Ok(mut lock) => {
+									if let Err(error) = lock(&self.context.clone(), msg) {
+										error!("callback failed with {error}");
+									}
+								}
+								Err(err) => {
+									error!("callback lock failed with {err}");
 								}
 							}
-							Err(err) => {
-								error!("callback lock failed with {err}");
-							}
+						} else {
+							callback.as_mut().expect("snh")(msg)?;
 						}
 					}
 					SampleKind::Delete => {

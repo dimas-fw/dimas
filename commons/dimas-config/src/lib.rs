@@ -230,7 +230,6 @@ pub fn find_config_file(filename: &str) -> Result<std::path::PathBuf> {
 		}
 		#[cfg(test)]
 		let path = cwd.join("../../.config").join(filename);
-		dbg!(&path);
 		if path.is_file() {
 			return Ok(path);
 		}

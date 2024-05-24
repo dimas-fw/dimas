@@ -38,7 +38,21 @@ async fn main() -> Result<()> {
 	// add a queryable
 	agent
 		.queryable()
-		.topic("query")
+		.topic("query1")
+		.callback(queryable)
+		.add()?;
+	
+	// add a queryable
+	agent
+		.queryable()
+		.topic("query2")
+		.callback(queryable)
+		.add()?;
+
+	// add a queryable
+	agent
+		.queryable()
+		.topic("query3")
 		.callback(queryable)
 		.add()?;
 

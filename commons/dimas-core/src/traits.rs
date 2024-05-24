@@ -71,31 +71,36 @@ pub trait ContextAbstraction<P>: Debug + Send + Sync {
 	/// # Errors
 	fn write(&self) -> Result<std::sync::RwLockWriteGuard<'_, P>>;
 
-	/// Method to do an ad hoc publishing for a `topic`
+	/// Method to do a publishing for a `topic`
+	/// The `topic` will be enhanced with the prefix.
+	/// If there is a publisher stored, it will be used
+	/// otherwise an ad-hoc publishing will be done
 	///
 	/// # Errors
 	fn put(&self, topic: &str, message: Message) -> Result<()>;
 
-	/// Method to do an ad hoc deletion for the `topic`
+	/// Method to do a deletion for a `topic`
+	/// The `topic` will be enhanced with the prefix.
+	/// If there is a publisher stored, it will be used
+	/// otherwise an ad-hoc deletion will be done
 	///
 	/// # Errors
 	fn delete(&self, topic: &str) -> Result<()>;
 
-	/// Send an ad hoc query using the given `topic` with an optional [`Message`].
-	/// The `topic` will be enhanced with the group prefix.
+	/// Send a query for a `topic` with an optional [`Message`].
+	/// The `topic` will be enhanced with the prefix.
+	/// If there is a query stored, it will be used
+	/// otherwise an ad-hoc query will be done
+	/// If a callback is given for a stored query, 
+	/// it will be called instead of the stored callback
+	/// 
 	/// # Errors
 	fn get(
 		&self,
 		topic: &str,
 		message: Option<&Message>,
-		callback: Box<dyn FnMut(Response)>,
+		callback: Option<Box<dyn FnMut(Response) -> Result<()>>>,
 	) -> Result<()>;
-
-	/// Method to query data with a stored Query and an optional [`Message`]
-	///
-	/// # Errors
-	///
-	fn get_with(&self, topic: &str, message: Option<&Message>) -> Result<()>;
 }
 // endregion:	--- Context
 

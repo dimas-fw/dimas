@@ -268,32 +268,19 @@ where
 		Ok(())
 	}
 
+	#[instrument(level = Level::ERROR, skip_all)]
 	fn get(
 		&self,
 		topic: &str,
 		message: Option<&Message>,
-		callback: Box<dyn FnMut(Response)>,
+		callback: Option<Box<dyn FnMut(Response) -> Result<()>>>,
 	) -> Result<()> {
-		let selector = self
-			.prefix()
-			.clone()
-			.take()
-			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
-		self.communicator
-			.get(&selector, message, callback)
-	}
-
-	/// Method to query data with a stored Query
-	///
-	/// # Errors
-	///
-	#[instrument(level = Level::ERROR, skip_all)]
-	fn get_with(&self, topic: &str, message: Option<&Message>) -> Result<()> {
 		let key_expr = self
 			.prefix()
 			.clone()
 			.take()
 			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
+
 		if self
 			.queries
 			.read()
@@ -306,7 +293,10 @@ where
 				.map_err(|_| DimasError::ReadContext("queries".into()))?
 				.get(&key_expr)
 				.ok_or(DimasError::ShouldNotHappen)?
-				.get(message)?;
+				.get(message, callback)?;
+		} else {
+			self.communicator
+			.get(&key_expr, message, callback.expect("snh"))?;
 		};
 		Ok(())
 	}

@@ -9,6 +9,7 @@ use dimas_com::{
 };
 use dimas_config::Config;
 use dimas_core::{
+	error::Result,
 	enums::{OperationState, Signal},
 	message_types::Message,
 };
@@ -27,10 +28,11 @@ pub fn about_list(com: &Communicator, base_selector: &String) -> Vec<AboutEntity
 	let selector = format!("{base_selector}/signal");
 	let message = Message::encode(&Signal::About);
 	// set state for entities matching the selector
-	com.get(&selector, Some(&message), |response| {
+	com.get(&selector, Some(&message), |response|  -> Result<()> {
 		let response: AboutEntity = response.decode().expect("decode failed");
 		map.entry(response.zid().to_string())
 			.or_insert(response);
+		Ok(())
 	})
 	.expect("querying 'about' failed");
 
@@ -74,10 +76,11 @@ pub fn set_state(
 	let selector = format!("{base_selector}/signal");
 	let message = Message::encode(&Signal::State { state });
 	// set state for entities matching the selector
-	com.get(&selector, Some(&message), |response| {
+	com.get(&selector, Some(&message), |response|  -> Result<()> {
 		let response: AboutEntity = response.decode().expect("decode failed");
 		map.entry(response.zid().to_string())
 			.or_insert(response);
+		Ok(())
 	})
 	.expect("querying 'state' failed");
 
@@ -96,10 +99,11 @@ pub fn shutdown(com: &Communicator, base_selector: &String) -> Vec<AboutEntity> 
 	let selector = format!("{base_selector}/signal");
 	let message = Message::encode(&Signal::Shutdown);
 	// set state for entities matching the selector
-	com.get(&selector, Some(&message), |response| {
+	com.get(&selector, Some(&message), |response| -> Result<()> {
 		let response: AboutEntity = response.decode().expect("decode failed");
 		map.entry(response.zid().to_string())
 			.or_insert(response);
+		Ok(())
 	})
 	.expect("querying 'state' failed");
 

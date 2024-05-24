@@ -10,7 +10,6 @@ use dimas_core::{
 };
 use std::fmt::Debug;
 use std::sync::Arc;
-use std::time::Duration;
 use zenoh::prelude::{r#async::*, sync::SyncResolve};
 // endregion:	--- modules
 
@@ -112,15 +111,15 @@ impl Communicator {
 	/// # Panics
 	pub fn get<F>(&self, selector: &str, message: Option<&Message>, mut callback: F) -> Result<()>
 	where
-		F: FnMut(Response) + Sized,
+		F: FnMut(Response) -> Result<()> + Sized,
 	{
 		let mut query = self
 			.session
 			.get(selector)
 			.consolidation(ConsolidationMode::None)
 			.target(QueryTarget::All)
-			.allowed_destination(Locality::Any)
-			.timeout(Duration::from_millis(200));
+			.allowed_destination(Locality::Any);
+			//.timeout(Duration::from_millis(1000));
 
 		if let Some(message) = message {
 			let value = message.value().to_owned();
@@ -136,7 +135,7 @@ impl Communicator {
 				Ok(sample) => match sample.kind {
 					SampleKind::Put => {
 						let content: Vec<u8> = sample.value.try_into()?;
-						callback(Response(content));
+						callback(Response(content))?;
 					}
 					SampleKind::Delete => {
 						println!("Delete in Query");
@@ -144,8 +143,9 @@ impl Communicator {
 				},
 				Err(err) => {
 					println!(
-						">> Received (ERROR: '{}')",
-						String::try_from(&err).expect("snh")
+						">> Received (ERROR: '{}' for {})",
+						String::try_from(&err).expect("snh"),
+						selector
 					);
 				}
 			}

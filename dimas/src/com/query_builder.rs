@@ -89,7 +89,7 @@ where
 			response_callback: NoResponseCallback,
 			storage: NoStorage,
 			mode: ConsolidationMode::None,
-			target: QueryTarget::BestMatching,
+			target: QueryTarget::All,
 		}
 	}
 }
@@ -311,7 +311,6 @@ where
 {
 	/// Build and add the query to the agents context
 	/// # Errors
-	///
 	pub fn add(self) -> Result<Option<Query<P>>> {
 		let collection = self.storage.storage.clone();
 		let q = self.build()?;
