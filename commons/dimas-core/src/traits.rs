@@ -17,71 +17,6 @@ use std::{
 use zenoh::Session;
 // endregion:	--- modules
 
-// region:		--- OperationStateHooks
-/*
-/// Trait for hooks into management of [`OperationState`]
-pub trait OperationStateHooks: Debug {
-	/// Transition for unrecovable Error
-	/// # Panics
-	fn perish(&mut self) -> ! {
-		panic!("recovery not defined/possible, process exits")
-	}
-	/// Transition from Error to Created
-	/// Default implementation dies
-	/// # Errors
-	fn recover(&mut self, wanted: &OperationState) -> Result<()> {
-		let _ = wanted;
-		self.perish()
-	}
-	/// Transition from any state to Error
-	/// Default implementation tries to recover
-	/// # Errors
-	fn error(&mut self, state: &OperationState) -> Result<()> {
-		self.recover(state)
-	}
-
-	/// Transition from Created to Configured
-	/// Default implementation does nothing
-	/// # Errors
-	fn configure(&mut self) -> Result<()> {
-		Ok(())
-	}
-	/// Transition from Configured to Created
-	/// Default implementation does nothing
-	/// # Errors
-	fn deconfigure(&mut self) -> Result<()> {
-		Ok(())
-	}
-
-	/// Transition from Configured to Inactive
-	/// Default implementation does nothing
-	/// # Errors
-	fn attend(&mut self) -> Result<()> {
-		Ok(())
-	}
-	/// Transtion from Inactive to Configured
-	/// Default implementation does nothing
-	/// # Errors
-	fn deattend(&mut self) -> Result<()> {
-		Ok(())
-	}
-
-	/// Transition from Inactive to Standby
-	/// # Errors
-	/// Default implementation does nothing
-	fn standby(&mut self) -> Result<()> {
-		Ok(())
-	}
-	/// Transition from Standby to Inactive
-	/// # Errors
-	/// Default implementation does nothing
-	fn destandby(&mut self) -> Result<()> {
-		Ok(())
-	}
-}
-*/
-// endregion:	--- OperationStateHooks
-
 // region:		--- Context
 /// Typedef for simplified usage
 pub type Context<P> = Arc<dyn ContextAbstraction<P>>;
@@ -161,7 +96,12 @@ pub trait ContextAbstraction<P>: Debug + Send + Sync {
 	/// Send an ad hoc query using the given `topic` with an optional [`Message`].
 	/// The `topic` will be enhanced with the group prefix.
 	/// # Errors
-	fn get(&self, topic: &str, message: Option<&Message>, callback: Box<dyn FnMut(Response)>) -> Result<()>;
+	fn get(
+		&self,
+		topic: &str,
+		message: Option<&Message>,
+		callback: Box<dyn FnMut(Response)>,
+	) -> Result<()>;
 
 	/// Method to query data with a stored Query and an optional [`Message`]
 	///
@@ -179,7 +119,4 @@ pub trait Capability: Debug {
 	/// # Errors
 	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()>;
 }
-
-/// Commonalities for communication capability components
-pub trait CommunicationCapability: Capability {}
 // endregion:	--- Capability

@@ -4,9 +4,9 @@
 //!
 
 // region:		--- modules
+use crate::error::{DimasError, Result};
 use bitcode::{Decode, Encode};
 use std::fmt::{Debug, Display};
-use crate::error::{DimasError, Result};
 // endregion:	--- modules
 
 // region:		--- OperationState
@@ -73,4 +73,3 @@ pub enum Signal {
 	},
 }
 // endregion:	--- Signal
-

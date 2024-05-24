@@ -8,7 +8,10 @@ use dimas_com::{
 	Communicator,
 };
 use dimas_config::Config;
-use dimas_core::{enums::{OperationState, Signal}, message_types::Message};
+use dimas_core::{
+	enums::{OperationState, Signal},
+	message_types::Message,
+};
 use itertools::Itertools;
 use std::{collections::HashMap, time::Duration};
 use zenoh::{config::WhatAmI, prelude::sync::*};
@@ -87,10 +90,7 @@ pub fn set_state(
 /// # Panics
 /// if something goes wrong
 #[must_use]
-pub fn shutdown(
-	com: &Communicator,
-	base_selector: &String,
-) -> Vec<AboutEntity> {
+pub fn shutdown(com: &Communicator, base_selector: &String) -> Vec<AboutEntity> {
 	let mut map: HashMap<String, AboutEntity> = HashMap::new();
 
 	let selector = format!("{base_selector}/signal");

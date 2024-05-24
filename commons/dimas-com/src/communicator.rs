@@ -126,7 +126,7 @@ impl Communicator {
 			let value = message.value().to_owned();
 			query = query.with_value(value);
 		};
-	
+
 		let replies = query
 			.res_sync()
 			.map_err(|_| DimasError::ShouldNotHappen)?;

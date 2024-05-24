@@ -46,8 +46,9 @@
 
 // region:		--- modules
 use crate::com::{
-	liveliness::LivelinessSubscriberBuilder, publisher::PublisherBuilder, query::QueryBuilder,
-	queryable::QueryableBuilder, subscriber::SubscriberBuilder,
+	liveliness_builder::LivelinessSubscriberBuilder, publisher_builder::PublisherBuilder,
+	query_builder::QueryBuilder, queryable_builder::QueryableBuilder,
+	subscriber_builder::SubscriberBuilder,
 };
 use crate::context::ContextImpl;
 use crate::timer::TimerBuilder;
@@ -125,7 +126,7 @@ where
 	let state = ctx.state();
 	let value = AboutEntity::new(name, mode, zid, state);
 	request.reply(value)?;
-	
+
 	// shutdown agent after a short wait time to be able to send response
 	let ctx = ctx.clone();
 	tokio::task::spawn(async move {
@@ -303,8 +304,8 @@ where
 		&self,
 	) -> LivelinessSubscriberBuilder<
 		P,
-		crate::com::liveliness::NoPutCallback,
-		crate::com::liveliness::Storage<P>,
+		crate::com::liveliness_builder::NoPutCallback,
+		crate::com::liveliness_builder::Storage<P>,
 	> {
 		LivelinessSubscriberBuilder::new(self.context.clone())
 			.storage(self.context.liveliness_subscribers().clone())
@@ -316,8 +317,8 @@ where
 		&self,
 	) -> PublisherBuilder<
 		P,
-		crate::com::publisher::NoKeyExpression,
-		crate::com::publisher::Storage<P>,
+		crate::com::publisher_builder::NoKeyExpression,
+		crate::com::publisher_builder::Storage<P>,
 	> {
 		PublisherBuilder::new(self.context.clone()).storage(self.context.publishers().clone())
 	}
@@ -328,9 +329,9 @@ where
 		&self,
 	) -> QueryBuilder<
 		P,
-		crate::com::query::NoKeyExpression,
-		crate::com::query::NoResponseCallback,
-		crate::com::query::Storage<P>,
+		crate::com::query_builder::NoKeyExpression,
+		crate::com::query_builder::NoResponseCallback,
+		crate::com::query_builder::Storage<P>,
 	> {
 		QueryBuilder::new(self.context.clone()).storage(self.context.queries().clone())
 	}
@@ -341,9 +342,9 @@ where
 		&self,
 	) -> QueryableBuilder<
 		P,
-		crate::com::queryable::NoKeyExpression,
-		crate::com::queryable::NoRequestCallback,
-		crate::com::queryable::Storage<P>,
+		crate::com::queryable_builder::NoKeyExpression,
+		crate::com::queryable_builder::NoRequestCallback,
+		crate::com::queryable_builder::Storage<P>,
 	> {
 		QueryableBuilder::new(self.context.clone()).storage(self.context.queryables().clone())
 	}
@@ -354,9 +355,9 @@ where
 		&self,
 	) -> SubscriberBuilder<
 		P,
-		crate::com::subscriber::NoKeyExpression,
-		crate::com::subscriber::NoPutCallback,
-		crate::com::subscriber::Storage<P>,
+		crate::com::subscriber_builder::NoKeyExpression,
+		crate::com::subscriber_builder::NoPutCallback,
+		crate::com::subscriber_builder::Storage<P>,
 	> {
 		SubscriberBuilder::new(self.context.clone()).storage(self.context.subscribers().clone())
 	}

@@ -275,13 +275,19 @@ where
 		Ok(())
 	}
 
-	fn get(&self, topic: &str, message: Option<&Message>, callback: Box<dyn FnMut(Response)>) -> Result<()> {
+	fn get(
+		&self,
+		topic: &str,
+		message: Option<&Message>,
+		callback: Box<dyn FnMut(Response)>,
+	) -> Result<()> {
 		let selector = self
 			.prefix()
 			.clone()
 			.take()
 			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
-		self.communicator.get(&selector, message, callback)
+		self.communicator
+			.get(&selector, message, callback)
 	}
 
 	/// Method to query data with a stored Query
