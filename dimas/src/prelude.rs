@@ -21,7 +21,7 @@ pub use zenoh::subscriber::Reliability;
 
 // dimas stuff
 pub use crate::agent::Agent;
-pub use crate::com::liveliness::{LivelinessCallback, LivelinessSubscriber};
+pub use crate::com::liveliness::LivelinessSubscriber;
 pub use crate::com::liveliness_builder::LivelinessSubscriberBuilder;
 pub use crate::com::publisher::Publisher;
 pub use crate::com::publisher_builder::PublisherBuilder;

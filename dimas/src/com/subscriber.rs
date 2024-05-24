@@ -3,6 +3,8 @@
 //! Module `subscriber` provides a message `Subscriber` which can be created using the `SubscriberBuilder`.
 //! A `Subscriber` can optional subscribe on a delete message.
 
+use std::sync::{Arc, Mutex};
+
 // region:		--- modules
 // these ones are only for doc needed
 #[cfg(doc)]
@@ -14,7 +16,6 @@ use dimas_core::{
 	task_signal::TaskSignal,
 	traits::{Capability, Context},
 };
-use std::sync::{Arc, Mutex};
 use tokio::task::JoinHandle;
 use tracing::{error, info, instrument, warn, Level};
 use zenoh::{
@@ -24,14 +25,13 @@ use zenoh::{
 // endregion:	--- modules
 
 // region:		--- types
-/// Type definition for a subscribers `put` callback function
-#[allow(clippy::module_name_repetitions)]
-pub type SubscriberPutCallback<P> =
-	Arc<Mutex<Box<dyn FnMut(&Context<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static>>>;
-/// Type definition for a subscribers `delete` callback function
-#[allow(clippy::module_name_repetitions)]
-pub type SubscriberDeleteCallback<P> =
-	Arc<Mutex<Box<dyn FnMut(&Context<P>) -> Result<()> + Send + Sync + Unpin + 'static>>>;
+/// Type definition for a subscribers atomic reference counted `put` callback function
+pub type ArcSubscriberPutCallback<P> =
+	Arc<Mutex<dyn FnMut(&Context<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static>>;
+
+/// Type definition for a subscribers atomic reference counted `delete` callback function
+pub type ArcSubscriberDeleteCallback<P> =
+	Arc<Mutex<dyn FnMut(&Context<P>) -> Result<()> + Send + Sync + Unpin + 'static>>;
 // endregion:	--- types
 
 // region:		--- Subscriber
@@ -46,9 +46,9 @@ where
 	context: Context<P>,
 	/// [`OperationState`] on which this subscriber is started
 	activation_state: OperationState,
-	put_callback: SubscriberPutCallback<P>,
+	put_callback: ArcSubscriberPutCallback<P>,
 	reliability: Reliability,
-	delete_callback: Option<SubscriberDeleteCallback<P>>,
+	delete_callback: Option<ArcSubscriberDeleteCallback<P>>,
 	handle: Option<JoinHandle<()>>,
 }
 
@@ -88,9 +88,9 @@ where
 		key_expr: String,
 		context: Context<P>,
 		activation_state: OperationState,
-		put_callback: SubscriberPutCallback<P>,
+		put_callback: ArcSubscriberPutCallback<P>,
 		reliability: Reliability,
-		delete_callback: Option<SubscriberDeleteCallback<P>>,
+		delete_callback: Option<ArcSubscriberDeleteCallback<P>>,
 	) -> Self {
 		Self {
 			key_expr,
@@ -171,8 +171,8 @@ where
 #[instrument(name="subscriber", level = Level::ERROR, skip_all)]
 async fn run_subscriber<P>(
 	key_expr: String,
-	p_cb: SubscriberPutCallback<P>,
-	d_cb: Option<SubscriberDeleteCallback<P>>,
+	p_cb: ArcSubscriberPutCallback<P>,
+	d_cb: Option<ArcSubscriberDeleteCallback<P>>,
 	reliability: Reliability,
 	ctx: Context<P>,
 ) -> Result<()>

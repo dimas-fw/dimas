@@ -16,7 +16,7 @@ use dimas_core::{
 use std::sync::{Arc, Mutex, RwLock};
 use zenoh::subscriber::Reliability;
 
-use super::subscriber::{Subscriber, SubscriberDeleteCallback, SubscriberPutCallback};
+use super::subscriber::{ArcSubscriberDeleteCallback, ArcSubscriberPutCallback, Subscriber};
 // endregion:	--- modules
 
 // region:		--- states
@@ -47,7 +47,7 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// Put callback for the [`Subscriber`]
-	pub callback: SubscriberPutCallback<P>,
+	pub callback: ArcSubscriberPutCallback<P>,
 }
 // endregion:	--- states
 
@@ -65,7 +65,7 @@ where
 	put_callback: C,
 	storage: S,
 	reliability: Reliability,
-	delete_callback: Option<SubscriberDeleteCallback<P>>,
+	delete_callback: Option<ArcSubscriberDeleteCallback<P>>,
 }
 
 impl<P> SubscriberBuilder<P, NoKeyExpression, NoPutCallback, NoStorage>
@@ -195,7 +195,7 @@ where
 			delete_callback,
 			..
 		} = self;
-		let callback: SubscriberPutCallback<P> = Arc::new(Mutex::new(Box::new(callback)));
+		let callback: ArcSubscriberPutCallback<P> = Arc::new(Mutex::new(Box::new(callback)));
 		SubscriberBuilder {
 			context,
 			activation_state,

@@ -23,10 +23,7 @@ use zenoh::prelude::{r#async::AsyncResolve, SampleKind, SessionDeclarations};
 // endregion:	--- modules
 
 // region:		--- types
-/// Type definition for liveliness callback function
-#[allow(clippy::module_name_repetitions)]
-pub type LivelinessCallback<P> =
-	Box<dyn FnMut(&Context<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static>;
+/// Type definition for liveliness atomic reference counted callback function
 pub type ArcLivelinessCallback<P> =
 	Arc<Mutex<dyn FnMut(&Context<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static>>;
 // endregion:	--- types

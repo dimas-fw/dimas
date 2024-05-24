@@ -15,7 +15,7 @@ use std::{
 };
 use zenoh::sample::Locality;
 
-use super::queryable::{Queryable, QueryableCallback};
+use super::queryable::{ArcQueryableCallback, Queryable};
 // endregion:	--- modules
 
 // region:		--- states
@@ -46,7 +46,7 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// Request callback for the [`Queryable`]
-	pub request: QueryableCallback<P>,
+	pub request: ArcQueryableCallback<P>,
 }
 // endregion:   --- states
 
@@ -190,7 +190,7 @@ where
 			storage,
 			..
 		} = self;
-		let request: QueryableCallback<P> = Arc::new(Mutex::new(Box::new(callback)));
+		let request: ArcQueryableCallback<P> = Arc::new(Mutex::new(Box::new(callback)));
 		QueryableBuilder {
 			context,
 			activation_state,

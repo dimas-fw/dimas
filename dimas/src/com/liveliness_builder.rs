@@ -4,7 +4,7 @@
 //! A `LivelinessSubscriber` can optional subscribe on a delete message.
 
 // region:		--- modules
-use super::liveliness::{ArcLivelinessCallback, LivelinessCallback, LivelinessSubscriber};
+use super::liveliness::{ArcLivelinessCallback, LivelinessSubscriber};
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
@@ -133,7 +133,10 @@ where
 
 	/// Set liveliness subscribers callback for `delete` messages
 	#[must_use]
-	pub fn delete_callback(self, callback: LivelinessCallback<P>) -> Self {
+	pub fn delete_callback<F>(self, callback: F) -> Self
+	where
+		F: FnMut(&Context<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static,
+	{
 		let Self {
 			token,
 			context,
@@ -161,10 +164,10 @@ where
 {
 	/// Set liveliness subscribers callback for `put` messages
 	#[must_use]
-	pub fn put_callback(
-		self,
-		callback: LivelinessCallback<P>,
-	) -> LivelinessSubscriberBuilder<P, PutCallback<P>, S> {
+	pub fn put_callback<F>(self, callback: F) -> LivelinessSubscriberBuilder<P, PutCallback<P>, S>
+	where
+		F: FnMut(&Context<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static,
+	{
 		let Self {
 			token,
 			context,

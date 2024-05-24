@@ -21,10 +21,9 @@ use zenoh::sample::Locality;
 // endregion:	--- modules
 
 // region:		--- types
-/// type defnition for the queryables callback function.
-#[allow(clippy::module_name_repetitions)]
-pub type QueryableCallback<P> =
-	Arc<Mutex<Box<dyn FnMut(&Context<P>, Request) -> Result<()> + Send + Sync + Unpin + 'static>>>;
+/// type defnition for the queryables atomic reference counted callback function.
+pub type ArcQueryableCallback<P> =
+	Arc<Mutex<dyn FnMut(&Context<P>, Request) -> Result<()> + Send + Sync + Unpin + 'static>>;
 // endregion:	--- types
 
 // region:		--- Queryable
@@ -37,7 +36,7 @@ where
 	/// Context for the Subscriber
 	context: Context<P>,
 	activation_state: OperationState,
-	request_callback: QueryableCallback<P>,
+	request_callback: ArcQueryableCallback<P>,
 	completeness: bool,
 	allowed_origin: Locality,
 	handle: Option<JoinHandle<()>>,
@@ -80,7 +79,7 @@ where
 		key_expr: String,
 		context: Context<P>,
 		activation_state: OperationState,
-		request_callback: QueryableCallback<P>,
+		request_callback: ArcQueryableCallback<P>,
 		completeness: bool,
 		allowed_origin: Locality,
 	) -> Self {
@@ -156,7 +155,7 @@ where
 #[instrument(name="queryable", level = Level::ERROR, skip_all)]
 async fn run_queryable<P>(
 	key_expr: String,
-	cb: QueryableCallback<P>,
+	cb: ArcQueryableCallback<P>,
 	completeness: bool,
 	allowed_origin: Locality,
 	ctx: Context<P>,
