@@ -218,12 +218,6 @@ where
 
 	#[instrument(level = Level::ERROR, skip_all)]
 	fn put(&self, topic: &str, message: Message) -> Result<()> {
-		self.communicator.put(topic, message)
-	}
-
-	#[instrument(level = Level::ERROR, skip_all)]
-	#[instrument(level = Level::ERROR, skip_all)]
-	fn put_with(&self, topic: &str, message: Message) -> Result<()> {
 		let key_expr = self
 			.prefix()
 			.clone()
@@ -242,17 +236,14 @@ where
 				.get(&key_expr)
 				.ok_or(DimasError::ShouldNotHappen)?
 				.put(message)?;
+		} else {
+			self.communicator.put(topic, message)?;
 		};
 		Ok(())
 	}
 
 	#[instrument(level = Level::ERROR, skip_all)]
 	fn delete(&self, topic: &str) -> Result<()> {
-		self.communicator.delete(topic)
-	}
-
-	#[instrument(level = Level::ERROR, skip_all)]
-	fn delete_with(&self, topic: &str) -> Result<()> {
 		let key_expr = self
 			.prefix()
 			.clone()
@@ -271,6 +262,8 @@ where
 				.get(&key_expr)
 				.ok_or(DimasError::ShouldNotHappen)?
 				.delete()?;
+		} else {
+			self.communicator.delete(topic)?;
 		}
 		Ok(())
 	}

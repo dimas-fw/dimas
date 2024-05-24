@@ -76,22 +76,10 @@ pub trait ContextAbstraction<P>: Debug + Send + Sync {
 	/// # Errors
 	fn put(&self, topic: &str, message: Message) -> Result<()>;
 
-	/// Method to publish data with a stored Publisher
-	///
-	/// # Errors
-	///
-	fn put_with(&self, topic: &str, message: Message) -> Result<()>;
-
 	/// Method to do an ad hoc deletion for the `topic`
 	///
 	/// # Errors
 	fn delete(&self, topic: &str) -> Result<()>;
-
-	/// Method to delete data with a stored Publisher
-	///
-	/// # Errors
-	///
-	fn delete_with(&self, topic: &str) -> Result<()>;
 
 	/// Send an ad hoc query using the given `topic` with an optional [`Message`].
 	/// The `topic` will be enhanced with the group prefix.

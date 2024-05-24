@@ -30,7 +30,7 @@ fn ping_received(ctx: &Context<AgentProps>, message: Message) -> Result<()> {
 
 	let message = Message::encode(&message);
 	// publishing with ad-hoc publisher
-	ctx.put_with("pong", message)?;
+	ctx.put("pong", message)?;
 
 	info!("Sent '{}'", &text);
 
