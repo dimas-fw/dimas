@@ -54,6 +54,7 @@ repository = "https://github.com/dimas-fw/dimas/"
 [workspace.dependencies]
 bitcode = "0.6"
 clap = { version = "4", features = ["derive"] }
+chrono = "0.4"
 derivative = "2"
 dimas = { path = "dimas" }
 dimas-com = { path = "commons/dimas-com" }
@@ -62,7 +63,7 @@ dimas-config = { path = "commons/dimas-config" }
 dimas-core = { path = "commons/dimas-core" }
 dirs = "5"
 doc-comment = "0.3"
-itertools = "0.12"
+itertools = "0.13"
 json5 = "0.4"
 serde = { version = "1", default-features = false, features = ["derive"] }
 slint = "1"

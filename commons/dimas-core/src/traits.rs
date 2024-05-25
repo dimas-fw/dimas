@@ -5,118 +5,23 @@
 
 // region:		--- modules
 use crate::{
+	enums::{OperationState, TaskSignal},
 	error::Result,
 	message_types::{Message, Response},
-	task_signal::TaskSignal,
 };
-use bitcode::{Decode, Encode};
 use std::{
-	fmt::{Debug, Display},
+	fmt::Debug,
 	sync::{mpsc::Sender, Arc},
 };
 use zenoh::Session;
 // endregion:	--- modules
-
-// region:		--- OperationState
-/// The possible states a `DiMAS` entity can take
-#[derive(Debug, Decode, Encode, Clone, Default, Eq, PartialEq, Ord, PartialOrd)]
-pub enum OperationState {
-	/// Entity is in an erronous state
-	Error,
-	/// Entity is in initial state
-	#[default]
-	Created,
-	/// Entity is setup properly
-	Configured,
-	/// Entity is listening to important messages only
-	Inactive,
-	/// Entity has full situational awareness but does
-	Standby,
-	/// Entity is fully operational
-	Active,
-}
-
-impl Display for OperationState {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		match *self {
-			Self::Error => Display::fmt("error", f),
-			Self::Created => Display::fmt("created", f),
-			Self::Configured => Display::fmt("configured", f),
-			Self::Inactive => Display::fmt("inactive", f),
-			Self::Standby => Display::fmt("standby", f),
-			Self::Active => Display::fmt("active", f),
-		}
-	}
-}
-
-/// Trait for hooks into management of [`OperationState`]
-pub trait OperationStateHooks {
-	/// Transition for unrecovable Error
-	/// # Panics
-	fn perish(&mut self) -> ! {
-		panic!("recovery not defined/possible, process exits")
-	}
-	/// Transition from Error to Created
-	/// Default implementation dies
-	/// # Errors
-	fn recover(&mut self, wanted: &OperationState) -> Result<()> {
-		let _ = wanted;
-		self.perish()
-	}
-	/// Transition from any state to Error
-	/// Default implementation tries to recover
-	/// # Errors
-	fn error(&mut self, state: &OperationState) -> Result<()> {
-		self.recover(state)
-	}
-
-	/// Transition from Created to Configured
-	/// Default implementation does nothing
-	/// # Errors
-	fn configure(&mut self) -> Result<()> {
-		Ok(())
-	}
-	/// Transition from Configured to Created
-	/// Default implementation does nothing
-	/// # Errors
-	fn deconfigure(&mut self) -> Result<()> {
-		Ok(())
-	}
-
-	/// Transition from Configured to Inactive
-	/// Default implementation does nothing
-	/// # Errors
-	fn attend(&mut self) -> Result<()> {
-		Ok(())
-	}
-	/// Transtion from Inactive to Configured
-	/// Default implementation does nothing
-	/// # Errors
-	fn deattend(&mut self) -> Result<()> {
-		Ok(())
-	}
-
-	/// Transition from Inactive to Standby
-	/// # Errors
-	/// Default implementation does nothing
-	fn standby(&mut self) -> Result<()> {
-		Ok(())
-	}
-	/// Transition from Standby to Inactive
-	/// # Errors
-	/// Default implementation does nothing
-	fn destandby(&mut self) -> Result<()> {
-		Ok(())
-	}
-}
-// endregion:	--- OperationState
 
 // region:		--- Context
 /// Typedef for simplified usage
 pub type Context<P> = Arc<dyn ContextAbstraction<P>>;
 
 /// Commonalities for the context
-pub trait ContextAbstraction<P>: Send + Sync {
+pub trait ContextAbstraction<P>: Debug + Send + Sync {
 	/// Get the name
 	#[must_use]
 	fn name(&self) -> &Option<String>;
@@ -165,50 +70,74 @@ pub trait ContextAbstraction<P>: Send + Sync {
 	/// # Errors
 	fn write(&self) -> Result<std::sync::RwLockWriteGuard<'_, P>>;
 
-	/// Method to do an ad hoc publishing for a `topic`
+	/// Method to do a publishing for a `topic`
+	/// The `topic` will be enhanced with the prefix.
+	/// If there is a publisher stored, it will be used
+	/// otherwise an ad-hoc publishing will be done
 	///
 	/// # Errors
 	fn put(&self, topic: &str, message: Message) -> Result<()>;
 
-	/// Method to publish data with a stored Publisher
+	/// Method to do a publishing for a `selector`
+	/// If there is a publisher stored, it will be used
+	/// otherwise an ad-hoc publishing will be done
 	///
 	/// # Errors
-	///
-	fn put_with(&self, topic: &str, message: Message) -> Result<()>;
+	fn put_with(&self, selector: &str, message: Message) -> Result<()>;
 
-	/// Method to do an ad hoc deletion for the `topic`
+	/// Method to do a deletion for a `topic`
+	/// The `topic` will be enhanced with the prefix.
+	/// If there is a publisher stored, it will be used
+	/// otherwise an ad-hoc deletion will be done
 	///
 	/// # Errors
 	fn delete(&self, topic: &str) -> Result<()>;
 
-	/// Method to delete data with a stored Publisher
+	/// Method to do a deletion for a `selector`
+	/// If there is a publisher stored, it will be used
+	/// otherwise an ad-hoc deletion will be done
 	///
 	/// # Errors
-	///
-	fn delete_with(&self, topic: &str) -> Result<()>;
+	fn delete_with(&self, selector: &str) -> Result<()>;
 
-	/// Send an ad hoc query using the given `topic`.
-	/// The `topic` will be enhanced with the group prefix.
+	/// Send a query for a `topic` with an optional [`Message`].
+	/// The `topic` will be enhanced with the prefix.
+	/// If there is a query stored, it will be used
+	/// otherwise an ad-hoc query will be done
+	/// If a callback is given for a stored query,
+	/// it will be called instead of the stored callback
+	///
 	/// # Errors
-	fn get(&self, topic: &str, callback: Box<dyn FnMut(Response)>) -> Result<()>;
+	fn get(
+		&self,
+		topic: &str,
+		message: Option<&Message>,
+		callback: Option<Box<dyn FnMut(Response) -> Result<()>>>,
+	) -> Result<()>;
 
-	/// Method to query data with a stored Query
+	/// Send a query for a `selector` with an optional [`Message`].
+	/// The `topic` will be enhanced with the prefix.
+	/// If there is a query stored, it will be used
+	/// otherwise an ad-hoc query will be done
+	/// If a callback is given for a stored query,
+	/// it will be called instead of the stored callback
 	///
 	/// # Errors
-	///
-	fn get_with(&self, topic: &str) -> Result<()>;
+	fn get_with(
+		&self,
+		selector: &str,
+		message: Option<&Message>,
+		callback: Option<Box<dyn FnMut(Response) -> Result<()>>>,
+	) -> Result<()>;
 }
 // endregion:	--- Context
 
 // region:		--- Capability
 /// Commonalities for capability components
-pub trait Capability {
+pub trait Capability: Debug {
 	/// Checks whether state of capability component is appropriate for the given [`OperationState`].
 	/// If not, implementation has to adjusts components state to needs.
 	/// # Errors
 	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()>;
 }
-
-/// Commonalities for communication capability components
-pub trait CommunicationCapability: Capability {}
 // endregion:	--- Capability

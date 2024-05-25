@@ -13,7 +13,7 @@ The system is characterised by
 - that changes over time due to external rules
 
 with multiple agents operating in that environment which
-- can percieve the environment to a limited extent
+- can perceive the environment to a limited extent
 - have the possibility to communicate with some or all of the other agents
 - have certain capabilities to influence the environment
 
@@ -43,7 +43,7 @@ It also makes sense to return a `Result`, as some functions may return one.
 DiMAS errors are always of type `Box<dyn std::error::Error>` and should be thread safe. 
 DiMAS provides a type definition `Result<T>` to make life easier
 
-A suitable main programm skeleton may look like:
+A suitable main program skeleton may look like:
 
 ```rust
 use dimas::prelude::*;
@@ -120,7 +120,7 @@ async fn main() -> Result<()> {
 				println!("Sending '{}'", &text);
 				// publishing with stored publisher for topic "hello"
 				let message = Message::encode(&text);
-				ctx.put_with("hello", message)?;
+				ctx.put("hello", message)?;
 				// modify counter in properties
 				ctx
 					.write()?

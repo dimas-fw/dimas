@@ -9,7 +9,7 @@ keywords.workspace = true
 categories.workspace = true
 homepage.workspace = true
 repository.workspace = true
-description = "dimasctl - a control tool for DiMAS"
+description = "dimasctl - a cli for DiMAS"
 documentation = "https://docs.rs/dimasctl/latest/dimasctl/"
 readme = "README.md"
 
@@ -19,6 +19,7 @@ readme = "README.md"
 workspace = true
 
 [dependencies]
+chrono = { workspace = true }
 clap = { workspace = true }
 dimas-com = { workspace = true }
 dimas-commands = { workspace = true }

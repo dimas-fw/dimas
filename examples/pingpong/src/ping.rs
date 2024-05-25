@@ -84,7 +84,7 @@ async fn main() -> Result<()> {
 			};
 			let message = Message::encode(&message);
 			// publishing with stored publisher
-			ctx.put_with("ping", message)?;
+			ctx.put("ping", message)?;
 
 			let text = format!("ping! [{counter}]");
 			info!("Sent {} ", &text);

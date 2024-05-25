@@ -3,17 +3,18 @@
 //! Module `subscriber` provides a message `Subscriber` which can be created using the `SubscriberBuilder`.
 //! A `Subscriber` can optional subscribe on a delete message.
 
+use std::sync::{Arc, Mutex};
+
 // region:		--- modules
 // these ones are only for doc needed
 #[cfg(doc)]
 use crate::agent::Agent;
 use dimas_core::{
+	enums::{OperationState, TaskSignal},
 	error::{DimasError, Result},
 	message_types::Message,
-	task_signal::TaskSignal,
-	traits::{Capability, CommunicationCapability, Context, OperationState},
+	traits::{Capability, Context},
 };
-use std::sync::{Arc, Mutex, RwLock};
 use tokio::task::JoinHandle;
 use tracing::{error, info, instrument, warn, Level};
 use zenoh::{
@@ -23,285 +24,14 @@ use zenoh::{
 // endregion:	--- modules
 
 // region:		--- types
-/// Type definition for a subscribers `put` callback function
-#[allow(clippy::module_name_repetitions)]
-pub type SubscriberPutCallback<P> =
-	Arc<Mutex<Box<dyn FnMut(&Context<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static>>>;
-/// Type definition for a subscribers `delete` callback function
-#[allow(clippy::module_name_repetitions)]
-pub type SubscriberDeleteCallback<P> =
-	Arc<Mutex<Box<dyn FnMut(&Context<P>) -> Result<()> + Send + Sync + Unpin + 'static>>>;
+/// Type definition for a subscribers atomic reference counted `put` callback function
+pub type ArcSubscriberPutCallback<P> =
+	Arc<Mutex<dyn FnMut(&Context<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static>>;
+
+/// Type definition for a subscribers atomic reference counted `delete` callback function
+pub type ArcSubscriberDeleteCallback<P> =
+	Arc<Mutex<dyn FnMut(&Context<P>) -> Result<()> + Send + Sync + Unpin + 'static>>;
 // endregion:	--- types
-
-// region:		--- states
-/// State signaling that the [`SubscriberBuilder`] has no storage value set
-pub struct NoStorage;
-/// State signaling that the [`SubscriberBuilder`] has the storage value set
-pub struct Storage<P>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-	/// Thread safe reference to a [`HashMap`] to store the created [`Subscriber`]
-	pub storage: Arc<RwLock<std::collections::HashMap<String, Subscriber<P>>>>,
-}
-
-/// State signaling that the [`SubscriberBuilder`] has no key expression value set
-pub struct NoKeyExpression;
-/// State signaling that the [`SubscriberBuilder`] has the key expression value set
-pub struct KeyExpression {
-	/// The key expression
-	key_expr: String,
-}
-
-/// State signaling that the [`SubscriberBuilder`] has no put callback value set
-pub struct NoPutCallback;
-/// State signaling that the [`SubscriberBuilder`] has the put callback value set
-pub struct PutCallback<P>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-	/// Put callback for the [`Subscriber`]
-	pub callback: SubscriberPutCallback<P>,
-}
-// endregion:	--- states
-
-// region:		--- SubscriberBuilder
-/// A builder for a subscriber
-#[allow(clippy::module_name_repetitions)]
-#[derive(Clone)]
-pub struct SubscriberBuilder<P, K, C, S>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-	context: Context<P>,
-	activation_state: OperationState,
-	key_expr: K,
-	put_callback: C,
-	storage: S,
-	reliability: Reliability,
-	delete_callback: Option<SubscriberDeleteCallback<P>>,
-}
-
-impl<P> SubscriberBuilder<P, NoKeyExpression, NoPutCallback, NoStorage>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-	/// Construct a `SubscriberBuilder` in initial state
-	#[must_use]
-	pub const fn new(context: Context<P>) -> Self {
-		Self {
-			context,
-			activation_state: OperationState::Standby,
-			key_expr: NoKeyExpression,
-			put_callback: NoPutCallback,
-			storage: NoStorage,
-			reliability: Reliability::BestEffort,
-			delete_callback: None,
-		}
-	}
-}
-
-impl<P, K, C, S> SubscriberBuilder<P, K, C, S>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-	/// Set the activation state.
-	#[must_use]
-	pub const fn activation_state(mut self, state: OperationState) -> Self {
-		self.activation_state = state;
-		self
-	}
-
-	/// Set reliability
-	#[must_use]
-	pub const fn set_reliability(mut self, reliability: Reliability) -> Self {
-		self.reliability = reliability;
-		self
-	}
-
-	/// Set liveliness subscribers callback for `delete` messages
-	#[must_use]
-	pub fn delete_callback<F>(mut self, callback: F) -> Self
-	where
-		F: FnMut(&Context<P>) -> Result<()> + Send + Sync + Unpin + 'static,
-	{
-		self.delete_callback
-			.replace(Arc::new(Mutex::new(Box::new(callback))));
-		self
-	}
-}
-
-impl<P, C, S> SubscriberBuilder<P, NoKeyExpression, C, S>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-	/// Set the full key expression for the [`Subscriber`].
-	#[must_use]
-	pub fn key_expr(self, key_expr: &str) -> SubscriberBuilder<P, KeyExpression, C, S> {
-		let Self {
-			context,
-			activation_state,
-			storage,
-			put_callback,
-			delete_callback,
-			reliability,
-			..
-		} = self;
-		SubscriberBuilder {
-			context,
-			activation_state,
-			key_expr: KeyExpression {
-				key_expr: key_expr.into(),
-			},
-			put_callback,
-			storage,
-			reliability,
-			delete_callback,
-		}
-	}
-
-	/// Set only the message qualifing part of the [`Subscriber`].
-	/// Will be prefixed with [`Agent`]s prefix.
-	#[must_use]
-	pub fn topic(self, topic: &str) -> SubscriberBuilder<P, KeyExpression, C, S> {
-		let key_expr = self
-			.context
-			.prefix()
-			.clone()
-			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
-		let Self {
-			context,
-			activation_state,
-			storage,
-			put_callback,
-			reliability,
-			delete_callback,
-			..
-		} = self;
-		SubscriberBuilder {
-			context,
-			activation_state,
-			key_expr: KeyExpression { key_expr },
-			put_callback,
-			storage,
-			reliability,
-			delete_callback,
-		}
-	}
-}
-
-impl<P, K, S> SubscriberBuilder<P, K, NoPutCallback, S>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-	/// Set callback for put messages
-	#[must_use]
-	pub fn put_callback<F>(self, callback: F) -> SubscriberBuilder<P, K, PutCallback<P>, S>
-	where
-		F: FnMut(&Context<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static,
-	{
-		let Self {
-			context,
-			activation_state,
-			key_expr,
-			storage,
-			reliability,
-			delete_callback,
-			..
-		} = self;
-		let callback: SubscriberPutCallback<P> = Arc::new(Mutex::new(Box::new(callback)));
-		SubscriberBuilder {
-			context,
-			activation_state,
-			key_expr,
-			put_callback: PutCallback { callback },
-			storage,
-			reliability,
-			delete_callback,
-		}
-	}
-}
-
-impl<P, K, C> SubscriberBuilder<P, K, C, NoStorage>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-	/// Provide agents storage for the subscriber
-	#[must_use]
-	pub fn storage(
-		self,
-		storage: Arc<RwLock<std::collections::HashMap<String, Subscriber<P>>>>,
-	) -> SubscriberBuilder<P, K, C, Storage<P>> {
-		let Self {
-			context,
-			activation_state,
-			key_expr,
-			put_callback,
-			reliability,
-			delete_callback,
-			..
-		} = self;
-		SubscriberBuilder {
-			context,
-			activation_state,
-			key_expr,
-			put_callback,
-			storage: Storage { storage },
-			reliability,
-			delete_callback,
-		}
-	}
-}
-
-impl<P, S> SubscriberBuilder<P, KeyExpression, PutCallback<P>, S>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-	/// Build the [`Subscriber`].
-	///
-	/// # Errors
-	/// Currently none
-	pub fn build(self) -> Result<Subscriber<P>> {
-		let Self {
-			context,
-			activation_state,
-			key_expr,
-			put_callback,
-			reliability,
-			delete_callback,
-			..
-		} = self;
-		Ok(Subscriber::new(
-			key_expr.key_expr,
-			context,
-			activation_state,
-			put_callback.callback,
-			reliability,
-			delete_callback,
-		))
-	}
-}
-
-impl<P> SubscriberBuilder<P, KeyExpression, PutCallback<P>, Storage<P>>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-	/// Build and add the [`Subscriber`] to the [`Agent`].
-	///
-	/// # Errors
-	/// Currently none
-	pub fn add(self) -> Result<Option<Subscriber<P>>> {
-		let c = self.storage.storage.clone();
-		let s = self.build()?;
-
-		let r = c
-			.write()
-			.map_err(|_| DimasError::ShouldNotHappen)?
-			.insert(s.key_expr.clone(), s);
-		Ok(r)
-	}
-}
-// endregion:	--- SubscriberBuilder
 
 // region:		--- Subscriber
 /// Subscriber
@@ -310,14 +40,14 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// The subscribers key expression
-	key_expr: String,
+	selector: String,
 	/// Context for the Subscriber
 	context: Context<P>,
 	/// [`OperationState`] on which this subscriber is started
 	activation_state: OperationState,
-	put_callback: SubscriberPutCallback<P>,
+	put_callback: ArcSubscriberPutCallback<P>,
 	reliability: Reliability,
-	delete_callback: Option<SubscriberDeleteCallback<P>>,
+	delete_callback: Option<ArcSubscriberDeleteCallback<P>>,
 	handle: Option<JoinHandle<()>>,
 }
 
@@ -327,7 +57,7 @@ where
 {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Subscriber")
-			.field("key_expr", &self.key_expr)
+			.field("selector", &self.selector)
 			.finish_non_exhaustive()
 	}
 }
@@ -347,8 +77,6 @@ where
 	}
 }
 
-impl<P> CommunicationCapability for Subscriber<P> where P: Send + Sync + Unpin + 'static {}
-
 impl<P> Subscriber<P>
 where
 	P: Send + Sync + Unpin + 'static,
@@ -356,15 +84,15 @@ where
 	/// Constructor for a [`Subscriber`].
 	#[must_use]
 	pub fn new(
-		key_expr: String,
+		selector: String,
 		context: Context<P>,
 		activation_state: OperationState,
-		put_callback: SubscriberPutCallback<P>,
+		put_callback: ArcSubscriberPutCallback<P>,
 		reliability: Reliability,
-		delete_callback: Option<SubscriberDeleteCallback<P>>,
+		delete_callback: Option<ArcSubscriberDeleteCallback<P>>,
 	) -> Self {
 		Self {
-			key_expr,
+			selector,
 			context,
 			activation_state,
 			put_callback,
@@ -372,6 +100,12 @@ where
 			delete_callback,
 			handle: None,
 		}
+	}
+
+	/// Get `selector`
+	#[must_use]
+	pub fn selector(&self) -> &str {
+		&self.selector
 	}
 
 	/// Start or restart the subscriber.
@@ -394,7 +128,7 @@ where
 			}
 		}
 
-		let key_expr = self.key_expr.clone();
+		let selector = self.selector.clone();
 		let p_cb = self.put_callback.clone();
 		let d_cb = self.delete_callback.clone();
 		let reliability = self.reliability;
@@ -403,7 +137,7 @@ where
 
 		self.handle
 			.replace(tokio::task::spawn(async move {
-				let key = key_expr.clone();
+				let key = selector.clone();
 				std::panic::set_hook(Box::new(move |reason| {
 					error!("subscriber panic: {}", reason);
 					if let Err(reason) = ctx1
@@ -416,7 +150,7 @@ where
 					};
 				}));
 				if let Err(error) =
-					run_subscriber(key_expr, p_cb, d_cb, reliability, ctx2.clone()).await
+					run_subscriber(selector, p_cb, d_cb, reliability, ctx2.clone()).await
 				{
 					error!("spawning subscriber failed with {error}");
 				};
@@ -435,9 +169,9 @@ where
 
 #[instrument(name="subscriber", level = Level::ERROR, skip_all)]
 async fn run_subscriber<P>(
-	key_expr: String,
-	p_cb: SubscriberPutCallback<P>,
-	d_cb: Option<SubscriberDeleteCallback<P>>,
+	selector: String,
+	p_cb: ArcSubscriberPutCallback<P>,
+	d_cb: Option<ArcSubscriberDeleteCallback<P>>,
 	reliability: Reliability,
 	ctx: Context<P>,
 ) -> Result<()>
@@ -446,7 +180,7 @@ where
 {
 	let subscriber = ctx
 		.session()
-		.declare_subscriber(&key_expr)
+		.declare_subscriber(&selector)
 		.reliability(reliability)
 		.res_async()
 		.await
@@ -505,6 +239,5 @@ mod tests {
 	#[test]
 	const fn normal_types() {
 		is_normal::<Subscriber<Props>>();
-		is_normal::<SubscriberBuilder<Props, NoKeyExpression, NoPutCallback, NoStorage>>();
 	}
 }

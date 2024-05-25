@@ -1,22 +1,81 @@
 // Copyright © 2024 Stephan Kunz
 
-//! Commands for `DiMAS`
+//! Commands for `DiMAS` control & monitoring programs
 
+use chrono::Local;
 // region:		--- modules
 use dimas_com::{
-	messages::{AboutEntity, ScoutingEntity},
+	messages::{AboutEntity, PingEntity, ScoutingEntity},
 	Communicator,
 };
 use dimas_config::Config;
-use dimas_core::{message_types::Response, traits::OperationState};
+use dimas_core::{
+	enums::{OperationState, Signal},
+	error::Result,
+	message_types::Message,
+};
 use itertools::Itertools;
-use std::collections::HashMap;
-use std::time::Duration;
-use zenoh::config::WhatAmI;
-use zenoh::prelude::sync::*;
+use std::{collections::HashMap, time::Duration};
+use zenoh::{config::WhatAmI, prelude::sync::*};
 // endregion:	--- modules
 
 // region:		--- command functions
+/// Fetch a list of about messages from all reachable `DiMAS` entities
+/// # Panics
+#[must_use]
+pub fn about_list(com: &Communicator, base_selector: &String) -> Vec<AboutEntity> {
+	let mut map: HashMap<String, AboutEntity> = HashMap::new();
+
+	let selector = format!("{base_selector}/signal");
+	let message = Message::encode(&Signal::About);
+	// set state for entities matching the selector
+	com.get_with(&selector, Some(&message), |response| -> Result<()> {
+		let response: AboutEntity = response.decode().expect("decode failed");
+		map.entry(response.zid().to_string())
+			.or_insert(response);
+		Ok(())
+	})
+	.expect("querying 'about' failed");
+
+	let result: Vec<AboutEntity> = map.values().sorted().cloned().collect();
+
+	result
+}
+
+/// Fetch a list of about messages from all reachable `DiMAS` entities
+/// # Panics
+#[must_use]
+pub fn ping_list(com: &Communicator, base_selector: &String) -> Vec<(PingEntity, i64)> {
+	let mut map: HashMap<String, (PingEntity, i64)> = HashMap::new();
+
+	let selector = format!("{base_selector}/signal");
+	let sent = Local::now()
+		.naive_utc()
+		.and_utc()
+		.timestamp_nanos_opt()
+		.unwrap_or(0);
+	let message = Message::encode(&Signal::Ping { sent });
+	// set state for entities matching the selector
+	com.get_with(&selector, Some(&message), |response| -> Result<()> {
+		let received = Local::now()
+			.naive_utc()
+			.and_utc()
+			.timestamp_nanos_opt()
+			.unwrap_or(0);
+
+		let response: PingEntity = response.decode().expect("decode failed");
+		let roundtrip = received - sent;
+		map.entry(response.zid().to_string())
+			.or_insert((response, roundtrip));
+		Ok(())
+	})
+	.expect("querying 'about' failed");
+
+	let result: Vec<(PingEntity, i64)> = map.values().sorted().cloned().collect();
+
+	result
+}
+
 /// Scout for `DiMAS` entities, sorted by zid of entity
 /// # Panics
 /// if something goes wrong
@@ -38,27 +97,6 @@ pub fn scouting_list(config: &Config) -> Vec<ScoutingEntity> {
 	result
 }
 
-/// Fetch a list of about messages from all reachable `DiMAS` entities
-/// # Panics
-#[must_use]
-pub fn about_list(com: &Communicator, base_selector: &String) -> Vec<AboutEntity> {
-	let mut map: HashMap<String, AboutEntity> = HashMap::new();
-
-	let selector = format!("{base_selector}/about");
-
-	// fetch about from all entities matching the selector
-	com.get(&selector, |response: Response| {
-		let response: AboutEntity = response.decode().expect("decode failed");
-		map.entry(response.zid().to_string())
-			.or_insert(response);
-	})
-	.expect("querying 'about' failed");
-
-	let result: Vec<AboutEntity> = map.values().sorted().cloned().collect();
-
-	result
-}
-
 /// Set the [`OperationState`] of a `DiMAS` entities
 /// # Panics
 /// if something goes wrong
@@ -70,16 +108,14 @@ pub fn set_state(
 ) -> Vec<AboutEntity> {
 	let mut map: HashMap<String, AboutEntity> = HashMap::new();
 
-	let selector = state.map_or_else(
-		|| format!("{base_selector}/state"),
-		|state| format!("{base_selector}/state?(state={state})"),
-	);
-
+	let selector = format!("{base_selector}/signal");
+	let message = Message::encode(&Signal::State { state });
 	// set state for entities matching the selector
-	com.get(&selector, |response| {
+	com.get_with(&selector, Some(&message), |response| -> Result<()> {
 		let response: AboutEntity = response.decode().expect("decode failed");
 		map.entry(response.zid().to_string())
 			.or_insert(response);
+		Ok(())
 	})
 	.expect("querying 'state' failed");
 
@@ -88,4 +124,26 @@ pub fn set_state(
 	result
 }
 
+/// Set the [`OperationState`] of a `DiMAS` entities
+/// # Panics
+/// if something goes wrong
+#[must_use]
+pub fn shutdown(com: &Communicator, base_selector: &String) -> Vec<AboutEntity> {
+	let mut map: HashMap<String, AboutEntity> = HashMap::new();
+
+	let selector = format!("{base_selector}/signal");
+	let message = Message::encode(&Signal::Shutdown);
+	// set state for entities matching the selector
+	com.get_with(&selector, Some(&message), |response| -> Result<()> {
+		let response: AboutEntity = response.decode().expect("decode failed");
+		map.entry(response.zid().to_string())
+			.or_insert(response);
+		Ok(())
+	})
+	.expect("querying 'state' failed");
+
+	let result: Vec<AboutEntity> = map.values().sorted().cloned().collect();
+
+	result
+}
 // endregion:	--- command functions

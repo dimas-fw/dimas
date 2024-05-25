@@ -2,6 +2,8 @@
 # Copyright © 2024 Stephan Kunz
 # can be called with option `--release` to run release builds
 
+export ZENOH_RUNTIME='(app: (worker_threads: 2),tx: (max_blocking_threads: 1))'
+
 session="examples"
 
 tmux new-session -d -s $session
@@ -61,6 +63,6 @@ tmux send-keys "cargo run --bin ping $1" C-m
 tmux select-pane -t 7
 tmux send-keys "cargo run --bin pong $1" C-m
 
-tmux select-pane -t 8
+tmux select-pane -t 0
 
 tmux attach-session -t $session

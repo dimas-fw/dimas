@@ -42,6 +42,12 @@ impl Message {
 		let value: Vec<u8> = self.0;
 		decode::<T>(value.as_slice()).map_err(|_| DimasError::Decoding.into())
 	}
+
+	/// decode message
+	#[must_use]
+	pub const fn value(&self) -> &Vec<u8> {
+		&self.0
+	}
 }
 // endregion:	--- Message
 
@@ -82,6 +88,20 @@ impl Request {
 	#[must_use]
 	pub fn parameters(&self) -> &str {
 		self.0.parameters()
+	}
+
+	/// decode queries [`Message`]
+	///
+	/// # Errors
+	pub fn decode<T>(self) -> Result<T>
+	where
+		T: for<'a> Decode<'a>,
+	{
+		if let Some(value) = self.0.value() {
+			let content: Vec<u8> = value.try_into()?;
+			return decode::<T>(content.as_slice()).map_err(|_| DimasError::Decoding.into());
+		}
+		Err(DimasError::NoMessage.into())
 	}
 }
 // endregion: --- Request

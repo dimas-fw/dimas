@@ -10,7 +10,6 @@ use dimas_core::{
 };
 use std::fmt::Debug;
 use std::sync::Arc;
-use std::time::Duration;
 use zenoh::prelude::{r#async::*, sync::SyncResolve};
 // endregion:	--- modules
 
@@ -75,7 +74,7 @@ impl Communicator {
 
 	/// Create a key expression from a topic by adding prefix if one is given.
 	#[must_use]
-	pub fn key_expr(&self, topic: &str) -> String {
+	pub fn selector(&self, topic: &str) -> String {
 		self.prefix
 			.clone()
 			.map_or_else(|| topic.into(), |prefix| format!("{prefix}/{topic}"))
@@ -86,10 +85,17 @@ impl Communicator {
 	/// # Errors
 	#[allow(clippy::needless_pass_by_value)]
 	pub fn put(&self, topic: &str, message: Message) -> Result<()> {
-		let key_expr = self.key_expr(topic);
+		let selector = self.selector(topic);
 
+		self.put_with(&selector, message)
+	}
+
+	/// Send an ad hoc put `message` of type `Message` using the given `selector`.
+	/// # Errors
+	#[allow(clippy::needless_pass_by_value)]
+	pub fn put_with(&self, selector: &str, message: Message) -> Result<()> {
 		self.session
-			.put(&key_expr, message.0)
+			.put(selector, message.0)
 			.res_sync()
 			.map_err(|_| DimasError::Put.into())
 	}
@@ -98,29 +104,57 @@ impl Communicator {
 	/// The `topic` will be enhanced with the group prefix.
 	/// # Errors
 	pub fn delete(&self, topic: &str) -> Result<()> {
-		let key_expr = self.key_expr(topic);
+		let selector = self.selector(topic);
 
+		self.delete_with(&selector)
+	}
+
+	/// Send an ad hoc delete using the given `selector`.
+	/// # Errors
+	pub fn delete_with(&self, selector: &str) -> Result<()> {
 		self.session
-			.delete(&key_expr)
+			.delete(selector)
 			.res_sync()
 			.map_err(|_| DimasError::Delete.into())
 	}
 
-	/// Send an ad hoc query using the given `selector`.
+
+	/// Send an ad hoc query with an optional [`Message`] using the given `topic`.
+	/// The `topic` will be enhanced with the group prefix.
 	/// Answers are collected via callback
 	/// # Errors
 	/// # Panics
-	pub fn get<F>(&self, selector: &str, mut callback: F) -> Result<()>
+	pub fn get<F>(&self, topic: &str, message: Option<&Message>, callback: F) -> Result<()>
 	where
-		F: FnMut(Response) + Sized,
+		F: FnMut(Response) -> Result<()> + Sized,
 	{
-		let replies = self
+		let selector = self.selector(topic);
+
+		self.get_with(&selector, message, callback)
+	}
+
+	/// Send an ad hoc query with an optional [`Message`] using the given `selector`.
+	/// Answers are collected via callback
+	/// # Errors
+	/// # Panics
+	pub fn get_with<F>(&self, selector: &str, message: Option<&Message>, mut callback: F) -> Result<()>
+	where
+		F: FnMut(Response) -> Result<()> + Sized,
+	{
+		let mut query = self
 			.session
 			.get(selector)
 			.consolidation(ConsolidationMode::None)
 			.target(QueryTarget::All)
-			.allowed_destination(Locality::Any)
-			.timeout(Duration::from_millis(1000))
+			.allowed_destination(Locality::Any);
+		//.timeout(Duration::from_millis(1000));
+
+		if let Some(message) = message {
+			let value = message.value().to_owned();
+			query = query.with_value(value);
+		};
+
+		let replies = query
 			.res_sync()
 			.map_err(|_| DimasError::ShouldNotHappen)?;
 
@@ -129,7 +163,7 @@ impl Communicator {
 				Ok(sample) => match sample.kind {
 					SampleKind::Put => {
 						let content: Vec<u8> = sample.value.try_into()?;
-						callback(Response(content));
+						callback(Response(content))?;
 					}
 					SampleKind::Delete => {
 						println!("Delete in Query");
@@ -137,8 +171,9 @@ impl Communicator {
 				},
 				Err(err) => {
 					println!(
-						">> Received (ERROR: '{}')",
-						String::try_from(&err).expect("snh")
+						">> Received (ERROR: '{}' for {})",
+						String::try_from(&err).expect("snh"),
+						selector
 					);
 				}
 			}

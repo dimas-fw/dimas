@@ -6,7 +6,7 @@
 use bitcode::{Decode, Encode};
 // region:		--- modules
 use derivative::Derivative;
-use dimas_core::traits::OperationState;
+use dimas_core::enums::OperationState;
 use std::fmt::Display;
 use zenoh::config::Locator;
 // endregion:	--- modules
@@ -69,6 +69,53 @@ impl AboutEntity {
 	}
 }
 // endregion:	--- AboutEntity
+
+// region:		--- PingEntity
+/// A `DiMAS` entity
+#[derive(Encode, Decode, Derivative)]
+#[derivative(Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
+pub struct PingEntity {
+	name: String,
+	zid: String,
+	oneway: i64,
+}
+
+impl Display for PingEntity {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(
+			f,
+			"name: {} zid: {} oneway: {}",
+			&self.name, &self.zid, &self.oneway
+		)
+	}
+}
+
+impl PingEntity {
+	/// Constructor
+	#[must_use]
+	pub const fn new(name: String, zid: String, oneway: i64) -> Self {
+		Self { name, zid, oneway }
+	}
+
+	/// Get the Name
+	#[must_use]
+	pub fn name(&self) -> &str {
+		&self.name
+	}
+
+	/// Get the Zenoh ID
+	#[must_use]
+	pub fn zid(&self) -> &str {
+		&self.zid
+	}
+
+	/// Get the oneway time
+	#[must_use]
+	pub const fn oneway(&self) -> i64 {
+		self.oneway
+	}
+}
+// endregion:	--- PingEntity
 
 // region:		--- ScoutingEntity
 /// A `Zenoh` entity

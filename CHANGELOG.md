@@ -22,7 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - dimasctl: binary to control DiMAS entities with commands
   - `scout`
   - `list`
-  - `set-state`
+  - `ping <target>`
+  - `set-state <OperationState>`
+  - `shutdown <target>`
 - dimasmon: binary to monitor DiMAS entities (not yet usable!)
 - dimas-commands with functions for dimasctl & dimasmon
 
@@ -32,7 +34,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - dimas-com: for `Communicator` & `Messages`
   - dimas-config: for `Config`
 - signature of `Agent::config(self, ...)` -> `Config` is now passed as reference
+- signature of Query::get(), Communicator::get(): added an `Option<&Message>`
 - encoding of types `Message` & `Response` now explicit in callbacks
+- renaming & restructuring
 
 ### Removed
 - low_latency configuration
