@@ -132,7 +132,11 @@ where
 
 	/// Run a Query with an optional [`Message`].
 	#[instrument(name="query with message", level = Level::ERROR, skip_all)]
-	pub fn get(&self, message: Option<&Message>, mut callback: Option<Box<dyn FnMut(Response) -> Result<()>>>) -> Result<()> {
+	pub fn get(
+		&self,
+		message: Option<&Message>,
+		mut callback: Option<Box<dyn FnMut(Response) -> Result<()>>>,
+	) -> Result<()> {
 		let cb = self.response_callback.clone();
 		let session = self.context.session();
 		let mut query = session

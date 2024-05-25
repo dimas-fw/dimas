@@ -30,6 +30,11 @@ fn operation_state_parser(s: &str) -> Result<OperationState> {
 enum DimasctlCommand {
 	/// List running `DiMAS` entities
 	List,
+	/// Ping entities
+	Ping{
+		/// Selector for the targets to ping
+		target: String
+	},
 	/// Scout for `Zenoh` entities
 	Scout,
 	/// Set state of entities
@@ -39,7 +44,10 @@ enum DimasctlCommand {
 		state: Option<OperationState>,
 	},
 	/// Shurdown entities
-	Shutdown,
+	Shutdown{
+		/// Selector for the targets to shutdown
+		target: String
+	},
 }
 // endregion:	--- Commands
 
@@ -64,6 +72,22 @@ fn main() {
 					item.kind(),
 					item.state(),
 					item.name()
+				);
+			}
+		}
+		DimasctlCommand::Ping { target} => {
+			let com = Communicator::new(&config).expect("failed to create 'Communicator'");
+			//println!("List of pinged DiMAS entities:");
+			//println!("{header}");
+			for item in dimas_commands::ping_list(&com, target) {
+				let time = item.0.oneway() + item.1;
+				#[allow(clippy::cast_precision_loss)]
+				let time = time as f64 / 2_000_000.0;
+				println!(
+					"{:32} {:.2}ms  {}",
+					item.0.zid(),
+					time,
+					item.0.name(),
 				);
 			}
 		}
@@ -93,11 +117,11 @@ fn main() {
 				);
 			}
 		}
-		DimasctlCommand::Shutdown => {
+		DimasctlCommand::Shutdown { target} => {
 			let com = Communicator::new(&config).expect("failed to create 'Communicator'");
 			println!("List of shut down DiMAS entities:");
 			println!("{header}");
-			for item in dimas_commands::shutdown(&com, &base_selector) {
+			for item in dimas_commands::shutdown(&com, &target) {
 				println!(
 					"{:32}  {:6}  {:10}  {}",
 					item.zid(),

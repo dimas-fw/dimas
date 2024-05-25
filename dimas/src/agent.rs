@@ -60,13 +60,13 @@ use crate::{
 	},
 	timer::Timer,
 };
-use dimas_com::messages::AboutEntity;
+use chrono::Local;
+use dimas_com::messages::{AboutEntity, PingEntity};
 use dimas_config::Config;
 use dimas_core::{
-	enums::{OperationState, Signal},
+	enums::{wait_for_task_signals, OperationState, Signal, TaskSignal},
 	error::{DimasError, Result},
 	message_types::{Message, Request},
-	task_signal::{wait_for_task_signals, TaskSignal},
 	traits::{Capability, Context, ContextAbstraction},
 };
 use std::sync::Arc;
@@ -91,6 +91,7 @@ where
 		let signal: Signal = Message::decode(msg)?;
 		match signal {
 			Signal::About => about_handler(ctx, request)?,
+			Signal::Ping {sent } => ping_handler(ctx, request, sent)?,
 			Signal::Shutdown => shutdown_handler(ctx, request)?,
 			Signal::State { state } => state_handler(ctx, request, state)?,
 		}
@@ -109,6 +110,25 @@ where
 	let zid = ctx.uuid();
 	let state = ctx.state();
 	let value = AboutEntity::new(name, mode, zid, state);
+	request.reply(value)?;
+	Ok(())
+}
+
+fn ping_handler<P>(ctx: &Context<P>, request: Request, sent: i64) -> Result<()>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	let now = Local::now()
+	.naive_utc()
+	.and_utc()
+	.timestamp_nanos_opt()
+	.unwrap_or(0);
+
+	let name = ctx
+		.fq_name()
+		.unwrap_or_else(|| String::from("--"));
+	let zid = ctx.uuid();
+	let value = PingEntity::new(name, zid, now - sent);
 	request.reply(value)?;
 	Ok(())
 }
@@ -225,7 +245,7 @@ where
 
 		// add signal queryables
 		// for zid
-		let key_expr = format!("{}/*", agent.context.uuid());
+		let key_expr = format!("{}/signal", agent.context.uuid());
 		agent
 			.queryable()
 			.key_expr(&key_expr)

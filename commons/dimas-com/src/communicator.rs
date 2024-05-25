@@ -119,7 +119,7 @@ impl Communicator {
 			.consolidation(ConsolidationMode::None)
 			.target(QueryTarget::All)
 			.allowed_destination(Locality::Any);
-			//.timeout(Duration::from_millis(1000));
+		//.timeout(Duration::from_millis(1000));
 
 		if let Some(message) = message {
 			let value = message.value().to_owned();

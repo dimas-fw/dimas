@@ -77,7 +77,6 @@ async fn main() -> Result<()> {
 		})
 		.add()?;
 
-
 	// timer for regular querying
 	let interval = Duration::from_secs(4);
 	let delay = Duration::from_secs(2);
@@ -90,13 +89,15 @@ async fn main() -> Result<()> {
 		.callback(move |ctx| -> Result<()> {
 			info!("Querying [{counter}]");
 			// querying with ad-hoc query & closure
-			ctx.get("query3", None, Some(Box::new(
-				|response| -> Result<()> {
+			ctx.get(
+				"query3",
+				None,
+				Some(Box::new(|response| -> Result<()> {
 					let message: u128 = response.decode()?;
 					println!("Response 3 is '{message}'");
 					Ok(())
-				}	
-			)))?;
+				})),
+			)?;
 			counter += 1;
 			Ok(())
 		})
@@ -114,13 +115,15 @@ async fn main() -> Result<()> {
 		.callback(move |ctx| -> Result<()> {
 			info!("Querying [{counter}]");
 			// querying with stored query & closure
-			ctx.get("query1", None, Some(Box::new(
-				|response| -> Result<()> {
+			ctx.get(
+				"query1",
+				None,
+				Some(Box::new(|response| -> Result<()> {
 					let message: u128 = response.decode()?;
 					println!("Response 4 is '{message}'");
 					Ok(())
-				}	
-			)))?;
+				})),
+			)?;
 			counter += 1;
 			Ok(())
 		})

@@ -5,10 +5,9 @@
 
 // region:		--- modules
 use crate::{
-	enums::OperationState,
+	enums::{OperationState, TaskSignal},
 	error::Result,
 	message_types::{Message, Response},
-	task_signal::TaskSignal,
 };
 use std::{
 	fmt::Debug,
@@ -91,9 +90,9 @@ pub trait ContextAbstraction<P>: Debug + Send + Sync {
 	/// The `topic` will be enhanced with the prefix.
 	/// If there is a query stored, it will be used
 	/// otherwise an ad-hoc query will be done
-	/// If a callback is given for a stored query, 
+	/// If a callback is given for a stored query,
 	/// it will be called instead of the stored callback
-	/// 
+	///
 	/// # Errors
 	fn get(
 		&self,

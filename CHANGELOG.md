@@ -22,8 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - dimasctl: binary to control DiMAS entities with commands
   - `scout`
   - `list`
+  - `ping <target>`
   - `set-state <OperationState>`
-  - `shutdown`
+  - `shutdown <target>`
 - dimasmon: binary to monitor DiMAS entities (not yet usable!)
 - dimas-commands with functions for dimasctl & dimasmon
 

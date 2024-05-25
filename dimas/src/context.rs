@@ -42,10 +42,9 @@ use crate::{
 use dimas_com::communicator::Communicator;
 use dimas_config::Config;
 use dimas_core::{
-	enums::OperationState,
+	enums::{OperationState, TaskSignal},
 	error::{DimasError, Result},
 	message_types::{Message, Response},
-	task_signal::TaskSignal,
 	traits::{Capability, ContextAbstraction},
 };
 use std::{
@@ -296,7 +295,7 @@ where
 				.get(message, callback)?;
 		} else {
 			self.communicator
-			.get(&key_expr, message, callback.expect("snh"))?;
+				.get(&key_expr, message, callback.expect("snh"))?;
 		};
 		Ok(())
 	}

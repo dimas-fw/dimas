@@ -5,9 +5,8 @@
 
 // region:		--- modules
 use dimas_core::{
-	enums::OperationState,
+	enums::{OperationState, TaskSignal},
 	error::Result,
-	task_signal::TaskSignal,
 	traits::{Capability, Context},
 };
 use std::{

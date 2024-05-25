@@ -22,7 +22,7 @@ name = "pong"
 path = "src/pong.rs"
 
 [dependencies]
-chrono = "0.4"
+chrono = { workspace = true }
 dimas = { workspace = true }
 tokio = { workspace = true, features = ["macros"] }
 tracing = { workspace = true }

@@ -10,10 +10,9 @@ use std::sync::{Arc, Mutex};
 #[cfg(doc)]
 use crate::agent::Agent;
 use dimas_core::{
-	enums::OperationState,
+	enums::{OperationState, TaskSignal},
 	error::{DimasError, Result},
 	message_types::Message,
-	task_signal::TaskSignal,
 	traits::{Capability, Context},
 };
 use tokio::task::JoinHandle;

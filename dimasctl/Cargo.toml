@@ -19,6 +19,7 @@ readme = "README.md"
 workspace = true
 
 [dependencies]
+chrono = { workspace = true }
 clap = { workspace = true }
 dimas-com = { workspace = true }
 dimas-commands = { workspace = true }

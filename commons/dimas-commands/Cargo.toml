@@ -19,6 +19,7 @@ readme = "README.md"
 workspace = true
 
 [dependencies]
+chrono = { workspace = true }
 dimas-com = { workspace = true }
 dimas-config = { workspace = true }
 dimas-core = { workspace = true }
