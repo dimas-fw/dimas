@@ -54,7 +54,7 @@ pub fn ping_list(com: &Communicator, base_selector: &String) -> Vec<(PingEntity,
 		.and_utc()
 		.timestamp_nanos_opt()
 		.unwrap_or(0);
-	let message = Message::encode(&Signal::Ping {sent});
+	let message = Message::encode(&Signal::Ping { sent });
 	// set state for entities matching the selector
 	com.get(&selector, Some(&message), |response| -> Result<()> {
 		let received = Local::now()

@@ -94,11 +94,7 @@ impl PingEntity {
 	/// Constructor
 	#[must_use]
 	pub const fn new(name: String, zid: String, oneway: i64) -> Self {
-		Self {
-			name,
-			zid,
-			oneway
-		}
+		Self { name, zid, oneway }
 	}
 
 	/// Get the Name

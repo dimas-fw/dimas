@@ -91,7 +91,7 @@ where
 		let signal: Signal = Message::decode(msg)?;
 		match signal {
 			Signal::About => about_handler(ctx, request)?,
-			Signal::Ping {sent } => ping_handler(ctx, request, sent)?,
+			Signal::Ping { sent } => ping_handler(ctx, request, sent)?,
 			Signal::Shutdown => shutdown_handler(ctx, request)?,
 			Signal::State { state } => state_handler(ctx, request, state)?,
 		}
@@ -119,10 +119,10 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	let now = Local::now()
-	.naive_utc()
-	.and_utc()
-	.timestamp_nanos_opt()
-	.unwrap_or(0);
+		.naive_utc()
+		.and_utc()
+		.timestamp_nanos_opt()
+		.unwrap_or(0);
 
 	let name = ctx
 		.fq_name()

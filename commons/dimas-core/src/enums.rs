@@ -71,7 +71,7 @@ pub enum Signal {
 	/// respond to Ping
 	Ping {
 		/// the utc time coordinate when the request was sent
-		sent: i64
+		sent: i64,
 	},
 	/// Shutdown application
 	Shutdown,

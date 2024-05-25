@@ -2,6 +2,8 @@
 
 //! Commandline tool for `DiMAS`
 
+use std::{thread, time::Duration};
+
 // region:		--- modules
 use clap::{Parser, Subcommand};
 use dimas_com::Communicator;
@@ -31,9 +33,13 @@ enum DimasctlCommand {
 	/// List running `DiMAS` entities
 	List,
 	/// Ping entities
-	Ping{
+	Ping {
 		/// Selector for the targets to ping
-		target: String
+		/// - will be concatenated with optional selector
+		target: String,
+		/// An optional number of ping repetitiions
+		#[arg(short, long, default_value = "1")]
+		count: u8,
 	},
 	/// Scout for `Zenoh` entities
 	Scout,
@@ -44,9 +50,10 @@ enum DimasctlCommand {
 		state: Option<OperationState>,
 	},
 	/// Shurdown entities
-	Shutdown{
+	Shutdown {
 		/// Selector for the targets to shutdown
-		target: String
+		/// - will be concatenated with optional selector
+		target: String,
 	},
 }
 // endregion:	--- Commands
@@ -57,7 +64,7 @@ fn main() {
 	let header = "ZenohId                           Kind    State       Prefix/Name";
 
 	let base_selector = args
-		.selector
+		.selector.clone()
 		.map_or_else(|| String::from("**"), |selector| selector);
 
 	match &args.command {
@@ -75,20 +82,19 @@ fn main() {
 				);
 			}
 		}
-		DimasctlCommand::Ping { target} => {
+		DimasctlCommand::Ping { target, count } => {
+			let target = args.selector.map_or_else(|| target.to_owned(), |value| format!("{value}/{target}"));
 			let com = Communicator::new(&config).expect("failed to create 'Communicator'");
-			//println!("List of pinged DiMAS entities:");
-			//println!("{header}");
-			for item in dimas_commands::ping_list(&com, target) {
-				let time = item.0.oneway() + item.1;
-				#[allow(clippy::cast_precision_loss)]
-				let time = time as f64 / 2_000_000.0;
-				println!(
-					"{:32} {:.2}ms  {}",
-					item.0.zid(),
-					time,
-					item.0.name(),
-				);
+			for _ in 0..*count {
+				for item in dimas_commands::ping_list(&com, &target) {
+					#[allow(clippy::cast_precision_loss)]
+					let time = item.1 as f64 / 2_000_000.0;
+					println!("{:32}  {:6.2}ms  {}", item.0.zid(), time, item.0.name(),);
+				}
+				if *count > 1 {
+					println!("\r");
+					thread::sleep(Duration::from_millis(1000));
+				}
 			}
 		}
 		DimasctlCommand::Scout => {
@@ -117,7 +123,8 @@ fn main() {
 				);
 			}
 		}
-		DimasctlCommand::Shutdown { target} => {
+		DimasctlCommand::Shutdown { target } => {
+			let target = args.selector.map_or_else(|| target.to_owned(), |value| format!("{value}/{target}"));
 			let com = Communicator::new(&config).expect("failed to create 'Communicator'");
 			println!("List of shut down DiMAS entities:");
 			println!("{header}");
