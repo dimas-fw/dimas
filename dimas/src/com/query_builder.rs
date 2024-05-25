@@ -34,12 +34,12 @@ where
 	pub storage: Arc<RwLock<HashMap<String, Query<P>>>>,
 }
 
-/// State signaling that the [`QueryBuilder`] has no key expression set
-pub struct NoKeyExpression;
-/// State signaling that the [`QueryBuilder`] has the key expression set
-pub struct KeyExpression {
-	/// The key expression
-	key_expr: String,
+/// State signaling that the [`QueryBuilder`] has no selector set
+pub struct NoSelector;
+/// State signaling that the [`QueryBuilder`] has the selector set
+pub struct Selector {
+	/// The selector
+	selector: String,
 }
 
 /// State signaling that the [`QueryBuilder`] has no response callback set
@@ -66,14 +66,14 @@ where
 	activation_state: OperationState,
 	allowed_destination: Locality,
 	timeout: Option<Duration>,
-	key_expr: K,
+	selector: K,
 	response_callback: C,
 	storage: S,
 	mode: ConsolidationMode,
 	target: QueryTarget,
 }
 
-impl<P> QueryBuilder<P, NoKeyExpression, NoResponseCallback, NoStorage>
+impl<P> QueryBuilder<P, NoSelector, NoResponseCallback, NoStorage>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -85,7 +85,7 @@ where
 			activation_state: OperationState::Standby,
 			allowed_destination: Locality::Any,
 			timeout: None,
-			key_expr: NoKeyExpression,
+			selector: NoSelector,
 			response_callback: NoResponseCallback,
 			storage: NoStorage,
 			mode: ConsolidationMode::None,
@@ -134,13 +134,13 @@ where
 	}
 }
 
-impl<P, C, S> QueryBuilder<P, NoKeyExpression, C, S>
+impl<P, C, S> QueryBuilder<P, NoSelector, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// Set the full expression for the query
 	#[must_use]
-	pub fn key_expr(self, key_expr: &str) -> QueryBuilder<P, KeyExpression, C, S> {
+	pub fn selector(self, selector: &str) -> QueryBuilder<P, Selector, C, S> {
 		let Self {
 			context,
 			activation_state,
@@ -157,8 +157,8 @@ where
 			activation_state,
 			allowed_destination,
 			timeout,
-			key_expr: KeyExpression {
-				key_expr: key_expr.into(),
+			selector: Selector {
+				selector: selector.into(),
 			},
 			response_callback: callback,
 			storage,
@@ -170,8 +170,8 @@ where
 	/// Set only the message qualifing part of the query.
 	/// Will be prefixed with agents prefix.
 	#[must_use]
-	pub fn topic(self, topic: &str) -> QueryBuilder<P, KeyExpression, C, S> {
-		let key_expr = self
+	pub fn topic(self, topic: &str) -> QueryBuilder<P, Selector, C, S> {
+		let selector = self
 			.context
 			.prefix()
 			.clone()
@@ -192,7 +192,7 @@ where
 			activation_state,
 			allowed_destination,
 			timeout,
-			key_expr: KeyExpression { key_expr },
+			selector: Selector { selector },
 			response_callback: callback,
 			storage,
 			mode,
@@ -216,7 +216,7 @@ where
 			activation_state,
 			allowed_destination,
 			timeout,
-			key_expr,
+			selector,
 			storage,
 			mode,
 			target,
@@ -228,7 +228,7 @@ where
 			activation_state,
 			allowed_destination,
 			timeout,
-			key_expr,
+			selector,
 			response_callback: ResponseCallback { response: callback },
 			storage,
 			mode,
@@ -252,7 +252,7 @@ where
 			activation_state,
 			allowed_destination,
 			timeout,
-			key_expr,
+			selector,
 			response_callback: callback,
 			mode,
 			target,
@@ -263,7 +263,7 @@ where
 			activation_state,
 			allowed_destination,
 			timeout,
-			key_expr,
+			selector,
 			response_callback: callback,
 			storage: Storage { storage },
 			mode,
@@ -272,7 +272,7 @@ where
 	}
 }
 
-impl<P, S> QueryBuilder<P, KeyExpression, ResponseCallback<P>, S>
+impl<P, S> QueryBuilder<P, Selector, ResponseCallback<P>, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -285,15 +285,15 @@ where
 			activation_state,
 			allowed_destination,
 			timeout,
-			key_expr,
+			selector,
 			response_callback,
 			mode,
 			target,
 			..
 		} = self;
-		let key_expr = key_expr.key_expr;
+		let selector = selector.selector;
 		Ok(Query::new(
-			key_expr,
+			selector,
 			context,
 			activation_state,
 			response_callback.response,
@@ -305,7 +305,7 @@ where
 	}
 }
 
-impl<P> QueryBuilder<P, KeyExpression, ResponseCallback<P>, Storage<P>>
+impl<P> QueryBuilder<P, Selector, ResponseCallback<P>, Storage<P>>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -318,7 +318,7 @@ where
 		let r = collection
 			.write()
 			.map_err(|_| DimasError::ShouldNotHappen)?
-			.insert(q.key_expr().to_string(), q);
+			.insert(q.selector().to_string(), q);
 		Ok(r)
 	}
 }
@@ -336,6 +336,6 @@ mod tests {
 
 	#[test]
 	const fn normal_types() {
-		is_normal::<QueryBuilder<Props, NoKeyExpression, NoResponseCallback, NoStorage>>();
+		is_normal::<QueryBuilder<Props, NoSelector, NoResponseCallback, NoStorage>>();
 	}
 }

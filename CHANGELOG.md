@@ -36,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - signature of `Agent::config(self, ...)` -> `Config` is now passed as reference
 - signature of Query::get(), Communicator::get(): added an `Option<&Message>`
 - encoding of types `Message` & `Response` now explicit in callbacks
-- merged put_with/delete_with/get_with into put/delete/get
+- renaming & restructuring
 
 ### Removed
 - low_latency configuration

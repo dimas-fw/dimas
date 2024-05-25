@@ -30,12 +30,12 @@ where
 	pub storage: Arc<RwLock<HashMap<String, Publisher<P>>>>,
 }
 
-/// State signaling that the [`PublisherBuilder`] has no key expression set
-pub struct NoKeyExpression;
-/// State signaling that the [`PublisherBuilder`] has the key expression set
-pub struct KeyExpression {
-	/// The key expression
-	key_expr: String,
+/// State signaling that the [`PublisherBuilder`] has no selector set
+pub struct NoSelector;
+/// State signaling that the [`PublisherBuilder`] has the selector set
+pub struct Selector {
+	/// The selector
+	selector: String,
 }
 // endregion:	--- states
 
@@ -50,11 +50,11 @@ where
 	activation_state: OperationState,
 	priority: Priority,
 	congestion_control: CongestionControl,
-	key_expr: K,
+	selector: K,
 	storage: S,
 }
 
-impl<P> PublisherBuilder<P, NoKeyExpression, NoStorage>
+impl<P> PublisherBuilder<P, NoSelector, NoStorage>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -66,7 +66,7 @@ where
 			activation_state: OperationState::Standby,
 			priority: Priority::Data,
 			congestion_control: CongestionControl::Drop,
-			key_expr: NoKeyExpression,
+			selector: NoSelector,
 			storage: NoStorage,
 		}
 	}
@@ -113,7 +113,7 @@ where
 			activation_state,
 			priority,
 			congestion_control,
-			key_expr,
+			selector,
 			..
 		} = self;
 		PublisherBuilder {
@@ -121,19 +121,19 @@ where
 			activation_state,
 			priority,
 			congestion_control,
-			key_expr,
+			selector,
 			storage: Storage { storage },
 		}
 	}
 }
 
-impl<P, S> PublisherBuilder<P, NoKeyExpression, S>
+impl<P, S> PublisherBuilder<P, NoSelector, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// Set the full key expression for the [`Publisher`]
 	#[must_use]
-	pub fn key_expr(self, key_expr: &str) -> PublisherBuilder<P, KeyExpression, S> {
+	pub fn selector(self, selector: &str) -> PublisherBuilder<P, Selector, S> {
 		let Self {
 			context,
 			activation_state,
@@ -147,8 +147,8 @@ where
 			activation_state,
 			priority,
 			congestion_control,
-			key_expr: KeyExpression {
-				key_expr: key_expr.into(),
+			selector: Selector {
+				selector: selector.into(),
 			},
 			storage,
 		}
@@ -157,8 +157,8 @@ where
 	/// Set only the message qualifing part of the [`Publisher`].
 	/// Will be prefixed with [`Agent`]s prefix.
 	#[must_use]
-	pub fn topic(self, topic: &str) -> PublisherBuilder<P, KeyExpression, S> {
-		let key_expr = self
+	pub fn topic(self, topic: &str) -> PublisherBuilder<P, Selector, S> {
+		let selector = self
 			.context
 			.prefix()
 			.clone()
@@ -176,13 +176,13 @@ where
 			activation_state,
 			priority,
 			congestion_control,
-			key_expr: KeyExpression { key_expr },
+			selector: Selector { selector },
 			storage,
 		}
 	}
 }
 
-impl<P, S> PublisherBuilder<P, KeyExpression, S>
+impl<P, S> PublisherBuilder<P, Selector, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -192,7 +192,7 @@ where
 	/// Currently none
 	pub fn build(self) -> Result<Publisher<P>> {
 		Ok(Publisher::new(
-			self.key_expr.key_expr,
+			self.selector.selector,
 			self.context,
 			self.activation_state,
 			self.priority,
@@ -201,7 +201,7 @@ where
 	}
 }
 
-impl<P> PublisherBuilder<P, KeyExpression, Storage<P>>
+impl<P> PublisherBuilder<P, Selector, Storage<P>>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -215,7 +215,7 @@ where
 		let r = collection
 			.write()
 			.map_err(|_| DimasError::ShouldNotHappen)?
-			.insert(p.key_expr().to_string(), p);
+			.insert(p.selector().to_string(), p);
 		Ok(r)
 	}
 }
@@ -233,6 +233,6 @@ mod tests {
 
 	#[test]
 	const fn normal_types() {
-		is_normal::<PublisherBuilder<Props, NoKeyExpression, NoStorage>>();
+		is_normal::<PublisherBuilder<Props, NoSelector, NoStorage>>();
 	}
 }

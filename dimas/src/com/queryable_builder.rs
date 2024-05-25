@@ -30,12 +30,12 @@ where
 	pub storage: Arc<RwLock<HashMap<String, Queryable<P>>>>,
 }
 
-/// State signaling that the [`QueryableBuilder`] has no key expression set
-pub struct NoKeyExpression;
-/// State signaling that the [`QueryableBuilder`] has the key expression set
-pub struct KeyExpression {
-	/// The key expression
-	key_expr: String,
+/// State signaling that the [`QueryableBuilder`] has no selector set
+pub struct NoSelector;
+/// State signaling that the [`QueryableBuilder`] has the selector set
+pub struct Selector {
+	/// The selector
+	selector: String,
 }
 
 /// State signaling that the [`QueryableBuilder`] has no request callback set
@@ -62,7 +62,7 @@ where
 	activation_state: OperationState,
 	completeness: bool,
 	allowed_origin: Locality,
-	key_expr: K,
+	selector: K,
 	request_callback: C,
 	storage: S,
 }
@@ -93,7 +93,7 @@ where
 	}
 }
 
-impl<P> QueryableBuilder<P, NoKeyExpression, NoRequestCallback, NoStorage>
+impl<P> QueryableBuilder<P, NoSelector, NoRequestCallback, NoStorage>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -105,20 +105,20 @@ where
 			activation_state: OperationState::Standby,
 			completeness: true,
 			allowed_origin: Locality::Any,
-			key_expr: NoKeyExpression,
+			selector: NoSelector,
 			request_callback: NoRequestCallback,
 			storage: NoStorage,
 		}
 	}
 }
 
-impl<P, C, S> QueryableBuilder<P, NoKeyExpression, C, S>
+impl<P, C, S> QueryableBuilder<P, NoSelector, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// Set the full expression for the [`Queryable`].
 	#[must_use]
-	pub fn key_expr(self, key_expr: &str) -> QueryableBuilder<P, KeyExpression, C, S> {
+	pub fn selector(self, selector: &str) -> QueryableBuilder<P, Selector, C, S> {
 		let Self {
 			context,
 			activation_state,
@@ -133,8 +133,8 @@ where
 			activation_state,
 			completeness,
 			allowed_origin,
-			key_expr: KeyExpression {
-				key_expr: key_expr.into(),
+			selector: Selector {
+				selector: selector.into(),
 			},
 			request_callback: callback,
 			storage,
@@ -144,8 +144,8 @@ where
 	/// Set only the topic of the [`Queryable`].
 	/// Will be prefixed with agents prefix.
 	#[must_use]
-	pub fn topic(self, topic: &str) -> QueryableBuilder<P, KeyExpression, C, S> {
-		let key_expr = self
+	pub fn topic(self, topic: &str) -> QueryableBuilder<P, Selector, C, S> {
+		let selector = self
 			.context
 			.prefix()
 			.clone()
@@ -164,7 +164,7 @@ where
 			activation_state,
 			completeness,
 			allowed_origin,
-			key_expr: KeyExpression { key_expr },
+			selector: Selector { selector },
 			request_callback: callback,
 			storage,
 		}
@@ -186,7 +186,7 @@ where
 			activation_state,
 			completeness,
 			allowed_origin,
-			key_expr,
+			selector,
 			storage,
 			..
 		} = self;
@@ -196,7 +196,7 @@ where
 			activation_state,
 			completeness,
 			allowed_origin,
-			key_expr,
+			selector,
 			request_callback: RequestCallback { request },
 			storage,
 		}
@@ -218,7 +218,7 @@ where
 			activation_state,
 			completeness,
 			allowed_origin,
-			key_expr,
+			selector,
 			request_callback: callback,
 			..
 		} = self;
@@ -227,14 +227,14 @@ where
 			activation_state,
 			completeness,
 			allowed_origin,
-			key_expr,
+			selector,
 			request_callback: callback,
 			storage: Storage { storage },
 		}
 	}
 }
 
-impl<P, S> QueryableBuilder<P, KeyExpression, RequestCallback<P>, S>
+impl<P, S> QueryableBuilder<P, Selector, RequestCallback<P>, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -247,13 +247,13 @@ where
 			activation_state,
 			completeness,
 			allowed_origin,
-			key_expr,
+			selector,
 			request_callback,
 			..
 		} = self;
-		let key_expr = key_expr.key_expr;
+		let selector = selector.selector;
 		Ok(Queryable::new(
-			key_expr,
+			selector,
 			context,
 			activation_state,
 			request_callback.request,
@@ -263,7 +263,7 @@ where
 	}
 }
 
-impl<P> QueryableBuilder<P, KeyExpression, RequestCallback<P>, Storage<P>>
+impl<P> QueryableBuilder<P, Selector, RequestCallback<P>, Storage<P>>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -277,7 +277,7 @@ where
 		let r = collection
 			.write()
 			.map_err(|_| DimasError::ShouldNotHappen)?
-			.insert(q.key_expr().to_string(), q);
+			.insert(q.selector().to_string(), q);
 		Ok(r)
 	}
 }
@@ -295,6 +295,6 @@ mod tests {
 
 	#[test]
 	const fn normal_types() {
-		is_normal::<QueryableBuilder<Props, NoKeyExpression, NoRequestCallback, NoStorage>>();
+		is_normal::<QueryableBuilder<Props, NoSelector, NoRequestCallback, NoStorage>>();
 	}
 }

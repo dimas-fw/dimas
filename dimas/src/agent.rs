@@ -245,19 +245,19 @@ where
 
 		// add signal queryables
 		// for zid
-		let key_expr = format!("{}/signal", agent.context.uuid());
+		let selector = format!("{}/signal", agent.context.uuid());
 		agent
 			.queryable()
-			.key_expr(&key_expr)
+			.selector(&selector)
 			.callback(callback_dispatcher)
 			.activation_state(OperationState::Created)
 			.add()?;
 		// for fully qualified name
 		if let Some(fq_name) = agent.context.fq_name() {
-			let key_expr = format!("{fq_name}/*");
+			let selector = format!("{fq_name}/*");
 			agent
 				.queryable()
-				.key_expr(&key_expr)
+				.selector(&selector)
 				.callback(callback_dispatcher)
 				.activation_state(OperationState::Created)
 				.add()?;
@@ -337,7 +337,7 @@ where
 		&self,
 	) -> PublisherBuilder<
 		P,
-		crate::com::publisher_builder::NoKeyExpression,
+		crate::com::publisher_builder::NoSelector,
 		crate::com::publisher_builder::Storage<P>,
 	> {
 		PublisherBuilder::new(self.context.clone()).storage(self.context.publishers().clone())
@@ -349,7 +349,7 @@ where
 		&self,
 	) -> QueryBuilder<
 		P,
-		crate::com::query_builder::NoKeyExpression,
+		crate::com::query_builder::NoSelector,
 		crate::com::query_builder::NoResponseCallback,
 		crate::com::query_builder::Storage<P>,
 	> {
@@ -362,7 +362,7 @@ where
 		&self,
 	) -> QueryableBuilder<
 		P,
-		crate::com::queryable_builder::NoKeyExpression,
+		crate::com::queryable_builder::NoSelector,
 		crate::com::queryable_builder::NoRequestCallback,
 		crate::com::queryable_builder::Storage<P>,
 	> {
@@ -375,7 +375,7 @@ where
 		&self,
 	) -> SubscriberBuilder<
 		P,
-		crate::com::subscriber_builder::NoKeyExpression,
+		crate::com::subscriber_builder::NoSelector,
 		crate::com::subscriber_builder::NoPutCallback,
 		crate::com::subscriber_builder::Storage<P>,
 	> {
@@ -388,7 +388,7 @@ where
 		&self,
 	) -> TimerBuilder<
 		P,
-		crate::timer::NoKeyExpression,
+		crate::timer::NoSelector,
 		crate::timer::NoInterval,
 		crate::timer::NoIntervalCallback,
 		crate::timer::Storage<P>,
@@ -470,35 +470,35 @@ where
 				// `TaskSignal`s
 				signal = wait_for_task_signals(&self.rx) => {
 					match *signal {
-						TaskSignal::RestartLiveliness(key_expr) => {
+						TaskSignal::RestartLiveliness(selector) => {
 							self.context.liveliness_subscribers()
 								.write()
 								.map_err(|_| DimasError::WriteProperties)?
-								.get_mut(&key_expr)
+								.get_mut(&selector)
 								.ok_or(DimasError::ShouldNotHappen)?
 								.manage_operation_state(&self.context.state())?;
 						},
-						TaskSignal::RestartQueryable(key_expr) => {
+						TaskSignal::RestartQueryable(selector) => {
 							self.context.queryables()
 								.write()
 								.map_err(|_| DimasError::WriteProperties)?
-								.get_mut(&key_expr)
+								.get_mut(&selector)
 								.ok_or(DimasError::ShouldNotHappen)?
 								.manage_operation_state(&self.context.state())?;
 						},
-						TaskSignal::RestartSubscriber(key_expr) => {
+						TaskSignal::RestartSubscriber(selector) => {
 							self.context.subscribers()
 								.write()
 								.map_err(|_| DimasError::WriteProperties)?
-								.get_mut(&key_expr)
+								.get_mut(&selector)
 								.ok_or(DimasError::ShouldNotHappen)?
 								.manage_operation_state(&self.context.state())?;
 						},
-						TaskSignal::RestartTimer(key_expr) => {
+						TaskSignal::RestartTimer(selector) => {
 							self.context.timers()
 								.write()
 								.map_err(|_| DimasError::WriteProperties)?
-								.get_mut(&key_expr)
+								.get_mut(&selector)
 								.ok_or(DimasError::ShouldNotHappen)?
 								.manage_operation_state(&self.context.state())?;
 						},

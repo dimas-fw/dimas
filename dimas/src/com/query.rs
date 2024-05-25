@@ -35,7 +35,7 @@ pub struct Query<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	key_expr: String,
+	selector: String,
 	/// Context for the Query
 	context: Context<P>,
 	activation_state: OperationState,
@@ -52,7 +52,7 @@ where
 {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Query")
-			.field("key_expr", &self.key_expr)
+			.field("selector", &self.selector)
 			.field("mode", &self.mode)
 			.field("allowed_destination", &self.allowed_destination)
 			.finish_non_exhaustive()
@@ -81,7 +81,7 @@ where
 	#[must_use]
 	#[allow(clippy::too_many_arguments)]
 	pub fn new(
-		key_expr: String,
+		selector: String,
 		context: Context<P>,
 		activation_state: OperationState,
 		response_callback: QueryCallback<P>,
@@ -91,7 +91,7 @@ where
 		timeout: Option<Duration>,
 	) -> Self {
 		Self {
-			key_expr,
+			selector,
 			context,
 			activation_state,
 			response_callback,
@@ -102,10 +102,10 @@ where
 		}
 	}
 
-	/// Get `key_expr`
+	/// Get `selector`
 	#[must_use]
-	pub fn key_expr(&self) -> &str {
-		&self.key_expr
+	pub fn selector(&self) -> &str {
+		&self.selector
 	}
 
 	/// Initialize
@@ -140,7 +140,7 @@ where
 		let cb = self.response_callback.clone();
 		let session = self.context.session();
 		let mut query = session
-			.get(&self.key_expr)
+			.get(&self.selector)
 			.target(self.target)
 			.consolidation(self.mode)
 			.allowed_destination(self.allowed_destination);

@@ -31,7 +31,7 @@ pub struct Queryable<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	key_expr: String,
+	selector: String,
 	/// Context for the Subscriber
 	context: Context<P>,
 	activation_state: OperationState,
@@ -47,7 +47,7 @@ where
 {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Queryable")
-			.field("key_expr", &self.key_expr)
+			.field("selector", &self.selector)
 			.field("complete", &self.completeness)
 			.finish_non_exhaustive()
 	}
@@ -75,7 +75,7 @@ where
 	/// Constructor for a [`Queryable`]
 	#[must_use]
 	pub fn new(
-		key_expr: String,
+		selector: String,
 		context: Context<P>,
 		activation_state: OperationState,
 		request_callback: ArcQueryableCallback<P>,
@@ -83,7 +83,7 @@ where
 		allowed_origin: Locality,
 	) -> Self {
 		Self {
-			key_expr,
+			selector,
 			context,
 			activation_state,
 			request_callback,
@@ -93,10 +93,10 @@ where
 		}
 	}
 
-	/// Get `key_expr`
+	/// Get `selector`
 	#[must_use]
-	pub fn key_expr(&self) -> &str {
-		&self.key_expr
+	pub fn selector(&self) -> &str {
+		&self.selector
 	}
 
 	/// Start or restart the queryable.
@@ -114,14 +114,14 @@ where
 
 		let completeness = self.completeness;
 		let allowed_origin = self.allowed_origin;
-		let key_expr = self.key_expr.clone();
+		let selector = self.selector.clone();
 		let cb = self.request_callback.clone();
 		let ctx1 = self.context.clone();
 		let ctx2 = self.context.clone();
 
 		self.handle
 			.replace(tokio::task::spawn(async move {
-				let key = key_expr.clone();
+				let key = selector.clone();
 				std::panic::set_hook(Box::new(move |reason| {
 					error!("queryable panic: {}", reason);
 					if let Err(reason) = ctx1
@@ -134,7 +134,7 @@ where
 					};
 				}));
 				if let Err(error) =
-					run_queryable(key_expr, cb, completeness, allowed_origin, ctx2).await
+					run_queryable(selector, cb, completeness, allowed_origin, ctx2).await
 				{
 					error!("queryable failed with {error}");
 				};
@@ -153,7 +153,7 @@ where
 
 #[instrument(name="queryable", level = Level::ERROR, skip_all)]
 async fn run_queryable<P>(
-	key_expr: String,
+	selector: String,
 	cb: ArcQueryableCallback<P>,
 	completeness: bool,
 	allowed_origin: Locality,
@@ -164,7 +164,7 @@ where
 {
 	let subscriber = ctx
 		.session()
-		.declare_queryable(&key_expr)
+		.declare_queryable(&selector)
 		.complete(completeness)
 		.allowed_origin(allowed_origin)
 		.res_async()

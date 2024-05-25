@@ -34,7 +34,7 @@ where
 	/// A Timer with an Interval
 	Interval {
 		/// The Timers ID
-		key_expr: String,
+		selector: String,
 		/// Context for the Timer
 		context: Context<P>,
 		/// [`OperationState`] on which this timer is started
@@ -49,7 +49,7 @@ where
 	/// A delayed Timer with an Interval
 	DelayedInterval {
 		/// The Timers ID
-		key_expr: String,
+		selector: String,
 		/// Context for the Timer
 		context: Context<P>,
 		/// [`OperationState`] on which this timer is started
@@ -93,7 +93,7 @@ where
 	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()> {
 		match self {
 			Self::Interval {
-				key_expr: _,
+				selector: _,
 				context: _,
 				activation_state,
 				interval: _,
@@ -101,7 +101,7 @@ where
 				handle,
 			}
 			| Self::DelayedInterval {
-				key_expr: _,
+				selector: _,
 				context: _,
 				activation_state,
 				delay: _,
@@ -137,7 +137,7 @@ where
 	) -> Self {
 		match delay {
 			Some(delay) => Self::DelayedInterval {
-				key_expr: name,
+				selector: name,
 				context,
 				activation_state,
 				delay,
@@ -146,7 +146,7 @@ where
 				handle: None,
 			},
 			None => Self::Interval {
-				key_expr: name,
+				selector: name,
 				context,
 				activation_state,
 				interval,
@@ -164,7 +164,7 @@ where
 
 		match self {
 			Self::Interval {
-				key_expr,
+				selector,
 				context,
 				activation_state: _,
 				interval,
@@ -178,7 +178,7 @@ where
 					}
 				}
 
-				let key = key_expr.clone();
+				let key = selector.clone();
 				let interval = *interval;
 				let cb = callback.clone();
 				let ctx1 = context.clone();
@@ -201,7 +201,7 @@ where
 				Ok(())
 			}
 			Self::DelayedInterval {
-				key_expr,
+				selector,
 				context,
 				activation_state: _,
 				delay,
@@ -216,7 +216,7 @@ where
 					}
 				}
 
-				let key = key_expr.clone();
+				let key = selector.clone();
 				let delay = *delay;
 				let interval = *interval;
 				let cb = callback.clone();
@@ -248,7 +248,7 @@ where
 	fn stop(&mut self) {
 		match self {
 			Self::Interval {
-				key_expr: _,
+				selector: _,
 				context: _,
 				activation_state: _,
 				interval: _,
@@ -256,7 +256,7 @@ where
 				handle,
 			}
 			| Self::DelayedInterval {
-				key_expr: _,
+				selector: _,
 				context: _,
 				activation_state: _,
 				delay: _,

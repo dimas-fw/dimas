@@ -40,7 +40,7 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// The subscribers key expression
-	key_expr: String,
+	selector: String,
 	/// Context for the Subscriber
 	context: Context<P>,
 	/// [`OperationState`] on which this subscriber is started
@@ -57,7 +57,7 @@ where
 {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Subscriber")
-			.field("key_expr", &self.key_expr)
+			.field("selector", &self.selector)
 			.finish_non_exhaustive()
 	}
 }
@@ -84,7 +84,7 @@ where
 	/// Constructor for a [`Subscriber`].
 	#[must_use]
 	pub fn new(
-		key_expr: String,
+		selector: String,
 		context: Context<P>,
 		activation_state: OperationState,
 		put_callback: ArcSubscriberPutCallback<P>,
@@ -92,7 +92,7 @@ where
 		delete_callback: Option<ArcSubscriberDeleteCallback<P>>,
 	) -> Self {
 		Self {
-			key_expr,
+			selector,
 			context,
 			activation_state,
 			put_callback,
@@ -102,10 +102,10 @@ where
 		}
 	}
 
-	/// Get `key_expr`
+	/// Get `selector`
 	#[must_use]
-	pub fn key_expr(&self) -> &str {
-		&self.key_expr
+	pub fn selector(&self) -> &str {
+		&self.selector
 	}
 
 	/// Start or restart the subscriber.
@@ -128,7 +128,7 @@ where
 			}
 		}
 
-		let key_expr = self.key_expr.clone();
+		let selector = self.selector.clone();
 		let p_cb = self.put_callback.clone();
 		let d_cb = self.delete_callback.clone();
 		let reliability = self.reliability;
@@ -137,7 +137,7 @@ where
 
 		self.handle
 			.replace(tokio::task::spawn(async move {
-				let key = key_expr.clone();
+				let key = selector.clone();
 				std::panic::set_hook(Box::new(move |reason| {
 					error!("subscriber panic: {}", reason);
 					if let Err(reason) = ctx1
@@ -150,7 +150,7 @@ where
 					};
 				}));
 				if let Err(error) =
-					run_subscriber(key_expr, p_cb, d_cb, reliability, ctx2.clone()).await
+					run_subscriber(selector, p_cb, d_cb, reliability, ctx2.clone()).await
 				{
 					error!("spawning subscriber failed with {error}");
 				};
@@ -169,7 +169,7 @@ where
 
 #[instrument(name="subscriber", level = Level::ERROR, skip_all)]
 async fn run_subscriber<P>(
-	key_expr: String,
+	selector: String,
 	p_cb: ArcSubscriberPutCallback<P>,
 	d_cb: Option<ArcSubscriberDeleteCallback<P>>,
 	reliability: Reliability,
@@ -180,7 +180,7 @@ where
 {
 	let subscriber = ctx
 		.session()
-		.declare_subscriber(&key_expr)
+		.declare_subscriber(&selector)
 		.reliability(reliability)
 		.res_async()
 		.await

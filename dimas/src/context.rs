@@ -450,7 +450,7 @@ where
 				if let Err(reason) = publisher.1.manage_operation_state(&new_state) {
 					error!(
 						"could not initialize publisher for {}, reason: {}",
-						publisher.1.key_expr(),
+						publisher.1.selector(),
 						reason
 					);
 				};
@@ -465,7 +465,7 @@ where
 				if let Err(reason) = query.1.manage_operation_state(&new_state) {
 					error!(
 						"could not initialize query for {}, reason: {}",
-						query.1.key_expr(),
+						query.1.selector(),
 						reason
 					);
 				};
@@ -509,7 +509,7 @@ where
 				if let Err(reason) = query.1.manage_operation_state(&new_state) {
 					error!(
 						"could not de-initialize query for {}, reason: {}",
-						query.1.key_expr(),
+						query.1.selector(),
 						reason
 					);
 				};

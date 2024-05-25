@@ -74,7 +74,7 @@ impl Communicator {
 
 	/// Create a key expression from a topic by adding prefix if one is given.
 	#[must_use]
-	pub fn key_expr(&self, topic: &str) -> String {
+	pub fn selector(&self, topic: &str) -> String {
 		self.prefix
 			.clone()
 			.map_or_else(|| topic.into(), |prefix| format!("{prefix}/{topic}"))
@@ -85,7 +85,7 @@ impl Communicator {
 	/// # Errors
 	#[allow(clippy::needless_pass_by_value)]
 	pub fn put(&self, topic: &str, message: Message) -> Result<()> {
-		let selector = self.key_expr(topic);
+		let selector = self.selector(topic);
 
 		self.put_with(&selector, message)
 	}
@@ -104,7 +104,7 @@ impl Communicator {
 	/// The `topic` will be enhanced with the group prefix.
 	/// # Errors
 	pub fn delete(&self, topic: &str) -> Result<()> {
-		let selector = self.key_expr(topic);
+		let selector = self.selector(topic);
 
 		self.delete_with(&selector)
 	}
@@ -128,7 +128,7 @@ impl Communicator {
 	where
 		F: FnMut(Response) -> Result<()> + Sized,
 	{
-		let selector = self.key_expr(topic);
+		let selector = self.selector(topic);
 
 		self.get_with(&selector, message, callback)
 	}

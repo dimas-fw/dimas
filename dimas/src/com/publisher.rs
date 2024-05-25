@@ -27,7 +27,7 @@ pub struct Publisher<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	key_expr: String,
+	selector: String,
 	/// Context for the Publisher
 	context: Context<P>,
 	activation_state: OperationState,
@@ -42,7 +42,7 @@ where
 {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Publisher")
-			.field("key_expr", &self.key_expr)
+			.field("selector", &self.selector)
 			.field("initialized", &self.publisher.is_some())
 			.finish_non_exhaustive()
 	}
@@ -69,14 +69,14 @@ where
 	/// Constructor for a [`Publisher`]
 	#[must_use]
 	pub const fn new(
-		key_expr: String,
+		selector: String,
 		context: Context<P>,
 		activation_state: OperationState,
 		priority: Priority,
 		congestion_control: CongestionControl,
 	) -> Self {
 		Self {
-			key_expr,
+			selector,
 			context,
 			activation_state,
 			priority,
@@ -85,10 +85,10 @@ where
 		}
 	}
 
-	/// Get `key_expr`
+	/// Get `selector`
 	#[must_use]
-	pub fn key_expr(&self) -> &str {
-		&self.key_expr
+	pub fn selector(&self) -> &str {
+		&self.selector
 	}
 
 	/// Initialize
@@ -101,7 +101,7 @@ where
 		let publ = self
 			.context
 			.session()
-			.declare_publisher(self.key_expr.clone())
+			.declare_publisher(self.selector.clone())
 			.congestion_control(self.congestion_control)
 			.priority(self.priority)
 			.res_sync()?;

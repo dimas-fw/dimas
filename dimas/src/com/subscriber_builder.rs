@@ -31,12 +31,12 @@ where
 	pub storage: Arc<RwLock<std::collections::HashMap<String, Subscriber<P>>>>,
 }
 
-/// State signaling that the [`SubscriberBuilder`] has no key expression value set
-pub struct NoKeyExpression;
-/// State signaling that the [`SubscriberBuilder`] has the key expression value set
-pub struct KeyExpression {
-	/// The key expression
-	key_expr: String,
+/// State signaling that the [`SubscriberBuilder`] has no selector value set
+pub struct NoSelector;
+/// State signaling that the [`SubscriberBuilder`] has the selector value set
+pub struct Selector {
+	/// The selector
+	selector: String,
 }
 
 /// State signaling that the [`SubscriberBuilder`] has no put callback value set
@@ -61,14 +61,14 @@ where
 {
 	context: Context<P>,
 	activation_state: OperationState,
-	key_expr: K,
+	selector: K,
 	put_callback: C,
 	storage: S,
 	reliability: Reliability,
 	delete_callback: Option<ArcSubscriberDeleteCallback<P>>,
 }
 
-impl<P> SubscriberBuilder<P, NoKeyExpression, NoPutCallback, NoStorage>
+impl<P> SubscriberBuilder<P, NoSelector, NoPutCallback, NoStorage>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -78,7 +78,7 @@ where
 		Self {
 			context,
 			activation_state: OperationState::Standby,
-			key_expr: NoKeyExpression,
+			selector: NoSelector,
 			put_callback: NoPutCallback,
 			storage: NoStorage,
 			reliability: Reliability::BestEffort,
@@ -117,13 +117,13 @@ where
 	}
 }
 
-impl<P, C, S> SubscriberBuilder<P, NoKeyExpression, C, S>
+impl<P, C, S> SubscriberBuilder<P, NoSelector, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// Set the full key expression for the [`Subscriber`].
 	#[must_use]
-	pub fn key_expr(self, key_expr: &str) -> SubscriberBuilder<P, KeyExpression, C, S> {
+	pub fn selector(self, selector: &str) -> SubscriberBuilder<P, Selector, C, S> {
 		let Self {
 			context,
 			activation_state,
@@ -136,8 +136,8 @@ where
 		SubscriberBuilder {
 			context,
 			activation_state,
-			key_expr: KeyExpression {
-				key_expr: key_expr.into(),
+			selector: Selector {
+				selector: selector.into(),
 			},
 			put_callback,
 			storage,
@@ -149,8 +149,8 @@ where
 	/// Set only the message qualifing part of the [`Subscriber`].
 	/// Will be prefixed with [`Agent`]s prefix.
 	#[must_use]
-	pub fn topic(self, topic: &str) -> SubscriberBuilder<P, KeyExpression, C, S> {
-		let key_expr = self
+	pub fn topic(self, topic: &str) -> SubscriberBuilder<P, Selector, C, S> {
+		let selector = self
 			.context
 			.prefix()
 			.clone()
@@ -167,7 +167,7 @@ where
 		SubscriberBuilder {
 			context,
 			activation_state,
-			key_expr: KeyExpression { key_expr },
+			selector: Selector { selector },
 			put_callback,
 			storage,
 			reliability,
@@ -189,7 +189,7 @@ where
 		let Self {
 			context,
 			activation_state,
-			key_expr,
+			selector,
 			storage,
 			reliability,
 			delete_callback,
@@ -199,7 +199,7 @@ where
 		SubscriberBuilder {
 			context,
 			activation_state,
-			key_expr,
+			selector,
 			put_callback: PutCallback { callback },
 			storage,
 			reliability,
@@ -221,7 +221,7 @@ where
 		let Self {
 			context,
 			activation_state,
-			key_expr,
+			selector,
 			put_callback,
 			reliability,
 			delete_callback,
@@ -230,7 +230,7 @@ where
 		SubscriberBuilder {
 			context,
 			activation_state,
-			key_expr,
+			selector,
 			put_callback,
 			storage: Storage { storage },
 			reliability,
@@ -239,7 +239,7 @@ where
 	}
 }
 
-impl<P, S> SubscriberBuilder<P, KeyExpression, PutCallback<P>, S>
+impl<P, S> SubscriberBuilder<P, Selector, PutCallback<P>, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -251,14 +251,14 @@ where
 		let Self {
 			context,
 			activation_state,
-			key_expr,
+			selector,
 			put_callback,
 			reliability,
 			delete_callback,
 			..
 		} = self;
 		Ok(Subscriber::new(
-			key_expr.key_expr,
+			selector.selector,
 			context,
 			activation_state,
 			put_callback.callback,
@@ -268,7 +268,7 @@ where
 	}
 }
 
-impl<P> SubscriberBuilder<P, KeyExpression, PutCallback<P>, Storage<P>>
+impl<P> SubscriberBuilder<P, Selector, PutCallback<P>, Storage<P>>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -283,7 +283,7 @@ where
 		let r = c
 			.write()
 			.map_err(|_| DimasError::ShouldNotHappen)?
-			.insert(s.key_expr().to_string(), s);
+			.insert(s.selector().to_string(), s);
 		Ok(r)
 	}
 }
@@ -301,6 +301,6 @@ mod tests {
 
 	#[test]
 	const fn normal_types() {
-		is_normal::<SubscriberBuilder<Props, NoKeyExpression, NoPutCallback, NoStorage>>();
+		is_normal::<SubscriberBuilder<Props, NoSelector, NoPutCallback, NoStorage>>();
 	}
 }

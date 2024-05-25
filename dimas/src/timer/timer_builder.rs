@@ -28,13 +28,13 @@ where
 	pub storage: Arc<RwLock<std::collections::HashMap<String, Timer<P>>>>,
 }
 
-/// State signaling that the [`TimerBuilder`] has no key expression set
-pub struct NoKeyExpression;
+/// State signaling that the [`TimerBuilder`] has no selector set
+pub struct NoSelector;
 #[allow(clippy::module_name_repetitions)]
-/// State signaling that the [`TimerBuilder`] has the key expression set
-pub struct KeyExpression {
-	/// The key expression
-	key_expr: String,
+/// State signaling that the [`TimerBuilder`] has the selector set
+pub struct Selector {
+	/// The selector
+	selector: String,
 }
 
 /// State signaling that the [`TimerBuilder`] has no interval set
@@ -67,14 +67,14 @@ where
 {
 	context: Context<P>,
 	activation_state: OperationState,
-	key_expr: K,
+	selector: K,
 	interval: I,
 	callback: C,
 	storage: S,
 	delay: Option<Duration>,
 }
 
-impl<P> TimerBuilder<P, NoKeyExpression, NoInterval, NoIntervalCallback, NoStorage>
+impl<P> TimerBuilder<P, NoSelector, NoInterval, NoIntervalCallback, NoStorage>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -84,7 +84,7 @@ where
 		Self {
 			context,
 			activation_state: OperationState::Active,
-			key_expr: NoKeyExpression,
+			selector: NoSelector,
 			interval: NoInterval,
 			callback: NoIntervalCallback,
 			storage: NoStorage,
@@ -112,13 +112,13 @@ where
 	}
 }
 
-impl<P, I, C, S> TimerBuilder<P, NoKeyExpression, I, C, S>
+impl<P, I, C, S> TimerBuilder<P, NoSelector, I, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// Set the key expression for the timer
 	#[must_use]
-	pub fn key_expr(self, key_expr: &str) -> TimerBuilder<P, KeyExpression, I, C, S> {
+	pub fn selector(self, selector: &str) -> TimerBuilder<P, Selector, I, C, S> {
 		let Self {
 			context,
 			activation_state,
@@ -131,8 +131,8 @@ where
 		TimerBuilder {
 			context,
 			activation_state,
-			key_expr: KeyExpression {
-				key_expr: key_expr.into(),
+			selector: Selector {
+				selector: selector.into(),
 			},
 			interval,
 			callback,
@@ -144,8 +144,8 @@ where
 	/// Set only the name of the timer.
 	/// Will be prefixed with agents prefix.
 	#[must_use]
-	pub fn name(self, topic: &str) -> TimerBuilder<P, KeyExpression, I, C, S> {
-		let key_expr = self
+	pub fn name(self, topic: &str) -> TimerBuilder<P, Selector, I, C, S> {
+		let selector = self
 			.context
 			.prefix()
 			.clone()
@@ -162,7 +162,7 @@ where
 		TimerBuilder {
 			context,
 			activation_state,
-			key_expr: KeyExpression { key_expr },
+			selector: Selector { selector },
 			interval,
 			callback,
 			storage,
@@ -181,7 +181,7 @@ where
 		let Self {
 			context,
 			activation_state,
-			key_expr: name,
+			selector: name,
 			callback,
 			storage,
 			delay,
@@ -190,7 +190,7 @@ where
 		TimerBuilder {
 			context,
 			activation_state,
-			key_expr: name,
+			selector: name,
 			interval: Interval { interval },
 			callback,
 			storage,
@@ -212,7 +212,7 @@ where
 		let Self {
 			context,
 			activation_state,
-			key_expr: name,
+			selector: name,
 			interval,
 			storage,
 			delay,
@@ -222,7 +222,7 @@ where
 		TimerBuilder {
 			context,
 			activation_state,
-			key_expr: name,
+			selector: name,
 			interval,
 			callback: IntervalCallback { callback },
 			storage,
@@ -244,7 +244,7 @@ where
 		let Self {
 			context,
 			activation_state,
-			key_expr: name,
+			selector: name,
 			interval,
 			callback,
 			delay,
@@ -253,7 +253,7 @@ where
 		TimerBuilder {
 			context,
 			activation_state,
-			key_expr: name,
+			selector: name,
 			interval,
 			callback,
 			storage: Storage { storage },
@@ -262,7 +262,7 @@ where
 	}
 }
 
-impl<P, S> TimerBuilder<P, KeyExpression, Interval, IntervalCallback<P>, S>
+impl<P, S> TimerBuilder<P, Selector, Interval, IntervalCallback<P>, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -273,7 +273,7 @@ where
 		let Self {
 			context,
 			activation_state,
-			key_expr: name,
+			selector: name,
 			interval,
 			callback,
 			delay,
@@ -281,7 +281,7 @@ where
 		} = self;
 
 		Ok(Timer::new(
-			name.key_expr,
+			name.selector,
 			context,
 			activation_state,
 			callback.callback,
@@ -291,7 +291,7 @@ where
 	}
 }
 
-impl<P> TimerBuilder<P, KeyExpression, Interval, IntervalCallback<P>, Storage<P>>
+impl<P> TimerBuilder<P, Selector, Interval, IntervalCallback<P>, Storage<P>>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -299,7 +299,7 @@ where
 	/// # Errors
 	///
 	pub fn add(self) -> Result<Option<Timer<P>>> {
-		let name = self.key_expr.key_expr.clone();
+		let name = self.selector.selector.clone();
 		let collection = self.storage.storage.clone();
 		let t = self.build()?;
 
@@ -324,7 +324,7 @@ mod tests {
 
 	#[test]
 	const fn normal_types() {
-		is_normal::<TimerBuilder<Props, NoKeyExpression, NoInterval, NoIntervalCallback, NoStorage>>(
+		is_normal::<TimerBuilder<Props, NoSelector, NoInterval, NoIntervalCallback, NoStorage>>(
 		);
 	}
 }
