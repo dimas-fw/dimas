@@ -78,6 +78,13 @@ pub trait ContextAbstraction<P>: Debug + Send + Sync {
 	/// # Errors
 	fn put(&self, topic: &str, message: Message) -> Result<()>;
 
+	/// Method to do a publishing for a `selector`
+	/// If there is a publisher stored, it will be used
+	/// otherwise an ad-hoc publishing will be done
+	///
+	/// # Errors
+	fn put_with(&self, selector: &str, message: Message) -> Result<()>;
+
 	/// Method to do a deletion for a `topic`
 	/// The `topic` will be enhanced with the prefix.
 	/// If there is a publisher stored, it will be used
@@ -85,6 +92,13 @@ pub trait ContextAbstraction<P>: Debug + Send + Sync {
 	///
 	/// # Errors
 	fn delete(&self, topic: &str) -> Result<()>;
+
+	/// Method to do a deletion for a `selector`
+	/// If there is a publisher stored, it will be used
+	/// otherwise an ad-hoc deletion will be done
+	///
+	/// # Errors
+	fn delete_with(&self, selector: &str) -> Result<()>;
 
 	/// Send a query for a `topic` with an optional [`Message`].
 	/// The `topic` will be enhanced with the prefix.
@@ -97,6 +111,21 @@ pub trait ContextAbstraction<P>: Debug + Send + Sync {
 	fn get(
 		&self,
 		topic: &str,
+		message: Option<&Message>,
+		callback: Option<Box<dyn FnMut(Response) -> Result<()>>>,
+	) -> Result<()>;
+
+	/// Send a query for a `selector` with an optional [`Message`].
+	/// The `topic` will be enhanced with the prefix.
+	/// If there is a query stored, it will be used
+	/// otherwise an ad-hoc query will be done
+	/// If a callback is given for a stored query,
+	/// it will be called instead of the stored callback
+	///
+	/// # Errors
+	fn get_with(
+		&self,
+		selector: &str,
 		message: Option<&Message>,
 		callback: Option<Box<dyn FnMut(Response) -> Result<()>>>,
 	) -> Result<()>;

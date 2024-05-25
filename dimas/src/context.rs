@@ -217,52 +217,62 @@ where
 
 	#[instrument(level = Level::ERROR, skip_all)]
 	fn put(&self, topic: &str, message: Message) -> Result<()> {
-		let key_expr = self
+		let selector = self
 			.prefix()
 			.clone()
 			.take()
 			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
+		self.put_with(&selector, message)
+	}
+
+	#[instrument(level = Level::ERROR, skip_all)]
+	fn put_with(&self, selector: &str, message: Message) -> Result<()> {
 		if self
 			.publishers
 			.read()
 			.map_err(|_| DimasError::ReadContext("publishers".into()))?
-			.get(&key_expr)
+			.get(selector)
 			.is_some()
 		{
 			self.publishers
 				.read()
 				.map_err(|_| DimasError::ReadContext("publishers".into()))?
-				.get(&key_expr)
+				.get(selector)
 				.ok_or(DimasError::ShouldNotHappen)?
 				.put(message)?;
 		} else {
-			self.communicator.put(topic, message)?;
+			self.communicator.put_with(selector, message)?;
 		};
 		Ok(())
 	}
 
 	#[instrument(level = Level::ERROR, skip_all)]
 	fn delete(&self, topic: &str) -> Result<()> {
-		let key_expr = self
+		let selector = self
 			.prefix()
 			.clone()
 			.take()
 			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
+		self.delete_with(&selector)
+	}
+
+	#[instrument(level = Level::ERROR, skip_all)]
+	fn delete_with(&self, selector: &str) -> Result<()> {
 		if self
 			.publishers
 			.read()
 			.map_err(|_| DimasError::ReadContext("publishers".into()))?
-			.get(&key_expr)
+			.get(selector)
 			.is_some()
 		{
 			self.publishers
 				.read()
 				.map_err(|_| DimasError::ReadContext("publishers".into()))?
-				.get(&key_expr)
+				.get(selector)
 				.ok_or(DimasError::ShouldNotHappen)?
 				.delete()?;
 		} else {
-			self.communicator.delete(topic)?;
+			self.communicator.delete_with(selector)?;
 		}
 		Ok(())
 	}
@@ -274,28 +284,38 @@ where
 		message: Option<&Message>,
 		callback: Option<Box<dyn FnMut(Response) -> Result<()>>>,
 	) -> Result<()> {
-		let key_expr = self
+		let selector = self
 			.prefix()
 			.clone()
 			.take()
 			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
 
+		self.get_with(&selector, message, callback)
+	}
+
+	#[instrument(level = Level::ERROR, skip_all)]
+	fn get_with(
+		&self,
+		selector: &str,
+		message: Option<&Message>,
+		callback: Option<Box<dyn FnMut(Response) -> Result<()>>>,
+	) -> Result<()> {
 		if self
 			.queries
 			.read()
 			.map_err(|_| DimasError::ReadContext("queries".into()))?
-			.get(&key_expr)
+			.get(selector)
 			.is_some()
 		{
 			self.queries
 				.read()
 				.map_err(|_| DimasError::ReadContext("queries".into()))?
-				.get(&key_expr)
+				.get(selector)
 				.ok_or(DimasError::ShouldNotHappen)?
 				.get(message, callback)?;
 		} else {
 			self.communicator
-				.get(&key_expr, message, callback.expect("snh"))?;
+				.get_with(selector, message, callback.expect("snh"))?;
 		};
 		Ok(())
 	}

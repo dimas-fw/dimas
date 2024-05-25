@@ -85,10 +85,17 @@ impl Communicator {
 	/// # Errors
 	#[allow(clippy::needless_pass_by_value)]
 	pub fn put(&self, topic: &str, message: Message) -> Result<()> {
-		let key_expr = self.key_expr(topic);
+		let selector = self.key_expr(topic);
 
+		self.put_with(&selector, message)
+	}
+
+	/// Send an ad hoc put `message` of type `Message` using the given `selector`.
+	/// # Errors
+	#[allow(clippy::needless_pass_by_value)]
+	pub fn put_with(&self, selector: &str, message: Message) -> Result<()> {
 		self.session
-			.put(&key_expr, message.0)
+			.put(selector, message.0)
 			.res_sync()
 			.map_err(|_| DimasError::Put.into())
 	}
@@ -97,19 +104,40 @@ impl Communicator {
 	/// The `topic` will be enhanced with the group prefix.
 	/// # Errors
 	pub fn delete(&self, topic: &str) -> Result<()> {
-		let key_expr = self.key_expr(topic);
+		let selector = self.key_expr(topic);
 
+		self.delete_with(&selector)
+	}
+
+	/// Send an ad hoc delete using the given `selector`.
+	/// # Errors
+	pub fn delete_with(&self, selector: &str) -> Result<()> {
 		self.session
-			.delete(&key_expr)
+			.delete(selector)
 			.res_sync()
 			.map_err(|_| DimasError::Delete.into())
+	}
+
+
+	/// Send an ad hoc query with an optional [`Message`] using the given `topic`.
+	/// The `topic` will be enhanced with the group prefix.
+	/// Answers are collected via callback
+	/// # Errors
+	/// # Panics
+	pub fn get<F>(&self, topic: &str, message: Option<&Message>, callback: F) -> Result<()>
+	where
+		F: FnMut(Response) -> Result<()> + Sized,
+	{
+		let selector = self.key_expr(topic);
+
+		self.get_with(&selector, message, callback)
 	}
 
 	/// Send an ad hoc query with an optional [`Message`] using the given `selector`.
 	/// Answers are collected via callback
 	/// # Errors
 	/// # Panics
-	pub fn get<F>(&self, selector: &str, message: Option<&Message>, mut callback: F) -> Result<()>
+	pub fn get_with<F>(&self, selector: &str, message: Option<&Message>, mut callback: F) -> Result<()>
 	where
 		F: FnMut(Response) -> Result<()> + Sized,
 	{
