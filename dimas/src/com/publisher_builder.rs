@@ -9,7 +9,7 @@ use crate::agent::Agent;
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
-	traits::Context,
+	traits::Context, utils::selector_from,
 };
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -158,27 +158,8 @@ where
 	/// Will be prefixed with [`Agent`]s prefix.
 	#[must_use]
 	pub fn topic(self, topic: &str) -> PublisherBuilder<P, Selector, S> {
-		let selector = self
-			.context
-			.prefix()
-			.clone()
-			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
-		let Self {
-			context,
-			activation_state,
-			priority,
-			congestion_control,
-			storage,
-			..
-		} = self;
-		PublisherBuilder {
-			context,
-			activation_state,
-			priority,
-			congestion_control,
-			selector: Selector { selector },
-			storage,
-		}
+		let selector = selector_from(topic, self.context.prefix());
+		self.selector(&selector)
 	}
 }
 

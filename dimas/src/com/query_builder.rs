@@ -7,7 +7,7 @@ use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
 	message_types::Response,
-	traits::Context,
+	traits::Context, utils::selector_from,
 };
 use std::{
 	collections::HashMap,
@@ -171,33 +171,8 @@ where
 	/// Will be prefixed with agents prefix.
 	#[must_use]
 	pub fn topic(self, topic: &str) -> QueryBuilder<P, Selector, C, S> {
-		let selector = self
-			.context
-			.prefix()
-			.clone()
-			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
-		let Self {
-			context,
-			activation_state,
-			allowed_destination,
-			timeout,
-			storage,
-			response_callback: callback,
-			mode,
-			target,
-			..
-		} = self;
-		QueryBuilder {
-			context,
-			activation_state,
-			allowed_destination,
-			timeout,
-			selector: Selector { selector },
-			response_callback: callback,
-			storage,
-			mode,
-			target,
-		}
+		let selector = selector_from(topic, self.context.prefix());
+		self.selector(&selector)
 	}
 }
 

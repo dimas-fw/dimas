@@ -11,7 +11,7 @@ use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
 	message_types::Message,
-	traits::Context,
+	traits::Context, utils::selector_from,
 };
 use std::sync::{Arc, Mutex, RwLock};
 use zenoh::subscriber::Reliability;
@@ -112,7 +112,7 @@ where
 		F: FnMut(&Context<P>) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		self.delete_callback
-			.replace(Arc::new(Mutex::new(Box::new(callback))));
+			.replace(Arc::new(Mutex::new(callback)));
 		self
 	}
 }
@@ -150,29 +150,8 @@ where
 	/// Will be prefixed with [`Agent`]s prefix.
 	#[must_use]
 	pub fn topic(self, topic: &str) -> SubscriberBuilder<P, Selector, C, S> {
-		let selector = self
-			.context
-			.prefix()
-			.clone()
-			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
-		let Self {
-			context,
-			activation_state,
-			storage,
-			put_callback,
-			reliability,
-			delete_callback,
-			..
-		} = self;
-		SubscriberBuilder {
-			context,
-			activation_state,
-			selector: Selector { selector },
-			put_callback,
-			storage,
-			reliability,
-			delete_callback,
-		}
+		let selector = selector_from(topic, self.context.prefix());
+		self.selector(&selector)
 	}
 }
 
@@ -195,7 +174,7 @@ where
 			delete_callback,
 			..
 		} = self;
-		let callback: ArcSubscriberPutCallback<P> = Arc::new(Mutex::new(Box::new(callback)));
+		let callback: ArcSubscriberPutCallback<P> = Arc::new(Mutex::new(callback));
 		SubscriberBuilder {
 			context,
 			activation_state,

@@ -7,7 +7,7 @@ use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
 	message_types::Request,
-	traits::Context,
+	traits::Context, utils::selector_from,
 };
 use std::{
 	collections::HashMap,
@@ -145,29 +145,8 @@ where
 	/// Will be prefixed with agents prefix.
 	#[must_use]
 	pub fn topic(self, topic: &str) -> QueryableBuilder<P, Selector, C, S> {
-		let selector = self
-			.context
-			.prefix()
-			.clone()
-			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
-		let Self {
-			context,
-			activation_state,
-			completeness,
-			allowed_origin,
-			storage,
-			request_callback: callback,
-			..
-		} = self;
-		QueryableBuilder {
-			context,
-			activation_state,
-			completeness,
-			allowed_origin,
-			selector: Selector { selector },
-			request_callback: callback,
-			storage,
-		}
+		let selector = selector_from(topic, self.context.prefix());
+		self.selector(&selector)
 	}
 }
 
@@ -190,7 +169,7 @@ where
 			storage,
 			..
 		} = self;
-		let request: ArcQueryableCallback<P> = Arc::new(Mutex::new(Box::new(callback)));
+		let request: ArcQueryableCallback<P> = Arc::new(Mutex::new(callback));
 		QueryableBuilder {
 			context,
 			activation_state,

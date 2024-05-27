@@ -218,7 +218,7 @@ where
 			delay,
 			..
 		} = self;
-		let callback: TimerCallback<P> = Arc::new(Mutex::new(Some(Box::new(callback))));
+		let callback: TimerCallback<P> = Arc::new(Mutex::new(callback));
 		TimerBuilder {
 			context,
 			activation_state,

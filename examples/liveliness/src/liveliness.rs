@@ -46,8 +46,8 @@ async fn main() -> Result<()> {
 	// add a liveliness subscriber to listen for other agents
 	agent
 		.liveliness_subscriber()
-		.put_callback(Box::new(liveliness_subscription))
-		.delete_callback(Box::new(delete_subscription))
+		.put_callback(liveliness_subscription)
+		.delete_callback(delete_subscription)
 		.add()?;
 
 	// activate sending liveliness signal
