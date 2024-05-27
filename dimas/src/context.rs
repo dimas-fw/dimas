@@ -243,7 +243,7 @@ where
 				.ok_or(DimasError::ShouldNotHappen)?
 				.put(message)?;
 		} else {
-			self.communicator.put_with(selector, message)?;
+			self.communicator.put(selector, message)?;
 		};
 		Ok(())
 	}
@@ -274,7 +274,7 @@ where
 				.ok_or(DimasError::ShouldNotHappen)?
 				.delete()?;
 		} else {
-			self.communicator.delete_with(selector)?;
+			self.communicator.delete(selector)?;
 		}
 		Ok(())
 	}
@@ -317,7 +317,7 @@ where
 				.get(message, callback)?;
 		} else {
 			self.communicator
-				.get_with(selector, message, callback.expect("snh"))?;
+				.get(selector, message, callback.expect("snh"))?;
 		};
 		Ok(())
 	}

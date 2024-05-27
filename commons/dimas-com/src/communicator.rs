@@ -61,7 +61,7 @@ impl Communicator {
 	/// Send an ad hoc put `message` of type `Message` using the given `selector`.
 	/// # Errors
 	#[allow(clippy::needless_pass_by_value)]
-	pub fn put_with(&self, selector: &str, message: Message) -> Result<()> {
+	pub fn put(&self, selector: &str, message: Message) -> Result<()> {
 		self.session
 			.put(selector, message.0)
 			.res_sync()
@@ -70,7 +70,7 @@ impl Communicator {
 
 	/// Send an ad hoc delete using the given `selector`.
 	/// # Errors
-	pub fn delete_with(&self, selector: &str) -> Result<()> {
+	pub fn delete(&self, selector: &str) -> Result<()> {
 		self.session
 			.delete(selector)
 			.res_sync()
@@ -81,7 +81,7 @@ impl Communicator {
 	/// Answers are collected via callback
 	/// # Errors
 	/// # Panics
-	pub fn get_with<F>(&self, selector: &str, message: Option<&Message>, mut callback: F) -> Result<()>
+	pub fn get<F>(&self, selector: &str, message: Option<&Message>, mut callback: F) -> Result<()>
 	where
 		F: FnMut(Response) -> Result<()> + Sized,
 	{
@@ -142,10 +142,9 @@ mod tests {
 
 	#[tokio::test(flavor = "multi_thread")]
 	//#[serial]
-	async fn communicator_create_multi() -> Result<()> {
+	async fn communicator_create() -> Result<()> {
 		let cfg = dimas_config::Config::default();
-		let mut peer = Communicator::new(&cfg)?;
-		peer.set_prefix("test");
+		let _peer = Communicator::new(&cfg)?;
 		Ok(())
 	}
 }
