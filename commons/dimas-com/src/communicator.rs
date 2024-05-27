@@ -21,8 +21,6 @@ pub struct Communicator {
 	session: Arc<Session>,
 	/// Mode of the session (router|peer|client)
 	mode: String,
-	/// A prefix to separate communication for different groups
-	prefix: Option<String>,
 }
 
 impl Communicator {
@@ -39,7 +37,6 @@ impl Communicator {
 		Ok(Self {
 			session,
 			mode: kind,
-			prefix: None,
 		})
 	}
 
@@ -61,35 +58,6 @@ impl Communicator {
 		&self.mode
 	}
 
-	/// Get group prefix
-	#[must_use]
-	pub const fn prefix(&self) -> &Option<String> {
-		&self.prefix
-	}
-
-	/// Set group prefix
-	pub fn set_prefix(&mut self, prefix: impl Into<String>) {
-		self.prefix = Some(prefix.into());
-	}
-
-	/// Create a key expression from a topic by adding prefix if one is given.
-	#[must_use]
-	pub fn selector(&self, topic: &str) -> String {
-		self.prefix
-			.clone()
-			.map_or_else(|| topic.into(), |prefix| format!("{prefix}/{topic}"))
-	}
-
-	/// Send an ad hoc put `message` of type `Message` using the given `topic`.
-	/// The `topic` will be enhanced with the group prefix.
-	/// # Errors
-	#[allow(clippy::needless_pass_by_value)]
-	pub fn put(&self, topic: &str, message: Message) -> Result<()> {
-		let selector = self.selector(topic);
-
-		self.put_with(&selector, message)
-	}
-
 	/// Send an ad hoc put `message` of type `Message` using the given `selector`.
 	/// # Errors
 	#[allow(clippy::needless_pass_by_value)]
@@ -100,15 +68,6 @@ impl Communicator {
 			.map_err(|_| DimasError::Put.into())
 	}
 
-	/// Send an ad hoc delete using the given `topic`.
-	/// The `topic` will be enhanced with the group prefix.
-	/// # Errors
-	pub fn delete(&self, topic: &str) -> Result<()> {
-		let selector = self.selector(topic);
-
-		self.delete_with(&selector)
-	}
-
 	/// Send an ad hoc delete using the given `selector`.
 	/// # Errors
 	pub fn delete_with(&self, selector: &str) -> Result<()> {
@@ -116,21 +75,6 @@ impl Communicator {
 			.delete(selector)
 			.res_sync()
 			.map_err(|_| DimasError::Delete.into())
-	}
-
-
-	/// Send an ad hoc query with an optional [`Message`] using the given `topic`.
-	/// The `topic` will be enhanced with the group prefix.
-	/// Answers are collected via callback
-	/// # Errors
-	/// # Panics
-	pub fn get<F>(&self, topic: &str, message: Option<&Message>, callback: F) -> Result<()>
-	where
-		F: FnMut(Response) -> Result<()> + Sized,
-	{
-		let selector = self.selector(topic);
-
-		self.get_with(&selector, message, callback)
 	}
 
 	/// Send an ad hoc query with an optional [`Message`] using the given `selector`.

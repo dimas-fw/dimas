@@ -71,6 +71,8 @@ where
 	/// The [`Agent`]s name.
 	/// Name must not, but should be unique.
 	name: Option<String>,
+	/// A prefix to separate communication for different groups
+	prefix: Option<String>,
 	/// The [`Agent`]s current operational state.
 	state: Arc<RwLock<OperationState>>,
 	/// A sender for sending signals to owner of context
@@ -129,7 +131,7 @@ where
 
 	#[must_use]
 	fn prefix(&self) -> &Option<String> {
-		self.communicator.prefix()
+		&self.prefix
 	}
 
 	#[must_use]
@@ -333,12 +335,10 @@ where
 		sender: Sender<TaskSignal>,
 		prefix: Option<String>,
 	) -> Result<Self> {
-		let mut communicator = Communicator::new(config)?;
-		if let Some(prefix) = prefix {
-			communicator.set_prefix(prefix);
-		}
+		let communicator = Communicator::new(config)?;
 		Ok(Self {
 			name,
+			prefix,
 			state: Arc::new(RwLock::new(OperationState::Created)),
 			sender,
 			communicator: Arc::new(communicator),
