@@ -6,7 +6,7 @@
 // region:		--- modules
 // endregion:	--- modules
 
-// region:    --- Tracing
+// region:    --- tracing
 /// Initialize tracing
 pub fn init_tracing() {
 	let subscriber = tracing_subscriber::fmt()
@@ -19,4 +19,12 @@ pub fn init_tracing() {
 	let subscriber = subscriber.finish();
 	let _ = tracing::subscriber::set_global_default(subscriber);
 }
-// endregion: --- Tracing
+// endregion: --- tracing
+
+// region:    --- helper
+/// create selector
+#[must_use]
+pub fn selector_from(topic: &str, prefix: &Option<String>) -> String {
+	prefix.to_owned().map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"))
+}
+// endregion: --- helper

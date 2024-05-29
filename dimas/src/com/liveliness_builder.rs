@@ -146,7 +146,7 @@ where
 			..
 		} = self;
 		let delete_callback: Option<ArcLivelinessCallback<P>> =
-			Some(Arc::new(Mutex::new(Box::new(callback))));
+			Some(Arc::new(Mutex::new(callback)));
 		Self {
 			token,
 			context,
@@ -176,7 +176,7 @@ where
 			delete_callback,
 			..
 		} = self;
-		let put_callback: ArcLivelinessCallback<P> = Arc::new(Mutex::new(Box::new(callback)));
+		let put_callback: ArcLivelinessCallback<P> = Arc::new(Mutex::new(callback));
 		LivelinessSubscriberBuilder {
 			token,
 			context,
