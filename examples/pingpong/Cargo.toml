@@ -22,8 +22,8 @@ name = "pong"
 path = "src/pong.rs"
 
 [dependencies]
-chrono = "0.4"
-dimas = { workspace = true, features = ["publisher", "subscriber", "timer"] }
+chrono = { workspace = true }
+dimas = { workspace = true }
 tokio = { workspace = true, features = ["macros"] }
 tracing = { workspace = true }
 

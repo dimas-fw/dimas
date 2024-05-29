@@ -21,7 +21,7 @@ struct PingPongMessage {
 }
 
 #[allow(clippy::cast_precision_loss)]
-fn pong_received(_ctx: &ArcContext<AgentProps>, message: Message) -> Result<()> {
+fn pong_received(_ctx: &Context<AgentProps>, message: Message) -> Result<()> {
 	let message: PingPongMessage = message.decode()?;
 
 	// get current timestamp
@@ -54,7 +54,8 @@ async fn main() -> Result<()> {
 	// create an agent with the properties and the prefix 'examples'
 	let mut agent = Agent::new(properties)
 		.prefix("examples")
-		.config(Config::default())?;
+		.name("ping")
+		.config(&Config::default())?;
 
 	// create publisher for topic "ping"
 	agent
@@ -81,9 +82,9 @@ async fn main() -> Result<()> {
 					.unwrap_or(0),
 				received: None,
 			};
-
+			let message = Message::encode(&message);
 			// publishing with stored publisher
-			ctx.put_with("ping", message)?;
+			ctx.put("ping", message)?;
 
 			let text = format!("ping! [{counter}]");
 			info!("Sent {} ", &text);

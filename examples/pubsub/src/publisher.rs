@@ -23,7 +23,8 @@ async fn main() -> Result<()> {
 	// create an agent with the properties and the prefix 'examples'
 	let mut agent = Agent::new(properties)
 		.prefix("examples")
-		.config(Config::default())?;
+		.name("publisher")
+		.config(&Config::default())?;
 
 	// create publisher for topic "hello"
 	agent.publisher().topic("hello").add()?;
@@ -39,7 +40,8 @@ async fn main() -> Result<()> {
 			let text = format!("Hello World! [{counter}]");
 			info!("Sending '{}'", &text);
 			// publishing with stored publisher
-			let _ = ctx.put_with("hello", text);
+			let message = Message::encode(&text);
+			let _ = ctx.put("hello", message);
 			ctx.write()?.counter += 1;
 			Ok(())
 		})
@@ -54,7 +56,7 @@ async fn main() -> Result<()> {
 		.callback(move |ctx| -> Result<()> {
 			info!("Deleting");
 			// delete with stored publisher
-			ctx.delete_with("hello")?;
+			ctx.delete("hello")?;
 			Ok(())
 		})
 		.add()?;

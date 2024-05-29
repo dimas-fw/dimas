@@ -11,7 +11,7 @@ struct AgentProps {
 	counter: u128,
 }
 
-fn queryable(ctx: &ArcContext<AgentProps>, request: Request) -> Result<()> {
+fn queryable(ctx: &Context<AgentProps>, request: Request) -> Result<()> {
 	let value = ctx.read()?.counter;
 	let query = request.key_expr();
 	info!("Received query for {}, responding with {}", &query, &value);
@@ -32,12 +32,27 @@ async fn main() -> Result<()> {
 	// create an agent with the properties and the prefix 'examples'
 	let mut agent = Agent::new(properties)
 		.prefix("examples")
-		.config(Config::default())?;
+		.name("queryable")
+		.config(&Config::default())?;
 
 	// add a queryable
 	agent
 		.queryable()
-		.topic("query")
+		.topic("query1")
+		.callback(queryable)
+		.add()?;
+
+	// add a queryable
+	agent
+		.queryable()
+		.topic("query2")
+		.callback(queryable)
+		.add()?;
+
+	// add a queryable
+	agent
+		.queryable()
+		.topic("query3")
 		.callback(queryable)
 		.add()?;
 

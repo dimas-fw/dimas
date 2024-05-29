@@ -1,0 +1,27 @@
+[package]
+name = "dimasctl"
+rust-version.workspace = true
+edition.workspace = true
+version.workspace = true
+authors.workspace = true
+license-file.workspace = true
+keywords.workspace = true
+categories.workspace = true
+homepage.workspace = true
+repository.workspace = true
+description = "dimasctl - a cli for DiMAS"
+documentation = "https://docs.rs/dimasctl/latest/dimasctl/"
+readme = "README.md"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lints]
+workspace = true
+
+[dependencies]
+chrono = { workspace = true }
+clap = { workspace = true }
+dimas-com = { workspace = true }
+dimas-commands = { workspace = true }
+dimas-config = { workspace = true }
+dimas-core = { workspace = true }

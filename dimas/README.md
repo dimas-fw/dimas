@@ -13,7 +13,7 @@ The system is characterised by
 - that changes over time due to external rules
 
 with multiple agents operating in that environment which
-- can percieve the environment to a limited extent
+- can perceive the environment to a limited extent
 - have the possibility to communicate with some or all of the other agents
 - have certain capabilities to influence the environment
 
@@ -31,14 +31,11 @@ So include `dimas` together with an async runtime in the dependencies section of
 As DiMAS uses `tokio` as async runtime, so preferably use `tokio` for your application. 
 Ensure that you use a multi-threaded runtime, otherwise dimas will panic.
 
-DiMAS uses features to have some control over compile time and the size of the binary. 
-The feature `all`, including all available features, is a good point to start with.
-
-So your `Cargo.toml` should include:
+Your `Cargo.toml` should include:
 
 ```toml
 [dependencies]
-dimas = { version = "0.1", features = ["all"] }
+dimas = "0.2"
 tokio = { version = "1", features = ["macros"] }
 ```
 
@@ -46,7 +43,7 @@ It also makes sense to return a `Result`, as some functions may return one.
 DiMAS errors are always of type `Box<dyn std::error::Error>` and should be thread safe. 
 DiMAS provides a type definition `Result<T>` to make life easier
 
-A suitable main programm skeleton may look like:
+A suitable main program skeleton may look like:
 
 ```rust
 use dimas::prelude::*;
@@ -70,7 +67,7 @@ The `Cargo.toml` for this publisher/subscriber example should include
 
 ```toml
 [dependencies]
-dimas = { version = "0.1", features = ["publisher", "subscriber", "timer"] }
+dimas = version = "0.2"
 tokio = { version = "1",features = ["macros"] }
 ```
 
@@ -82,6 +79,7 @@ The `publisher.rs` should look like this:
 use dimas::prelude::*;
 use std::time::Duration;
 
+/// The Agent's properties
 #[derive(Debug)]
 struct AgentProps {
 	counter: u128,
@@ -94,7 +92,7 @@ async fn main() -> Result<()> {
 
 	// create an agent with the properties and default configuration
 	let mut agent = Agent::new(properties)
-		.config(Config::default())?;
+		.config(&Config::default())?;
 
 	// create publisher for topic "hello"
 	agent
@@ -121,7 +119,8 @@ async fn main() -> Result<()> {
 				// just to see what will be sent
 				println!("Sending '{}'", &text);
 				// publishing with stored publisher for topic "hello"
-				ctx.put_with("hello", text)?;
+				let message = Message::encode(&text);
+				ctx.put("hello", message)?;
 				// modify counter in properties
 				ctx
 					.write()?
@@ -146,11 +145,11 @@ The `subscriber.rs` should look like this:
 ```rust,no_run
 use dimas::prelude::*;
 
-/// The Agent's proerties
+/// The Agent's properties
 #[derive(Debug)]
 pub struct AgentProps {}
 
-fn callback(_ctx: &ArcContext<AgentProps>, message: Message) -> Result<()> {
+fn callback(_ctx: &Context<AgentProps>, message: Message) -> Result<()> {
 	let message: String =	message.decode()?;
 	println!("Received '{message}'");
 	Ok(())
@@ -163,7 +162,7 @@ async fn main() -> Result<()> {
 
 	// create an agent with the properties and default configuration
 	let agent = Agent::new(properties)
-		.config(Config::default())?;
+		.config(&Config::default())?;
 
 	// subscribe to "hello" messages
 	agent
@@ -186,16 +185,3 @@ async fn main() -> Result<()> {
 #### More examples
 You can find some simple examples in [dimas-fw/dimas/examples](https://github.com/dimas-fw/dimas/blob/main/examples/README.md)
 and more complex examples in [dimas-fw/examples](https://github.com/dimas-fw/examples/blob/main/README.md)
-
-## Feature flags
-
-DiMAS uses a set of feature flags to minimize the size of an agent. 
-It is necessary to enable all those features you want to use within your `Agent`.
-
-- `all`: Enables all the features listed below. It's a good point to start with.
-- `liveliness`: Enables listening and reacting on liveliness tokens. Sending tokens is always possible.
-- `publisher`: Enables to store `Publisher` within the `Agent`s `Context`.
-- `query`: Enables to store `Query`s within the `Agent`s `Context`.
-- `queryable`: Enables to store `Queryable`s within the `Agent`s `Context`.
-- `subscriber`: Enables to store `Subscriber` within the `Agent`s `Context`.
-- `timer`: Enables to store `Timer` within the `Agent`s `Context`.

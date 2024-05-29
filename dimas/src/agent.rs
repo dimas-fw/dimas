@@ -30,7 +30,7 @@
 //!   let properties = AgentProps {};
 //!
 //!   // create an agent with the properties and a default configuration
-//!   let mut agent = Agent::new(properties).config(Config::default())?;
+//!   let mut agent = Agent::new(properties).config(&Config::default())?;
 //!
 //!   // configuration of the agent
 //!   // ...
@@ -45,13 +45,13 @@
 //!
 
 // region:		--- modules
-// these ones are only for doc needed
 use crate::com::{
-	liveliness::LivelinessSubscriberBuilder, publisher::PublisherBuilder, query::QueryBuilder,
-	queryable::QueryableBuilder, subscriber::SubscriberBuilder,
+	liveliness_builder::LivelinessSubscriberBuilder, publisher_builder::PublisherBuilder,
+	query_builder::QueryBuilder, queryable_builder::QueryableBuilder,
+	subscriber_builder::SubscriberBuilder,
 };
+use crate::context::ContextImpl;
 use crate::timer::TimerBuilder;
-use crate::utils::{wait_for_task_signals, TaskSignal};
 #[cfg(doc)]
 use crate::{
 	com::{
@@ -60,28 +60,131 @@ use crate::{
 	},
 	timer::Timer,
 };
-use crate::{
-	config::Config,
-	context::{ArcContext, Context},
+use chrono::Local;
+use dimas_com::messages::{AboutEntity, PingEntity};
+use dimas_config::Config;
+use dimas_core::{
+	enums::{wait_for_task_signals, OperationState, Signal, TaskSignal},
 	error::{DimasError, Result},
+	message_types::{Message, Request},
+	traits::{Capability, Context, ContextAbstraction},
 };
-use std::sync::RwLock;
+use std::sync::Arc;
+use std::time::Duration;
 use std::{
 	fmt::Debug,
-	sync::{mpsc, Mutex},
+	sync::{mpsc, Mutex, RwLock},
 };
 use tokio::{select, signal};
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use zenoh::{liveliness::LivelinessToken, prelude::sync::SyncResolve, SessionDeclarations};
 // endregion:	--- modules
 
+// region:	   --- callbacks
+fn callback_dispatcher<P>(ctx: &Context<P>, request: Request) -> Result<()>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	if let Some(value) = request.value() {
+		let content: Vec<u8> = value.try_into()?;
+		let msg = Message(content);
+		let signal: Signal = Message::decode(msg)?;
+		match signal {
+			Signal::About => about_handler(ctx, request)?,
+			Signal::Ping { sent } => ping_handler(ctx, request, sent)?,
+			Signal::Shutdown => shutdown_handler(ctx, request)?,
+			Signal::State { state } => state_handler(ctx, request, state)?,
+		}
+	}
+	Ok(())
+}
+
+fn about_handler<P>(ctx: &Context<P>, request: Request) -> Result<()>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	let name = ctx
+		.fq_name()
+		.unwrap_or_else(|| String::from("--"));
+	let mode = ctx.mode().to_string();
+	let zid = ctx.uuid();
+	let state = ctx.state();
+	let value = AboutEntity::new(name, mode, zid, state);
+	request.reply(value)?;
+	Ok(())
+}
+
+fn ping_handler<P>(ctx: &Context<P>, request: Request, sent: i64) -> Result<()>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	let now = Local::now()
+		.naive_utc()
+		.and_utc()
+		.timestamp_nanos_opt()
+		.unwrap_or(0);
+
+	let name = ctx
+		.fq_name()
+		.unwrap_or_else(|| String::from("--"));
+	let zid = ctx.uuid();
+	let value = PingEntity::new(name, zid, now - sent);
+	request.reply(value)?;
+	Ok(())
+}
+
+fn shutdown_handler<P>(ctx: &Context<P>, request: Request) -> Result<()>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	// send back current infos
+	let name = ctx
+		.fq_name()
+		.unwrap_or_else(|| String::from("--"));
+	let mode = ctx.mode().to_string();
+	let zid = ctx.uuid();
+	let state = ctx.state();
+	let value = AboutEntity::new(name, mode, zid, state);
+	request.reply(value)?;
+
+	// shutdown agent after a short wait time to be able to send response
+	let ctx = ctx.clone();
+	tokio::task::spawn(async move {
+		tokio::time::sleep(Duration::from_millis(2)).await;
+		let _ = ctx.sender().send(TaskSignal::Shutdown);
+	});
+	Ok(())
+}
+
+fn state_handler<P>(ctx: &Context<P>, request: Request, state: Option<OperationState>) -> Result<()>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	// is a state value given?
+	if let Some(value) = state {
+		let _ = ctx.set_state(value);
+	}
+
+	// send back result
+	let name = ctx
+		.fq_name()
+		.unwrap_or_else(|| String::from("--"));
+	let mode = ctx.mode().to_string();
+	let zid = ctx.uuid();
+	let state = ctx.state();
+	let value = AboutEntity::new(name, mode, zid, state);
+	request.reply(value)?;
+	Ok(())
+}
+// endregion:	--- callbacks
+
 // region:	   --- UnconfiguredAgent
-/// This is a new Agent without the necessary configuration input
+/// A new Agent without the basic configuration decisions
 #[allow(clippy::module_name_repetitions)]
 #[derive(Debug)]
 pub struct UnconfiguredAgent<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	name: Option<String>,
 	prefix: Option<String>,
@@ -90,7 +193,7 @@ where
 
 impl<'a, P> UnconfiguredAgent<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// Constructor
 	const fn new(properties: P) -> Self {
@@ -116,28 +219,70 @@ where
 	}
 
 	/// Set the [`Config`]uration.
+	/// An agent with [`OperationState`] `Configured` can be started
+	/// and will respond to commands from dimasctl/dimasmon
 	///
 	/// # Errors
-	pub fn config(self, config: Config) -> Result<Agent<'a, P>> {
-		let context = Context::new(config, self.props, self.name, self.prefix)?.into();
-		Ok(Agent {
+	///
+	pub fn config(self, config: &Config) -> Result<Agent<'a, P>> {
+		// we need an mpsc channel with a receiver behind a mutex guard
+		let (tx, rx) = mpsc::channel();
+		let rx = Mutex::new(rx);
+		let context: Arc<ContextImpl<P>> = Arc::new(ContextImpl::new(
+			config,
+			self.props,
+			self.name,
+			tx,
+			self.prefix,
+		)?);
+
+		let agent = Agent {
+			rx,
 			context,
 			liveliness: false,
 			liveliness_token: RwLock::new(None),
-		})
+		};
+
+		// add signal queryables
+		// for zid
+		let selector = format!("{}/signal", agent.context.uuid());
+		agent
+			.queryable()
+			.selector(&selector)
+			.callback(callback_dispatcher)
+			.activation_state(OperationState::Created)
+			.add()?;
+		// for fully qualified name
+		if let Some(fq_name) = agent.context.fq_name() {
+			let selector = format!("{fq_name}/*");
+			agent
+				.queryable()
+				.selector(&selector)
+				.callback(callback_dispatcher)
+				.activation_state(OperationState::Created)
+				.add()?;
+		}
+
+		// set [`OperationState`] to Created
+		// This will also start the basic queryables
+		agent.context.set_state(OperationState::Created)?;
+
+		Ok(agent)
 	}
 }
 // endregion:   --- UnconfiguredAgent
 
 // region:	   --- Agent
-/// This is a new Agent without the necessary configuration input
+/// An Agent with the basic configuration decisions fixed, but not running
 #[allow(clippy::module_name_repetitions)]
 pub struct Agent<'a, P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
+	/// A reciever for signals from tasks
+	rx: Mutex<mpsc::Receiver<TaskSignal>>,
 	/// The agents context structure
-	context: ArcContext<P>,
+	context: Arc<ContextImpl<P>>,
 	/// Flag to control whether sending liveliness or not
 	liveliness: bool,
 	/// The liveliness token - typically the uuid sent to other participants<br>
@@ -147,19 +292,20 @@ where
 
 impl<'a, P> Debug for Agent<'a, P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Agent")
 			.field("id", &self.context.uuid())
 			.field("prefix", self.context.prefix())
+			.field("name", &self.context.name())
 			.finish_non_exhaustive()
 	}
 }
 
 impl<'a, P> Agent<'a, P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// Builder
 	#[allow(clippy::new_ret_no_self)]
@@ -172,181 +318,100 @@ where
 		self.liveliness = activate;
 	}
 
-	/// Get a builder for a [`LivelinessSubscriber`]
-	#[cfg(feature = "liveliness")]
+	/// Get a [`LivelinessSubscriberBuilder`], the builder for a [`LivelinessSubscriber`].
 	#[must_use]
 	pub fn liveliness_subscriber(
 		&self,
 	) -> LivelinessSubscriberBuilder<
 		P,
-		crate::com::liveliness::NoPutCallback,
-		crate::com::liveliness::Storage<P>,
+		crate::com::liveliness_builder::NoPutCallback,
+		crate::com::liveliness_builder::Storage<P>,
 	> {
-		self.context.liveliness_subscriber()
+		LivelinessSubscriberBuilder::new(self.context.clone())
+			.storage(self.context.liveliness_subscribers().clone())
 	}
-	/// Get a builder for a [`LivelinessSubscriber`]
-	#[cfg(not(feature = "liveliness"))]
+
+	/// Get a [`PublisherBuilder`], the builder for a [`Publisher`].
 	#[must_use]
-	pub fn liveliness_subscriber(
+	pub fn publisher(
 		&self,
-	) -> LivelinessSubscriberBuilder<
+	) -> PublisherBuilder<
 		P,
-		crate::com::liveliness::NoPutCallback,
-		crate::com::liveliness::NoStorage,
+		crate::com::publisher_builder::NoSelector,
+		crate::com::publisher_builder::Storage<P>,
 	> {
-		self.context.liveliness_subscriber()
+		PublisherBuilder::new(self.context.clone()).storage(self.context.publishers().clone())
 	}
 
-	/// Get a builder for a [`Publisher`]
-	#[cfg(feature = "publisher")]
-	#[must_use]
-	pub fn publisher(
-		&self,
-	) -> PublisherBuilder<crate::com::publisher::NoKeyExpression, crate::com::publisher::Storage> {
-		self.context.publisher()
-	}
-	/// Get a builder for a [`Publisher`]
-	#[cfg(not(feature = "publisher"))]
-	#[must_use]
-	pub fn publisher(
-		&self,
-	) -> PublisherBuilder<crate::com::publisher::NoKeyExpression, crate::com::publisher::NoStorage>
-	{
-		self.context.publisher()
-	}
-
-	/// Get a builder for a [`Query`]
-	#[cfg(feature = "query")]
+	/// Get a [`QueryBuilder`], the builder for a [`Query`].
 	#[must_use]
 	pub fn query(
 		&self,
 	) -> QueryBuilder<
 		P,
-		crate::com::query::NoKeyExpression,
-		crate::com::query::NoResponseCallback,
-		crate::com::query::Storage<P>,
+		crate::com::query_builder::NoSelector,
+		crate::com::query_builder::NoResponseCallback,
+		crate::com::query_builder::Storage<P>,
 	> {
-		self.context.query()
-	}
-	/// Get a builder for a [`Query`]
-	#[cfg(not(feature = "query"))]
-	#[must_use]
-	pub fn query(
-		&self,
-	) -> QueryBuilder<
-		P,
-		crate::com::query::NoKeyExpression,
-		crate::com::query::NoResponseCallback,
-		crate::com::query::NoStorage,
-	> {
-		self.context.query()
+		QueryBuilder::new(self.context.clone()).storage(self.context.queries().clone())
 	}
 
-	/// Get a builder for a [`Queryable`]
-	#[cfg(feature = "queryable")]
+	/// Get a [`QueryableBuilder`], the builder for a [`Queryable`].
 	#[must_use]
 	pub fn queryable(
 		&self,
 	) -> QueryableBuilder<
 		P,
-		crate::com::queryable::NoKeyExpression,
-		crate::com::queryable::NoRequestCallback,
-		crate::com::queryable::Storage<P>,
+		crate::com::queryable_builder::NoSelector,
+		crate::com::queryable_builder::NoRequestCallback,
+		crate::com::queryable_builder::Storage<P>,
 	> {
-		self.context.queryable()
-	}
-	/// Get a builder for a [`Queryable`]
-	#[cfg(not(feature = "queryable"))]
-	#[must_use]
-	pub fn queryable(
-		&self,
-	) -> QueryableBuilder<
-		P,
-		crate::com::queryable::NoKeyExpression,
-		crate::com::queryable::NoRequestCallback,
-		crate::com::queryable::NoStorage,
-	> {
-		self.context.queryable()
+		QueryableBuilder::new(self.context.clone()).storage(self.context.queryables().clone())
 	}
 
-	/// Get a builder for a [`Subscriber`]
-	#[cfg(feature = "subscriber")]
+	/// Get a [`SubscriberBuilder`], the builder for a [`Subscriber`].
 	#[must_use]
 	pub fn subscriber(
 		&self,
 	) -> SubscriberBuilder<
 		P,
-		crate::com::subscriber::NoKeyExpression,
-		crate::com::subscriber::NoPutCallback,
-		crate::com::subscriber::Storage<P>,
+		crate::com::subscriber_builder::NoSelector,
+		crate::com::subscriber_builder::NoPutCallback,
+		crate::com::subscriber_builder::Storage<P>,
 	> {
-		self.context.subscriber()
-	}
-	/// Get a builder for a [`Subscriber`]
-	#[cfg(not(feature = "subscriber"))]
-	#[must_use]
-	pub fn subscriber(
-		&self,
-	) -> SubscriberBuilder<
-		P,
-		crate::com::subscriber::NoKeyExpression,
-		crate::com::subscriber::NoPutCallback,
-		crate::com::subscriber::NoStorage,
-	> {
-		self.context.subscriber()
+		SubscriberBuilder::new(self.context.clone()).storage(self.context.subscribers().clone())
 	}
 
-	/// Get a builder for a [`Timer`]
-	#[cfg(feature = "timer")]
+	/// Get a [`TimerBuilder`], the builder for a [`Timer`].
 	#[must_use]
 	pub fn timer(
 		&self,
 	) -> TimerBuilder<
 		P,
-		crate::timer::NoKeyExpression,
+		crate::timer::NoSelector,
 		crate::timer::NoInterval,
 		crate::timer::NoIntervalCallback,
 		crate::timer::Storage<P>,
 	> {
-		self.context.timer()
-	}
-	/// Get a builder for a [`Timer`]
-	#[cfg(not(feature = "timer"))]
-	#[must_use]
-	pub fn timer(
-		&self,
-	) -> TimerBuilder<
-		P,
-		crate::timer::NoKeyExpression,
-		crate::timer::NoInterval,
-		crate::timer::NoIntervalCallback,
-		crate::timer::NoStorage,
-	> {
-		self.context.timer()
+		TimerBuilder::new(self.context.clone()).storage(self.context.timers().clone())
 	}
 
 	/// Start the agent.<br>
 	/// The agent can be stopped properly using `ctrl-c`
 	///
 	/// # Errors
-	/// Propagation of errors from [`ArcContext::start_registered_tasks()`].
 	#[tracing::instrument(skip_all)]
 	pub async fn start(self) -> Result<Agent<'a, P>> {
-		// we need an mpsc channel with a receiver behind a mutex guard
-		let (tx, rx) = mpsc::channel();
-		let rx = Mutex::new(rx);
-
-		self.context.start_registered_tasks(&tx)?;
+		let session = self.context.session();
 
 		// activate sending liveliness
 		if self.liveliness {
-			let session = self.context.communicator.session.clone();
 			let token_str = self
 				.context
 				.prefix()
 				.clone()
-				.map_or(self.context.communicator.uuid(), |prefix| {
-					format!("{}/{}", prefix, self.context.communicator.uuid())
+				.map_or(self.context.uuid(), |prefix| {
+					format!("{}/{}", prefix, self.context.uuid())
 				});
 
 			let token = session
@@ -361,9 +426,10 @@ where
 				.replace(token);
 		};
 
+		self.context.set_state(OperationState::Active)?;
+
 		RunningAgent {
-			rx,
-			tx,
+			rx: self.rx,
 			context: self.context,
 			liveliness: self.liveliness,
 			liveliness_token: self.liveliness_token,
@@ -375,16 +441,16 @@ where
 // endregion:   --- Agent
 
 // region:	   --- RunningAgent
-/// This is the running Agent
+/// A running Agent, which can't be modified while running
 #[allow(clippy::module_name_repetitions)]
 pub struct RunningAgent<'a, P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
+	/// A reciever for signals from tasks
 	rx: Mutex<mpsc::Receiver<TaskSignal>>,
-	tx: mpsc::Sender<TaskSignal>,
 	/// The agents context structure
-	context: ArcContext<P>,
+	context: Arc<ContextImpl<P>>,
 	/// Flag to control whether sending liveliness or not
 	liveliness: bool,
 	/// The liveliness token - typically the uuid sent to other participants<br>
@@ -394,65 +460,51 @@ where
 
 impl<'a, P> RunningAgent<'a, P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// run
-	async fn run(mut self) -> Result<Agent<'a, P>> {
-		#[cfg(not(any(
-			feature = "liveliness",
-			feature = "publisher",
-			feature = "query",
-			feature = "queryable",
-			feature = "subscriber",
-			feature = "timer",
-		)))]
-		{
-			let tx = self.tx.clone();
-			std::mem::drop(tx);
-		}
+	async fn run(self) -> Result<Agent<'a, P>> {
 		loop {
 			// different possibilities that can happen
 			select! {
 				// `TaskSignal`s
 				signal = wait_for_task_signals(&self.rx) => {
 					match *signal {
-						#[cfg(feature = "liveliness")]
-						TaskSignal::RestartLiveliness(key_expr) => {
-							self.context.liveliness_subscribers
+						TaskSignal::RestartLiveliness(selector) => {
+							self.context.liveliness_subscribers()
 								.write()
 								.map_err(|_| DimasError::WriteProperties)?
-								.get_mut(&key_expr)
+								.get_mut(&selector)
 								.ok_or(DimasError::ShouldNotHappen)?
-								.start(self.context.clone(), self.tx.clone());
+								.manage_operation_state(&self.context.state())?;
 						},
-						#[cfg(feature = "queryable")]
-						TaskSignal::RestartQueryable(key_expr) => {
-							self.context.queryables
+						TaskSignal::RestartQueryable(selector) => {
+							self.context.queryables()
 								.write()
 								.map_err(|_| DimasError::WriteProperties)?
-								.get_mut(&key_expr)
+								.get_mut(&selector)
 								.ok_or(DimasError::ShouldNotHappen)?
-								.start(self.context.clone(), self.tx.clone());
+								.manage_operation_state(&self.context.state())?;
 						},
-						#[cfg(feature = "subscriber")]
-						TaskSignal::RestartSubscriber(key_expr) => {
-							self.context.subscribers
+						TaskSignal::RestartSubscriber(selector) => {
+							self.context.subscribers()
 								.write()
 								.map_err(|_| DimasError::WriteProperties)?
-								.get_mut(&key_expr)
+								.get_mut(&selector)
 								.ok_or(DimasError::ShouldNotHappen)?
-								.start(self.context.clone(), self.tx.clone());
+								.manage_operation_state(&self.context.state())?;
 						},
-						#[cfg(feature = "timer")]
-						TaskSignal::RestartTimer(key_expr) => {
-							self.context.timers
+						TaskSignal::RestartTimer(selector) => {
+							self.context.timers()
 								.write()
 								.map_err(|_| DimasError::WriteProperties)?
-								.get_mut(&key_expr)
+								.get_mut(&selector)
 								.ok_or(DimasError::ShouldNotHappen)?
-								.start(self.context.clone(), self.tx.clone());
+								.manage_operation_state(&self.context.state())?;
 						},
-						TaskSignal::Dummy => {},
+						TaskSignal::Shutdown => {
+							return self.stop();
+						}
 					};
 				}
 
@@ -461,33 +513,12 @@ where
 					match signal {
 						Ok(()) => {
 							info!("shutdown due to 'ctrl-c'");
-							self.context.stop_registered_tasks()?;
-							// stop liveliness
-							if self.liveliness {
-								self.liveliness_token
-									.write()
-									.map_err(|_| DimasError::ModifyContext("liveliness".into()))?
-									.take();
-							}
-							let r = Agent {
-								context: self.context,
-								liveliness: self.liveliness,
-								liveliness_token: self.liveliness_token,
-							};
-							return Ok(r);
+							return self.stop();
 						}
 						Err(err) => {
 							error!("Unable to listen for 'Ctrl-C': {err}");
 							// we also try to shut down the agent properly
-							self.context.stop_registered_tasks()?;
-							// stop liveliness
-							if self.liveliness {
-								self.liveliness_token
-									.write()
-									.map_err(|_| DimasError::ModifyContext("liveliness".into()))?
-									.take();
-							}
-							return Err(DimasError::ShouldNotHappen.into());
+							return self.stop();
 						}
 					}
 				}
@@ -498,10 +529,10 @@ where
 	/// Stop the agent
 	///
 	/// # Errors
-	/// Propagation of errors from [`ArcContext::stop_registered_tasks()`].
+	/// Propagation of errors from [`Context::stop_registered_tasks()`].
 	#[tracing::instrument(skip_all)]
-	pub fn stop(mut self) -> Result<Agent<'a, P>> {
-		self.context.stop_registered_tasks()?;
+	pub fn stop(self) -> Result<Agent<'a, P>> {
+		self.context.set_state(OperationState::Created)?;
 
 		// stop liveliness
 		if self.liveliness {
@@ -511,6 +542,7 @@ where
 				.take();
 		}
 		let r = Agent {
+			rx: self.rx,
 			context: self.context,
 			liveliness: self.liveliness,
 			liveliness_token: self.liveliness_token,
@@ -532,16 +564,9 @@ mod tests {
 
 	#[test]
 	const fn normal_types() {
+		is_normal::<UnconfiguredAgent<Props>>();
 		is_normal::<Agent<Props>>();
+		is_normal::<RunningAgent<Props>>();
 		is_normal::<TaskSignal>();
-	}
-
-	#[tokio::test(flavor = "multi_thread")]
-	//#[serial]
-	async fn agent_build() -> Result<()> {
-		let agent_u = Agent::new(Props {});
-		let config = crate::config::Config::local()?;
-		let _agent_c = agent_u.prefix("test").config(config)?;
-		Ok(())
 	}
 }

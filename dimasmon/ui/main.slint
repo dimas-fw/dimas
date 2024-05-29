@@ -1,0 +1,86 @@
+// Copyright © 2024 Stephan Kunz
+
+import { TabWidget } from "std-widgets.slint";
+
+export component MainWindow inherits Window {
+    title: "DiMAS Monitor";
+    preferred-width: 1280px;
+    preferred-height: 720px;
+    min-width: 640px;
+    min-height: 480px;
+
+    VerticalLayout {
+        width: 100%;
+        height: 100%;
+
+        // TopMenu
+        Rectangle {
+            height: 44px;
+            background: gray;
+        }
+
+        HorizontalLayout {
+            // LeftMenu
+            TabWidget {
+                width: 20%;
+
+                Tab {
+                    title: "MenuTab1";
+                    Rectangle {
+                        background: darkgray;
+                    }
+                }
+            }
+
+            VerticalLayout {
+                HorizontalLayout {
+                    // MainArea
+                    TabWidget {
+                        Tab {
+                            title: "MainTab1";
+                            Rectangle {
+                                background: white;
+                            }
+                        }
+                        Tab {
+                            title: "MainTab2";
+                            Rectangle {
+                                background: whitesmoke;
+                            }
+                        }
+                    }
+                    // RightArea
+//                    TabWidget {
+//                        width: 25%;
+//
+//                        Tab {
+//                            title: "RightTab1";
+//                            Rectangle {
+//                                // background: cyan;
+//                            }
+//                        }
+//                    }
+                }
+
+                // BottomArea
+//                TabWidget {
+//                    height: 20%;
+//                    visible: false;
+//
+//                    Tab {
+//                        title: "BottomTab1";
+//                        Rectangle {
+//                            background: gray;
+//                        }
+//                    }
+//                }
+            }
+        }
+
+        // StatusLine
+        Rectangle {
+            height: 30px;
+            background: lightgray;
+        }
+    }
+}

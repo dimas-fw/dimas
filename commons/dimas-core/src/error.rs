@@ -1,15 +1,6 @@
 // Copyright © 2023 Stephan Kunz
 
-//! The `DiMAS` specific error enum [`DimasError`] togehter with a type alias for [`std::result::Result`] to write only `Result<T>`.
-//!
-//! # Examples
-//! ```rust,no_run
-//! use dimas::prelude::*;
-//! #[tokio::main(flavor = "multi_thread")]
-//! async fn main() -> Result<()> {
-//! Ok(())
-//! }
-//! ```
+//! The `DiMAS` specific error enum `DimasError` together with a type alias for [`std::result::Result`] to write only `Result<T>`.
 //!
 
 // region:		--- types
@@ -44,6 +35,9 @@ pub enum DimasError {
 	/// Decoding of message failed
 	#[error("message decoding failed")]
 	Decoding,
+	/// Decoding of message failed
+	#[error("no message received")]
+	NoMessage,
 	/// Read access to properties failed
 	#[error("read of properties failed")]
 	ReadProperties,
@@ -54,12 +48,18 @@ pub enum DimasError {
 	#[error("could not execute callback")]
 	ExecuteCallback,
 
+	/// Invalid OperationState
+	#[error("invalid OperationState {0}")]
+	OperationState(String),
 	/// File not found
 	#[error("could not find file: {0}")]
 	FileNotFound(String),
 	/// Modifying context failed
-	#[error("modifiying context for {0} failed")]
+	#[error("modifying context for {0} failed")]
 	ModifyContext(String),
+	/// The `set_state` failed
+	#[error("setting the 'OperationState' failed")]
+	ManageState,
 	/// Reading context failed
 	#[error("reading context for {0} failed")]
 	ReadContext(String),

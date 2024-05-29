@@ -17,7 +17,7 @@ struct PingPongMessage {
 	received: Option<i64>,
 }
 
-fn ping_received(ctx: &ArcContext<AgentProps>, message: Message) -> Result<()> {
+fn ping_received(ctx: &Context<AgentProps>, message: Message) -> Result<()> {
 	let mut message: PingPongMessage = message.decode()?;
 
 	// set receive-timestamp
@@ -28,8 +28,9 @@ fn ping_received(ctx: &ArcContext<AgentProps>, message: Message) -> Result<()> {
 
 	let text = format!("pong! [{}]", message.counter);
 
+	let message = Message::encode(&message);
 	// publishing with ad-hoc publisher
-	ctx.put_with("pong", message)?;
+	ctx.put("pong", message)?;
 
 	info!("Sent '{}'", &text);
 
@@ -47,7 +48,8 @@ async fn main() -> Result<()> {
 	// create an agent with the properties and the prefix 'examples'
 	let mut agent = Agent::new(properties)
 		.prefix("examples")
-		.config(Config::default())?;
+		.name("pong")
+		.config(&Config::default())?;
 
 	// create publisher for topic "ping"
 	agent

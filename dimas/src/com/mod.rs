@@ -4,25 +4,26 @@
 //!
 
 // region:    --- modules
-// to avoid doc warnings
-#[allow(unused_imports)]
-use super::agent::Agent;
-#[allow(unused_imports)]
-use communicator::Communicator;
-/// Communicator
-pub mod communicator;
-/// Liveliness
+/// `Liveliness`
 pub mod liveliness;
-/// Message
-pub mod message;
-/// Publisher
+/// `LivelinessBulider`
+pub mod liveliness_builder;
+/// `Publisher`
 pub mod publisher;
-/// Query
+/// `PublisherBuilder`
+pub mod publisher_builder;
+/// `Query`
 pub mod query;
-/// Queryable
+/// `QueryBuilder`
+pub mod query_builder;
+/// `Queryable`
 pub mod queryable;
-/// Subscriber
+/// `QueryableBuilder`
+pub mod queryable_builder;
+/// `Subscriber`
 pub mod subscriber;
+/// `SubscriberBuilder`
+pub mod subscriber_builder;
 // endregion: --- modules
 
 #[cfg(test)]

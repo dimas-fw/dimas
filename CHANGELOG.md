@@ -16,6 +16,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 
+## [0.2.0] - 2024-??-?? <br>_Has breaking changes!!_
+
+### Added
+- dimasctl: binary to control DiMAS entities with commands
+  - `scout`
+  - `list`
+  - `ping <target>`
+  - `set-state <OperationState>`
+  - `shutdown <target>`
+- dimasmon: binary to monitor DiMAS entities (not yet usable!)
+- dimas-commands with functions for dimasctl & dimasmon
+
+### Changed
+- splitted `dimas` into several crates 
+  - dimas-core: for core functionalities
+  - dimas-com: for `Communicator` & `Messages`
+  - dimas-config: for `Config`
+- signature of `Agent::config(self, ...)` -> `Config` is now passed as reference
+- signature of Query::get(), Communicator::get(): added an `Option<&Message>`
+- encoding of types `Message` & `Response` now explicit in callbacks
+- renaming & restructuring
+
+### Removed
+- low_latency configuration
+- features
+- method `Communicator::create_publisher(&self, ...)`
+
+
 ## [0.1.1] - 2024-05-01
 
 ### Added

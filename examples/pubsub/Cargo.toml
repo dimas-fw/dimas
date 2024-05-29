@@ -22,7 +22,7 @@ name = "subscriber"
 path = "src/subscriber.rs"
 
 [dependencies]
-dimas = { workspace = true, features = ["publisher", "subscriber", "timer"] }
+dimas = { workspace = true }
 tokio = { workspace = true, features = ["macros"] }
 tracing = { workspace = true }
 

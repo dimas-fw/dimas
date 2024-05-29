@@ -1,6 +1,6 @@
 // Copyright © 2024 Stephan Kunz
 
-//! The [`Config`]uration data for an [`Agent`].
+//! The configuration data.
 //!
 //! An Agents configuration can be defined using json5 formated files.
 //! There is a set of read methods for predefined filenames available.
@@ -8,25 +8,23 @@
 //!
 //! # Examples
 //! ```rust,no_run
-//! # use dimas::prelude::*;
-//! # #[tokio::main(flavor = "multi_thread")]
-//! # async fn main() -> Result<()> {
+//! # use dimas_config::Config;
+//! # fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
 //! // create a configuration from a file named `default.json5`
 //! // located in one of the directories listed below.
 //! // If that file does not exist, a default config will be created
 //! let config = Config::default();
 //!
-//! let config = Config::from_file("filename.sfx")?;    // use file named `filename.sfx`
+//! // use file named `filename.json5`
+//! // returns an error if file does not exist or is no valid configuration file
+//! let config = Config::from_file("filename.json5")?;
 //!
-//! // methods with predefined filenames
+//! // methods with predefined filenames working like Config::from_file(...)
 //! let config = Config::local()?;        // use file named `local.json5`
 //! let config = Config::peer()?;         // use file named `peer.json5`
 //! let config = Config::client()?;       // use file named `client.json5`
 //! let config = Config::router()?;       // use file named `router.json5`
-//! let config = Config::low_latency()?;  // use file named `low_latency.json5`
 //!
-//! // Hand over Configuration to the Agent
-//! let agent = Agent::new({}).config(config)?;
 //! # Ok(())
 //! # }
 //! ```
@@ -39,13 +37,19 @@
 //!  - config directory (`Linux`: `$XDG_CONFIG_HOME` or `$HOME/.config` | `Windows`: `{FOLDERID_RoamingAppData}` | `MacOS`: `$HOME/Library/Application Support`)
 //!
 
-// region:		--- modules
-#[allow(unused_imports)]
-use crate::agent::Agent;
-// endregion:	--- modules
+// region:		--- exports
+//pub use Config;
+// endregion:	--- exports
+
+// region:		--- types
+/// Type alias for `std::result::Result` to ease up implementation
+pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync + 'static>>;
+// endregion:	--- types
 
 // region:		--- modules
-use crate::{error::Result, utils::find_config_file};
+use dirs::{config_dir, config_local_dir, home_dir};
+use std::env;
+use std::io::{Error, ErrorKind};
 use tracing::{error, info, warn};
 // endregion:	--- modules
 
@@ -60,7 +64,7 @@ fn _read_file(filename: &str) -> Result<String> {
 // endregion:	--- utils
 
 // region:		--- Config
-/// Manages the [`Agent`]s configuration
+/// Manages the configuration
 #[repr(transparent)]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Config {
@@ -113,7 +117,7 @@ impl Default for Config {
 impl Config {
 	/// Create a configuration based on file named `local.json5`.<br>
 	/// Will search in the directories mentioned in [`Examples`](index.html#examples).<br>
-	/// This file should contain a configuration that only connects to [`Agent`]s on same host.
+	/// This file should contain a configuration that only connects to entities on same host.
 	///
 	/// # Errors
 	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.
@@ -125,23 +129,9 @@ impl Config {
 		Ok(cfg)
 	}
 
-	/// Create a configuration based on file named `low_latency.json5`.<br>
-	/// Will search in the directories mentioned in [`Examples`](index.html#examples).<br>
-	/// This file should contain a configuration that only connects to [`Agent`]s on same host.
-	///
-	/// # Errors
-	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.
-	pub fn low_latency() -> Result<Self> {
-		let path = find_config_file("low_latency.json5")?;
-		info!("using file {:?}", &path);
-		let content = std::fs::read_to_string(path)?;
-		let cfg = json5::from_str(&content)?;
-		Ok(cfg)
-	}
-
 	/// Create a configuration based on file named `client.json5`.<br>
 	/// Will search in the directories mentioned in [`Examples`](index.html#examples).<br>
-	/// This file should contain a configuration that creates an [`Agent`] in client mode.
+	/// This file should contain a configuration that creates an entity in client mode.
 	///
 	/// # Errors
 	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.
@@ -155,7 +145,7 @@ impl Config {
 
 	/// Create a configuration based on file named `peer.json5`.<br>
 	/// Will search in the directories mentioned in [`Examples`](index.html#examples).<br>
-	/// This file should contain a configuration that creates an [`Agent`] in peer mode.
+	/// This file should contain a configuration that creates an entity in peer mode.
 	///
 	/// # Errors
 	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.
@@ -169,7 +159,7 @@ impl Config {
 
 	/// Create a configuration based on file named `router.json5`.<br>
 	/// Will search in the directories mentioned in [`Examples`](index.html#examples).<br>
-	/// This file should contain a configuration that creates an [`Agent`] in router mode.
+	/// This file should contain a configuration that creates an entity in router mode.
 	///
 	/// # Errors
 	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.
@@ -195,14 +185,73 @@ impl Config {
 		Ok(cfg)
 	}
 
-	/// Internal method to create a zenoh configuration from [`Config`].<br>
+	/// Method to extract the zenoh configuration from [`Config`].<br>
 	/// Can be passed to `zenoh::open()`.
 	#[must_use]
-	pub(crate) fn zenoh_config(&self) -> zenoh::config::Config {
+	pub fn zenoh_config(&self) -> zenoh::config::Config {
 		self.zenoh.clone()
 	}
 }
 // endregion:	--- Config
+
+// region:		--- functions
+/// find a config file given by name
+/// function will search in following directories for the file (order first to last):
+///  - current working directory
+///  - `.config` directory below current working directory
+///  - `.config` directory below home directory
+///  - local config directory (`Linux`: `$XDG_CONFIG_HOME` or `$HOME/.config` | `Windows`: `{FOLDERID_LocalAppData}` | `MacOS`: `$HOME/Library/Application Support`)
+///  - config directory (`Linux`: `$XDG_CONFIG_HOME` or `$HOME/.config` | `Windows`: `{FOLDERID_RoamingAppData}` | `MacOS`: `$HOME/Library/Application Support`)
+/// # Errors
+pub fn find_config_file(filename: &str) -> Result<std::path::PathBuf> {
+	// handle environment path current working directory `CWD`
+	if let Ok(cwd) = env::current_dir() {
+		#[cfg(not(test))]
+		let path = cwd.join(filename);
+		#[cfg(test)]
+		let path = cwd.join("..").join(filename);
+		if path.is_file() {
+			return Ok(path);
+		}
+		#[cfg(test)]
+		let path = cwd.join("../..").join(filename);
+		if path.is_file() {
+			return Ok(path);
+		}
+
+		let path = cwd.join(".config").join(filename);
+		if path.is_file() {
+			return Ok(path);
+		}
+		#[cfg(test)]
+		let path = cwd.join("../.config").join(filename);
+		if path.is_file() {
+			return Ok(path);
+		}
+		#[cfg(test)]
+		let path = cwd.join("../../.config").join(filename);
+		if path.is_file() {
+			return Ok(path);
+		}
+	};
+
+	// handle typical config directories
+	for path in [home_dir(), config_local_dir(), config_dir()]
+		.into_iter()
+		.flatten()
+	{
+		let file = path.join(filename);
+		if file.is_file() {
+			return Ok(path);
+		}
+	}
+
+	Err(Box::new(Error::new(
+		ErrorKind::NotFound,
+		format!("file {filename} not found"),
+	)))
+}
+// endregion:	--- functions
 
 #[cfg(test)]
 mod tests {
@@ -246,20 +295,13 @@ mod tests {
 	}
 
 	#[test]
-	fn config_low_latency() -> Result<()> {
-		Config::low_latency()?;
-		Ok(())
-	}
-
-	#[test]
-	fn config_from_fle() -> Result<()> {
+	fn config_from_file() -> Result<()> {
 		Config::from_file("default.json5")?;
 		Ok(())
 	}
 
 	#[test]
-	#[should_panic = "non existent file"]
-	fn config_from_fle_panics() {
-		Config::from_file("non_existent.json5").expect("non existent file");
+	fn config_from_file_fails() {
+		let _ = Config::from_file("non_existent.json5").is_err();
 	}
 }

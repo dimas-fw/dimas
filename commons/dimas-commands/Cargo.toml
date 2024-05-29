@@ -1,0 +1,28 @@
+[package]
+name = "dimas-commands"
+rust-version.workspace = true
+edition.workspace = true
+version.workspace = true
+authors.workspace = true
+license-file.workspace = true
+keywords.workspace = true
+categories.workspace = true
+homepage.workspace = true
+repository.workspace = true
+description = "dimas-commands - commands library for DiMAS"
+documentation = "https://docs.rs/dimas-commmands/latest/dimas-commands/"
+readme = "README.md"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lints]
+workspace = true
+
+[dependencies]
+chrono = { workspace = true }
+dimas-com = { workspace = true }
+dimas-config = { workspace = true }
+dimas-core = { workspace = true }
+itertools = { workspace = true }
+tracing = { workspace = true}
+zenoh = { workspace = true }
