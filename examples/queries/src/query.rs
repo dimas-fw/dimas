@@ -45,16 +45,16 @@ async fn main() -> Result<()> {
 
 	// timer for regular querying
 	let interval = Duration::from_secs(4);
-	let mut counter = 0i128;
+	let mut counter1 = 0i128;
 	agent
 		.timer()
 		.name("timer1")
 		.interval(interval)
 		.callback(move |ctx| -> Result<()> {
-			info!("Querying [{counter}]");
+			info!("Querying [{counter1}]");
 			// querying with stored query
 			ctx.get("query1", None, None)?;
-			counter += 1;
+			counter1 += 4;
 			Ok(())
 		})
 		.add()?;
@@ -62,17 +62,17 @@ async fn main() -> Result<()> {
 	// timer for regular querying
 	let interval = Duration::from_secs(4);
 	let delay = Duration::from_secs(1);
-	let mut counter = 0i128;
+	let mut counter2 = 1i128;
 	agent
 		.timer()
 		.name("timer2")
 		.interval(interval)
 		.delay(delay)
 		.callback(move |ctx| -> Result<()> {
-			info!("Querying [{counter}]");
+			info!("Querying [{counter2}]");
 			// querying with ad-hoc query
 			ctx.get("query2", None, Some(Box::new(query_callback2)))?;
-			counter += 1;
+			counter2 += 4;
 			Ok(())
 		})
 		.add()?;
@@ -80,14 +80,14 @@ async fn main() -> Result<()> {
 	// timer for regular querying
 	let interval = Duration::from_secs(4);
 	let delay = Duration::from_secs(2);
-	let mut counter = 0i128;
+	let mut counter3 = 2i128;
 	agent
 		.timer()
 		.name("timer3")
 		.interval(interval)
 		.delay(delay)
 		.callback(move |ctx| -> Result<()> {
-			info!("Querying [{counter}]");
+			info!("Querying [{counter3}]");
 			// querying with ad-hoc query & closure
 			ctx.get(
 				"query3",
@@ -98,7 +98,7 @@ async fn main() -> Result<()> {
 					Ok(())
 				})),
 			)?;
-			counter += 1;
+			counter3 += 4;
 			Ok(())
 		})
 		.add()?;
@@ -106,14 +106,14 @@ async fn main() -> Result<()> {
 	// timer for regular querying
 	let interval = Duration::from_secs(4);
 	let delay = Duration::from_secs(3);
-	let mut counter = 0i128;
+	let mut counter4 = 3i128;
 	agent
 		.timer()
 		.name("timer4")
 		.interval(interval)
 		.delay(delay)
 		.callback(move |ctx| -> Result<()> {
-			info!("Querying [{counter}]");
+			info!("Querying [{counter4}]");
 			// querying with stored query & closure
 			ctx.get(
 				"query1",
@@ -124,7 +124,7 @@ async fn main() -> Result<()> {
 					Ok(())
 				})),
 			)?;
-			counter += 1;
+			counter4 += 4;
 			Ok(())
 		})
 		.add()?;

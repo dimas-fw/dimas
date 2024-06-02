@@ -148,7 +148,6 @@ where
 		let selector = self
 			.context
 			.prefix()
-			.clone()
 			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
 		let Self {
 			context,

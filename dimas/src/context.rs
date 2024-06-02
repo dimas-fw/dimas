@@ -101,8 +101,8 @@ where
 {
 	/// Get the name
 	#[must_use]
-	fn name(&self) -> &Option<String> {
-		&self.name
+	fn name(&self) -> Option<&String> {
+		self.name.as_ref()
 	}
 
 	#[must_use]
@@ -110,11 +110,13 @@ where
 		if self.name().is_some() && self.prefix().is_some() {
 			Some(format!(
 				"{}/{}",
-				self.prefix().clone().expect("snh"),
-				self.name().clone().expect("snh")
+				self.prefix().expect("snh"),
+				self.name().expect("snh")
 			))
+		} else if self.name().is_some() {
+			Some(self.name().expect("snh").to_owned())
 		} else {
-			self.name().clone()
+			None
 		}
 	}
 
@@ -130,8 +132,8 @@ where
 	}
 
 	#[must_use]
-	fn prefix(&self) -> &Option<String> {
-		&self.prefix
+	fn prefix(&self) -> Option<&String> {
+		self.prefix.as_ref()
 	}
 
 	#[must_use]

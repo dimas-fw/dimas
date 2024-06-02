@@ -24,7 +24,7 @@ pub type Context<P> = Arc<dyn ContextAbstraction<P>>;
 pub trait ContextAbstraction<P>: Debug + Send + Sync {
 	/// Get the name
 	#[must_use]
-	fn name(&self) -> &Option<String>;
+	fn name(&self) -> Option<&String>;
 
 	/// Get the fully qualified name
 	#[must_use]
@@ -46,7 +46,7 @@ pub trait ContextAbstraction<P>: Debug + Send + Sync {
 
 	/// Get prefix
 	#[must_use]
-	fn prefix(&self) -> &Option<String>;
+	fn prefix(&self) -> Option<&String>;
 
 	/// Get session mode
 	#[must_use]
