@@ -16,7 +16,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 
-## [0.2.0] - 2024-??-?? <br>_Has breaking changes!!_
+## [0.2.1] - 2024-??-??
+
+### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+
+## [0.2.0] - 2024-05-29 <br>_Has breaking changes!!_
 
 ### Added
 - dimasctl: binary to control DiMAS entities with commands
