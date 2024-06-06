@@ -93,7 +93,7 @@ impl Request {
 	/// decode queries [`Message`]
 	///
 	/// # Errors
-	pub fn decode<T>(self) -> Result<T>
+	pub fn decode<T>(&self) -> Result<T>
 	where
 		T: for<'a> Decode<'a>,
 	{

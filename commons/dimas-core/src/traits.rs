@@ -111,8 +111,8 @@ pub trait ContextAbstraction<P>: Debug + Send + Sync {
 	fn get(
 		&self,
 		topic: &str,
-		message: Option<&Message>,
-		callback: Option<Box<dyn FnMut(Response) -> Result<()>>>,
+		message: Option<Message>,
+		callback: Option<&dyn Fn(Response) -> Result<()>>,
 	) -> Result<()>;
 
 	/// Send a query for a `selector` with an optional [`Message`].
@@ -126,8 +126,8 @@ pub trait ContextAbstraction<P>: Debug + Send + Sync {
 	fn get_with(
 		&self,
 		selector: &str,
-		message: Option<&Message>,
-		callback: Option<Box<dyn FnMut(Response) -> Result<()>>>,
+		message: Option<Message>,
+		callback: Option<&dyn Fn(Response) -> Result<()>>,
 	) -> Result<()>;
 }
 // endregion:	--- Context

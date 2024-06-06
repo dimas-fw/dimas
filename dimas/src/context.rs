@@ -285,8 +285,8 @@ where
 	fn get(
 		&self,
 		topic: &str,
-		message: Option<&Message>,
-		callback: Option<Box<dyn FnMut(Response) -> Result<()>>>,
+		message: Option<Message>,
+		callback: Option<&dyn Fn(Response) -> Result<()>>,
 	) -> Result<()> {
 		let selector = self
 			.prefix()
@@ -301,8 +301,8 @@ where
 	fn get_with(
 		&self,
 		selector: &str,
-		message: Option<&Message>,
-		callback: Option<Box<dyn FnMut(Response) -> Result<()>>>,
+		message: Option<Message>,
+		callback: Option<&dyn Fn(Response) -> Result<()>>,
 	) -> Result<()> {
 		if self
 			.queries

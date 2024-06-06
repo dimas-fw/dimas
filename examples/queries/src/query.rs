@@ -8,7 +8,7 @@ use tracing::info;
 // endregion:	--- modules
 
 #[derive(Debug)]
-struct AgentProps {}
+struct AgentProps { }
 
 fn query_callback(_ctx: &Context<AgentProps>, response: Response) -> Result<()> {
 	let message: u128 = response.decode()?;
@@ -28,7 +28,7 @@ async fn main() -> Result<()> {
 	init_tracing();
 
 	// create & initialize agents properties
-	let properties = AgentProps {};
+	let properties = AgentProps { };
 
 	// create an agent with the properties and the prefix 'examples'
 	let mut agent = Agent::new(properties)
@@ -52,8 +52,9 @@ async fn main() -> Result<()> {
 		.interval(interval)
 		.callback(move |ctx| -> Result<()> {
 			info!("Querying [{counter1}]");
+			let message = Message::encode(&counter1);
 			// querying with stored query
-			ctx.get("query1", None, None)?;
+			ctx.get("query1", Some(message), None)?;
 			counter1 += 4;
 			Ok(())
 		})
@@ -70,8 +71,9 @@ async fn main() -> Result<()> {
 		.delay(delay)
 		.callback(move |ctx| -> Result<()> {
 			info!("Querying [{counter2}]");
+			let message = Message::encode(&counter2);
 			// querying with ad-hoc query
-			ctx.get("query2", None, Some(Box::new(query_callback2)))?;
+			ctx.get("query2", Some(message), Some(&query_callback2))?;
 			counter2 += 4;
 			Ok(())
 		})
@@ -88,15 +90,16 @@ async fn main() -> Result<()> {
 		.delay(delay)
 		.callback(move |ctx| -> Result<()> {
 			info!("Querying [{counter3}]");
+			let message = Message::encode(&counter3);
 			// querying with ad-hoc query & closure
 			ctx.get(
 				"query3",
-				None,
-				Some(Box::new(|response| -> Result<()> {
+				Some(message),
+				Some(&|response| -> Result<()> {
 					let message: u128 = response.decode()?;
 					println!("Response 3 is '{message}'");
 					Ok(())
-				})),
+				}),
 			)?;
 			counter3 += 4;
 			Ok(())
@@ -114,15 +117,16 @@ async fn main() -> Result<()> {
 		.delay(delay)
 		.callback(move |ctx| -> Result<()> {
 			info!("Querying [{counter4}]");
+			let message = Message::encode(&counter4);
 			// querying with stored query & closure
 			ctx.get(
 				"query1",
-				None,
-				Some(Box::new(|response| -> Result<()> {
+				Some(message),
+				Some(&|response| -> Result<()> {
 					let message: u128 = response.decode()?;
 					println!("Response 4 is '{message}'");
 					Ok(())
-				})),
+				}),
 			)?;
 			counter4 += 4;
 			Ok(())

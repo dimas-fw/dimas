@@ -29,7 +29,7 @@ pub fn about_list(com: &Communicator, base_selector: &String) -> Vec<AboutEntity
 	let selector = format!("{base_selector}/signal");
 	let message = Message::encode(&Signal::About);
 	// set state for entities matching the selector
-	com.get(&selector, Some(&message), |response| -> Result<()> {
+	com.get(&selector, Some(message), |response| -> Result<()> {
 		let response: AboutEntity = response.decode().expect("decode failed");
 		map.entry(response.zid().to_string())
 			.or_insert(response);
@@ -56,7 +56,7 @@ pub fn ping_list(com: &Communicator, base_selector: &String) -> Vec<(PingEntity,
 		.unwrap_or(0);
 	let message = Message::encode(&Signal::Ping { sent });
 	// set state for entities matching the selector
-	com.get(&selector, Some(&message), |response| -> Result<()> {
+	com.get(&selector, Some(message), |response| -> Result<()> {
 		let received = Local::now()
 			.naive_utc()
 			.and_utc()
@@ -111,7 +111,7 @@ pub fn set_state(
 	let selector = format!("{base_selector}/signal");
 	let message = Message::encode(&Signal::State { state });
 	// set state for entities matching the selector
-	com.get(&selector, Some(&message), |response| -> Result<()> {
+	com.get(&selector, Some(message), |response| -> Result<()> {
 		let response: AboutEntity = response.decode().expect("decode failed");
 		map.entry(response.zid().to_string())
 			.or_insert(response);
@@ -134,7 +134,7 @@ pub fn shutdown(com: &Communicator, base_selector: &String) -> Vec<AboutEntity> 
 	let selector = format!("{base_selector}/signal");
 	let message = Message::encode(&Signal::Shutdown);
 	// set state for entities matching the selector
-	com.get(&selector, Some(&message), |response| -> Result<()> {
+	com.get(&selector, Some(message), |response| -> Result<()> {
 		let response: AboutEntity = response.decode().expect("decode failed");
 		map.entry(response.zid().to_string())
 			.or_insert(response);
