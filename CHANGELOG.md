@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 ### Changed
+- zenoh version updated to 0.11
+- replaced &Option<T> with Option<&T>
 
 ### Fixed
 
