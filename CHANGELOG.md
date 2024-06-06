@@ -16,10 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 
-## [0.2.1] - 2024-??-??
+## [0.2.1] - 2024-06-06
 
 ### Added
-- documentation in readme of dimasctl & dimasmon
+- documentation how to install dimasctl & dimasmon
 
 ### Changed
 - zenoh version updated to 0.11
@@ -27,8 +27,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - query/queryable with `Message`
-
-### Removed
 
 
 ## [0.2.0] - 2024-05-29 <br>_Has breaking changes!!_
