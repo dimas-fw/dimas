@@ -11,7 +11,8 @@ use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
 	message_types::Message,
-	traits::Context, utils::selector_from,
+	traits::Context,
+	utils::selector_from,
 };
 use std::sync::{Arc, Mutex, RwLock};
 use zenoh::subscriber::Reliability;

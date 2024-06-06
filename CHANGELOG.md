@@ -16,7 +16,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 
-## [0.2.0] - 2024-??-?? <br>_Has breaking changes!!_
+## [0.2.1] - 2024-??-??
+
+### Added
+- documentation in readme of dimasctl & dimasmon
+
+### Changed
+- zenoh version updated to 0.11
+- replaced &Option<T> with Option<&T>
+
+### Fixed
+- query/queryable with `Message`
+
+### Removed
+
+
+## [0.2.0] - 2024-05-29 <br>_Has breaking changes!!_
 
 ### Added
 - dimasctl: binary to control DiMAS entities with commands

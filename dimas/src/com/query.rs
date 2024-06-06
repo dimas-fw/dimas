@@ -134,8 +134,8 @@ where
 	#[instrument(name="query with message", level = Level::ERROR, skip_all)]
 	pub fn get(
 		&self,
-		message: Option<&Message>,
-		mut callback: Option<Box<dyn FnMut(Response) -> Result<()>>>,
+		message: Option<Message>,
+		mut callback: Option<&dyn Fn(Response) -> Result<()>>,
 	) -> Result<()> {
 		let cb = self.response_callback.clone();
 		let session = self.context.session();

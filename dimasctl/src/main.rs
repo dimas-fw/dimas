@@ -64,7 +64,8 @@ fn main() {
 	let header = "ZenohId                           Kind    State       Prefix/Name";
 
 	let base_selector = args
-		.selector.clone()
+		.selector
+		.clone()
 		.map_or_else(|| String::from("**"), |selector| selector);
 
 	match &args.command {
@@ -83,7 +84,9 @@ fn main() {
 			}
 		}
 		DimasctlCommand::Ping { target, count } => {
-			let target = args.selector.map_or_else(|| target.to_owned(), |value| format!("{value}/{target}"));
+			let target = args
+				.selector
+				.map_or_else(|| target.to_owned(), |value| format!("{value}/{target}"));
 			let com = Communicator::new(&config).expect("failed to create 'Communicator'");
 			for _ in 0..*count {
 				for item in dimas_commands::ping_list(&com, &target) {
@@ -124,7 +127,9 @@ fn main() {
 			}
 		}
 		DimasctlCommand::Shutdown { target } => {
-			let target = args.selector.map_or_else(|| target.to_owned(), |value| format!("{value}/{target}"));
+			let target = args
+				.selector
+				.map_or_else(|| target.to_owned(), |value| format!("{value}/{target}"));
 			let com = Communicator::new(&config).expect("failed to create 'Communicator'");
 			println!("List of shut down DiMAS entities:");
 			println!("{header}");

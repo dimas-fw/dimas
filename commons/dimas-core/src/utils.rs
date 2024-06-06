@@ -24,7 +24,7 @@ pub fn init_tracing() {
 // region:    --- helper
 /// create selector
 #[must_use]
-pub fn selector_from(topic: &str, prefix: &Option<String>) -> String {
-	prefix.to_owned().map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"))
+pub fn selector_from(topic: &str, prefix: Option<&String>) -> String {
+	prefix.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"))
 }
 // endregion: --- helper

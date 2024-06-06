@@ -11,7 +11,7 @@ keywords.workspace = true
 categories.workspace = true
 homepage.workspace = true
 repository.workspace = true
-description = "dimas-config - conofig library for DiMAS"
+description = "dimas-config - configuration library for DiMAS"
 documentation = "https://docs.rs/dimas-config/latest/dimas-config/"
 readme = "README.md"
 

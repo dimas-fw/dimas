@@ -28,6 +28,21 @@ url = "https://raw.githubusercontent.com/zcash/rust-ecosystem/main/supply-chain/
 [policy.dimas]
 audit-as-crates-io = true
 
+[policy.dimas-com]
+audit-as-crates-io = true
+
+[policy.dimas-commands]
+audit-as-crates-io = true
+
+[policy.dimas-config]
+audit-as-crates-io = true
+
+[policy.dimas-core]
+audit-as-crates-io = true
+
+[policy.dimasmon]
+audit-as-crates-io = true
+
 [[exemptions.addr2line]]
 version = "0.21.0"
 criteria = "safe-to-deploy"
@@ -96,10 +111,6 @@ criteria = "safe-to-deploy"
 version = "1.1.2"
 criteria = "safe-to-deploy"
 
-[[exemptions.backtrace]]
-version = "0.3.69"
-criteria = "safe-to-deploy"
-
 [[exemptions.base64]]
 version = "0.21.7"
 criteria = "safe-to-deploy"
@@ -114,10 +125,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.blocking]]
 version = "1.5.1"
-criteria = "safe-to-deploy"
-
-[[exemptions.bytes]]
-version = "1.5.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.cache-padded]]
@@ -300,10 +307,6 @@ criteria = "safe-to-deploy"
 version = "0.20.0"
 criteria = "safe-to-deploy"
 
-[[exemptions.js-sys]]
-version = "0.3.68"
-criteria = "safe-to-deploy"
-
 [[exemptions.json5]]
 version = "0.4.1"
 criteria = "safe-to-deploy"
@@ -324,16 +327,8 @@ criteria = "safe-to-deploy"
 version = "0.8.2"
 criteria = "safe-to-deploy"
 
-[[exemptions.libm]]
-version = "0.2.8"
-criteria = "safe-to-deploy"
-
 [[exemptions.libredox]]
 version = "0.0.1"
-criteria = "safe-to-deploy"
-
-[[exemptions.lock_api]]
-version = "0.4.11"
 criteria = "safe-to-deploy"
 
 [[exemptions.lz4_flex]]
@@ -370,10 +365,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.option-ext]]
 version = "0.2.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.ordered-float]]
-version = "4.2.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.parking]]
@@ -548,10 +539,6 @@ criteria = "safe-to-deploy"
 version = "3.1.0"
 criteria = "safe-to-deploy"
 
-[[exemptions.slab]]
-version = "0.4.9"
-criteria = "safe-to-deploy"
-
 [[exemptions.socket2]]
 version = "0.4.10"
 criteria = "safe-to-deploy"
@@ -578,10 +565,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.token-cell]]
 version = "1.5.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.tokio-macros]]
-version = "2.2.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.tokio-tungstenite]]
@@ -652,23 +635,7 @@ criteria = "safe-to-deploy"
 version = "1.1.1"
 criteria = "safe-to-deploy"
 
-[[exemptions.wasi]]
-version = "0.11.0+wasi-snapshot-preview1"
-criteria = "safe-to-deploy"
-
 [[exemptions.wasm-bindgen]]
-version = "0.2.91"
-criteria = "safe-to-deploy"
-
-[[exemptions.wasm-bindgen-backend]]
-version = "0.2.91"
-criteria = "safe-to-deploy"
-
-[[exemptions.wasm-bindgen-futures]]
-version = "0.4.41"
-criteria = "safe-to-deploy"
-
-[[exemptions.wasm-bindgen-macro]]
 version = "0.2.91"
 criteria = "safe-to-deploy"
 
@@ -686,62 +653,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.winapi-x86_64-pc-windows-gnu]]
 version = "0.4.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.windows-sys]]
-version = "0.48.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.windows-sys]]
-version = "0.52.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.windows_aarch64_msvc]]
-version = "0.48.5"
-criteria = "safe-to-deploy"
-
-[[exemptions.windows_aarch64_msvc]]
-version = "0.52.4"
-criteria = "safe-to-deploy"
-
-[[exemptions.windows_i686_gnu]]
-version = "0.48.5"
-criteria = "safe-to-deploy"
-
-[[exemptions.windows_i686_gnu]]
-version = "0.52.4"
-criteria = "safe-to-deploy"
-
-[[exemptions.windows_i686_msvc]]
-version = "0.48.5"
-criteria = "safe-to-deploy"
-
-[[exemptions.windows_i686_msvc]]
-version = "0.52.4"
-criteria = "safe-to-deploy"
-
-[[exemptions.windows_x86_64_gnu]]
-version = "0.48.5"
-criteria = "safe-to-deploy"
-
-[[exemptions.windows_x86_64_gnu]]
-version = "0.52.4"
-criteria = "safe-to-deploy"
-
-[[exemptions.windows_x86_64_msvc]]
-version = "0.48.5"
-criteria = "safe-to-deploy"
-
-[[exemptions.windows_x86_64_msvc]]
-version = "0.52.4"
-criteria = "safe-to-deploy"
-
-[[exemptions.zerocopy]]
-version = "0.7.32"
-criteria = "safe-to-deploy"
-
-[[exemptions.zerocopy-derive]]
-version = "0.7.32"
 criteria = "safe-to-deploy"
 
 [[exemptions.zeroize]]

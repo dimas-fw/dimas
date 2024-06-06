@@ -14,14 +14,14 @@ export component MainWindow inherits Window {
         height: 100%;
 
         // TopMenu
-        Rectangle {
+        top_menu := Rectangle {
             height: 44px;
             background: gray;
         }
 
         HorizontalLayout {
             // LeftMenu
-            TabWidget {
+            left_menu := TabWidget {
                 width: 20%;
 
                 Tab {
@@ -35,7 +35,7 @@ export component MainWindow inherits Window {
             VerticalLayout {
                 HorizontalLayout {
                     // MainArea
-                    TabWidget {
+                    main_area := TabWidget {
                         Tab {
                             title: "MainTab1";
                             Rectangle {
@@ -50,35 +50,36 @@ export component MainWindow inherits Window {
                         }
                     }
                     // RightArea
-//                    TabWidget {
-//                        width: 25%;
-//
-//                        Tab {
-//                            title: "RightTab1";
-//                            Rectangle {
-//                                // background: cyan;
-//                            }
-//                        }
-//                    }
+                    right_area := TabWidget {
+                        width: 0%;
+                        visible: false;
+
+                        Tab {
+                            title: "RightTab1";
+                            Rectangle {
+                                // background: cyan;
+                            }
+                        }
+                    }
                 }
 
                 // BottomArea
-//                TabWidget {
-//                    height: 20%;
-//                    visible: false;
-//
-//                    Tab {
-//                        title: "BottomTab1";
-//                        Rectangle {
-//                            background: gray;
-//                        }
-//                    }
-//                }
+                bottom_area := TabWidget {
+                    height: 0%;
+                    visible: false;
+
+                    Tab {
+                        title: "BottomTab1";
+                        Rectangle {
+                            background: gray;
+                        }
+                    }
+                }
             }
         }
 
         // StatusLine
-        Rectangle {
+        status_line := Rectangle {
             height: 30px;
             background: lightgray;
         }
