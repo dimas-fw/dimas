@@ -15,7 +15,10 @@ fn queryable(ctx: &Context<AgentProps>, request: Request) -> Result<()> {
 	let received: u128 = request.decode()?;
 	let value = ctx.read()?.counter;
 	let query = request.key_expr();
-	info!("Received query for {} with {}, responding with {}", &query, &received, &value);
+	info!(
+		"Received query for {} with {}, responding with {}",
+		&query, &received, &value
+	);
 	request.reply(value)?;
 
 	ctx.write()?.counter += 1;

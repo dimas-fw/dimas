@@ -8,7 +8,7 @@ use tracing::info;
 // endregion:	--- modules
 
 #[derive(Debug)]
-struct AgentProps { }
+struct AgentProps {}
 
 fn query_callback(_ctx: &Context<AgentProps>, response: Response) -> Result<()> {
 	let message: u128 = response.decode()?;
@@ -28,7 +28,7 @@ async fn main() -> Result<()> {
 	init_tracing();
 
 	// create & initialize agents properties
-	let properties = AgentProps { };
+	let properties = AgentProps {};
 
 	// create an agent with the properties and the prefix 'examples'
 	let mut agent = Agent::new(properties)

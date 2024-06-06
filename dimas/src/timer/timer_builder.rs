@@ -323,7 +323,6 @@ mod tests {
 
 	#[test]
 	const fn normal_types() {
-		is_normal::<TimerBuilder<Props, NoSelector, NoInterval, NoIntervalCallback, NoStorage>>(
-		);
+		is_normal::<TimerBuilder<Props, NoSelector, NoInterval, NoIntervalCallback, NoStorage>>();
 	}
 }

@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.1] - 2024-??-??
 
 ### Added
+- documentation in readme of dimasctl & dimasmon
 
 ### Changed
 - zenoh version updated to 0.11
