@@ -297,7 +297,7 @@ where
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Agent")
 			.field("id", &self.context.uuid())
-			.field("prefix", self.context.prefix())
+			.field("prefix", self.context.prefix().expect("None"))
 			.field("name", &self.context.name())
 			.finish_non_exhaustive()
 	}
@@ -409,7 +409,6 @@ where
 			let token_str = self
 				.context
 				.prefix()
-				.clone()
 				.map_or(self.context.uuid(), |prefix| {
 					format!("{}/{}", prefix, self.context.uuid())
 				});

@@ -7,7 +7,8 @@ use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
 	message_types::Request,
-	traits::Context, utils::selector_from,
+	traits::Context,
+	utils::selector_from,
 };
 use std::{
 	collections::HashMap,

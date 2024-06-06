@@ -81,7 +81,7 @@ impl Communicator {
 	/// Answers are collected via callback
 	/// # Errors
 	/// # Panics
-	pub fn get<F>(&self, selector: &str, message: Option<&Message>, mut callback: F) -> Result<()>
+	pub fn get<F>(&self, selector: &str, message: Option<Message>, mut callback: F) -> Result<()>
 	where
 		F: FnMut(Response) -> Result<()> + Sized,
 	{

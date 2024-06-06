@@ -148,7 +148,6 @@ where
 		let selector = self
 			.context
 			.prefix()
-			.clone()
 			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
 		let Self {
 			context,
@@ -324,7 +323,6 @@ mod tests {
 
 	#[test]
 	const fn normal_types() {
-		is_normal::<TimerBuilder<Props, NoSelector, NoInterval, NoIntervalCallback, NoStorage>>(
-		);
+		is_normal::<TimerBuilder<Props, NoSelector, NoInterval, NoIntervalCallback, NoStorage>>();
 	}
 }

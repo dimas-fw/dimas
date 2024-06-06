@@ -9,7 +9,8 @@ use crate::agent::Agent;
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
-	traits::Context, utils::selector_from,
+	traits::Context,
+	utils::selector_from,
 };
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};

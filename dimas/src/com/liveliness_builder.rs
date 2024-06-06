@@ -9,6 +9,7 @@ use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
 	traits::Context,
+	utils::selector_from,
 };
 use std::{
 	collections::HashMap,
@@ -62,10 +63,10 @@ where
 	/// Construct a `LivelinessSubscriberBuilder` in initial state
 	#[must_use]
 	pub fn new(context: Context<P>) -> Self {
-		let token = context
-			.prefix()
-			.clone()
-			.map_or("*".to_string(), |prefix| format!("{prefix}/*"));
+		//let token = context
+		//	.prefix()
+		//	.map_or("*".to_string(), |prefix| format!("{prefix}/*"));
+		let token = selector_from("*", context.prefix());
 		Self {
 			token,
 			context,

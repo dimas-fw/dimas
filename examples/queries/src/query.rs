@@ -45,16 +45,17 @@ async fn main() -> Result<()> {
 
 	// timer for regular querying
 	let interval = Duration::from_secs(4);
-	let mut counter = 0i128;
+	let mut counter1 = 0i128;
 	agent
 		.timer()
 		.name("timer1")
 		.interval(interval)
 		.callback(move |ctx| -> Result<()> {
-			info!("Querying [{counter}]");
+			info!("Querying [{counter1}]");
+			let message = Message::encode(&counter1);
 			// querying with stored query
-			ctx.get("query1", None, None)?;
-			counter += 1;
+			ctx.get("query1", Some(message), None)?;
+			counter1 += 4;
 			Ok(())
 		})
 		.add()?;
@@ -62,17 +63,18 @@ async fn main() -> Result<()> {
 	// timer for regular querying
 	let interval = Duration::from_secs(4);
 	let delay = Duration::from_secs(1);
-	let mut counter = 0i128;
+	let mut counter2 = 1i128;
 	agent
 		.timer()
 		.name("timer2")
 		.interval(interval)
 		.delay(delay)
 		.callback(move |ctx| -> Result<()> {
-			info!("Querying [{counter}]");
+			info!("Querying [{counter2}]");
+			let message = Message::encode(&counter2);
 			// querying with ad-hoc query
-			ctx.get("query2", None, Some(Box::new(query_callback2)))?;
-			counter += 1;
+			ctx.get("query2", Some(message), Some(&query_callback2))?;
+			counter2 += 4;
 			Ok(())
 		})
 		.add()?;
@@ -80,25 +82,26 @@ async fn main() -> Result<()> {
 	// timer for regular querying
 	let interval = Duration::from_secs(4);
 	let delay = Duration::from_secs(2);
-	let mut counter = 0i128;
+	let mut counter3 = 2i128;
 	agent
 		.timer()
 		.name("timer3")
 		.interval(interval)
 		.delay(delay)
 		.callback(move |ctx| -> Result<()> {
-			info!("Querying [{counter}]");
+			info!("Querying [{counter3}]");
+			let message = Message::encode(&counter3);
 			// querying with ad-hoc query & closure
 			ctx.get(
 				"query3",
-				None,
-				Some(Box::new(|response| -> Result<()> {
+				Some(message),
+				Some(&|response| -> Result<()> {
 					let message: u128 = response.decode()?;
 					println!("Response 3 is '{message}'");
 					Ok(())
-				})),
+				}),
 			)?;
-			counter += 1;
+			counter3 += 4;
 			Ok(())
 		})
 		.add()?;
@@ -106,25 +109,26 @@ async fn main() -> Result<()> {
 	// timer for regular querying
 	let interval = Duration::from_secs(4);
 	let delay = Duration::from_secs(3);
-	let mut counter = 0i128;
+	let mut counter4 = 3i128;
 	agent
 		.timer()
 		.name("timer4")
 		.interval(interval)
 		.delay(delay)
 		.callback(move |ctx| -> Result<()> {
-			info!("Querying [{counter}]");
+			info!("Querying [{counter4}]");
+			let message = Message::encode(&counter4);
 			// querying with stored query & closure
 			ctx.get(
 				"query1",
-				None,
-				Some(Box::new(|response| -> Result<()> {
+				Some(message),
+				Some(&|response| -> Result<()> {
 					let message: u128 = response.decode()?;
 					println!("Response 4 is '{message}'");
 					Ok(())
-				})),
+				}),
 			)?;
-			counter += 1;
+			counter4 += 4;
 			Ok(())
 		})
 		.add()?;
