@@ -3,7 +3,9 @@
 //! Module `timer` provides a set of `Timer` variants which can be created using the `TimerBuilder`.
 //! When fired, a `Timer` calls his assigned `TimerCallback`.
 
-use crate::com::{Callback, Interval, NoCallback, NoInterval, NoSelector, NoStorage, Selector, Storage};
+use crate::com::{
+	Callback, Interval, NoCallback, NoInterval, NoSelector, NoStorage, Selector, Storage,
+};
 
 use crate::timer::timer::TimerCallback;
 // region:		--- modules

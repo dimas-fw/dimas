@@ -12,6 +12,10 @@ use std::{
 
 /// `Liveliness`
 pub mod liveliness;
+/// `Observable`
+pub mod observable;
+/// `Observer`
+pub mod observer;
 /// `Publisher`
 pub mod publisher;
 /// `Query`

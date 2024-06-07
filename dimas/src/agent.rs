@@ -46,16 +46,11 @@
 
 // region:		--- modules
 use crate::builder::{
-	liveliness::LivelinessSubscriberBuilder,
-	publisher::PublisherBuilder,
-	query::QueryBuilder, queryable::QueryableBuilder,
-	subscriber::SubscriberBuilder,
-	timer::TimerBuilder,
+	liveliness::LivelinessSubscriberBuilder, publisher::PublisherBuilder, query::QueryBuilder,
+	queryable::QueryableBuilder, subscriber::SubscriberBuilder, timer::TimerBuilder,
 };
 use crate::com::{
-	liveliness::LivelinessSubscriber,
-	publisher::Publisher, query::Query,
-	queryable::Queryable, 
+	liveliness::LivelinessSubscriber, publisher::Publisher, query::Query, queryable::Queryable,
 	subscriber::Subscriber,
 };
 use crate::context::ContextImpl;

@@ -12,6 +12,7 @@ members = [
 	"dimasctl",
 	"dimasmon",
 	"examples/liveliness",
+	"examples/observation",
 	"examples/pingpong",
 	"examples/pubsub",
 	"examples/queries",
