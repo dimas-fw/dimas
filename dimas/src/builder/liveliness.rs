@@ -4,10 +4,8 @@
 //! A `LivelinessSubscriber` can optional subscribe on a delete message.
 
 // region:		--- modules
-use crate::com::{
-	liveliness::{ArcLivelinessCallback, LivelinessSubscriber},
-	Callback, NoCallback, NoStorage, Storage,
-};
+use crate::builder::{Callback, NoCallback, NoStorage, Storage};
+use crate::com::{liveliness::LivelinessSubscriber, ArcLivelinessCallback};
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
@@ -115,7 +113,7 @@ where
 	#[must_use]
 	pub fn delete_callback<F>(self, callback: F) -> Self
 	where
-		F: FnMut(&Context<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static,
+		F: Fn(&Context<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
 			token,
@@ -149,7 +147,7 @@ where
 		callback: F,
 	) -> LivelinessSubscriberBuilder<P, Callback<ArcLivelinessCallback<P>>, S>
 	where
-		F: FnMut(&Context<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static,
+		F: Fn(&Context<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
 			token,

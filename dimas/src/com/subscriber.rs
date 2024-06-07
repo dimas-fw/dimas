@@ -3,10 +3,9 @@
 //! Module `subscriber` provides a message `Subscriber` which can be created using the `SubscriberBuilder`.
 //! A `Subscriber` can optional subscribe on a delete message.
 
-use std::sync::{Arc, Mutex};
-
 // region:		--- modules
 // these ones are only for doc needed
+use super::{ArcSubscriberDeleteCallback, ArcSubscriberPutCallback};
 #[cfg(doc)]
 use crate::agent::Agent;
 use dimas_core::{
@@ -22,16 +21,6 @@ use zenoh::{
 	subscriber::Reliability,
 };
 // endregion:	--- modules
-
-// region:		--- types
-/// Type definition for a subscribers atomic reference counted `put` callback function
-pub type ArcSubscriberPutCallback<P> =
-	Arc<Mutex<dyn FnMut(&Context<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static>>;
-
-/// Type definition for a subscribers atomic reference counted `delete` callback function
-pub type ArcSubscriberDeleteCallback<P> =
-	Arc<Mutex<dyn FnMut(&Context<P>) -> Result<()> + Send + Sync + Unpin + 'static>>;
-// endregion:	--- types
 
 // region:		--- Subscriber
 /// Subscriber

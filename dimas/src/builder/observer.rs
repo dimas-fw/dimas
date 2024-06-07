@@ -5,7 +5,7 @@ use dimas_core::traits::Context;
 // endregion:	--- modules
 
 // region:		--- ObserverBuilder
-/// `ObserverBuilder`
+/// The builder for an [`Observer`]
 #[allow(clippy::module_name_repetitions)]
 pub struct ObserverBuilder<P>
 where

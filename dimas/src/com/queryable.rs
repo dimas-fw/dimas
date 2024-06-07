@@ -9,21 +9,14 @@ use dimas_core::{
 	message_types::Request,
 	traits::{Capability, Context},
 };
-use std::{
-	fmt::Debug,
-	sync::{Arc, Mutex},
-};
+use std::fmt::Debug;
 use tokio::task::JoinHandle;
 use tracing::{error, info, instrument, warn, Level};
 use zenoh::prelude::{r#async::AsyncResolve, SessionDeclarations};
 use zenoh::sample::Locality;
-// endregion:	--- modules
 
-// region:		--- types
-/// type defnition for the queryables atomic reference counted callback function.
-pub type ArcQueryableCallback<P> =
-	Arc<Mutex<dyn FnMut(&Context<P>, Request) -> Result<()> + Send + Sync + Unpin + 'static>>;
-// endregion:	--- types
+use super::ArcQueryableCallback;
+// endregion:	--- modules
 
 // region:		--- Queryable
 /// Queryable

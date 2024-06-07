@@ -13,10 +13,8 @@ use dimas_core::{
 use std::sync::{Arc, Mutex, RwLock};
 use zenoh::sample::Locality;
 
-use crate::com::{
-	queryable::{ArcQueryableCallback, Queryable},
-	Callback, NoCallback, NoSelector, NoStorage, Selector, Storage,
-};
+use crate::builder::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
+use crate::com::{queryable::Queryable, ArcQueryableCallback};
 // endregion:	--- modules
 
 // region:		--- QueryableBuilder
@@ -130,7 +128,7 @@ where
 		callback: F,
 	) -> QueryableBuilder<P, K, Callback<ArcQueryableCallback<P>>, S>
 	where
-		F: FnMut(&Context<P>, Request) -> Result<()> + Send + Sync + Unpin + 'static,
+		F: Fn(&Context<P>, Request) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
 			context,

@@ -11,21 +11,14 @@ use dimas_core::{
 };
 #[cfg(doc)]
 use std::collections::HashMap;
-use std::{
-	sync::{Arc, Mutex},
-	time::Duration,
-};
+use std::time::Duration;
 use tokio::task::JoinHandle;
 use tracing::info;
 use tracing::{error, instrument, warn, Level};
 use zenoh::prelude::{r#async::AsyncResolve, SampleKind, SessionDeclarations};
-// endregion:	--- modules
 
-// region:		--- types
-/// Type definition for liveliness atomic reference counted callback function
-pub type ArcLivelinessCallback<P> =
-	Arc<Mutex<dyn FnMut(&Context<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static>>;
-// endregion:	--- types
+use super::ArcLivelinessCallback;
+// endregion:	--- modules
 
 // region:		--- LivelinessSubscriber
 /// Liveliness Subscriber

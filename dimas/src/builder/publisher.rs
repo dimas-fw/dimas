@@ -6,6 +6,8 @@
 // these ones are only for doc needed
 #[cfg(doc)]
 use crate::agent::Agent;
+use crate::builder::{NoSelector, NoStorage, Selector, Storage};
+use crate::com::publisher::Publisher;
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
@@ -14,8 +16,6 @@ use dimas_core::{
 };
 use std::sync::{Arc, RwLock};
 use zenoh::publication::{CongestionControl, Priority};
-
-use crate::com::{publisher::Publisher, NoSelector, NoStorage, Selector, Storage};
 // endregion:	--- modules
 
 // region:		--- PublisherBuilder

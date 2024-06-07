@@ -17,10 +17,8 @@ use dimas_core::{
 use std::sync::{Arc, Mutex, RwLock};
 use zenoh::subscriber::Reliability;
 
-use crate::com::{
-	subscriber::{ArcSubscriberDeleteCallback, ArcSubscriberPutCallback, Subscriber},
-	Callback, NoCallback, NoSelector, NoStorage, Selector, Storage,
-};
+use crate::builder::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
+use crate::com::{subscriber::Subscriber, ArcSubscriberDeleteCallback, ArcSubscriberPutCallback};
 // endregion:	--- modules
 
 // region:		--- SubscriberBuilder
@@ -81,7 +79,7 @@ where
 	#[must_use]
 	pub fn delete_callback<F>(mut self, callback: F) -> Self
 	where
-		F: FnMut(&Context<P>) -> Result<()> + Send + Sync + Unpin + 'static,
+		F: Fn(&Context<P>) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		self.delete_callback
 			.replace(Arc::new(Mutex::new(callback)));
@@ -138,7 +136,7 @@ where
 		callback: F,
 	) -> SubscriberBuilder<P, K, Callback<ArcSubscriberPutCallback<P>>, S>
 	where
-		F: FnMut(&Context<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static,
+		F: Fn(&Context<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
 			context,

@@ -3,17 +3,14 @@
 //! Module `query` provides an information/compute requestor `Query` which can be created using the `QueryBuilder`.
 
 // region:		--- modules
+use super::ArcQueryCallback;
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
 	message_types::{Message, Response},
 	traits::{Capability, Context},
 };
-use std::{
-	fmt::Debug,
-	sync::{Arc, Mutex},
-	time::Duration,
-};
+use std::{fmt::Debug, time::Duration};
 use tracing::{error, instrument, Level};
 use zenoh::{
 	prelude::{sync::SyncResolve, SampleKind},
@@ -21,13 +18,6 @@ use zenoh::{
 	sample::Locality,
 };
 // endregion:	--- modules
-
-// region:		--- types
-/// type definition for the queries callback function
-#[allow(clippy::module_name_repetitions)]
-pub type QueryCallback<P> =
-	Arc<Mutex<dyn FnMut(&Context<P>, Response) -> Result<()> + Send + Sync + Unpin + 'static>>;
-// endregion:	--- types
 
 // region:		--- Query
 /// Query
@@ -39,7 +29,7 @@ where
 	/// Context for the Query
 	context: Context<P>,
 	activation_state: OperationState,
-	response_callback: QueryCallback<P>,
+	response_callback: ArcQueryCallback<P>,
 	mode: ConsolidationMode,
 	allowed_destination: Locality,
 	target: QueryTarget,
@@ -84,7 +74,7 @@ where
 		selector: String,
 		context: Context<P>,
 		activation_state: OperationState,
-		response_callback: QueryCallback<P>,
+		response_callback: ArcQueryCallback<P>,
 		mode: ConsolidationMode,
 		allowed_destination: Locality,
 		target: QueryTarget,

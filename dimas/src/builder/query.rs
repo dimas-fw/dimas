@@ -19,10 +19,8 @@ use zenoh::{
 	sample::Locality,
 };
 
-use crate::com::{
-	query::{Query, QueryCallback},
-	Callback, NoCallback, NoSelector, NoStorage, Selector, Storage,
-};
+use crate::builder::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
+use crate::com::{query::Query, ArcQueryCallback};
 // endregion:	--- modules
 
 // region:		--- QueryBuilder
@@ -153,9 +151,9 @@ where
 {
 	/// Set query callback for response messages
 	#[must_use]
-	pub fn callback<F>(self, callback: F) -> QueryBuilder<P, K, Callback<QueryCallback<P>>, S>
+	pub fn callback<F>(self, callback: F) -> QueryBuilder<P, K, Callback<ArcQueryCallback<P>>, S>
 	where
-		F: FnMut(&Context<P>, Response) -> Result<()> + Send + Sync + Unpin + 'static,
+		F: Fn(&Context<P>, Response) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
 			context,
@@ -168,7 +166,7 @@ where
 			target,
 			..
 		} = self;
-		let callback: QueryCallback<P> = Arc::new(Mutex::new(callback));
+		let callback: ArcQueryCallback<P> = Arc::new(Mutex::new(callback));
 		QueryBuilder {
 			context,
 			activation_state,
@@ -218,7 +216,7 @@ where
 	}
 }
 
-impl<P, S> QueryBuilder<P, Selector, Callback<QueryCallback<P>>, S>
+impl<P, S> QueryBuilder<P, Selector, Callback<ArcQueryCallback<P>>, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -251,7 +249,7 @@ where
 	}
 }
 
-impl<P> QueryBuilder<P, Selector, Callback<QueryCallback<P>>, Storage<Query<P>>>
+impl<P> QueryBuilder<P, Selector, Callback<ArcQueryCallback<P>>, Storage<Query<P>>>
 where
 	P: Send + Sync + Unpin + 'static,
 {

@@ -319,8 +319,8 @@ where
 		&self,
 	) -> LivelinessSubscriberBuilder<
 		P,
-		crate::com::NoCallback,
-		crate::com::Storage<LivelinessSubscriber<P>>,
+		crate::builder::NoCallback,
+		crate::builder::Storage<LivelinessSubscriber<P>>,
 	> {
 		LivelinessSubscriberBuilder::new(self.context.clone())
 			.storage(self.context.liveliness_subscribers().clone())
@@ -330,7 +330,7 @@ where
 	#[must_use]
 	pub fn publisher(
 		&self,
-	) -> PublisherBuilder<P, crate::com::NoSelector, crate::com::Storage<Publisher<P>>> {
+	) -> PublisherBuilder<P, crate::builder::NoSelector, crate::builder::Storage<Publisher<P>>> {
 		PublisherBuilder::new(self.context.clone()).storage(self.context.publishers().clone())
 	}
 
@@ -340,9 +340,9 @@ where
 		&self,
 	) -> QueryBuilder<
 		P,
-		crate::com::NoSelector,
-		crate::com::NoCallback,
-		crate::com::Storage<Query<P>>,
+		crate::builder::NoSelector,
+		crate::builder::NoCallback,
+		crate::builder::Storage<Query<P>>,
 	> {
 		QueryBuilder::new(self.context.clone()).storage(self.context.queries().clone())
 	}
@@ -353,9 +353,9 @@ where
 		&self,
 	) -> QueryableBuilder<
 		P,
-		crate::com::NoSelector,
-		crate::com::NoCallback,
-		crate::com::Storage<Queryable<P>>,
+		crate::builder::NoSelector,
+		crate::builder::NoCallback,
+		crate::builder::Storage<Queryable<P>>,
 	> {
 		QueryableBuilder::new(self.context.clone()).storage(self.context.queryables().clone())
 	}
@@ -366,9 +366,9 @@ where
 		&self,
 	) -> SubscriberBuilder<
 		P,
-		crate::com::NoSelector,
-		crate::com::NoCallback,
-		crate::com::Storage<Subscriber<P>>,
+		crate::builder::NoSelector,
+		crate::builder::NoCallback,
+		crate::builder::Storage<Subscriber<P>>,
 	> {
 		SubscriberBuilder::new(self.context.clone()).storage(self.context.subscribers().clone())
 	}
@@ -379,10 +379,10 @@ where
 		&self,
 	) -> TimerBuilder<
 		P,
-		crate::com::NoSelector,
-		crate::com::NoInterval,
-		crate::com::NoCallback,
-		crate::com::Storage<Timer<P>>,
+		crate::builder::NoSelector,
+		crate::builder::NoInterval,
+		crate::builder::NoCallback,
+		crate::builder::Storage<Timer<P>>,
 	> {
 		TimerBuilder::new(self.context.clone()).storage(self.context.timers().clone())
 	}
