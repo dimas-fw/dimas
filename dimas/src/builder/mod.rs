@@ -9,23 +9,6 @@ use std::{
 	sync::{Arc, RwLock},
 	time::Duration,
 };
-
-/// `LivelinessBuilder`
-pub mod liveliness;
-/// `ObservableBuilder`
-pub mod observable;
-/// `ObserverBuilder`
-pub mod observer;
-/// `PublisherBuilder`
-pub mod publisher;
-/// `QueryBuilder`
-pub mod query;
-/// `QueryableBuilder`
-pub mod queryable;
-/// `SubscriberBuilder`
-pub mod subscriber;
-/// `TimerrBuilder`
-pub mod timer;
 // endregion: --- modules
 
 // region:		--- states
@@ -67,6 +50,23 @@ where
 	pub callback: C,
 }
 // endregion:	--- states
+
+/// `LivelinessBuilder`
+pub mod liveliness;
+/// `ObservableBuilder`
+pub mod observable;
+/// `ObserverBuilder`
+pub mod observer;
+/// `PublisherBuilder`
+pub mod publisher;
+/// `QueryBuilder`
+pub mod query;
+/// `QueryableBuilder`
+pub mod queryable;
+/// `SubscriberBuilder`
+pub mod subscriber;
+/// `TimerrBuilder`
+pub mod timer;
 
 #[cfg(test)]
 mod tests {}

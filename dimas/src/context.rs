@@ -34,8 +34,8 @@
 use crate::agent::Agent;
 use crate::{
 	com::{
-		liveliness::LivelinessSubscriber, publisher::Publisher, query::Query, queryable::Queryable,
-		subscriber::Subscriber,
+		liveliness::LivelinessSubscriber, observable::Observable, observer::Observer,
+		publisher::Publisher, query::Query, queryable::Queryable, subscriber::Subscriber,
 	},
 	timer::Timer,
 };
@@ -83,6 +83,10 @@ where
 	communicator: Arc<Communicator>,
 	/// Registered [`LivelinessSubscriber`]
 	liveliness_subscribers: Arc<RwLock<HashMap<String, LivelinessSubscriber<P>>>>,
+	/// Registered [`Observable`]
+	observables: Arc<RwLock<HashMap<String, Observable<P>>>>,
+	/// Registered [`Observer`]
+	observers: Arc<RwLock<HashMap<String, Observer<P>>>>,
 	/// Registered [`Publisher`]
 	publishers: Arc<RwLock<HashMap<String, Publisher<P>>>>,
 	/// Registered [`Query`]s
@@ -346,6 +350,8 @@ where
 			communicator: Arc::new(communicator),
 			props: Arc::new(RwLock::new(props)),
 			liveliness_subscribers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
+			observables: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
+			observers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 			publishers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 			queries: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 			queryables: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
@@ -370,6 +376,17 @@ where
 		&self,
 	) -> &Arc<RwLock<HashMap<String, LivelinessSubscriber<P>>>> {
 		&self.liveliness_subscribers
+	}
+	/// Get the observables
+	#[must_use]
+	pub const fn observables(&self) -> &Arc<RwLock<HashMap<String, Observable<P>>>> {
+		&self.observables
+	}
+
+	/// Get the observers
+	#[must_use]
+	pub const fn observers(&self) -> &Arc<RwLock<HashMap<String, Observer<P>>>> {
+		&self.observers
 	}
 
 	/// Get the publishers

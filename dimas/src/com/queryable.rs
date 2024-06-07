@@ -15,7 +15,7 @@ use tracing::{error, info, instrument, warn, Level};
 use zenoh::prelude::{r#async::AsyncResolve, SessionDeclarations};
 use zenoh::sample::Locality;
 
-use super::ArcQueryableCallback;
+use super::ArcRequestCallback;
 // endregion:	--- modules
 
 // region:		--- Queryable
@@ -28,7 +28,7 @@ where
 	/// Context for the Subscriber
 	context: Context<P>,
 	activation_state: OperationState,
-	request_callback: ArcQueryableCallback<P>,
+	request_callback: ArcRequestCallback<P>,
 	completeness: bool,
 	allowed_origin: Locality,
 	handle: Option<JoinHandle<()>>,
@@ -71,7 +71,7 @@ where
 		selector: String,
 		context: Context<P>,
 		activation_state: OperationState,
-		request_callback: ArcQueryableCallback<P>,
+		request_callback: ArcRequestCallback<P>,
 		completeness: bool,
 		allowed_origin: Locality,
 	) -> Self {
@@ -147,7 +147,7 @@ where
 #[instrument(name="queryable", level = Level::ERROR, skip_all)]
 async fn run_queryable<P>(
 	selector: String,
-	cb: ArcQueryableCallback<P>,
+	cb: ArcRequestCallback<P>,
 	completeness: bool,
 	allowed_origin: Locality,
 	ctx: Context<P>,
@@ -172,7 +172,7 @@ where
 		let request = Request(query);
 
 		match cb.lock() {
-			Ok(mut lock) => {
+			Ok(lock) => {
 				if let Err(error) = lock(&ctx, request) {
 					error!("queryable callback failed with {error}");
 				}

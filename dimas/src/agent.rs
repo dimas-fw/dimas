@@ -46,12 +46,13 @@
 
 // region:		--- modules
 use crate::builder::{
-	liveliness::LivelinessSubscriberBuilder, publisher::PublisherBuilder, query::QueryBuilder,
+	liveliness::LivelinessSubscriberBuilder, observable::ObservableBuilder,
+	observer::ObserverBuilder, publisher::PublisherBuilder, query::QueryBuilder,
 	queryable::QueryableBuilder, subscriber::SubscriberBuilder, timer::TimerBuilder,
 };
 use crate::com::{
-	liveliness::LivelinessSubscriber, publisher::Publisher, query::Query, queryable::Queryable,
-	subscriber::Subscriber,
+	liveliness::LivelinessSubscriber, observable::Observable, observer::Observer,
+	publisher::Publisher, query::Query, queryable::Queryable, subscriber::Subscriber,
 };
 use crate::context::ContextImpl;
 use crate::timer::Timer;
@@ -324,6 +325,32 @@ where
 	> {
 		LivelinessSubscriberBuilder::new(self.context.clone())
 			.storage(self.context.liveliness_subscribers().clone())
+	}
+
+	/// Get an [`ObservableBuilder`], the builder for an [`Observable`].
+	#[must_use]
+	pub fn observable(
+		&self,
+	) -> ObservableBuilder<
+		P,
+		crate::builder::NoSelector,
+		crate::builder::NoCallback,
+		crate::builder::Storage<Observable<P>>,
+	> {
+		ObservableBuilder::new(self.context.clone()).storage(self.context.observables().clone())
+	}
+
+	/// Get an [`ObserverBuilder`], the builder for an [`Observer`].
+	#[must_use]
+	pub fn observer(
+		&self,
+	) -> ObserverBuilder<
+		P,
+		crate::builder::NoSelector,
+		crate::builder::NoCallback,
+		crate::builder::Storage<Observer<P>>,
+	> {
+		ObserverBuilder::new(self.context.clone()).storage(self.context.observers().clone())
 	}
 
 	/// Get a [`PublisherBuilder`], the builder for a [`Publisher`].

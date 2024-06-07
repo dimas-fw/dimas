@@ -22,6 +22,9 @@ async fn main() -> Result<()> {
 		.name("observer")
 		.config(&Config::default())?;
 
+	// create the observer
+	agent.observer();
+
 	// activate liveliness
 	agent.liveliness(true);
 	agent.start().await?;

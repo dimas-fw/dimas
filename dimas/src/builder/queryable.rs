@@ -14,7 +14,7 @@ use std::sync::{Arc, Mutex, RwLock};
 use zenoh::sample::Locality;
 
 use crate::builder::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
-use crate::com::{queryable::Queryable, ArcQueryableCallback};
+use crate::com::{queryable::Queryable, ArcRequestCallback};
 // endregion:	--- modules
 
 // region:		--- QueryableBuilder
@@ -32,6 +32,25 @@ where
 	selector: K,
 	request_callback: C,
 	storage: S,
+}
+
+impl<P> QueryableBuilder<P, NoSelector, NoCallback, NoStorage>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	/// Construct a `QueryableBuilder` in initial state
+	#[must_use]
+	pub const fn new(context: Context<P>) -> Self {
+		Self {
+			context,
+			activation_state: OperationState::Standby,
+			completeness: true,
+			allowed_origin: Locality::Any,
+			selector: NoSelector,
+			request_callback: NoCallback,
+			storage: NoStorage,
+		}
+	}
 }
 
 impl<P, K, C, S> QueryableBuilder<P, K, C, S>
@@ -57,25 +76,6 @@ where
 	pub const fn allowed_origin(mut self, allowed_origin: Locality) -> Self {
 		self.allowed_origin = allowed_origin;
 		self
-	}
-}
-
-impl<P> QueryableBuilder<P, NoSelector, NoCallback, NoStorage>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-	/// Construct a `QueryableBuilder` in initial state
-	#[must_use]
-	pub const fn new(context: Context<P>) -> Self {
-		Self {
-			context,
-			activation_state: OperationState::Standby,
-			completeness: true,
-			allowed_origin: Locality::Any,
-			selector: NoSelector,
-			request_callback: NoCallback,
-			storage: NoStorage,
-		}
 	}
 }
 
@@ -126,7 +126,7 @@ where
 	pub fn callback<F>(
 		self,
 		callback: F,
-	) -> QueryableBuilder<P, K, Callback<ArcQueryableCallback<P>>, S>
+	) -> QueryableBuilder<P, K, Callback<ArcRequestCallback<P>>, S>
 	where
 		F: Fn(&Context<P>, Request) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
@@ -139,7 +139,7 @@ where
 			storage,
 			..
 		} = self;
-		let callback: ArcQueryableCallback<P> = Arc::new(Mutex::new(callback));
+		let callback: ArcRequestCallback<P> = Arc::new(Mutex::new(callback));
 		QueryableBuilder {
 			context,
 			activation_state,
@@ -183,7 +183,7 @@ where
 	}
 }
 
-impl<P, S> QueryableBuilder<P, Selector, Callback<ArcQueryableCallback<P>>, S>
+impl<P, S> QueryableBuilder<P, Selector, Callback<ArcRequestCallback<P>>, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -212,7 +212,7 @@ where
 	}
 }
 
-impl<P> QueryableBuilder<P, Selector, Callback<ArcQueryableCallback<P>>, Storage<Queryable<P>>>
+impl<P> QueryableBuilder<P, Selector, Callback<ArcRequestCallback<P>>, Storage<Queryable<P>>>
 where
 	P: Send + Sync + Unpin + 'static,
 {

@@ -5,7 +5,7 @@
 
 // region:		--- modules
 // these ones are only for doc needed
-use super::{ArcSubscriberDeleteCallback, ArcSubscriberPutCallback};
+use super::{ArcDeleteCallback, ArcMessageCallback};
 #[cfg(doc)]
 use crate::agent::Agent;
 use dimas_core::{
@@ -34,9 +34,9 @@ where
 	context: Context<P>,
 	/// [`OperationState`] on which this subscriber is started
 	activation_state: OperationState,
-	put_callback: ArcSubscriberPutCallback<P>,
+	put_callback: ArcMessageCallback<P>,
 	reliability: Reliability,
-	delete_callback: Option<ArcSubscriberDeleteCallback<P>>,
+	delete_callback: Option<ArcDeleteCallback<P>>,
 	handle: Option<JoinHandle<()>>,
 }
 
@@ -76,9 +76,9 @@ where
 		selector: String,
 		context: Context<P>,
 		activation_state: OperationState,
-		put_callback: ArcSubscriberPutCallback<P>,
+		put_callback: ArcMessageCallback<P>,
 		reliability: Reliability,
-		delete_callback: Option<ArcSubscriberDeleteCallback<P>>,
+		delete_callback: Option<ArcDeleteCallback<P>>,
 	) -> Self {
 		Self {
 			selector,
@@ -159,8 +159,8 @@ where
 #[instrument(name="subscriber", level = Level::ERROR, skip_all)]
 async fn run_subscriber<P>(
 	selector: String,
-	p_cb: ArcSubscriberPutCallback<P>,
-	d_cb: Option<ArcSubscriberDeleteCallback<P>>,
+	p_cb: ArcMessageCallback<P>,
+	d_cb: Option<ArcDeleteCallback<P>>,
 	reliability: Reliability,
 	ctx: Context<P>,
 ) -> Result<()>
@@ -186,7 +186,7 @@ where
 				let content: Vec<u8> = sample.value.try_into()?;
 				let msg = Message(content);
 				match p_cb.lock() {
-					Ok(mut lock) => {
+					Ok(lock) => {
 						if let Err(error) = lock(&ctx, msg) {
 							error!("subscriber put callback failed with {error}");
 						}
@@ -199,7 +199,7 @@ where
 			SampleKind::Delete => {
 				if let Some(cb) = d_cb.clone() {
 					match cb.lock() {
-						Ok(mut lock) => {
+						Ok(lock) => {
 							if let Err(error) = lock(&ctx) {
 								error!("subscriber delete callback failed with {error}");
 							}

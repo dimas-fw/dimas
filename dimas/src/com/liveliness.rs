@@ -183,7 +183,7 @@ async fn run_liveliness<P>(
 				};
 				match sample.kind {
 					SampleKind::Put => match p_cb.lock() {
-						Ok(mut lock) => {
+						Ok(lock) => {
 							if let Err(error) = lock(&ctx, id) {
 								error!("liveliness put callback failed with {error}");
 							}
@@ -195,7 +195,7 @@ async fn run_liveliness<P>(
 					SampleKind::Delete => {
 						if let Some(cb) = d_cb.clone() {
 							match cb.lock() {
-								Ok(mut lock) => {
+								Ok(lock) => {
 									if let Err(err) = lock(&ctx, id) {
 										error!("liveliness delete callback failed with {err}");
 									}
@@ -240,7 +240,7 @@ async fn run_initial<P>(
 							continue;
 						};
 						match p_cb.lock() {
-							Ok(mut lock) => {
+							Ok(lock) => {
 								if let Err(error) = lock(&ctx, id) {
 									error!("lveliness put callback failed with {error}");
 								}

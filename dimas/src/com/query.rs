@@ -3,7 +3,7 @@
 //! Module `query` provides an information/compute requestor `Query` which can be created using the `QueryBuilder`.
 
 // region:		--- modules
-use super::ArcQueryCallback;
+use super::ArcResponseCallback;
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
@@ -29,7 +29,7 @@ where
 	/// Context for the Query
 	context: Context<P>,
 	activation_state: OperationState,
-	response_callback: ArcQueryCallback<P>,
+	response_callback: ArcResponseCallback<P>,
 	mode: ConsolidationMode,
 	allowed_destination: Locality,
 	target: QueryTarget,
@@ -74,7 +74,7 @@ where
 		selector: String,
 		context: Context<P>,
 		activation_state: OperationState,
-		response_callback: ArcQueryCallback<P>,
+		response_callback: ArcResponseCallback<P>,
 		mode: ConsolidationMode,
 		allowed_destination: Locality,
 		target: QueryTarget,
@@ -157,7 +157,7 @@ where
 						if callback.is_none() {
 							let guard = cb.lock();
 							match guard {
-								Ok(mut lock) => {
+								Ok(lock) => {
 									if let Err(error) = lock(&self.context.clone(), msg) {
 										error!("callback failed with {error}");
 									}

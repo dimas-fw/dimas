@@ -3,7 +3,7 @@
 //! Module `message_types` provides the different types of `Message`s used in callbacks.
 
 // region:		--- modules
-use crate::error::{DimasError, Result};
+use crate::error::DimasError;
 use bitcode::{decode, encode, Decode, Encode};
 use std::ops::Deref;
 use zenoh::{prelude::sync::SyncResolve, queryable::Query, sample::Sample};
@@ -35,7 +35,7 @@ impl Message {
 	/// decode message
 	///
 	/// # Errors
-	pub fn decode<T>(self) -> Result<T>
+	pub fn decode<T>(self) -> crate::error::Result<T>
 	where
 		T: for<'a> Decode<'a>,
 	{
@@ -69,7 +69,7 @@ impl Request {
 	///
 	/// # Errors
 	#[allow(clippy::needless_pass_by_value)]
-	pub fn reply<T>(self, value: T) -> Result<()>
+	pub fn reply<T>(self, value: T) -> crate::error::Result<()>
 	where
 		T: Encode,
 	{
@@ -93,7 +93,7 @@ impl Request {
 	/// decode queries [`Message`]
 	///
 	/// # Errors
-	pub fn decode<T>(&self) -> Result<T>
+	pub fn decode<T>(&self) -> crate::error::Result<T>
 	where
 		T: for<'a> Decode<'a>,
 	{
@@ -132,7 +132,7 @@ impl Response {
 	/// decode response
 	///
 	/// # Errors
-	pub fn decode<T>(self) -> Result<T>
+	pub fn decode<T>(self) -> crate::error::Result<T>
 	where
 		T: for<'a> Decode<'a>,
 	{
@@ -169,7 +169,7 @@ impl Feedback {
 	///
 	/// # Errors
 	///
-	pub fn decode<T>(self) -> Result<T>
+	pub fn decode<T>(self) -> crate::error::Result<T>
 	where
 		T: for<'a> Decode<'a>,
 	{
@@ -178,6 +178,43 @@ impl Feedback {
 	}
 }
 // endregion:	--- Feedback
+
+// region:		--- Result
+/// Implementation of result messages
+#[derive(Debug)]
+pub struct Result(pub Vec<u8>);
+
+impl Deref for Result {
+	type Target = Vec<u8>;
+
+	fn deref(&self) -> &Self::Target {
+		&self.0
+	}
+}
+
+impl Result {
+	/// encode response
+	pub fn encode<T>(message: &T) -> Self
+	where
+		T: Encode,
+	{
+		let content = encode(message);
+		Self(content)
+	}
+
+	/// decode result
+	///
+	/// # Errors
+	///
+	pub fn decode<T>(self) -> crate::error::Result<T>
+	where
+		T: for<'a> Decode<'a>,
+	{
+		let value: Vec<u8> = self.0;
+		decode::<T>(value.as_slice()).map_err(|_| DimasError::Decoding.into())
+	}
+}
+// endregion:	--- Result
 
 #[cfg(test)]
 mod tests {
@@ -192,5 +229,6 @@ mod tests {
 		is_normal::<Request>();
 		is_normal::<Response>();
 		is_normal::<Feedback>();
+		is_normal::<Result>();
 	}
 }
