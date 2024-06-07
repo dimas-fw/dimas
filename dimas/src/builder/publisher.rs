@@ -12,33 +12,11 @@ use dimas_core::{
 	traits::Context,
 	utils::selector_from,
 };
-use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use zenoh::publication::{CongestionControl, Priority};
 
-use super::publisher::Publisher;
+use crate::com::{publisher::Publisher, NoSelector, NoStorage, Selector, Storage};
 // endregion:	--- modules
-
-// region:		--- states
-/// State signaling that the [`PublisherBuilder`] has no storage value set
-pub struct NoStorage;
-/// State signaling that the [`PublisherBuilder`] has the storage value set
-pub struct Storage<P>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-	/// Thread safe reference to a [`HashMap`] to store the created [`Publisher`]
-	pub storage: Arc<RwLock<HashMap<String, Publisher<P>>>>,
-}
-
-/// State signaling that the [`PublisherBuilder`] has no selector set
-pub struct NoSelector;
-/// State signaling that the [`PublisherBuilder`] has the selector set
-pub struct Selector {
-	/// The selector
-	selector: String,
-}
-// endregion:	--- states
 
 // region:		--- PublisherBuilder
 /// The builder for a [`Publisher`]
@@ -108,7 +86,7 @@ where
 	pub fn storage(
 		self,
 		storage: Arc<RwLock<std::collections::HashMap<String, Publisher<P>>>>,
-	) -> PublisherBuilder<P, K, Storage<P>> {
+	) -> PublisherBuilder<P, K, Storage<Publisher<P>>> {
 		let Self {
 			context,
 			activation_state,
@@ -183,7 +161,7 @@ where
 	}
 }
 
-impl<P> PublisherBuilder<P, Selector, Storage<P>>
+impl<P> PublisherBuilder<P, Selector, Storage<Publisher<P>>>
 where
 	P: Send + Sync + Unpin + 'static,
 {

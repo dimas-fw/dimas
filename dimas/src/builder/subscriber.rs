@@ -17,40 +17,11 @@ use dimas_core::{
 use std::sync::{Arc, Mutex, RwLock};
 use zenoh::subscriber::Reliability;
 
-use super::subscriber::{ArcSubscriberDeleteCallback, ArcSubscriberPutCallback, Subscriber};
+use crate::com::{
+	subscriber::{ArcSubscriberDeleteCallback, ArcSubscriberPutCallback, Subscriber},
+	Callback, NoCallback, NoSelector, NoStorage, Selector, Storage,
+};
 // endregion:	--- modules
-
-// region:		--- states
-/// State signaling that the [`SubscriberBuilder`] has no storage value set
-pub struct NoStorage;
-/// State signaling that the [`SubscriberBuilder`] has the storage value set
-pub struct Storage<P>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-	/// Thread safe reference to a [`HashMap`] to store the created [`Subscriber`]
-	pub storage: Arc<RwLock<std::collections::HashMap<String, Subscriber<P>>>>,
-}
-
-/// State signaling that the [`SubscriberBuilder`] has no selector value set
-pub struct NoSelector;
-/// State signaling that the [`SubscriberBuilder`] has the selector value set
-pub struct Selector {
-	/// The selector
-	selector: String,
-}
-
-/// State signaling that the [`SubscriberBuilder`] has no put callback value set
-pub struct NoPutCallback;
-/// State signaling that the [`SubscriberBuilder`] has the put callback value set
-pub struct PutCallback<P>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-	/// Put callback for the [`Subscriber`]
-	pub callback: ArcSubscriberPutCallback<P>,
-}
-// endregion:	--- states
 
 // region:		--- SubscriberBuilder
 /// A builder for a subscriber
@@ -69,7 +40,7 @@ where
 	delete_callback: Option<ArcSubscriberDeleteCallback<P>>,
 }
 
-impl<P> SubscriberBuilder<P, NoSelector, NoPutCallback, NoStorage>
+impl<P> SubscriberBuilder<P, NoSelector, NoCallback, NoStorage>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -80,7 +51,7 @@ where
 			context,
 			activation_state: OperationState::Standby,
 			selector: NoSelector,
-			put_callback: NoPutCallback,
+			put_callback: NoCallback,
 			storage: NoStorage,
 			reliability: Reliability::BestEffort,
 			delete_callback: None,
@@ -156,13 +127,16 @@ where
 	}
 }
 
-impl<P, K, S> SubscriberBuilder<P, K, NoPutCallback, S>
+impl<P, K, S> SubscriberBuilder<P, K, NoCallback, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// Set callback for put messages
 	#[must_use]
-	pub fn put_callback<F>(self, callback: F) -> SubscriberBuilder<P, K, PutCallback<P>, S>
+	pub fn put_callback<F>(
+		self,
+		callback: F,
+	) -> SubscriberBuilder<P, K, Callback<ArcSubscriberPutCallback<P>>, S>
 	where
 		F: FnMut(&Context<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
@@ -180,7 +154,7 @@ where
 			context,
 			activation_state,
 			selector,
-			put_callback: PutCallback { callback },
+			put_callback: Callback { callback },
 			storage,
 			reliability,
 			delete_callback,
@@ -197,7 +171,7 @@ where
 	pub fn storage(
 		self,
 		storage: Arc<RwLock<std::collections::HashMap<String, Subscriber<P>>>>,
-	) -> SubscriberBuilder<P, K, C, Storage<P>> {
+	) -> SubscriberBuilder<P, K, C, Storage<Subscriber<P>>> {
 		let Self {
 			context,
 			activation_state,
@@ -219,7 +193,7 @@ where
 	}
 }
 
-impl<P, S> SubscriberBuilder<P, Selector, PutCallback<P>, S>
+impl<P, S> SubscriberBuilder<P, Selector, Callback<ArcSubscriberPutCallback<P>>, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -248,7 +222,8 @@ where
 	}
 }
 
-impl<P> SubscriberBuilder<P, Selector, PutCallback<P>, Storage<P>>
+impl<P>
+	SubscriberBuilder<P, Selector, Callback<ArcSubscriberPutCallback<P>>, Storage<Subscriber<P>>>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -281,6 +256,6 @@ mod tests {
 
 	#[test]
 	const fn normal_types() {
-		is_normal::<SubscriberBuilder<Props, NoSelector, NoPutCallback, NoStorage>>();
+		is_normal::<SubscriberBuilder<Props, NoSelector, NoCallback, NoStorage>>();
 	}
 }

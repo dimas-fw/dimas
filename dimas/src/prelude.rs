@@ -22,17 +22,17 @@ pub use zenoh::subscriber::Reliability;
 // dimas stuff
 pub use crate::agent::Agent;
 pub use crate::com::liveliness::LivelinessSubscriber;
-pub use crate::com::liveliness_builder::LivelinessSubscriberBuilder;
+pub use crate::builder::liveliness::LivelinessSubscriberBuilder;
 pub use crate::com::publisher::Publisher;
-pub use crate::com::publisher_builder::PublisherBuilder;
+pub use crate::builder::publisher::PublisherBuilder;
 pub use crate::com::query::Query;
-pub use crate::com::query_builder::QueryBuilder;
+pub use crate::builder::query::QueryBuilder;
 pub use crate::com::queryable::Queryable;
-pub use crate::com::queryable_builder::QueryableBuilder;
+pub use crate::builder::queryable::QueryableBuilder;
 pub use crate::com::subscriber::Subscriber;
-pub use crate::com::subscriber_builder::SubscriberBuilder;
+pub use crate::builder::subscriber::SubscriberBuilder;
 pub use crate::timer::Timer;
-pub use crate::timer::TimerBuilder;
+pub use crate::builder::timer::TimerBuilder;
 
 pub use dimas_config::Config;
 pub use dimas_core::error::{DimasError, Result};

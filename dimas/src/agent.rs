@@ -45,21 +45,21 @@
 //!
 
 // region:		--- modules
+use crate::builder::{
+	liveliness::LivelinessSubscriberBuilder,
+	publisher::PublisherBuilder,
+	query::QueryBuilder, queryable::QueryableBuilder,
+	subscriber::SubscriberBuilder,
+	timer::TimerBuilder,
+};
 use crate::com::{
-	liveliness_builder::LivelinessSubscriberBuilder, publisher_builder::PublisherBuilder,
-	query_builder::QueryBuilder, queryable_builder::QueryableBuilder,
-	subscriber_builder::SubscriberBuilder,
+	liveliness::LivelinessSubscriber,
+	publisher::Publisher, query::Query,
+	queryable::Queryable, 
+	subscriber::Subscriber,
 };
 use crate::context::ContextImpl;
-use crate::timer::TimerBuilder;
-#[cfg(doc)]
-use crate::{
-	com::{
-		liveliness::LivelinessSubscriber, publisher::Publisher, query::Query, queryable::Queryable,
-		subscriber::Subscriber,
-	},
-	timer::Timer,
-};
+use crate::timer::Timer;
 use chrono::Local;
 use dimas_com::messages::{AboutEntity, PingEntity};
 use dimas_config::Config;
@@ -324,8 +324,8 @@ where
 		&self,
 	) -> LivelinessSubscriberBuilder<
 		P,
-		crate::com::liveliness_builder::NoPutCallback,
-		crate::com::liveliness_builder::Storage<P>,
+		crate::com::NoCallback,
+		crate::com::Storage<LivelinessSubscriber<P>>,
 	> {
 		LivelinessSubscriberBuilder::new(self.context.clone())
 			.storage(self.context.liveliness_subscribers().clone())
@@ -335,11 +335,7 @@ where
 	#[must_use]
 	pub fn publisher(
 		&self,
-	) -> PublisherBuilder<
-		P,
-		crate::com::publisher_builder::NoSelector,
-		crate::com::publisher_builder::Storage<P>,
-	> {
+	) -> PublisherBuilder<P, crate::com::NoSelector, crate::com::Storage<Publisher<P>>> {
 		PublisherBuilder::new(self.context.clone()).storage(self.context.publishers().clone())
 	}
 
@@ -349,9 +345,9 @@ where
 		&self,
 	) -> QueryBuilder<
 		P,
-		crate::com::query_builder::NoSelector,
-		crate::com::query_builder::NoResponseCallback,
-		crate::com::query_builder::Storage<P>,
+		crate::com::NoSelector,
+		crate::com::NoCallback,
+		crate::com::Storage<Query<P>>,
 	> {
 		QueryBuilder::new(self.context.clone()).storage(self.context.queries().clone())
 	}
@@ -362,9 +358,9 @@ where
 		&self,
 	) -> QueryableBuilder<
 		P,
-		crate::com::queryable_builder::NoSelector,
-		crate::com::queryable_builder::NoRequestCallback,
-		crate::com::queryable_builder::Storage<P>,
+		crate::com::NoSelector,
+		crate::com::NoCallback,
+		crate::com::Storage<Queryable<P>>,
 	> {
 		QueryableBuilder::new(self.context.clone()).storage(self.context.queryables().clone())
 	}
@@ -375,9 +371,9 @@ where
 		&self,
 	) -> SubscriberBuilder<
 		P,
-		crate::com::subscriber_builder::NoSelector,
-		crate::com::subscriber_builder::NoPutCallback,
-		crate::com::subscriber_builder::Storage<P>,
+		crate::com::NoSelector,
+		crate::com::NoCallback,
+		crate::com::Storage<Subscriber<P>>,
 	> {
 		SubscriberBuilder::new(self.context.clone()).storage(self.context.subscribers().clone())
 	}
@@ -388,10 +384,10 @@ where
 		&self,
 	) -> TimerBuilder<
 		P,
-		crate::timer::NoSelector,
-		crate::timer::NoInterval,
-		crate::timer::NoIntervalCallback,
-		crate::timer::Storage<P>,
+		crate::com::NoSelector,
+		crate::com::NoInterval,
+		crate::com::NoCallback,
+		crate::com::Storage<Timer<P>>,
 	> {
 		TimerBuilder::new(self.context.clone()).storage(self.context.timers().clone())
 	}

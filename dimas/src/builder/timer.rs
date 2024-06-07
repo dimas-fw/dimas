@@ -3,8 +3,11 @@
 //! Module `timer` provides a set of `Timer` variants which can be created using the `TimerBuilder`.
 //! When fired, a `Timer` calls his assigned `TimerCallback`.
 
+use crate::com::{Callback, Interval, NoCallback, NoInterval, NoSelector, NoStorage, Selector, Storage};
+
+use crate::timer::timer::TimerCallback;
 // region:		--- modules
-use super::timer::{Timer, TimerCallback};
+use crate::timer::Timer;
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
@@ -15,47 +18,6 @@ use std::{
 	time::Duration,
 };
 // endregion:	--- modules
-
-// region:		--- states
-/// State signaling that the [`TimerBuilder`] has no storage value set
-pub struct NoStorage;
-/// State signaling that the [`TimerBuilder`] has the storage value set
-pub struct Storage<P>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-	/// Thread safe reference to a [`HashMap`] to store the created [`Timer`]
-	pub storage: Arc<RwLock<std::collections::HashMap<String, Timer<P>>>>,
-}
-
-/// State signaling that the [`TimerBuilder`] has no selector set
-pub struct NoSelector;
-#[allow(clippy::module_name_repetitions)]
-/// State signaling that the [`TimerBuilder`] has the selector set
-pub struct Selector {
-	/// The selector
-	selector: String,
-}
-
-/// State signaling that the [`TimerBuilder`] has no interval set
-pub struct NoInterval;
-/// State signaling that the [`TimerBuilder`] has the interval set
-pub struct Interval {
-	/// The [`Duration`] of [`Timer`]s interval
-	interval: Duration,
-}
-
-/// State signaling that the [`TimerBuilder`] has no interval callback set
-pub struct NoIntervalCallback;
-/// State signaling that the [`TimerBuilder`] has the interval callback set
-pub struct IntervalCallback<P>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-	/// The interval callback for the [`Timer`]
-	pub callback: TimerCallback<P>,
-}
-// endregion:	--- states
 
 // region:		--- TimerBuilder
 /// A builder for a timer
@@ -74,7 +36,7 @@ where
 	delay: Option<Duration>,
 }
 
-impl<P> TimerBuilder<P, NoSelector, NoInterval, NoIntervalCallback, NoStorage>
+impl<P> TimerBuilder<P, NoSelector, NoInterval, NoCallback, NoStorage>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -86,7 +48,7 @@ where
 			activation_state: OperationState::Active,
 			selector: NoSelector,
 			interval: NoInterval,
-			callback: NoIntervalCallback,
+			callback: NoCallback,
 			storage: NoStorage,
 			delay: None,
 		}
@@ -198,13 +160,13 @@ where
 	}
 }
 
-impl<P, K, I, S> TimerBuilder<P, K, I, NoIntervalCallback, S>
+impl<P, K, I, S> TimerBuilder<P, K, I, NoCallback, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// Set interval callback for timer
 	#[must_use]
-	pub fn callback<F>(self, callback: F) -> TimerBuilder<P, K, I, IntervalCallback<P>, S>
+	pub fn callback<F>(self, callback: F) -> TimerBuilder<P, K, I, Callback<TimerCallback<P>>, S>
 	where
 		F: FnMut(&Context<P>) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
@@ -223,7 +185,7 @@ where
 			activation_state,
 			selector: name,
 			interval,
-			callback: IntervalCallback { callback },
+			callback: Callback { callback },
 			storage,
 			delay,
 		}
@@ -239,7 +201,7 @@ where
 	pub fn storage(
 		self,
 		storage: Arc<RwLock<std::collections::HashMap<String, Timer<P>>>>,
-	) -> TimerBuilder<P, K, I, C, Storage<P>> {
+	) -> TimerBuilder<P, K, I, C, Storage<Timer<P>>> {
 		let Self {
 			context,
 			activation_state,
@@ -261,7 +223,7 @@ where
 	}
 }
 
-impl<P, S> TimerBuilder<P, Selector, Interval, IntervalCallback<P>, S>
+impl<P, S> TimerBuilder<P, Selector, Interval, Callback<TimerCallback<P>>, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -290,7 +252,7 @@ where
 	}
 }
 
-impl<P> TimerBuilder<P, Selector, Interval, IntervalCallback<P>, Storage<P>>
+impl<P> TimerBuilder<P, Selector, Interval, Callback<TimerCallback<P>>, Storage<Timer<P>>>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -323,6 +285,6 @@ mod tests {
 
 	#[test]
 	const fn normal_types() {
-		is_normal::<TimerBuilder<Props, NoSelector, NoInterval, NoIntervalCallback, NoStorage>>();
+		is_normal::<TimerBuilder<Props, NoSelector, NoInterval, NoCallback, NoStorage>>();
 	}
 }

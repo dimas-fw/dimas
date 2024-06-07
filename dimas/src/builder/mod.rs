@@ -1,6 +1,6 @@
-// Copyright © 2023 Stephan Kunz
+// Copyright © 2024 Stephan Kunz
 
-//! Module handles communication with other Agents.
+//! Module provides builder.
 //!
 
 // region:    --- modules
@@ -10,16 +10,18 @@ use std::{
 	time::Duration,
 };
 
-/// `Liveliness`
+/// `LivelinessBuilder`
 pub mod liveliness;
-/// `Publisher`
+/// `PublisherBuilder`
 pub mod publisher;
-/// `Query`
+/// `QueryBuilder`
 pub mod query;
-/// `Queryable`
+/// `QueryableBuilder`
 pub mod queryable;
-/// `Subscriber`
+/// `SubscriberBuilder`
 pub mod subscriber;
+/// `TimerrBuilder`
+pub mod timer;
 // endregion: --- modules
 
 // region:		--- states

@@ -10,46 +10,14 @@ use dimas_core::{
 	traits::Context,
 	utils::selector_from,
 };
-use std::{
-	collections::HashMap,
-	sync::{Arc, Mutex, RwLock},
-};
+use std::sync::{Arc, Mutex, RwLock};
 use zenoh::sample::Locality;
 
-use super::queryable::{ArcQueryableCallback, Queryable};
+use crate::com::{
+	queryable::{ArcQueryableCallback, Queryable},
+	Callback, NoCallback, NoSelector, NoStorage, Selector, Storage,
+};
 // endregion:	--- modules
-
-// region:		--- states
-/// State signaling that the [`QueryableBuilder`] has no storage value set
-pub struct NoStorage;
-/// State signaling that the [`QueryableBuilder`] has the storage value set
-pub struct Storage<P>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-	/// Thread safe reference to a [`HashMap`] to store the created [`Queryable`]
-	pub storage: Arc<RwLock<HashMap<String, Queryable<P>>>>,
-}
-
-/// State signaling that the [`QueryableBuilder`] has no selector set
-pub struct NoSelector;
-/// State signaling that the [`QueryableBuilder`] has the selector set
-pub struct Selector {
-	/// The selector
-	selector: String,
-}
-
-/// State signaling that the [`QueryableBuilder`] has no request callback set
-pub struct NoRequestCallback;
-/// State signaling that the [`QueryableBuilder`] has the request callback set
-pub struct RequestCallback<P>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-	/// Request callback for the [`Queryable`]
-	pub request: ArcQueryableCallback<P>,
-}
-// endregion:   --- states
 
 // region:		--- QueryableBuilder
 /// The builder for a queryable.
@@ -94,7 +62,7 @@ where
 	}
 }
 
-impl<P> QueryableBuilder<P, NoSelector, NoRequestCallback, NoStorage>
+impl<P> QueryableBuilder<P, NoSelector, NoCallback, NoStorage>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -107,7 +75,7 @@ where
 			completeness: true,
 			allowed_origin: Locality::Any,
 			selector: NoSelector,
-			request_callback: NoRequestCallback,
+			request_callback: NoCallback,
 			storage: NoStorage,
 		}
 	}
@@ -151,13 +119,16 @@ where
 	}
 }
 
-impl<P, K, S> QueryableBuilder<P, K, NoRequestCallback, S>
+impl<P, K, S> QueryableBuilder<P, K, NoCallback, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// Set callback for request messages
 	#[must_use]
-	pub fn callback<F>(self, callback: F) -> QueryableBuilder<P, K, RequestCallback<P>, S>
+	pub fn callback<F>(
+		self,
+		callback: F,
+	) -> QueryableBuilder<P, K, Callback<ArcQueryableCallback<P>>, S>
 	where
 		F: FnMut(&Context<P>, Request) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
@@ -170,14 +141,14 @@ where
 			storage,
 			..
 		} = self;
-		let request: ArcQueryableCallback<P> = Arc::new(Mutex::new(callback));
+		let callback: ArcQueryableCallback<P> = Arc::new(Mutex::new(callback));
 		QueryableBuilder {
 			context,
 			activation_state,
 			completeness,
 			allowed_origin,
 			selector,
-			request_callback: RequestCallback { request },
+			request_callback: Callback { callback },
 			storage,
 		}
 	}
@@ -192,7 +163,7 @@ where
 	pub fn storage(
 		self,
 		storage: Arc<RwLock<std::collections::HashMap<String, Queryable<P>>>>,
-	) -> QueryableBuilder<P, K, C, Storage<P>> {
+	) -> QueryableBuilder<P, K, C, Storage<Queryable<P>>> {
 		let Self {
 			context,
 			activation_state,
@@ -214,7 +185,7 @@ where
 	}
 }
 
-impl<P, S> QueryableBuilder<P, Selector, RequestCallback<P>, S>
+impl<P, S> QueryableBuilder<P, Selector, Callback<ArcQueryableCallback<P>>, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -236,14 +207,14 @@ where
 			selector,
 			context,
 			activation_state,
-			request_callback.request,
+			request_callback.callback,
 			completeness,
 			allowed_origin,
 		))
 	}
 }
 
-impl<P> QueryableBuilder<P, Selector, RequestCallback<P>, Storage<P>>
+impl<P> QueryableBuilder<P, Selector, Callback<ArcQueryableCallback<P>>, Storage<Queryable<P>>>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -275,6 +246,6 @@ mod tests {
 
 	#[test]
 	const fn normal_types() {
-		is_normal::<QueryableBuilder<Props, NoSelector, NoRequestCallback, NoStorage>>();
+		is_normal::<QueryableBuilder<Props, NoSelector, NoCallback, NoStorage>>();
 	}
 }

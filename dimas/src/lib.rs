@@ -11,6 +11,8 @@ doc_comment::doctest!("../README.md");
 // region:    --- modules
 // Primary module of `DiMAS` containing the Agent
 mod agent;
+// Module provides builder.
+mod builder;
 // Module handles communication with other Agents.
 mod com;
 // Context of an Agent

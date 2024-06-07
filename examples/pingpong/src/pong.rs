@@ -1,4 +1,4 @@
-//! `DiMAS` subscriber example
+//! `DiMAS` pong example
 //! Copyright © 2024 Stephan Kunz
 
 // region:		--- modules

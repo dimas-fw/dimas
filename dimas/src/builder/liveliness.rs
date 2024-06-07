@@ -4,7 +4,10 @@
 //! A `LivelinessSubscriber` can optional subscribe on a delete message.
 
 // region:		--- modules
-use super::liveliness::{ArcLivelinessCallback, LivelinessSubscriber};
+use crate::com::{
+	liveliness::{ArcLivelinessCallback, LivelinessSubscriber},
+	Callback, NoCallback, NoStorage, Storage,
+};
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
@@ -16,30 +19,6 @@ use std::{
 	sync::{Arc, Mutex, RwLock},
 };
 // endregion:	--- modules
-
-// region:		--- states
-/// State signaling that the [`LivelinessSubscriberBuilder`] has no storage value set
-pub struct NoStorage;
-/// State signaling that the [`LivelinessSubscriberBuilder`] has the storage value set
-pub struct Storage<P>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-	/// Thread safe reference to a [`HashMap`] to store the created [`LivelinessSubscriber`]
-	pub storage: Arc<RwLock<HashMap<String, LivelinessSubscriber<P>>>>,
-}
-
-/// State signaling that the [`LivelinessSubscriberBuilder`] has no put callback set
-pub struct NoPutCallback;
-/// State signaling that the [`LivelinessSubscriberBuilder`] has the put callback set
-pub struct PutCallback<P>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-	/// The callback to use when receiving a put message
-	pub callback: ArcLivelinessCallback<P>,
-}
-// endregion:	--- states
 
 // region:		--- LivelinessSubscriberBuilder
 /// The builder for the liveliness subscriber
@@ -56,7 +35,7 @@ where
 	delete_callback: Option<ArcLivelinessCallback<P>>,
 }
 
-impl<P> LivelinessSubscriberBuilder<P, NoPutCallback, NoStorage>
+impl<P> LivelinessSubscriberBuilder<P, NoCallback, NoStorage>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -71,7 +50,7 @@ where
 			token,
 			context,
 			activation_state: OperationState::Configured,
-			put_callback: NoPutCallback,
+			put_callback: NoCallback,
 			storage: NoStorage,
 			delete_callback: None,
 		}
@@ -159,13 +138,16 @@ where
 	}
 }
 
-impl<P, S> LivelinessSubscriberBuilder<P, NoPutCallback, S>
+impl<P, S> LivelinessSubscriberBuilder<P, NoCallback, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// Set liveliness subscribers callback for `put` messages
 	#[must_use]
-	pub fn put_callback<F>(self, callback: F) -> LivelinessSubscriberBuilder<P, PutCallback<P>, S>
+	pub fn put_callback<F>(
+		self,
+		callback: F,
+	) -> LivelinessSubscriberBuilder<P, Callback<ArcLivelinessCallback<P>>, S>
 	where
 		F: FnMut(&Context<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
@@ -182,7 +164,7 @@ where
 			token,
 			context,
 			activation_state,
-			put_callback: PutCallback {
+			put_callback: Callback {
 				callback: put_callback,
 			},
 			storage,
@@ -200,7 +182,7 @@ where
 	pub fn storage(
 		self,
 		storage: Arc<RwLock<HashMap<String, LivelinessSubscriber<P>>>>,
-	) -> LivelinessSubscriberBuilder<P, C, Storage<P>> {
+	) -> LivelinessSubscriberBuilder<P, C, Storage<LivelinessSubscriber<P>>> {
 		let Self {
 			token,
 			context,
@@ -220,7 +202,7 @@ where
 	}
 }
 
-impl<P, S> LivelinessSubscriberBuilder<P, PutCallback<P>, S>
+impl<P, S> LivelinessSubscriberBuilder<P, Callback<ArcLivelinessCallback<P>>, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -246,7 +228,8 @@ where
 	}
 }
 
-impl<P> LivelinessSubscriberBuilder<P, PutCallback<P>, Storage<P>>
+impl<P>
+	LivelinessSubscriberBuilder<P, Callback<ArcLivelinessCallback<P>>, Storage<LivelinessSubscriber<P>>>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -278,6 +261,6 @@ mod tests {
 
 	#[test]
 	const fn normal_types() {
-		is_normal::<LivelinessSubscriberBuilder<Props, NoPutCallback, NoStorage>>();
+		is_normal::<LivelinessSubscriberBuilder<Props, NoCallback, NoStorage>>();
 	}
 }

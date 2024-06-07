@@ -11,7 +11,6 @@ use dimas_core::{
 	utils::selector_from,
 };
 use std::{
-	collections::HashMap,
 	sync::{Arc, Mutex, RwLock},
 	time::Duration,
 };
@@ -20,40 +19,11 @@ use zenoh::{
 	sample::Locality,
 };
 
-use super::query::{Query, QueryCallback};
+use crate::com::{
+	query::{Query, QueryCallback},
+	Callback, NoCallback, NoSelector, NoStorage, Selector, Storage,
+};
 // endregion:	--- modules
-
-// region:		--- states
-/// State signaling that the [`QueryBuilder`] has no storage value set
-pub struct NoStorage;
-/// State signaling that the [`QueryBuilder`] has the storage value set
-pub struct Storage<P>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-	/// Thread safe reference to a [`HashMap`] to store the created [`Query`]
-	pub storage: Arc<RwLock<HashMap<String, Query<P>>>>,
-}
-
-/// State signaling that the [`QueryBuilder`] has no selector set
-pub struct NoSelector;
-/// State signaling that the [`QueryBuilder`] has the selector set
-pub struct Selector {
-	/// The selector
-	selector: String,
-}
-
-/// State signaling that the [`QueryBuilder`] has no response callback set
-pub struct NoResponseCallback;
-/// State signaling that the [`QueryBuilder`] has the response callback set
-pub struct ResponseCallback<P>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-	/// Response callback for the [`Query`]
-	pub response: QueryCallback<P>,
-}
-// endregion:	--- states
 
 // region:		--- QueryBuilder
 /// The builder for a query
@@ -68,13 +38,13 @@ where
 	allowed_destination: Locality,
 	timeout: Option<Duration>,
 	selector: K,
-	response_callback: C,
+	callback: C,
 	storage: S,
 	mode: ConsolidationMode,
 	target: QueryTarget,
 }
 
-impl<P> QueryBuilder<P, NoSelector, NoResponseCallback, NoStorage>
+impl<P> QueryBuilder<P, NoSelector, NoCallback, NoStorage>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -87,7 +57,7 @@ where
 			allowed_destination: Locality::Any,
 			timeout: None,
 			selector: NoSelector,
-			response_callback: NoResponseCallback,
+			callback: NoCallback,
 			storage: NoStorage,
 			mode: ConsolidationMode::None,
 			target: QueryTarget::All,
@@ -148,7 +118,7 @@ where
 			allowed_destination,
 			timeout,
 			storage,
-			response_callback: callback,
+			callback,
 			mode,
 			target,
 			..
@@ -161,7 +131,7 @@ where
 			selector: Selector {
 				selector: selector.into(),
 			},
-			response_callback: callback,
+			callback,
 			storage,
 			mode,
 			target,
@@ -177,13 +147,13 @@ where
 	}
 }
 
-impl<P, K, S> QueryBuilder<P, K, NoResponseCallback, S>
+impl<P, K, S> QueryBuilder<P, K, NoCallback, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// Set query callback for response messages
 	#[must_use]
-	pub fn callback<F>(self, callback: F) -> QueryBuilder<P, K, ResponseCallback<P>, S>
+	pub fn callback<F>(self, callback: F) -> QueryBuilder<P, K, Callback<QueryCallback<P>>, S>
 	where
 		F: FnMut(&Context<P>, Response) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
@@ -205,7 +175,7 @@ where
 			allowed_destination,
 			timeout,
 			selector,
-			response_callback: ResponseCallback { response: callback },
+			callback: Callback { callback },
 			storage,
 			mode,
 			target,
@@ -222,14 +192,14 @@ where
 	pub fn storage(
 		self,
 		storage: Arc<RwLock<std::collections::HashMap<String, Query<P>>>>,
-	) -> QueryBuilder<P, K, C, Storage<P>> {
+	) -> QueryBuilder<P, K, C, Storage<Query<P>>> {
 		let Self {
 			context,
 			activation_state,
 			allowed_destination,
 			timeout,
 			selector,
-			response_callback: callback,
+			callback,
 			mode,
 			target,
 			..
@@ -240,7 +210,7 @@ where
 			allowed_destination,
 			timeout,
 			selector,
-			response_callback: callback,
+			callback,
 			storage: Storage { storage },
 			mode,
 			target,
@@ -248,7 +218,7 @@ where
 	}
 }
 
-impl<P, S> QueryBuilder<P, Selector, ResponseCallback<P>, S>
+impl<P, S> QueryBuilder<P, Selector, Callback<QueryCallback<P>>, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -262,7 +232,7 @@ where
 			allowed_destination,
 			timeout,
 			selector,
-			response_callback,
+			callback: response,
 			mode,
 			target,
 			..
@@ -272,7 +242,7 @@ where
 			selector,
 			context,
 			activation_state,
-			response_callback.response,
+			response.callback,
 			mode,
 			allowed_destination,
 			target,
@@ -281,7 +251,7 @@ where
 	}
 }
 
-impl<P> QueryBuilder<P, Selector, ResponseCallback<P>, Storage<P>>
+impl<P> QueryBuilder<P, Selector, Callback<QueryCallback<P>>, Storage<Query<P>>>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -312,6 +282,6 @@ mod tests {
 
 	#[test]
 	const fn normal_types() {
-		is_normal::<QueryBuilder<Props, NoSelector, NoResponseCallback, NoStorage>>();
+		is_normal::<QueryBuilder<Props, NoSelector, NoCallback, NoStorage>>();
 	}
 }
