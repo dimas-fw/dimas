@@ -44,7 +44,7 @@ use dimas_config::Config;
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
 	error::{DimasError, Result},
-	message_types::{Message, Response},
+	message_types::{Message, ResponseMsg},
 	traits::{Capability, ContextAbstraction},
 };
 use std::{
@@ -290,7 +290,7 @@ where
 		&self,
 		topic: &str,
 		message: Option<Message>,
-		callback: Option<&dyn Fn(Response) -> Result<()>>,
+		callback: Option<&dyn Fn(ResponseMsg) -> Result<()>>,
 	) -> Result<()> {
 		let selector = self
 			.prefix()
@@ -306,7 +306,7 @@ where
 		&self,
 		selector: &str,
 		message: Option<Message>,
-		callback: Option<&dyn Fn(Response) -> Result<()>>,
+		callback: Option<&dyn Fn(ResponseMsg) -> Result<()>>,
 	) -> Result<()> {
 		if self
 			.queries
@@ -421,12 +421,14 @@ where
 
 	/// Internal function for starting all registered tasks.<br>
 	/// The tasks are started in the order
+	/// - [`LivelinessSubscriber`]s
 	/// - [`Queryable`]s
-	/// - [`Subscriber`]s
-	/// - [`LivelinessSubscriber`]s and last
+	/// - [`Observable`]s
+	/// - [`Subscriber`]s  and last
 	/// - [`Timer`]s
-	/// Beforehand of starting the [`Timer`]s ther is the initialisation of the
-	/// - [`Publisher`]s and the
+	/// Beforehand of starting the [`Timer`]s there is the initialisation of the
+	/// - [`Publisher`]s the
+	/// - [`Observer`]s and the
 	/// - [`Query`]s
 	///
 	/// # Errors
@@ -451,6 +453,15 @@ where
 				let _ = queryable.1.manage_operation_state(&new_state);
 			});
 
+		// start all registered observables
+		self.observables
+			.write()
+			.map_err(|_| DimasError::ModifyContext("observables".into()))?
+			.iter_mut()
+			.for_each(|observable| {
+				let _ = observable.1.manage_operation_state(&new_state);
+			});
+
 		// start all registered subscribers
 		self.subscribers
 			.write()
@@ -470,6 +481,21 @@ where
 					error!(
 						"could not initialize publisher for {}, reason: {}",
 						publisher.1.selector(),
+						reason
+					);
+				};
+			});
+
+		// init all registered observers
+		self.observers
+			.write()
+			.map_err(|_| DimasError::ModifyContext("observers".into()))?
+			.iter_mut()
+			.for_each(|observer| {
+				if let Err(reason) = observer.1.manage_operation_state(&new_state) {
+					error!(
+						"could not initialize observer for {}, reason: {}",
+						observer.1.selector(),
 						reason
 					);
 				};
@@ -534,6 +560,21 @@ where
 				};
 			});
 
+		// de-init all registered observers
+		self.observers
+			.write()
+			.map_err(|_| DimasError::ModifyContext("observers".into()))?
+			.iter_mut()
+			.for_each(|observer| {
+				if let Err(reason) = observer.1.manage_operation_state(&new_state) {
+					error!(
+						"could not de-initialize observer for {}, reason: {}",
+						observer.1.selector(),
+						reason
+					);
+				};
+			});
+
 		// de-init all registered publishers
 		self.publishers
 			.write()
@@ -550,6 +591,15 @@ where
 			.iter_mut()
 			.for_each(|subscriber| {
 				let _ = subscriber.1.manage_operation_state(&new_state);
+			});
+
+		// stop all registered observables
+		self.observables
+			.write()
+			.map_err(|_| DimasError::ModifyContext("observables".into()))?
+			.iter_mut()
+			.for_each(|observable| {
+				let _ = observable.1.manage_operation_state(&new_state);
 			});
 
 		// stop all registered queryables

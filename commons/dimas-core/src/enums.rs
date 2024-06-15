@@ -90,6 +90,8 @@ pub enum Signal {
 pub enum TaskSignal {
 	/// Restart a certain liveliness subscriber, identified by its key expression
 	RestartLiveliness(String),
+	/// Restart a certain observable, identified by its key expression
+	RestartObservable(String),
 	/// Restart a certain queryable, identified by its key expression
 	RestartQueryable(String),
 	/// Restart a certain lsubscriber, identified by its key expression

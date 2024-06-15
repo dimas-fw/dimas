@@ -6,7 +6,7 @@
 // region:		--- modules
 use dimas_core::{
 	error::{DimasError, Result},
-	message_types::{Message, Response},
+	message_types::{Message, ResponseMsg},
 };
 use std::fmt::Debug;
 use std::sync::Arc;
@@ -83,7 +83,7 @@ impl Communicator {
 	/// # Panics
 	pub fn get<F>(&self, selector: &str, message: Option<Message>, mut callback: F) -> Result<()>
 	where
-		F: FnMut(Response) -> Result<()> + Sized,
+		F: FnMut(ResponseMsg) -> Result<()> + Sized,
 	{
 		let mut query = self
 			.session
@@ -107,7 +107,7 @@ impl Communicator {
 				Ok(sample) => match sample.kind {
 					SampleKind::Put => {
 						let content: Vec<u8> = sample.value.try_into()?;
-						callback(Response(content))?;
+						callback(ResponseMsg(content))?;
 					}
 					SampleKind::Delete => {
 						println!("Delete in Query");

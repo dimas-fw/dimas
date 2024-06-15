@@ -6,7 +6,7 @@
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
 	error::{DimasError, Result},
-	message_types::Request,
+	message_types::RequestMsg,
 	traits::{Capability, Context},
 };
 use std::fmt::Debug;
@@ -169,7 +169,7 @@ where
 			.recv_async()
 			.await
 			.map_err(|_| DimasError::ShouldNotHappen)?;
-		let request = Request(query);
+		let request = RequestMsg(query);
 
 		match cb.lock() {
 			Ok(lock) => {

@@ -62,7 +62,7 @@ use dimas_config::Config;
 use dimas_core::{
 	enums::{wait_for_task_signals, OperationState, Signal, TaskSignal},
 	error::{DimasError, Result},
-	message_types::{Message, Request},
+	message_types::{Message, RequestMsg},
 	traits::{Capability, Context, ContextAbstraction},
 };
 use std::sync::Arc;
@@ -77,7 +77,7 @@ use zenoh::{liveliness::LivelinessToken, prelude::sync::SyncResolve, SessionDecl
 // endregion:	--- modules
 
 // region:	   --- callbacks
-fn callback_dispatcher<P>(ctx: &Context<P>, request: Request) -> Result<()>
+fn callback_dispatcher<P>(ctx: &Context<P>, request: RequestMsg) -> Result<()>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -95,7 +95,7 @@ where
 	Ok(())
 }
 
-fn about_handler<P>(ctx: &Context<P>, request: Request) -> Result<()>
+fn about_handler<P>(ctx: &Context<P>, request: RequestMsg) -> Result<()>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -110,7 +110,7 @@ where
 	Ok(())
 }
 
-fn ping_handler<P>(ctx: &Context<P>, request: Request, sent: i64) -> Result<()>
+fn ping_handler<P>(ctx: &Context<P>, request: RequestMsg, sent: i64) -> Result<()>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -129,7 +129,7 @@ where
 	Ok(())
 }
 
-fn shutdown_handler<P>(ctx: &Context<P>, request: Request) -> Result<()>
+fn shutdown_handler<P>(ctx: &Context<P>, request: RequestMsg) -> Result<()>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -152,7 +152,11 @@ where
 	Ok(())
 }
 
-fn state_handler<P>(ctx: &Context<P>, request: Request, state: Option<OperationState>) -> Result<()>
+fn state_handler<P>(
+	ctx: &Context<P>,
+	request: RequestMsg,
+	state: Option<OperationState>,
+) -> Result<()>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -497,6 +501,14 @@ where
 						},
 						TaskSignal::RestartQueryable(selector) => {
 							self.context.queryables()
+								.write()
+								.map_err(|_| DimasError::WriteProperties)?
+								.get_mut(&selector)
+								.ok_or(DimasError::ShouldNotHappen)?
+								.manage_operation_state(&self.context.state())?;
+						},
+						TaskSignal::RestartObservable(selector) => {
+							self.context.observables()
 								.write()
 								.map_err(|_| DimasError::WriteProperties)?
 								.get_mut(&selector)

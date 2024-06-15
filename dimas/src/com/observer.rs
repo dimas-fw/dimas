@@ -42,11 +42,10 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()> {
-		if (state >= &self.activation_state) && self.handle.is_none() {
-			return self.start();
-		} else if (state < &self.activation_state) && self.handle.is_some() {
-			self.stop();
-			return Ok(());
+		if state >= &self.activation_state {
+			return self.init();
+		} else if state < &self.activation_state {
+			return self.de_init();
 		}
 		Ok(())
 	}
@@ -81,34 +80,21 @@ where
 		&self.selector
 	}
 
-	/// Start or restart the Observer.
-	/// An already running Observer will be stopped, eventually damaged Mutexes will be repaired
+	/// Initialize
+	/// # Errors
+	///
 	#[instrument(level = Level::TRACE, skip_all)]
-	fn start(&mut self) -> Result<()> {
-		self.stop();
-
-		{
-			if self.result_callback.lock().is_err() {
-				warn!("found poisoned put Mutex");
-				self.result_callback.clear_poison();
-			}
-
-			if let Some(fcb) = self.feedback_callback.clone() {
-				if fcb.lock().is_err() {
-					warn!("found poisoned delete Mutex");
-					fcb.clear_poison();
-				}
-			}
-		}
+	fn init(&mut self) -> Result<()> {
 		Ok(())
 	}
 
-	/// Stop a running Observer
-	#[instrument(level = Level::TRACE, skip_all)]
-	fn stop(&mut self) {
-		if let Some(handle) = self.handle.take() {
-			handle.abort();
-		}
+	/// De-Initialize
+	/// # Errors
+	///
+	#[allow(clippy::unnecessary_wraps)]
+	fn de_init(&mut self) -> Result<()> {
+		self.handle.take();
+		Ok(())
 	}
 }
 // endregion:	--- Observer

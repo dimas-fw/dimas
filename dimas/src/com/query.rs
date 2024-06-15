@@ -7,7 +7,7 @@ use super::ArcResponseCallback;
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
-	message_types::{Message, Response},
+	message_types::{Message, ResponseMsg},
 	traits::{Capability, Context},
 };
 use std::{fmt::Debug, time::Duration};
@@ -125,7 +125,7 @@ where
 	pub fn get(
 		&self,
 		message: Option<Message>,
-		mut callback: Option<&dyn Fn(Response) -> Result<()>>,
+		mut callback: Option<&dyn Fn(ResponseMsg) -> Result<()>>,
 	) -> Result<()> {
 		let cb = self.response_callback.clone();
 		let session = self.context.session();
@@ -153,7 +153,7 @@ where
 				Ok(sample) => match sample.kind {
 					SampleKind::Put => {
 						let content: Vec<u8> = sample.value.try_into()?;
-						let msg = Response(content);
+						let msg = ResponseMsg(content);
 						if callback.is_none() {
 							let guard = cb.lock();
 							match guard {

@@ -22,8 +22,13 @@ async fn main() -> Result<()> {
 		.name("observer")
 		.config(&Config::default())?;
 
-	// create the observer
-	agent.observer();
+	// create the observer for fibonacci
+	agent
+		.observer()
+		.topic("fibonacci")
+		.callback(|ctx, response| -> Result<()> { Ok(()) })
+		.monitor(|ctx, feedback| -> Result<()> { Ok(()) })
+		.add()?;
 
 	// activate liveliness
 	agent.liveliness(true);

@@ -54,9 +54,9 @@ impl Message {
 // region:    --- Request
 /// Implementation of a request for handling within a `Queryable`
 #[derive(Debug)]
-pub struct Request(pub Query);
+pub struct RequestMsg(pub Query);
 
-impl Deref for Request {
+impl Deref for RequestMsg {
 	type Target = Query;
 
 	fn deref(&self) -> &Self::Target {
@@ -64,7 +64,7 @@ impl Deref for Request {
 	}
 }
 
-impl Request {
+impl RequestMsg {
 	/// Reply to the given request
 	///
 	/// # Errors
@@ -109,9 +109,9 @@ impl Request {
 // region:		--- Response
 /// Implementation of a response received by query callbacks
 #[derive(Debug)]
-pub struct Response(pub Vec<u8>);
+pub struct ResponseMsg(pub Vec<u8>);
 
-impl Deref for Response {
+impl Deref for ResponseMsg {
 	type Target = Vec<u8>;
 
 	fn deref(&self) -> &Self::Target {
@@ -119,7 +119,7 @@ impl Deref for Response {
 	}
 }
 
-impl Response {
+impl ResponseMsg {
 	/// encode response
 	pub fn encode<T>(message: &T) -> Self
 	where
@@ -145,9 +145,9 @@ impl Response {
 // region:		--- Feedback
 /// Implementation of feedback messages
 #[derive(Debug)]
-pub struct Feedback(pub Vec<u8>);
+pub struct FeedbackMsg(pub Vec<u8>);
 
-impl Deref for Feedback {
+impl Deref for FeedbackMsg {
 	type Target = Vec<u8>;
 
 	fn deref(&self) -> &Self::Target {
@@ -155,7 +155,7 @@ impl Deref for Feedback {
 	}
 }
 
-impl Feedback {
+impl FeedbackMsg {
 	/// encode response
 	pub fn encode<T>(message: &T) -> Self
 	where
@@ -182,9 +182,9 @@ impl Feedback {
 // region:		--- Result
 /// Implementation of result messages
 #[derive(Debug)]
-pub struct Result(pub Vec<u8>);
+pub struct ResultMsg(pub Vec<u8>);
 
-impl Deref for Result {
+impl Deref for ResultMsg {
 	type Target = Vec<u8>;
 
 	fn deref(&self) -> &Self::Target {
@@ -192,7 +192,7 @@ impl Deref for Result {
 	}
 }
 
-impl Result {
+impl ResultMsg {
 	/// encode response
 	pub fn encode<T>(message: &T) -> Self
 	where
@@ -226,9 +226,9 @@ mod tests {
 	#[test]
 	const fn normal_types() {
 		is_normal::<Message>();
-		is_normal::<Request>();
-		is_normal::<Response>();
-		is_normal::<Feedback>();
-		is_normal::<Result>();
+		is_normal::<RequestMsg>();
+		is_normal::<ResponseMsg>();
+		is_normal::<FeedbackMsg>();
+		is_normal::<ResultMsg>();
 	}
 }

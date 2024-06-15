@@ -39,14 +39,14 @@ pub struct Interval {
 	pub interval: Duration,
 }
 
-/// State signaling that the builder has no callback set
+/// State signaling that the builder has a callback not set
 pub struct NoCallback;
-/// State signaling that the [`LivelinessSubscriberBuilder`] has the put callback set
+/// State signaling that the builder has a callback set
 pub struct Callback<C>
 where
 	C: Send + Sync + Unpin + 'static,
 {
-	/// The callback to use when receiving a put message
+	/// The callback to use
 	pub callback: C,
 }
 // endregion:	--- states

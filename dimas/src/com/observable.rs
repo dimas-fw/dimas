@@ -4,6 +4,7 @@
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
+	message_types::ResultMsg,
 	traits::{Capability, Context},
 };
 use tokio::task::JoinHandle;

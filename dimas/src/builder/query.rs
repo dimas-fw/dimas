@@ -6,7 +6,7 @@
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
-	message_types::Response,
+	message_types::ResponseMsg,
 	traits::Context,
 	utils::selector_from,
 };
@@ -153,7 +153,7 @@ where
 	#[must_use]
 	pub fn callback<F>(self, callback: F) -> QueryBuilder<P, K, Callback<ArcResponseCallback<P>>, S>
 	where
-		F: Fn(&Context<P>, Response) -> Result<()> + Send + Sync + Unpin + 'static,
+		F: Fn(&Context<P>, ResponseMsg) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
 			context,

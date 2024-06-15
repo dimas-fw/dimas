@@ -8,7 +8,7 @@ use crate::{
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
-	message_types::{Feedback, Message},
+	message_types::FeedbackMsg,
 	traits::Context,
 	utils::selector_from,
 };
@@ -62,9 +62,9 @@ where
 
 	/// Set observers callback for `feedback` messages
 	#[must_use]
-	pub fn feedback_callback<F>(mut self, callback: F) -> Self
+	pub fn monitor<F>(mut self, callback: F) -> Self
 	where
-		F: Fn(&Context<P>, Feedback) -> Result<()> + Send + Sync + Unpin + 'static,
+		F: Fn(&Context<P>, FeedbackMsg) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		self.feedback_callback
 			.replace(Arc::new(Mutex::new(callback)));
@@ -112,14 +112,14 @@ impl<P, K, S> ObserverBuilder<P, K, NoCallback, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	/// Set callback for put messages
+	/// Set callback for result messages
 	#[must_use]
-	pub fn put_callback<F>(
+	pub fn callback<F>(
 		self,
 		callback: F,
 	) -> ObserverBuilder<P, K, Callback<ArcResultCallback<P>>, S>
 	where
-		F: Fn(&Context<P>, dimas_core::message_types::Result) -> Result<()>
+		F: Fn(&Context<P>, dimas_core::message_types::ResultMsg) -> Result<()>
 			+ Send
 			+ Sync
 			+ Unpin
