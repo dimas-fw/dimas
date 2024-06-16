@@ -26,8 +26,7 @@ async fn main() -> Result<()> {
 	agent
 		.observer()
 		.topic("fibonacci")
-		.callback(|ctx, response| -> Result<()> { Ok(()) })
-		.monitor(|ctx, feedback| -> Result<()> { Ok(()) })
+		.callback(|ctx, msg| -> Result<()> { Ok(()) })
 		.add()?;
 
 	// activate liveliness

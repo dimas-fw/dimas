@@ -6,7 +6,7 @@
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
 	error::{DimasError, Result},
-	message_types::RequestMsg,
+	message_types::QueryMsg,
 	traits::{Capability, Context},
 };
 use std::fmt::Debug;
@@ -15,7 +15,7 @@ use tracing::{error, info, instrument, warn, Level};
 use zenoh::prelude::{r#async::AsyncResolve, SessionDeclarations};
 use zenoh::sample::Locality;
 
-use super::ArcRequestCallback;
+use super::ArcQueryableCallback;
 // endregion:	--- modules
 
 // region:		--- Queryable
@@ -28,7 +28,7 @@ where
 	/// Context for the Subscriber
 	context: Context<P>,
 	activation_state: OperationState,
-	request_callback: ArcRequestCallback<P>,
+	callback: ArcQueryableCallback<P>,
 	completeness: bool,
 	allowed_origin: Locality,
 	handle: Option<JoinHandle<()>>,
@@ -71,7 +71,7 @@ where
 		selector: String,
 		context: Context<P>,
 		activation_state: OperationState,
-		request_callback: ArcRequestCallback<P>,
+		request_callback: ArcQueryableCallback<P>,
 		completeness: bool,
 		allowed_origin: Locality,
 	) -> Self {
@@ -79,7 +79,7 @@ where
 			selector,
 			context,
 			activation_state,
-			request_callback,
+			callback: request_callback,
 			completeness,
 			allowed_origin,
 			handle: None,
@@ -99,16 +99,16 @@ where
 		self.stop();
 
 		{
-			if self.request_callback.lock().is_err() {
+			if self.callback.lock().is_err() {
 				warn!("found poisoned put Mutex");
-				self.request_callback.clear_poison();
+				self.callback.clear_poison();
 			}
 		}
 
 		let completeness = self.completeness;
 		let allowed_origin = self.allowed_origin;
 		let selector = self.selector.clone();
-		let cb = self.request_callback.clone();
+		let cb = self.callback.clone();
 		let ctx1 = self.context.clone();
 		let ctx2 = self.context.clone();
 
@@ -147,7 +147,7 @@ where
 #[instrument(name="queryable", level = Level::ERROR, skip_all)]
 async fn run_queryable<P>(
 	selector: String,
-	cb: ArcRequestCallback<P>,
+	callback: ArcQueryableCallback<P>,
 	completeness: bool,
 	allowed_origin: Locality,
 	ctx: Context<P>,
@@ -169,9 +169,9 @@ where
 			.recv_async()
 			.await
 			.map_err(|_| DimasError::ShouldNotHappen)?;
-		let request = RequestMsg(query);
+		let request = QueryMsg(query);
 
-		match cb.lock() {
+		match callback.lock() {
 			Ok(lock) => {
 				if let Err(error) = lock(&ctx, request) {
 					error!("queryable callback failed with {error}");

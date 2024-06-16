@@ -6,7 +6,7 @@
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
-	message_types::RequestMsg,
+	message_types::QueryMsg,
 	traits::Context,
 	utils::selector_from,
 };
@@ -14,7 +14,7 @@ use std::sync::{Arc, Mutex, RwLock};
 use zenoh::sample::Locality;
 
 use crate::builder::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
-use crate::com::{queryable::Queryable, ArcRequestCallback};
+use crate::com::{queryable::Queryable, ArcQueryableCallback};
 // endregion:	--- modules
 
 // region:		--- QueryableBuilder
@@ -30,7 +30,7 @@ where
 	completeness: bool,
 	allowed_origin: Locality,
 	selector: K,
-	request_callback: C,
+	callback: C,
 	storage: S,
 }
 
@@ -47,7 +47,7 @@ where
 			completeness: true,
 			allowed_origin: Locality::Any,
 			selector: NoSelector,
-			request_callback: NoCallback,
+			callback: NoCallback,
 			storage: NoStorage,
 		}
 	}
@@ -92,7 +92,7 @@ where
 			completeness,
 			allowed_origin,
 			storage,
-			request_callback: callback,
+			callback,
 			..
 		} = self;
 		QueryableBuilder {
@@ -103,7 +103,7 @@ where
 			selector: Selector {
 				selector: selector.into(),
 			},
-			request_callback: callback,
+			callback,
 			storage,
 		}
 	}
@@ -126,9 +126,9 @@ where
 	pub fn callback<F>(
 		self,
 		callback: F,
-	) -> QueryableBuilder<P, K, Callback<ArcRequestCallback<P>>, S>
+	) -> QueryableBuilder<P, K, Callback<ArcQueryableCallback<P>>, S>
 	where
-		F: Fn(&Context<P>, RequestMsg) -> Result<()> + Send + Sync + Unpin + 'static,
+		F: Fn(&Context<P>, QueryMsg) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
 			context,
@@ -139,14 +139,14 @@ where
 			storage,
 			..
 		} = self;
-		let callback: ArcRequestCallback<P> = Arc::new(Mutex::new(callback));
+		let callback: ArcQueryableCallback<P> = Arc::new(Mutex::new(callback));
 		QueryableBuilder {
 			context,
 			activation_state,
 			completeness,
 			allowed_origin,
 			selector,
-			request_callback: Callback { callback },
+			callback: Callback { callback },
 			storage,
 		}
 	}
@@ -168,7 +168,7 @@ where
 			completeness,
 			allowed_origin,
 			selector,
-			request_callback: callback,
+			callback,
 			..
 		} = self;
 		QueryableBuilder {
@@ -177,13 +177,13 @@ where
 			completeness,
 			allowed_origin,
 			selector,
-			request_callback: callback,
+			callback,
 			storage: Storage { storage },
 		}
 	}
 }
 
-impl<P, S> QueryableBuilder<P, Selector, Callback<ArcRequestCallback<P>>, S>
+impl<P, S> QueryableBuilder<P, Selector, Callback<ArcQueryableCallback<P>>, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -197,7 +197,7 @@ where
 			completeness,
 			allowed_origin,
 			selector,
-			request_callback,
+			callback,
 			..
 		} = self;
 		let selector = selector.selector;
@@ -205,14 +205,14 @@ where
 			selector,
 			context,
 			activation_state,
-			request_callback.callback,
+			callback.callback,
 			completeness,
 			allowed_origin,
 		))
 	}
 }
 
-impl<P> QueryableBuilder<P, Selector, Callback<ArcRequestCallback<P>>, Storage<Queryable<P>>>
+impl<P> QueryableBuilder<P, Selector, Callback<ArcQueryableCallback<P>>, Storage<Queryable<P>>>
 where
 	P: Send + Sync + Unpin + 'static,
 {

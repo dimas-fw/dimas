@@ -7,7 +7,7 @@
 use crate::{
 	enums::{OperationState, TaskSignal},
 	error::Result,
-	message_types::{Message, ResponseMsg},
+	message_types::{Message, QueryableMsg},
 };
 use std::{
 	fmt::Debug,
@@ -112,7 +112,7 @@ pub trait ContextAbstraction<P>: Debug + Send + Sync {
 		&self,
 		topic: &str,
 		message: Option<Message>,
-		callback: Option<&dyn Fn(ResponseMsg) -> Result<()>>,
+		callback: Option<&dyn Fn(QueryableMsg) -> Result<()>>,
 	) -> Result<()>;
 
 	/// Send a query for a `selector` with an optional [`Message`].
@@ -127,7 +127,7 @@ pub trait ContextAbstraction<P>: Debug + Send + Sync {
 		&self,
 		selector: &str,
 		message: Option<Message>,
-		callback: Option<&dyn Fn(ResponseMsg) -> Result<()>>,
+		callback: Option<&dyn Fn(QueryableMsg) -> Result<()>>,
 	) -> Result<()>;
 }
 // endregion:	--- Context

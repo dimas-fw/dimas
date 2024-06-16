@@ -44,7 +44,7 @@ use dimas_config::Config;
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
 	error::{DimasError, Result},
-	message_types::{Message, ResponseMsg},
+	message_types::{Message, QueryableMsg},
 	traits::{Capability, ContextAbstraction},
 };
 use std::{
@@ -290,7 +290,7 @@ where
 		&self,
 		topic: &str,
 		message: Option<Message>,
-		callback: Option<&dyn Fn(ResponseMsg) -> Result<()>>,
+		callback: Option<&dyn Fn(QueryableMsg) -> Result<()>>,
 	) -> Result<()> {
 		let selector = self
 			.prefix()
@@ -306,7 +306,7 @@ where
 		&self,
 		selector: &str,
 		message: Option<Message>,
-		callback: Option<&dyn Fn(ResponseMsg) -> Result<()>>,
+		callback: Option<&dyn Fn(QueryableMsg) -> Result<()>>,
 	) -> Result<()> {
 		if self
 			.queries

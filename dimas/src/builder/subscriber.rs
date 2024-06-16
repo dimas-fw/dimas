@@ -18,7 +18,7 @@ use std::sync::{Arc, Mutex, RwLock};
 use zenoh::subscriber::Reliability;
 
 use crate::builder::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
-use crate::com::{subscriber::Subscriber, ArcDeleteCallback, ArcMessageCallback};
+use crate::com::{subscriber::Subscriber, ArcDeleteCallback, ArcPutCallback};
 // endregion:	--- modules
 
 // region:		--- SubscriberBuilder
@@ -134,7 +134,7 @@ where
 	pub fn put_callback<F>(
 		self,
 		callback: F,
-	) -> SubscriberBuilder<P, K, Callback<ArcMessageCallback<P>>, S>
+	) -> SubscriberBuilder<P, K, Callback<ArcPutCallback<P>>, S>
 	where
 		F: Fn(&Context<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
@@ -147,7 +147,7 @@ where
 			delete_callback,
 			..
 		} = self;
-		let callback: ArcMessageCallback<P> = Arc::new(Mutex::new(callback));
+		let callback: ArcPutCallback<P> = Arc::new(Mutex::new(callback));
 		SubscriberBuilder {
 			context,
 			activation_state,
@@ -191,7 +191,7 @@ where
 	}
 }
 
-impl<P, S> SubscriberBuilder<P, Selector, Callback<ArcMessageCallback<P>>, S>
+impl<P, S> SubscriberBuilder<P, Selector, Callback<ArcPutCallback<P>>, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -220,7 +220,7 @@ where
 	}
 }
 
-impl<P> SubscriberBuilder<P, Selector, Callback<ArcMessageCallback<P>>, Storage<Subscriber<P>>>
+impl<P> SubscriberBuilder<P, Selector, Callback<ArcPutCallback<P>>, Storage<Subscriber<P>>>
 where
 	P: Send + Sync + Unpin + 'static,
 {

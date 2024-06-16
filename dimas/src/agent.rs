@@ -62,7 +62,7 @@ use dimas_config::Config;
 use dimas_core::{
 	enums::{wait_for_task_signals, OperationState, Signal, TaskSignal},
 	error::{DimasError, Result},
-	message_types::{Message, RequestMsg},
+	message_types::{Message, QueryMsg},
 	traits::{Capability, Context, ContextAbstraction},
 };
 use std::sync::Arc;
@@ -77,7 +77,7 @@ use zenoh::{liveliness::LivelinessToken, prelude::sync::SyncResolve, SessionDecl
 // endregion:	--- modules
 
 // region:	   --- callbacks
-fn callback_dispatcher<P>(ctx: &Context<P>, request: RequestMsg) -> Result<()>
+fn callback_dispatcher<P>(ctx: &Context<P>, request: QueryMsg) -> Result<()>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -95,7 +95,7 @@ where
 	Ok(())
 }
 
-fn about_handler<P>(ctx: &Context<P>, request: RequestMsg) -> Result<()>
+fn about_handler<P>(ctx: &Context<P>, request: QueryMsg) -> Result<()>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -110,7 +110,7 @@ where
 	Ok(())
 }
 
-fn ping_handler<P>(ctx: &Context<P>, request: RequestMsg, sent: i64) -> Result<()>
+fn ping_handler<P>(ctx: &Context<P>, request: QueryMsg, sent: i64) -> Result<()>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -129,7 +129,7 @@ where
 	Ok(())
 }
 
-fn shutdown_handler<P>(ctx: &Context<P>, request: RequestMsg) -> Result<()>
+fn shutdown_handler<P>(ctx: &Context<P>, request: QueryMsg) -> Result<()>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -154,7 +154,7 @@ where
 
 fn state_handler<P>(
 	ctx: &Context<P>,
-	request: RequestMsg,
+	request: QueryMsg,
 	state: Option<OperationState>,
 ) -> Result<()>
 where

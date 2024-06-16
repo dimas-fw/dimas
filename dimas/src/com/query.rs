@@ -3,11 +3,11 @@
 //! Module `query` provides an information/compute requestor `Query` which can be created using the `QueryBuilder`.
 
 // region:		--- modules
-use super::ArcResponseCallback;
+use super::ArcQueryCallback;
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
-	message_types::{Message, ResponseMsg},
+	message_types::{Message, QueryableMsg},
 	traits::{Capability, Context},
 };
 use std::{fmt::Debug, time::Duration};
@@ -29,7 +29,7 @@ where
 	/// Context for the Query
 	context: Context<P>,
 	activation_state: OperationState,
-	response_callback: ArcResponseCallback<P>,
+	response_callback: ArcQueryCallback<P>,
 	mode: ConsolidationMode,
 	allowed_destination: Locality,
 	target: QueryTarget,
@@ -74,7 +74,7 @@ where
 		selector: String,
 		context: Context<P>,
 		activation_state: OperationState,
-		response_callback: ArcResponseCallback<P>,
+		response_callback: ArcQueryCallback<P>,
 		mode: ConsolidationMode,
 		allowed_destination: Locality,
 		target: QueryTarget,
@@ -125,7 +125,7 @@ where
 	pub fn get(
 		&self,
 		message: Option<Message>,
-		mut callback: Option<&dyn Fn(ResponseMsg) -> Result<()>>,
+		mut callback: Option<&dyn Fn(QueryableMsg) -> Result<()>>,
 	) -> Result<()> {
 		let cb = self.response_callback.clone();
 		let session = self.context.session();
@@ -153,7 +153,7 @@ where
 				Ok(sample) => match sample.kind {
 					SampleKind::Put => {
 						let content: Vec<u8> = sample.value.try_into()?;
-						let msg = ResponseMsg(content);
+						let msg = QueryableMsg(content);
 						if callback.is_none() {
 							let guard = cb.lock();
 							match guard {

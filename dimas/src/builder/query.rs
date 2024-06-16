@@ -6,7 +6,7 @@
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
-	message_types::ResponseMsg,
+	message_types::QueryableMsg,
 	traits::Context,
 	utils::selector_from,
 };
@@ -20,7 +20,7 @@ use zenoh::{
 };
 
 use crate::builder::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
-use crate::com::{query::Query, ArcResponseCallback};
+use crate::com::{query::Query, ArcQueryCallback};
 // endregion:	--- modules
 
 // region:		--- QueryBuilder
@@ -151,9 +151,9 @@ where
 {
 	/// Set query callback for response messages
 	#[must_use]
-	pub fn callback<F>(self, callback: F) -> QueryBuilder<P, K, Callback<ArcResponseCallback<P>>, S>
+	pub fn callback<F>(self, callback: F) -> QueryBuilder<P, K, Callback<ArcQueryCallback<P>>, S>
 	where
-		F: Fn(&Context<P>, ResponseMsg) -> Result<()> + Send + Sync + Unpin + 'static,
+		F: Fn(&Context<P>, QueryableMsg) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
 			context,
@@ -166,7 +166,7 @@ where
 			target,
 			..
 		} = self;
-		let callback: ArcResponseCallback<P> = Arc::new(Mutex::new(callback));
+		let callback: ArcQueryCallback<P> = Arc::new(Mutex::new(callback));
 		QueryBuilder {
 			context,
 			activation_state,
@@ -216,7 +216,7 @@ where
 	}
 }
 
-impl<P, S> QueryBuilder<P, Selector, Callback<ArcResponseCallback<P>>, S>
+impl<P, S> QueryBuilder<P, Selector, Callback<ArcQueryCallback<P>>, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -249,7 +249,7 @@ where
 	}
 }
 
-impl<P> QueryBuilder<P, Selector, Callback<ArcResponseCallback<P>>, Storage<Query<P>>>
+impl<P> QueryBuilder<P, Selector, Callback<ArcQueryCallback<P>>, Storage<Query<P>>>
 where
 	P: Send + Sync + Unpin + 'static,
 {

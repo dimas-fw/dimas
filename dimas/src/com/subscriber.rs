@@ -5,7 +5,7 @@
 
 // region:		--- modules
 // these ones are only for doc needed
-use super::{ArcDeleteCallback, ArcMessageCallback};
+use super::{ArcDeleteCallback, ArcPutCallback};
 #[cfg(doc)]
 use crate::agent::Agent;
 use dimas_core::{
@@ -34,7 +34,7 @@ where
 	context: Context<P>,
 	/// [`OperationState`] on which this subscriber is started
 	activation_state: OperationState,
-	put_callback: ArcMessageCallback<P>,
+	put_callback: ArcPutCallback<P>,
 	reliability: Reliability,
 	delete_callback: Option<ArcDeleteCallback<P>>,
 	handle: Option<JoinHandle<()>>,
@@ -76,7 +76,7 @@ where
 		selector: String,
 		context: Context<P>,
 		activation_state: OperationState,
-		put_callback: ArcMessageCallback<P>,
+		put_callback: ArcPutCallback<P>,
 		reliability: Reliability,
 		delete_callback: Option<ArcDeleteCallback<P>>,
 	) -> Self {
@@ -159,7 +159,7 @@ where
 #[instrument(name="subscriber", level = Level::ERROR, skip_all)]
 async fn run_subscriber<P>(
 	selector: String,
-	p_cb: ArcMessageCallback<P>,
+	p_cb: ArcPutCallback<P>,
 	d_cb: Option<ArcDeleteCallback<P>>,
 	reliability: Reliability,
 	ctx: Context<P>,

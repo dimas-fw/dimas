@@ -10,7 +10,7 @@ use zenoh::{prelude::sync::SyncResolve, queryable::Query, sample::Sample};
 // endregion:	--- modules
 
 // region:		--- Message
-/// Implementation of a message received by subscriber callbacks
+/// Iimplementation of a Message.
 #[derive(Debug)]
 pub struct Message(pub Vec<u8>);
 
@@ -51,12 +51,12 @@ impl Message {
 }
 // endregion:	--- Message
 
-// region:    --- Request
-/// Implementation of a request for handling within a `Queryable`
+// region:    	--- QueryMsg
+/// Implementation of a `Query` message handled by a `Queryable`
 #[derive(Debug)]
-pub struct RequestMsg(pub Query);
+pub struct QueryMsg(pub Query);
 
-impl Deref for RequestMsg {
+impl Deref for QueryMsg {
 	type Target = Query;
 
 	fn deref(&self) -> &Self::Target {
@@ -64,8 +64,8 @@ impl Deref for RequestMsg {
 	}
 }
 
-impl RequestMsg {
-	/// Reply to the given request
+impl QueryMsg {
+	/// Reply to the given QueryMsg
 	///
 	/// # Errors
 	#[allow(clippy::needless_pass_by_value)]
@@ -90,7 +90,7 @@ impl RequestMsg {
 		self.0.parameters()
 	}
 
-	/// decode queries [`Message`]
+	/// decode QueryMsg
 	///
 	/// # Errors
 	pub fn decode<T>(&self) -> crate::error::Result<T>
@@ -104,14 +104,14 @@ impl RequestMsg {
 		Err(DimasError::NoMessage.into())
 	}
 }
-// endregion: --- Request
+// endregion: 	--- QueryMsg
 
-// region:		--- Response
-/// Implementation of a response received by query callbacks
+// region:		--- QueryableMsg
+/// Implementation of a `Queryable` message handled by a `Query`
 #[derive(Debug)]
-pub struct ResponseMsg(pub Vec<u8>);
+pub struct QueryableMsg(pub Vec<u8>);
 
-impl Deref for ResponseMsg {
+impl Deref for QueryableMsg {
 	type Target = Vec<u8>;
 
 	fn deref(&self) -> &Self::Target {
@@ -119,8 +119,8 @@ impl Deref for ResponseMsg {
 	}
 }
 
-impl ResponseMsg {
-	/// encode response
+impl QueryableMsg {
+	/// encode QueryableMsg
 	pub fn encode<T>(message: &T) -> Self
 	where
 		T: Encode,
@@ -129,7 +129,7 @@ impl ResponseMsg {
 		Self(content)
 	}
 
-	/// decode response
+	/// decode QueryableMsg
 	///
 	/// # Errors
 	pub fn decode<T>(self) -> crate::error::Result<T>
@@ -140,81 +140,50 @@ impl ResponseMsg {
 		decode::<T>(value.as_slice()).map_err(|_| DimasError::Decoding.into())
 	}
 }
-// endregion:	--- Response
+// endregion:	--- QueryableMsg
 
-// region:		--- Feedback
-/// Implementation of feedback messages
-#[derive(Debug)]
-pub struct FeedbackMsg(pub Vec<u8>);
-
-impl Deref for FeedbackMsg {
-	type Target = Vec<u8>;
-
-	fn deref(&self) -> &Self::Target {
-		&self.0
-	}
+// region:		--- ObserverMsg
+/// Messages of an Observer 
+#[derive(Encode, Decode)]
+pub enum ObserverMsg {
+	/// Send a request to the Observable
+	Request,
+	/// Cancel request
+	Cancel,
 }
 
-impl FeedbackMsg {
-	/// encode response
-	pub fn encode<T>(message: &T) -> Self
+impl ObserverMsg {
+	/// reply to an ObserverMsg
+	#[allow(clippy::needless_pass_by_value)]
+	pub fn reply<T>(self, value: T) -> crate::error::Result<()>
 	where
 		T: Encode,
 	{
-		let content = encode(message);
-		Self(content)
-	}
-
-	/// decode feedback
-	///
-	/// # Errors
-	///
-	pub fn decode<T>(self) -> crate::error::Result<T>
-	where
-		T: for<'a> Decode<'a>,
-	{
-		let value: Vec<u8> = self.0;
-		decode::<T>(value.as_slice()).map_err(|_| DimasError::Decoding.into())
+		Ok(())
 	}
 }
-// endregion:	--- Feedback
+// endregion: 	--- ObserverMsg
 
-// region:		--- Result
-/// Implementation of result messages
-#[derive(Debug)]
-pub struct ResultMsg(pub Vec<u8>);
-
-impl Deref for ResultMsg {
-	type Target = Vec<u8>;
-
-	fn deref(&self) -> &Self::Target {
-		&self.0
-	}
+// region:		--- ObservableMsg
+/// Messages of an Observable
+#[derive(Encode, Decode)]
+pub enum ObservableMsg {
+	/// Request was accepted
+	Accepted,
+	/// Request was declined
+	Declined,
+	/// Send the current status
+	Status,
+	/// Send successful end of request
+	Finished,
+	/// Send failure of request
+	Failed,
+	/// Acknowledge cancelation of request
+	Canceled,
 }
+// endregion: 	--- ObservableMsg
 
-impl ResultMsg {
-	/// encode response
-	pub fn encode<T>(message: &T) -> Self
-	where
-		T: Encode,
-	{
-		let content = encode(message);
-		Self(content)
-	}
 
-	/// decode result
-	///
-	/// # Errors
-	///
-	pub fn decode<T>(self) -> crate::error::Result<T>
-	where
-		T: for<'a> Decode<'a>,
-	{
-		let value: Vec<u8> = self.0;
-		decode::<T>(value.as_slice()).map_err(|_| DimasError::Decoding.into())
-	}
-}
-// endregion:	--- Result
 
 #[cfg(test)]
 mod tests {
@@ -226,9 +195,9 @@ mod tests {
 	#[test]
 	const fn normal_types() {
 		is_normal::<Message>();
-		is_normal::<RequestMsg>();
-		is_normal::<ResponseMsg>();
-		is_normal::<FeedbackMsg>();
-		is_normal::<ResultMsg>();
+		is_normal::<QueryMsg>();
+		is_normal::<QueryableMsg>();
+		is_normal::<ObserverMsg>();
+		is_normal::<ObservableMsg>();
 	}
 }

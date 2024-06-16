@@ -24,6 +24,7 @@ path = "src/pong.rs"
 [dependencies]
 chrono = { workspace = true }
 dimas = { workspace = true }
+hostname = { workspace = true }
 tokio = { workspace = true, features = ["macros"] }
 tracing = { workspace = true }
 

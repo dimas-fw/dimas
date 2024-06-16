@@ -45,10 +45,10 @@ async fn main() -> Result<()> {
 			// check if properties are still in initial state
 			if ctx.read()?.n_2 == 0 && ctx.read()?.n_1 == 1 {
 				// accept
-				request.reply(Acknowledge::Accepted)
+				request.reply(ObservableMsg::Accepted)
 			} else {
 				// decline
-				request.reply(Acknowledge::Declined)
+				request.reply(ObservableMsg::Declined)
 			}
 		})
 		.add()?;

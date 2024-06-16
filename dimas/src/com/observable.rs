@@ -4,13 +4,12 @@
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
-	message_types::ResultMsg,
 	traits::{Capability, Context},
 };
 use tokio::task::JoinHandle;
 use tracing::{instrument, warn, Level};
 
-use super::ArcRequestCallback;
+use super::ArcObservableCallback;
 // endregion:	--- modules
 
 // region:		--- Observable
@@ -24,7 +23,7 @@ where
 	/// Context for the Observable
 	context: Context<P>,
 	activation_state: OperationState,
-	request_callback: ArcRequestCallback<P>,
+	callback: ArcObservableCallback<P>,
 	handle: Option<JoinHandle<()>>,
 }
 
@@ -63,13 +62,13 @@ where
 		selector: String,
 		context: Context<P>,
 		activation_state: OperationState,
-		request_callback: ArcRequestCallback<P>,
+		request_callback: ArcObservableCallback<P>,
 	) -> Self {
 		Self {
 			selector,
 			context,
 			activation_state,
-			request_callback,
+			callback: request_callback,
 			handle: None,
 		}
 	}
@@ -87,9 +86,9 @@ where
 		self.stop();
 
 		{
-			if self.request_callback.lock().is_err() {
+			if self.callback.lock().is_err() {
 				warn!("found poisoned put Mutex");
-				self.request_callback.clear_poison();
+				self.callback.clear_poison();
 			}
 		}
 		Ok(())

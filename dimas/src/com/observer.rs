@@ -9,7 +9,7 @@ use dimas_core::{
 use tokio::task::JoinHandle;
 use tracing::{instrument, warn, Level};
 
-use super::{ArcFeedbackCallback, ArcResultCallback};
+use super::ArcObserverCallback;
 // endregion:	--- modules
 
 // region:		--- Observer
@@ -23,8 +23,7 @@ where
 	/// Context for the Observer
 	context: Context<P>,
 	activation_state: OperationState,
-	result_callback: ArcResultCallback<P>,
-	feedback_callback: Option<ArcFeedbackCallback<P>>,
+	callback: ArcObserverCallback<P>,
 	handle: Option<JoinHandle<()>>,
 }
 
@@ -61,15 +60,13 @@ where
 		selector: String,
 		context: Context<P>,
 		activation_state: OperationState,
-		result_callback: ArcResultCallback<P>,
-		feedback_callback: Option<ArcFeedbackCallback<P>>,
+		callback: ArcObserverCallback<P>,
 	) -> Self {
 		Self {
 			selector,
 			context,
 			activation_state,
-			result_callback,
-			feedback_callback,
+			callback,
 			handle: None,
 		}
 	}

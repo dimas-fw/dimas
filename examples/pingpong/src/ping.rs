@@ -1,9 +1,10 @@
-//! `DiMAS` ping example
+//! `DiMAS` pingpong example
 //! Copyright © 2024 Stephan Kunz
 
 // region:		--- modules
 use chrono::Local;
 use dimas::prelude::*;
+use pingpong::PingPongMessage;
 use std::time::Duration;
 use tracing::info;
 // endregion:	--- modules
@@ -13,15 +14,8 @@ struct AgentProps {
 	counter: u128,
 }
 
-#[derive(Debug, Encode, Decode)]
-struct PingPongMessage {
-	counter: u128,
-	sent: i64,
-	received: Option<i64>,
-}
-
 #[allow(clippy::cast_precision_loss)]
-fn pong_received(_ctx: &Context<AgentProps>, message: Message) -> Result<()> {
+fn pong_received(_ctx: &Context<AgentProps>, message: QueryableMsg) -> Result<()> {
 	let message: PingPongMessage = message.decode()?;
 
 	// get current timestamp
@@ -34,8 +28,10 @@ fn pong_received(_ctx: &Context<AgentProps>, message: Message) -> Result<()> {
 	let oneway = received - message.received.unwrap_or(0);
 	let roundtrip = received - message.sent;
 	println!(
-		"Trip {}, oneway {:.2}ms, roundtrip {:.2}ms",
+		"Trip {} from {} to {}, oneway {:.2}ms, roundtrip {:.2}ms",
 		&message.counter,
+		&message.ping_name,
+		&message.pong_name,
 		oneway as f64 / 1_000_000.0,
 		roundtrip as f64 / 1_000_000.0
 	);
@@ -57,12 +53,11 @@ async fn main() -> Result<()> {
 		.name("ping")
 		.config(&Config::default())?;
 
-	// create publisher for topic "ping"
+	// create query for topic "pingpong"
 	agent
-		.publisher()
-		.topic("ping")
-		.set_priority(Priority::RealTime)
-		.set_congestion_control(CongestionControl::Block)
+		.query()
+		.topic("pingpong")
+		.callback(pong_received)
 		.add()?;
 
 	// use timer for regular publishing
@@ -75,16 +70,18 @@ async fn main() -> Result<()> {
 
 			let message = PingPongMessage {
 				counter,
+				ping_name: hostname::get()?.into_string().unwrap_or(String::from("unknown host")),
 				sent: Local::now()
 					.naive_utc()
 					.and_utc()
 					.timestamp_nanos_opt()
 					.unwrap_or(0),
+				pong_name: String::from("unkown host"),
 				received: None,
 			};
 			let message = Message::encode(&message);
 			// publishing with stored publisher
-			ctx.put("ping", message)?;
+			ctx.get("pingpong", Some(message), None)?;
 
 			let text = format!("ping! [{counter}]");
 			info!("Sent {} ", &text);
@@ -93,14 +90,6 @@ async fn main() -> Result<()> {
 			ctx.write()?.counter += 1;
 			Ok(())
 		})
-		.add()?;
-
-	// listen for 'pong' messages
-	agent
-		.subscriber()
-		.topic("pong")
-		.put_callback(pong_received)
-		.set_reliability(Reliability::Reliable)
 		.add()?;
 
 	// activate liveliness

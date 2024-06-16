@@ -4,35 +4,30 @@
 // region:		--- modules
 use chrono::Local;
 use dimas::prelude::*;
+use pingpong::PingPongMessage;
 use tracing::info;
 // endregion:	--- modules
 
 #[derive(Debug)]
 struct AgentProps {}
 
-#[derive(Debug, Encode, Decode, Clone)]
-struct PingPongMessage {
-	counter: u128,
-	sent: i64,
-	received: Option<i64>,
-}
-
-fn ping_received(ctx: &Context<AgentProps>, message: Message) -> Result<()> {
-	let mut message: PingPongMessage = message.decode()?;
+fn ping_received(_ctx: &Context<AgentProps>, message: QueryMsg) -> Result<()> {
+	let mut query: PingPongMessage = message.decode()?;
 
 	// set receive-timestamp
-	message.received = Local::now()
+	query.received = Local::now()
 		.naive_utc()
 		.and_utc()
 		.timestamp_nanos_opt();
 
-	let text = format!("pong! [{}]", message.counter);
+	query.pong_name = hostname::get()?.into_string().unwrap_or(String::from("unknown host"));
 
-	let message = Message::encode(&message);
-	// publishing with ad-hoc publisher
-	ctx.put("pong", message)?;
+	let text = format!("pong! [{}]", query.counter);
 
-	info!("Sent '{}'", &text);
+	// reply to ping query
+	message.reply(query)?;
+
+	info!("response '{}'", &text);
 
 	Ok(())
 }
@@ -51,20 +46,11 @@ async fn main() -> Result<()> {
 		.name("pong")
 		.config(&Config::default())?;
 
-	// create publisher for topic "ping"
-	agent
-		.publisher()
-		.topic("pong")
-		.set_priority(Priority::RealTime)
-		.set_congestion_control(CongestionControl::Block)
-		.add()?;
-
 	// listen for 'ping' messages
 	agent
-		.subscriber()
-		.topic("ping")
-		.put_callback(ping_received)
-		.set_reliability(Reliability::Reliable)
+		.queryable()
+		.topic("pingpong")
+		.callback(ping_received)
 		.add()?;
 
 	// activate liveliness

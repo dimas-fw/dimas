@@ -3,14 +3,10 @@
 // region:		--- modules
 use crate::{
 	builder::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage},
-	com::{observable::Observable, ArcRequestCallback},
+	com::{observable::Observable, ArcObservableCallback},
 };
 use dimas_core::{
-	enums::OperationState,
-	error::{DimasError, Result},
-	message_types::RequestMsg,
-	traits::Context,
-	utils::selector_from,
+	enums::OperationState, error::{DimasError, Result}, message_types::ObserverMsg, traits::Context, utils::selector_from
 };
 use std::sync::{Arc, Mutex, RwLock};
 // endregion:	--- modules
@@ -102,9 +98,9 @@ where
 	pub fn callback<F>(
 		self,
 		callback: F,
-	) -> ObservableBuilder<P, K, Callback<ArcRequestCallback<P>>, S>
+	) -> ObservableBuilder<P, K, Callback<ArcObservableCallback<P>>, S>
 	where
-		F: Fn(&Context<P>, RequestMsg) -> Result<()> + Send + Sync + Unpin + 'static,
+		F: Fn(&Context<P>, ObserverMsg) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
 			context,
@@ -113,7 +109,7 @@ where
 			storage,
 			..
 		} = self;
-		let callback: ArcRequestCallback<P> = Arc::new(Mutex::new(callback));
+		let callback: ArcObservableCallback<P> = Arc::new(Mutex::new(callback));
 		ObservableBuilder {
 			context,
 			activation_state,
@@ -151,7 +147,7 @@ where
 	}
 }
 
-impl<P, S> ObservableBuilder<P, Selector, Callback<ArcRequestCallback<P>>, S>
+impl<P, S> ObservableBuilder<P, Selector, Callback<ArcObservableCallback<P>>, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -176,7 +172,7 @@ where
 	}
 }
 
-impl<P> ObservableBuilder<P, Selector, Callback<ArcRequestCallback<P>>, Storage<Observable<P>>>
+impl<P> ObservableBuilder<P, Selector, Callback<ArcObservableCallback<P>>, Storage<Observable<P>>>
 where
 	P: Send + Sync + Unpin + 'static,
 {

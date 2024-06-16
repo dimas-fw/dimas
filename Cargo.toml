@@ -69,6 +69,7 @@ dimas-core = { path = "commons/dimas-core" }
 #dimas-core = "0.2.2"
 dirs = "5"
 doc-comment = "0.3"
+hostname = "0.4"
 itertools = "0.13"
 json5 = "0.4"
 serde = { version = "1", default-features = false, features = ["derive"] }

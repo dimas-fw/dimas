@@ -36,12 +36,11 @@ pub use crate::com::publisher::Publisher;
 pub use crate::com::query::Query;
 pub use crate::com::queryable::Queryable;
 pub use crate::com::subscriber::Subscriber;
-pub use crate::com::Acknowledge;
 pub use crate::timer::Timer;
 
 pub use dimas_config::Config;
 pub use dimas_core::error::{DimasError, Result};
-pub use dimas_core::message_types::{Message, RequestMsg, ResponseMsg};
+pub use dimas_core::message_types::{Message, QueryMsg, QueryableMsg, ObserverMsg, ObservableMsg};
 pub use dimas_core::traits::Context;
 pub use dimas_core::utils::init_tracing;
 // endregeion:  --- modules

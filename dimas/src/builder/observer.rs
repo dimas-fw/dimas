@@ -3,14 +3,10 @@
 // region:		--- modules
 use crate::{
 	builder::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage},
-	com::{observer::Observer, ArcFeedbackCallback, ArcResultCallback},
+	com::{observer::Observer, ArcObserverCallback},
 };
 use dimas_core::{
-	enums::OperationState,
-	error::{DimasError, Result},
-	message_types::FeedbackMsg,
-	traits::Context,
-	utils::selector_from,
+	enums::OperationState, error::{DimasError, Result}, message_types::ObservableMsg, traits::Context, utils::selector_from
 };
 use std::sync::{Arc, Mutex, RwLock};
 // endregion:	--- modules
@@ -26,9 +22,8 @@ where
 	context: Context<P>,
 	activation_state: OperationState,
 	selector: K,
-	result_callback: C,
+	callback: C,
 	storage: S,
-	feedback_callback: Option<ArcFeedbackCallback<P>>,
 }
 
 impl<P> ObserverBuilder<P, NoSelector, NoCallback, NoStorage>
@@ -42,9 +37,8 @@ where
 			context,
 			activation_state: OperationState::Standby,
 			selector: NoSelector,
-			result_callback: NoCallback,
+			callback: NoCallback,
 			storage: NoStorage,
-			feedback_callback: None,
 		}
 	}
 }
@@ -57,17 +51,6 @@ where
 	#[must_use]
 	pub const fn activation_state(mut self, state: OperationState) -> Self {
 		self.activation_state = state;
-		self
-	}
-
-	/// Set observers callback for `feedback` messages
-	#[must_use]
-	pub fn monitor<F>(mut self, callback: F) -> Self
-	where
-		F: Fn(&Context<P>, FeedbackMsg) -> Result<()> + Send + Sync + Unpin + 'static,
-	{
-		self.feedback_callback
-			.replace(Arc::new(Mutex::new(callback)));
 		self
 	}
 }
@@ -83,8 +66,7 @@ where
 			context,
 			activation_state,
 			storage,
-			result_callback,
-			feedback_callback,
+			callback,
 			..
 		} = self;
 		ObserverBuilder {
@@ -93,9 +75,8 @@ where
 			selector: Selector {
 				selector: selector.into(),
 			},
-			result_callback,
+			callback,
 			storage,
-			feedback_callback,
 		}
 	}
 
@@ -117,9 +98,9 @@ where
 	pub fn callback<F>(
 		self,
 		callback: F,
-	) -> ObserverBuilder<P, K, Callback<ArcResultCallback<P>>, S>
+	) -> ObserverBuilder<P, K, Callback<ArcObserverCallback<P>>, S>
 	where
-		F: Fn(&Context<P>, dimas_core::message_types::ResultMsg) -> Result<()>
+		F: Fn(&Context<P>, ObservableMsg) -> Result<()>
 			+ Send
 			+ Sync
 			+ Unpin
@@ -130,17 +111,15 @@ where
 			activation_state,
 			selector,
 			storage,
-			feedback_callback,
 			..
 		} = self;
-		let callback: ArcResultCallback<P> = Arc::new(Mutex::new(callback));
+		let callback: ArcObserverCallback<P> = Arc::new(Mutex::new(callback));
 		ObserverBuilder {
 			context,
 			activation_state,
 			selector,
-			result_callback: Callback { callback },
+			callback: Callback { callback },
 			storage,
-			feedback_callback,
 		}
 	}
 }
@@ -159,22 +138,20 @@ where
 			context,
 			activation_state,
 			selector,
-			result_callback,
-			feedback_callback,
+			callback,
 			..
 		} = self;
 		ObserverBuilder {
 			context,
 			activation_state,
 			selector,
-			result_callback,
+			callback,
 			storage: Storage { storage },
-			feedback_callback,
 		}
 	}
 }
 
-impl<P, S> ObserverBuilder<P, Selector, Callback<ArcResultCallback<P>>, S>
+impl<P, S> ObserverBuilder<P, Selector, Callback<ArcObserverCallback<P>>, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -187,21 +164,19 @@ where
 			context,
 			selector,
 			activation_state,
-			result_callback,
-			feedback_callback,
+			callback,
 			..
 		} = self;
 		Ok(Observer::new(
 			selector.selector,
 			context,
 			activation_state,
-			result_callback.callback,
-			feedback_callback,
+			callback.callback,
 		))
 	}
 }
 
-impl<P> ObserverBuilder<P, Selector, Callback<ArcResultCallback<P>>, Storage<Observer<P>>>
+impl<P> ObserverBuilder<P, Selector, Callback<ArcObserverCallback<P>>, Storage<Observer<P>>>
 where
 	P: Send + Sync + Unpin + 'static,
 {
