@@ -76,7 +76,14 @@ pub trait ContextAbstraction<P>: Debug + Send + Sync {
 	/// otherwise an ad-hoc publishing will be done
 	///
 	/// # Errors
-	fn put(&self, topic: &str, message: Message) -> Result<()>;
+	fn put(&self, topic: &str, message: Message) -> Result<()> {
+		let selector = self
+			.prefix()
+			.clone()
+			.take()
+			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
+		self.put_with(&selector, message)
+	}
 
 	/// Method to do a publishing for a `selector`
 	/// If there is a publisher stored, it will be used
@@ -91,7 +98,14 @@ pub trait ContextAbstraction<P>: Debug + Send + Sync {
 	/// otherwise an ad-hoc deletion will be done
 	///
 	/// # Errors
-	fn delete(&self, topic: &str) -> Result<()>;
+	fn delete(&self, topic: &str) -> Result<()> {
+		let selector = self
+			.prefix()
+			.clone()
+			.take()
+			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
+		self.delete_with(&selector)
+	}
 
 	/// Method to do a deletion for a `selector`
 	/// If there is a publisher stored, it will be used
@@ -113,7 +127,14 @@ pub trait ContextAbstraction<P>: Debug + Send + Sync {
 		topic: &str,
 		message: Option<Message>,
 		callback: Option<&dyn Fn(QueryableMsg) -> Result<()>>,
-	) -> Result<()>;
+	) -> Result<()> {
+		let selector = self
+			.prefix()
+			.clone()
+			.take()
+			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
+		self.get_with(&selector, message, callback)
+	}
 
 	/// Send a query for a `selector` with an optional [`Message`].
 	/// The `topic` will be enhanced with the prefix.
@@ -128,6 +149,33 @@ pub trait ContextAbstraction<P>: Debug + Send + Sync {
 		selector: &str,
 		message: Option<Message>,
 		callback: Option<&dyn Fn(QueryableMsg) -> Result<()>>,
+	) -> Result<()>;
+
+	/// Send an observation request for a `topic` with a [`Message`].
+	/// The `topic` will be enhanced with the prefix.
+	///
+	/// # Errors
+	fn observe(
+		&self,
+		topic: &str,
+		message: Option<Message>,
+	) -> Result<()> {
+		let selector = self
+			.prefix()
+			.clone()
+			.take()
+			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
+		self.observe_with(&selector, message)
+
+	}
+
+	/// Send an observation request for a `selector` with a [`Message`].
+	///
+	/// # Errors
+	fn observe_with(
+		&self,
+		selector: &str,
+		message: Option<Message>,
 	) -> Result<()>;
 }
 // endregion:	--- Context

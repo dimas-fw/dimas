@@ -70,7 +70,9 @@ async fn main() -> Result<()> {
 
 			let message = PingPongMessage {
 				counter,
-				ping_name: hostname::get()?.into_string().unwrap_or(String::from("unknown host")),
+				ping_name: hostname::get()?
+					.into_string()
+					.unwrap_or_else(|_| String::from("unknown host")),
 				sent: Local::now()
 					.naive_utc()
 					.and_utc()
@@ -80,7 +82,7 @@ async fn main() -> Result<()> {
 				received: None,
 			};
 			let message = Message::encode(&message);
-			// publishing with stored publisher
+			// publishing with stored query
 			ctx.get("pingpong", Some(message), None)?;
 
 			let text = format!("ping! [{counter}]");

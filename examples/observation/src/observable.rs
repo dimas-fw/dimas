@@ -1,8 +1,9 @@
-//! `DiMAS` observable example
+//! `DiMAS` observation example
 //! Copyright © 2024 Stephan Kunz
 
 // region:		--- modules
 use dimas::prelude::*;
+use tracing::info;
 // endregion:	--- modules
 
 #[derive(Debug)]
@@ -42,13 +43,14 @@ async fn main() -> Result<()> {
 		.observable()
 		.topic("fibonacci")
 		.callback(|ctx, request| -> Result<()> {
+			info!("Observable callback");
 			// check if properties are still in initial state
 			if ctx.read()?.n_2 == 0 && ctx.read()?.n_1 == 1 {
 				// accept
-				request.reply(ObservableMsg::Accepted)
+				request.accept()
 			} else {
 				// decline
-				request.reply(ObservableMsg::Declined)
+				request.decline()
 			}
 		})
 		.add()?;

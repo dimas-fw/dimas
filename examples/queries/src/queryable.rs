@@ -60,6 +60,13 @@ async fn main() -> Result<()> {
 		.callback(queryable)
 		.add()?;
 
+	// add a queryable
+	agent
+		.queryable()
+		.topic("query4")
+		.callback(queryable)
+		.add()?;
+
 	// activate liveliness
 	agent.liveliness(true);
 	agent.start().await?;

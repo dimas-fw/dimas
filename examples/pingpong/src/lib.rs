@@ -16,6 +16,6 @@ pub struct PingPongMessage {
 	pub sent: i64,
 	/// pong's name
 	pub pong_name: String,
-	/// pong's receiving timestamp 
+	/// pong's receiving timestamp
 	pub received: Option<i64>,
 }

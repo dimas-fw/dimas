@@ -172,8 +172,7 @@ where
 		.declare_subscriber(&selector)
 		.reliability(reliability)
 		.res_async()
-		.await
-		.map_err(|_| DimasError::ShouldNotHappen)?;
+		.await?;
 
 	loop {
 		let sample = subscriber
@@ -186,7 +185,7 @@ where
 				let content: Vec<u8> = sample.value.try_into()?;
 				let msg = Message(content);
 				match p_cb.lock() {
-					Ok(lock) => {
+					Ok(mut lock) => {
 						if let Err(error) = lock(&ctx, msg) {
 							error!("subscriber put callback failed with {error}");
 						}
@@ -199,7 +198,7 @@ where
 			SampleKind::Delete => {
 				if let Some(cb) = d_cb.clone() {
 					match cb.lock() {
-						Ok(lock) => {
+						Ok(mut lock) => {
 							if let Err(error) = lock(&ctx) {
 								error!("subscriber delete callback failed with {error}");
 							}

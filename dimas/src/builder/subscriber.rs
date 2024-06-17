@@ -79,7 +79,7 @@ where
 	#[must_use]
 	pub fn delete_callback<F>(mut self, callback: F) -> Self
 	where
-		F: Fn(&Context<P>) -> Result<()> + Send + Sync + Unpin + 'static,
+		F: FnMut(&Context<P>) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		self.delete_callback
 			.replace(Arc::new(Mutex::new(callback)));
@@ -136,7 +136,7 @@ where
 		callback: F,
 	) -> SubscriberBuilder<P, K, Callback<ArcPutCallback<P>>, S>
 	where
-		F: Fn(&Context<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static,
+		F: FnMut(&Context<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
 			context,

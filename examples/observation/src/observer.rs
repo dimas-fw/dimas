@@ -1,8 +1,12 @@
-//! `DiMAS` observer example
+//! `DiMAS` observation example
 //! Copyright © 2024 Stephan Kunz
+
+use std::time::Duration;
 
 // region:		--- modules
 use dimas::prelude::*;
+use observation::FibonacciRequest;
+use tracing::info;
 // endregion:	--- modules
 
 #[derive(Debug)]
@@ -26,7 +30,27 @@ async fn main() -> Result<()> {
 	agent
 		.observer()
 		.topic("fibonacci")
-		.callback(|ctx, msg| -> Result<()> { Ok(()) })
+		.callback(|ctx, msg| -> Result<()> {
+			info!("Observation callback");
+			Ok(())
+		})
+		.add()?;
+
+	// timer for regular querying
+	let interval = Duration::from_secs(10);
+	let mut counter = 0i128;
+	agent
+		.timer()
+		.name("timer")
+		.interval(interval)
+		.callback(move |ctx| -> Result<()> {
+			info!("Observation {counter}");
+			let msg = FibonacciRequest{limit: 10};
+			let message = Message::encode(&msg);
+			ctx.observe("fibonacci", Some(message))?;
+			counter += 1;
+			Ok(())
+		})
 		.add()?;
 
 	// activate liveliness

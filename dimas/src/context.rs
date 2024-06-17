@@ -224,16 +224,6 @@ where
 	}
 
 	#[instrument(level = Level::ERROR, skip_all)]
-	fn put(&self, topic: &str, message: Message) -> Result<()> {
-		let selector = self
-			.prefix()
-			.clone()
-			.take()
-			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
-		self.put_with(&selector, message)
-	}
-
-	#[instrument(level = Level::ERROR, skip_all)]
 	fn put_with(&self, selector: &str, message: Message) -> Result<()> {
 		if self
 			.publishers
@@ -255,16 +245,6 @@ where
 	}
 
 	#[instrument(level = Level::ERROR, skip_all)]
-	fn delete(&self, topic: &str) -> Result<()> {
-		let selector = self
-			.prefix()
-			.clone()
-			.take()
-			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
-		self.delete_with(&selector)
-	}
-
-	#[instrument(level = Level::ERROR, skip_all)]
 	fn delete_with(&self, selector: &str) -> Result<()> {
 		if self
 			.publishers
@@ -283,22 +263,6 @@ where
 			self.communicator.delete(selector)?;
 		}
 		Ok(())
-	}
-
-	#[instrument(level = Level::ERROR, skip_all)]
-	fn get(
-		&self,
-		topic: &str,
-		message: Option<Message>,
-		callback: Option<&dyn Fn(QueryableMsg) -> Result<()>>,
-	) -> Result<()> {
-		let selector = self
-			.prefix()
-			.clone()
-			.take()
-			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
-
-		self.get_with(&selector, message, callback)
 	}
 
 	#[instrument(level = Level::ERROR, skip_all)]
@@ -325,6 +289,22 @@ where
 			self.communicator
 				.get(selector, message, callback.expect("snh"))?;
 		};
+		Ok(())
+	}
+
+	#[instrument(level = Level::ERROR, skip_all)]
+	fn observe_with(
+		&self,
+		selector: &str,
+		message: Option<Message>,
+	) -> Result<()> {
+		self
+			.observers
+			.read()
+			.map_err(|_| DimasError::ReadContext("observers".into()))?
+			.get(selector)
+			.ok_or(DimasError::ShouldNotHappen)?
+			.observe(message)?;
 		Ok(())
 	}
 }

@@ -20,7 +20,9 @@ fn ping_received(_ctx: &Context<AgentProps>, message: QueryMsg) -> Result<()> {
 		.and_utc()
 		.timestamp_nanos_opt();
 
-	query.pong_name = hostname::get()?.into_string().unwrap_or(String::from("unknown host"));
+	query.pong_name = hostname::get()?
+		.into_string()
+		.unwrap_or_else(|_| String::from("unknown host"));
 
 	let text = format!("pong! [{}]", query.counter);
 

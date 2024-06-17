@@ -2,12 +2,12 @@
 
 // region:		--- modules
 use dimas_core::{
-	enums::OperationState,
-	error::{DimasError, Result},
-	traits::{Capability, Context},
+	enums::{OperationState, TaskSignal}, error::{DimasError, Result}, message_types::ObserverMsg, traits::{Capability, Context}
 };
 use tokio::task::JoinHandle;
-use tracing::{instrument, warn, Level};
+use tracing::{error, info, instrument, warn, Level};
+use zenoh::prelude::{r#async::AsyncResolve, SessionDeclarations};
+use zenoh::sample::Locality;
 
 use super::ArcObservableCallback;
 // endregion:	--- modules
@@ -18,7 +18,7 @@ pub struct Observable<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	/// The observabless key expression
+	/// The observables key expression
 	selector: String,
 	/// Context for the Observable
 	context: Context<P>,
@@ -62,13 +62,13 @@ where
 		selector: String,
 		context: Context<P>,
 		activation_state: OperationState,
-		request_callback: ArcObservableCallback<P>,
+		callback: ArcObservableCallback<P>,
 	) -> Self {
 		Self {
 			selector,
 			context,
 			activation_state,
-			callback: request_callback,
+			callback,
 			handle: None,
 		}
 	}
@@ -91,6 +91,33 @@ where
 				self.callback.clear_poison();
 			}
 		}
+
+		let selector = self.selector.clone();
+		let cb = self.callback.clone();
+		let ctx1 = self.context.clone();
+		let ctx2 = self.context.clone();
+
+		self.handle
+			.replace(tokio::task::spawn(async move {
+				let key = selector.clone();
+				std::panic::set_hook(Box::new(move |reason| {
+					error!("queryable panic: {}", reason);
+					if let Err(reason) = ctx1
+						.sender()
+						.send(TaskSignal::RestartObservable(key.clone()))
+					{
+						error!("could not restart observable: {}", reason);
+					} else {
+						info!("restarting observable!");
+					};
+				}));
+				if let Err(error) =
+					run_observable(selector, cb, ctx2).await
+				{
+					error!("observable failed with {error}");
+				};
+			}));
+
 		Ok(())
 	}
 
@@ -99,6 +126,43 @@ where
 	fn stop(&mut self) {
 		if let Some(handle) = self.handle.take() {
 			handle.abort();
+		}
+	}
+}
+
+#[instrument(name="observable", level = Level::ERROR, skip_all)]
+async fn run_observable<P>(
+	selector: String,
+	callback: ArcObservableCallback<P>,
+	ctx: Context<P>,
+) -> Result<()>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	let queryable = ctx
+		.session()
+		.declare_queryable(&selector)
+		.complete(true)
+		.allowed_origin(Locality::Any)
+		.res_async()
+		.await?;
+
+	loop {
+		let query = queryable
+			.recv_async()
+			.await
+			.map_err(|_| DimasError::ShouldNotHappen)?;
+		let request = ObserverMsg(query);
+
+		match callback.lock() {
+			Ok(mut lock) => {
+				if let Err(error) = lock(&ctx, request) {
+					error!("observable callback failed with {error}");
+				}
+			}
+			Err(err) => {
+				error!("observable callback failed with {err}");
+			}
 		}
 	}
 }

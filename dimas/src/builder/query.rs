@@ -153,7 +153,7 @@ where
 	#[must_use]
 	pub fn callback<F>(self, callback: F) -> QueryBuilder<P, K, Callback<ArcQueryCallback<P>>, S>
 	where
-		F: Fn(&Context<P>, QueryableMsg) -> Result<()> + Send + Sync + Unpin + 'static,
+		F: FnMut(&Context<P>, QueryableMsg) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
 			context,

@@ -155,24 +155,22 @@ async fn run_queryable<P>(
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	let subscriber = ctx
+	let queryable = ctx
 		.session()
 		.declare_queryable(&selector)
 		.complete(completeness)
 		.allowed_origin(allowed_origin)
 		.res_async()
-		.await
-		.map_err(|_| DimasError::ShouldNotHappen)?;
+		.await?;
 
 	loop {
-		let query = subscriber
+		let query = queryable
 			.recv_async()
-			.await
-			.map_err(|_| DimasError::ShouldNotHappen)?;
+			.await?;
 		let request = QueryMsg(query);
 
 		match callback.lock() {
-			Ok(lock) => {
+			Ok(mut lock) => {
 				if let Err(error) = lock(&ctx, request) {
 					error!("queryable callback failed with {error}");
 				}

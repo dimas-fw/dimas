@@ -51,7 +51,7 @@ async fn main() -> Result<()> {
 		.name("timer1")
 		.interval(interval)
 		.callback(move |ctx| -> Result<()> {
-			info!("Querying [{counter1}]");
+			info!("Querying 1 [{counter1}]");
 			let message = Message::encode(&counter1);
 			// querying with stored query
 			ctx.get("query1", Some(message), None)?;
@@ -70,7 +70,7 @@ async fn main() -> Result<()> {
 		.interval(interval)
 		.delay(delay)
 		.callback(move |ctx| -> Result<()> {
-			info!("Querying [{counter2}]");
+			info!("Querying 2 [{counter2}]");
 			let message = Message::encode(&counter2);
 			// querying with ad-hoc query
 			ctx.get("query2", Some(message), Some(&query_callback2))?;
@@ -89,7 +89,7 @@ async fn main() -> Result<()> {
 		.interval(interval)
 		.delay(delay)
 		.callback(move |ctx| -> Result<()> {
-			info!("Querying [{counter3}]");
+			info!("Querying 3 [{counter3}]");
 			let message = Message::encode(&counter3);
 			// querying with ad-hoc query & closure
 			ctx.get(
@@ -116,7 +116,7 @@ async fn main() -> Result<()> {
 		.interval(interval)
 		.delay(delay)
 		.callback(move |ctx| -> Result<()> {
-			info!("Querying [{counter4}]");
+			info!("Querying 4 [{counter4}]");
 			let message = Message::encode(&counter4);
 			// querying with stored query & closure
 			ctx.get(

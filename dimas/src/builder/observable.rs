@@ -6,7 +6,11 @@ use crate::{
 	com::{observable::Observable, ArcObservableCallback},
 };
 use dimas_core::{
-	enums::OperationState, error::{DimasError, Result}, message_types::ObserverMsg, traits::Context, utils::selector_from
+	enums::OperationState,
+	error::{DimasError, Result},
+	message_types::ObserverMsg,
+	traits::Context,
+	utils::selector_from,
 };
 use std::sync::{Arc, Mutex, RwLock};
 // endregion:	--- modules
@@ -100,7 +104,7 @@ where
 		callback: F,
 	) -> ObservableBuilder<P, K, Callback<ArcObservableCallback<P>>, S>
 	where
-		F: Fn(&Context<P>, ObserverMsg) -> Result<()> + Send + Sync + Unpin + 'static,
+		F: FnMut(&Context<P>, ObserverMsg) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
 			context,

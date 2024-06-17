@@ -6,7 +6,11 @@ use crate::{
 	com::{observer::Observer, ArcObserverCallback},
 };
 use dimas_core::{
-	enums::OperationState, error::{DimasError, Result}, message_types::ObservableMsg, traits::Context, utils::selector_from
+	enums::OperationState,
+	error::{DimasError, Result},
+	message_types::ObservableMsg,
+	traits::Context,
+	utils::selector_from,
 };
 use std::sync::{Arc, Mutex, RwLock};
 // endregion:	--- modules
@@ -30,7 +34,7 @@ impl<P> ObserverBuilder<P, NoSelector, NoCallback, NoStorage>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	/// Construct a `SubscriberBuilder` in initial state
+	/// Construct an `ObserverBuilder` in initial state
 	#[must_use]
 	pub const fn new(context: Context<P>) -> Self {
 		Self {
@@ -93,18 +97,14 @@ impl<P, K, S> ObserverBuilder<P, K, NoCallback, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	/// Set callback for result messages
+	/// Set callback for messages
 	#[must_use]
 	pub fn callback<F>(
 		self,
 		callback: F,
 	) -> ObserverBuilder<P, K, Callback<ArcObserverCallback<P>>, S>
 	where
-		F: Fn(&Context<P>, ObservableMsg) -> Result<()>
-			+ Send
-			+ Sync
-			+ Unpin
-			+ 'static,
+		F: FnMut(&Context<P>, ObservableMsg) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
 			context,
@@ -167,8 +167,9 @@ where
 			callback,
 			..
 		} = self;
+		let selector = selector.selector;
 		Ok(Observer::new(
-			selector.selector,
+			selector,
 			context,
 			activation_state,
 			callback.callback,
@@ -180,7 +181,7 @@ impl<P> ObserverBuilder<P, Selector, Callback<ArcObserverCallback<P>>, Storage<O
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	/// Build and add the [`Subscriber`] to the [`Agent`].
+	/// Build and add the [`Observer`] to the [`Agent`].
 	///
 	/// # Errors
 	/// Currently none

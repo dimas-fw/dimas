@@ -29,7 +29,7 @@ where
 	/// Context for the Query
 	context: Context<P>,
 	activation_state: OperationState,
-	response_callback: ArcQueryCallback<P>,
+	callback: ArcQueryCallback<P>,
 	mode: ConsolidationMode,
 	allowed_destination: Locality,
 	target: QueryTarget,
@@ -84,7 +84,7 @@ where
 			selector,
 			context,
 			activation_state,
-			response_callback,
+			callback: response_callback,
 			mode,
 			allowed_destination,
 			target,
@@ -121,13 +121,13 @@ where
 	}
 
 	/// Run a Query with an optional [`Message`].
-	#[instrument(name="query with message", level = Level::ERROR, skip_all)]
+	#[instrument(name="query", level = Level::ERROR, skip_all)]
 	pub fn get(
 		&self,
 		message: Option<Message>,
 		mut callback: Option<&dyn Fn(QueryableMsg) -> Result<()>>,
 	) -> Result<()> {
-		let cb = self.response_callback.clone();
+		let cb = self.callback.clone();
 		let session = self.context.session();
 		let mut query = session
 			.get(&self.selector)
@@ -157,7 +157,7 @@ where
 						if callback.is_none() {
 							let guard = cb.lock();
 							match guard {
-								Ok(lock) => {
+								Ok(mut lock) => {
 									if let Err(error) = lock(&self.context.clone(), msg) {
 										error!("callback failed with {error}");
 									}
