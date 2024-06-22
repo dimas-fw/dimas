@@ -2,7 +2,10 @@
 
 // region:		--- modules
 use dimas_core::{
-	enums::{OperationState, TaskSignal}, error::{DimasError, Result}, message_types::ObserverMsg, traits::{Capability, Context}
+	enums::{OperationState, TaskSignal},
+	error::{DimasError, Result},
+	message_types::ObserverMsg,
+	traits::{Capability, Context},
 };
 use tokio::task::JoinHandle;
 use tracing::{error, info, instrument, warn, Level};
@@ -111,9 +114,7 @@ where
 						info!("restarting observable!");
 					};
 				}));
-				if let Err(error) =
-					run_observable(selector, cb, ctx2).await
-				{
+				if let Err(error) = run_observable(selector, cb, ctx2).await {
 					error!("observable failed with {error}");
 				};
 			}));
@@ -152,17 +153,22 @@ where
 			.recv_async()
 			.await
 			.map_err(|_| DimasError::ShouldNotHappen)?;
-		let request = ObserverMsg(query);
-
-		match callback.lock() {
-			Ok(mut lock) => {
-				if let Err(error) = lock(&ctx, request) {
-					error!("observable callback failed with {error}");
+		let p = query.parameters();
+		// TODO: make a proper "key: value" implementation
+		if p == "request" {
+			let request = ObserverMsg(query);
+			match callback.lock() {
+				Ok(mut lock) => {
+					if let Err(error) = lock(&ctx, request) {
+						error!("observable callback failed with {error}");
+					}
+				}
+				Err(err) => {
+					error!("observable callback failed with {err}");
 				}
 			}
-			Err(err) => {
-				error!("observable callback failed with {err}");
-			}
+		} else {
+			error!("observable got unknown parameter: {p}");
 		}
 	}
 }

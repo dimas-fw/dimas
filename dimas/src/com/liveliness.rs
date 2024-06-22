@@ -6,7 +6,7 @@
 // region:		--- modules
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
-	error::{DimasError, Result},
+	error::Result,
 	traits::{Capability, Context},
 };
 #[cfg(doc)]

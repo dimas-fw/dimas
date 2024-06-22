@@ -5,7 +5,7 @@
 // region:		--- modules
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
-	error::{DimasError, Result},
+	error::Result,
 	message_types::QueryMsg,
 	traits::{Capability, Context},
 };
@@ -164,9 +164,7 @@ where
 		.await?;
 
 	loop {
-		let query = queryable
-			.recv_async()
-			.await?;
+		let query = queryable.recv_async().await?;
 		let request = QueryMsg(query);
 
 		match callback.lock() {

@@ -293,18 +293,24 @@ where
 	}
 
 	#[instrument(level = Level::ERROR, skip_all)]
-	fn observe_with(
-		&self,
-		selector: &str,
-		message: Option<Message>,
-	) -> Result<()> {
-		self
-			.observers
+	fn observe_with(&self, selector: &str, message: Option<Message>) -> Result<()> {
+		self.observers
 			.read()
 			.map_err(|_| DimasError::ReadContext("observers".into()))?
 			.get(selector)
 			.ok_or(DimasError::ShouldNotHappen)?
 			.observe(message)?;
+		Ok(())
+	}
+
+	#[instrument(level = Level::ERROR, skip_all)]
+	fn cancel_observe_with(&self, selector: &str) -> Result<()> {
+		self.observers
+			.read()
+			.map_err(|_| DimasError::ReadContext("observers".into()))?
+			.get(selector)
+			.ok_or(DimasError::ShouldNotHappen)?
+			.cancel()?;
 		Ok(())
 	}
 }

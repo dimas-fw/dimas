@@ -1,8 +1,12 @@
 // Copyright © 2024 Stephan Kunz
 
+use bitcode::decode;
 // region:		--- modules
 use dimas_core::{
-	enums::OperationState, error::{DimasError, Result}, message_types::{Message, ObservableMsg}, traits::{Capability, Context}
+	enums::OperationState,
+	error::{DimasError, Result},
+	message_types::{Message, ObservableMsg, ResponseType},
+	traits::{Capability, Context},
 };
 use tokio::task::JoinHandle;
 use tracing::{error, instrument, warn, Level};
@@ -102,9 +106,11 @@ where
 	pub fn observe(&self, message: Option<Message>) -> Result<()> {
 		let cb = self.callback.clone();
 		let session = self.context.session();
+		// TODO: make a proper "key: value" implementation
+		let selector = format!("{}?request", &self.selector);
 		let mut query = session
-			.get(&self.selector)
-			.target(QueryTarget::All)
+			.get(&selector)
+			.target(QueryTarget::BestMatching)
 			.consolidation(ConsolidationMode::None)
 			.allowed_destination(Locality::Any);
 
@@ -116,6 +122,67 @@ where
 			let value = message.value().to_owned();
 			query = query.with_value(value);
 		};
+
+		let replies = query
+			.res_sync()
+			.map_err(|_| DimasError::ShouldNotHappen)?;
+
+		while let Ok(reply) = replies.recv() {
+			match reply.sample {
+				Ok(sample) => match sample.kind {
+					SampleKind::Put => {
+						let content: Vec<u8> = sample.value.try_into()?;
+						let response: ResponseType = decode(&content)?;
+						match response {
+							ResponseType::Accepted(content) => {
+								// TODO: create the subscriber for feedback
+								let msg = ObservableMsg(content);
+								let guard = cb.lock();
+								match guard {
+									Ok(mut lock) => {
+										if let Err(error) = lock(&self.context.clone(), msg) {
+											error!("callback failed with {error}");
+										}
+									}
+									Err(err) => {
+										error!("callback lock failed with {err}");
+									}
+								}
+							},
+							ResponseType::Declined => {todo!()},
+						}
+					}
+					SampleKind::Delete => {
+						error!("Delete in observe");
+					}
+				},
+				Err(err) => error!("receive error: {err})"),
+			}
+		}
+		Ok(())
+	}
+
+	/// Cancel a running observation
+	#[instrument(name="observer", level = Level::ERROR, skip_all)]
+	pub fn cancel(&self) -> Result<()> {
+		let cb = self.callback.clone();
+		let session = self.context.session();
+		// TODO: make a proper "key: value" implementation
+		let selector = format!("{}?cancel", &self.selector);
+		let query = session
+			.get(&selector)
+			.target(QueryTarget::All)
+			.consolidation(ConsolidationMode::None)
+			.allowed_destination(Locality::Any);
+
+		//if let Some(timeout) = self.timeout {
+		//	query = query.timeout(timeout);
+		//};
+
+		//if let Some(message) = message {
+		//	let value = message.value().to_owned();
+		//	query = query.with_value(value);
+		//};
 
 		let replies = query
 			.res_sync()
@@ -140,7 +207,7 @@ where
 						}
 					}
 					SampleKind::Delete => {
-						error!("Delete in Observer");
+						error!("Delete in cancel");
 					}
 				},
 				Err(err) => error!("receive error: {err})"),

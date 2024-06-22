@@ -142,34 +142,111 @@ impl QueryableMsg {
 }
 // endregion:	--- QueryableMsg
 
+// region:		--- ResponseType
+#[derive(Debug, Encode, Decode)]
+/// ?
+pub enum ResponseType {
+	/// ?
+	Accepted(Vec<u8>),
+	/// ?
+	Declined,
+}
+// endregion:	--- ResponseType
+
 // region:		--- ObserverMsg
 /// Messages of an `Observer`
+#[derive(Debug)]
 pub struct ObserverMsg(pub Query);
+
+impl Deref for ObserverMsg {
+	type Target = Query;
+
+	fn deref(&self) -> &Self::Target {
+		&self.0
+	}
+}
 
 impl ObserverMsg {
 	/// Accept
-	/// 
+	///
 	/// # Errors
-	pub fn accept(self) -> crate::error::Result<()>
+	pub fn accept(self) -> crate::error::Result<()> 
 	{
-		dbg!("accept");
+		let key = self.0.selector().key_expr.to_string();
+		let content: Vec<u8> = Vec::new();
+		let encoded: Vec<u8> = encode(&ResponseType::Accepted(content));
+		let sample = Sample::try_from(key, encoded).map_err(|_| DimasError::ShouldNotHappen)?;
+
+		self.0
+			.reply(Ok(sample))
+			.res_sync()
+			.map_err(|_| DimasError::ShouldNotHappen)?;
 		Ok(())
 	}
 
 	/// Decline
-	/// 
+	///
 	/// # Errors
-	pub fn decline(self) -> crate::error::Result<()>
-	{
-		dbg!("decline");
+	pub fn decline(self) -> crate::error::Result<()> {
+		let key = self.0.selector().key_expr.to_string();
+		let encoded: Vec<u8> = encode(&ResponseType::Declined);
+		let sample = Sample::try_from(key, encoded).map_err(|_| DimasError::ShouldNotHappen)?;
+
+		self.0
+			.reply(Ok(sample))
+			.res_sync()
+			.map_err(|_| DimasError::ShouldNotHappen)?;
 		Ok(())
+	}
+
+	/// Access the queries parameters
+	#[must_use]
+	pub fn parameters(&self) -> &str {
+		self.0.parameters()
+	}
+
+	/// Decode [`ObserverMsg`]
+	///
+	/// # Errors
+	pub fn decode<T>(&self) -> crate::error::Result<T>
+	where
+		T: for<'a> Decode<'a>,
+	{
+		if let Some(value) = self.0.value() {
+			let content: Vec<u8> = value.try_into()?;
+			return decode::<T>(content.as_slice()).map_err(|_| DimasError::Decoding.into());
+		}
+		Err(DimasError::NoMessage.into())
 	}
 }
 // endregion: 	--- ObserverMsg
 
 // region:		--- ObservableMsg
 /// Messages of an `Observable`
+#[derive(Debug)]
 pub struct ObservableMsg(pub Vec<u8>);
+
+impl ObservableMsg {
+	/// Encode Message
+	pub fn encode<T>(message: &T) -> Self
+	where
+		T: Encode,
+	{
+		let content = encode(message);
+		Self(content)
+	}
+
+	/// Decode [`ObservableMsg`]
+	///
+	/// # Errors
+	pub fn decode<T>(self) -> crate::error::Result<T>
+	where
+		T: for<'a> Decode<'a>,
+	{
+		let value: Vec<u8> = self.0;
+		decode::<T>(value.as_slice()).map_err(|_| DimasError::Decoding.into())
+	}
+}
 // endregion: 	--- ObservableMsg
 
 #[cfg(test)]

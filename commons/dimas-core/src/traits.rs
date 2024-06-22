@@ -155,28 +155,37 @@ pub trait ContextAbstraction<P>: Debug + Send + Sync {
 	/// The `topic` will be enhanced with the prefix.
 	///
 	/// # Errors
-	fn observe(
-		&self,
-		topic: &str,
-		message: Option<Message>,
-	) -> Result<()> {
+	fn observe(&self, topic: &str, message: Option<Message>) -> Result<()> {
 		let selector = self
 			.prefix()
 			.clone()
 			.take()
 			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
 		self.observe_with(&selector, message)
-
 	}
 
 	/// Send an observation request for a `selector` with a [`Message`].
 	///
 	/// # Errors
-	fn observe_with(
-		&self,
-		selector: &str,
-		message: Option<Message>,
-	) -> Result<()>;
+	fn observe_with(&self, selector: &str, message: Option<Message>) -> Result<()>;
+
+	/// Cancel an observation request for a `topic`.
+	/// The `topic` will be enhanced with the prefix.
+	///
+	/// # Errors
+	fn cancel_observe(&self, topic: &str) -> Result<()> {
+		let selector = self
+			.prefix()
+			.clone()
+			.take()
+			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
+		self.cancel_observe_with(&selector)
+	}
+
+	/// Cancel an observation request for a `selector`.
+	///
+	/// # Errors
+	fn cancel_observe_with(&self, selector: &str) -> Result<()>;
 }
 // endregion:	--- Context
 

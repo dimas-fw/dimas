@@ -31,7 +31,7 @@ async fn main() -> Result<()> {
 		.observer()
 		.topic("fibonacci")
 		.callback(|ctx, msg| -> Result<()> {
-			info!("Observation callback");
+			info!("Observer callback");
 			Ok(())
 		})
 		.add()?;
@@ -45,7 +45,7 @@ async fn main() -> Result<()> {
 		.interval(interval)
 		.callback(move |ctx| -> Result<()> {
 			info!("Observation {counter}");
-			let msg = FibonacciRequest{limit: 10};
+			let msg = FibonacciRequest { limit: 10 };
 			let message = Message::encode(&msg);
 			ctx.observe("fibonacci", Some(message))?;
 			counter += 1;
