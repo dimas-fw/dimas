@@ -11,9 +11,9 @@ use dimas_core::{
 use tokio::task::JoinHandle;
 use tracing::{error, instrument, warn, Level};
 use zenoh::{
-	prelude::{sync::SyncResolve, SampleKind},
+	core::Wait,
 	query::{ConsolidationMode, QueryTarget},
-	sample::Locality,
+	sample::{Locality, SampleKind},
 };
 
 use super::ArcObserverCallback;
@@ -30,7 +30,10 @@ where
 	/// Context for the Observer
 	context: Context<P>,
 	activation_state: OperationState,
+	/// callback for feedback including result
 	callback: ArcObserverCallback<P>,
+	/// handle for the asynchronous feedback subscriber
+	feedback: Option<JoinHandle<()>>,
 	handle: Option<JoinHandle<()>>,
 }
 
@@ -74,6 +77,7 @@ where
 			context,
 			activation_state,
 			callback,
+			feedback: None,
 			handle: None,
 		}
 	}
@@ -120,18 +124,18 @@ where
 
 		if let Some(message) = message {
 			let value = message.value().to_owned();
-			query = query.with_value(value);
+			query = query.payload(value);
 		};
 
 		let replies = query
-			.res_sync()
+			.wait()
 			.map_err(|_| DimasError::ShouldNotHappen)?;
 
 		while let Ok(reply) = replies.recv() {
-			match reply.sample {
-				Ok(sample) => match sample.kind {
+			match reply.result() {
+				Ok(sample) => match sample.kind() {
 					SampleKind::Put => {
-						let content: Vec<u8> = sample.value.try_into()?;
+						let content: Vec<u8> = sample.payload().into();
 						let response: ResponseType = decode(&content)?;
 						match response {
 							ResponseType::Accepted(content) => {
@@ -148,15 +152,17 @@ where
 										error!("callback lock failed with {err}");
 									}
 								}
-							},
-							ResponseType::Declined => {todo!()},
+							}
+							ResponseType::Declined => {
+								todo!()
+							}
 						}
 					}
 					SampleKind::Delete => {
 						error!("Delete in observe");
 					}
 				},
-				Err(err) => error!("receive error: {err})"),
+				Err(err) => error!("receive error: {:?})", err),
 			}
 		}
 		Ok(())
@@ -185,14 +191,14 @@ where
 		//};
 
 		let replies = query
-			.res_sync()
+			.wait()
 			.map_err(|_| DimasError::ShouldNotHappen)?;
 
 		while let Ok(reply) = replies.recv() {
-			match reply.sample {
-				Ok(sample) => match sample.kind {
+			match reply.result() {
+				Ok(sample) => match sample.kind() {
 					SampleKind::Put => {
-						let content: Vec<u8> = sample.value.try_into()?;
+						let content: Vec<u8> = sample.payload().into();
 						let msg = ObservableMsg(content);
 						let guard = cb.lock();
 						match guard {
@@ -210,7 +216,7 @@ where
 						error!("Delete in cancel");
 					}
 				},
-				Err(err) => error!("receive error: {err})"),
+				Err(err) => error!("receive error: {:?})", err),
 			}
 		}
 		Ok(())

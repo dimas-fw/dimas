@@ -9,8 +9,8 @@ use dimas_core::{
 };
 use tokio::task::JoinHandle;
 use tracing::{error, info, instrument, warn, Level};
-use zenoh::prelude::{r#async::AsyncResolve, SessionDeclarations};
 use zenoh::sample::Locality;
+use zenoh::session::SessionDeclarations;
 
 use super::ArcObservableCallback;
 // endregion:	--- modules
@@ -26,7 +26,10 @@ where
 	/// Context for the Observable
 	context: Context<P>,
 	activation_state: OperationState,
+	/// callback for observation request and cancelation
 	callback: ArcObservableCallback<P>,
+	/// handle for the asynchronous feedback publisher
+	feedback: Option<JoinHandle<()>>,
 	handle: Option<JoinHandle<()>>,
 }
 
@@ -72,6 +75,7 @@ where
 			context,
 			activation_state,
 			callback,
+			feedback: None,
 			handle: None,
 		}
 	}
@@ -145,7 +149,6 @@ where
 		.declare_queryable(&selector)
 		.complete(true)
 		.allowed_origin(Locality::Any)
-		.res_async()
 		.await?;
 
 	loop {
@@ -153,7 +156,7 @@ where
 			.recv_async()
 			.await
 			.map_err(|_| DimasError::ShouldNotHappen)?;
-		let p = query.parameters();
+		let p = query.parameters().as_str();
 		// TODO: make a proper "key: value" implementation
 		if p == "request" {
 			let request = ObserverMsg(query);

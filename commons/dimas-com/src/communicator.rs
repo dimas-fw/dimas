@@ -10,7 +10,13 @@ use dimas_core::{
 };
 use std::fmt::Debug;
 use std::sync::Arc;
-use zenoh::prelude::{r#async::*, sync::SyncResolve};
+use zenoh::{
+	config::WhatAmI,
+	core::Wait,
+	query::{ConsolidationMode, QueryTarget},
+	sample::{Locality, SampleKind},
+	Session,
+};
 // endregion:	--- modules
 
 // region:		--- Communicator
@@ -31,7 +37,7 @@ impl Communicator {
 		let kind = cfg.mode().unwrap_or(WhatAmI::Peer).to_string();
 		let session = Arc::new(
 			zenoh::open(cfg)
-				.res_sync()
+				.wait()
 				.map_err(DimasError::CreateSession)?,
 		);
 		Ok(Self {
@@ -64,7 +70,7 @@ impl Communicator {
 	pub fn put(&self, selector: &str, message: Message) -> Result<()> {
 		self.session
 			.put(selector, message.0)
-			.res_sync()
+			.wait()
 			.map_err(|_| DimasError::Put.into())
 	}
 
@@ -73,7 +79,7 @@ impl Communicator {
 	pub fn delete(&self, selector: &str) -> Result<()> {
 		self.session
 			.delete(selector)
-			.res_sync()
+			.wait()
 			.map_err(|_| DimasError::Delete.into())
 	}
 
@@ -85,28 +91,23 @@ impl Communicator {
 	where
 		F: FnMut(QueryableMsg) -> Result<()> + Sized,
 	{
-		let mut query = self
-			.session
-			.get(selector)
+		let replies = message
+			.map_or_else(
+				|| self.session.get(selector),
+				|msg| self.session.get(selector).payload(msg.value()),
+			)
 			.consolidation(ConsolidationMode::None)
 			.target(QueryTarget::All)
-			.allowed_destination(Locality::Any);
-		//.timeout(Duration::from_millis(1000));
-
-		if let Some(message) = message {
-			let value = message.value().to_owned();
-			query = query.with_value(value);
-		};
-
-		let replies = query
-			.res_sync()
+			.allowed_destination(Locality::Any)
+			//.timeout(Duration::from_millis(1000))
+			.wait()
 			.map_err(|_| DimasError::ShouldNotHappen)?;
 
 		while let Ok(reply) = replies.recv() {
-			match reply.sample {
-				Ok(sample) => match sample.kind {
+			match reply.result() {
+				Ok(sample) => match sample.kind() {
 					SampleKind::Put => {
-						let content: Vec<u8> = sample.value.try_into()?;
+						let content: Vec<u8> = sample.payload().into();
 						callback(QueryableMsg(content))?;
 					}
 					SampleKind::Delete => {
@@ -114,11 +115,8 @@ impl Communicator {
 					}
 				},
 				Err(err) => {
-					println!(
-						">> Received (ERROR: '{}' for {})",
-						String::try_from(&err).expect("snh"),
-						selector
-					);
+					let content: Vec<u8> = err.payload().into();
+					println!(">> Received (ERROR: '{:?}' for {})", &content, &selector);
 				}
 			}
 		}

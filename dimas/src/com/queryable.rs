@@ -12,8 +12,8 @@ use dimas_core::{
 use std::fmt::Debug;
 use tokio::task::JoinHandle;
 use tracing::{error, info, instrument, warn, Level};
-use zenoh::prelude::{r#async::AsyncResolve, SessionDeclarations};
 use zenoh::sample::Locality;
+use zenoh::session::SessionDeclarations;
 
 use super::ArcQueryableCallback;
 // endregion:	--- modules
@@ -160,7 +160,6 @@ where
 		.declare_queryable(&selector)
 		.complete(completeness)
 		.allowed_origin(allowed_origin)
-		.res_async()
 		.await?;
 
 	loop {

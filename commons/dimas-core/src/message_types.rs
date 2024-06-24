@@ -6,7 +6,7 @@
 use crate::error::DimasError;
 use bitcode::{decode, encode, Decode, Encode};
 use std::ops::Deref;
-use zenoh::{prelude::sync::SyncResolve, queryable::Query, sample::Sample};
+use zenoh::{core::Wait, query::Query};
 // endregion:	--- modules
 
 // region:		--- Message
@@ -75,11 +75,10 @@ impl QueryMsg {
 	{
 		let key = self.0.selector().key_expr.to_string();
 		let encoded: Vec<u8> = encode(&value);
-		let sample = Sample::try_from(key, encoded).map_err(|_| DimasError::ShouldNotHappen)?;
 
 		self.0
-			.reply(Ok(sample))
-			.res_sync()
+			.reply(&key, encoded)
+			.wait()
 			.map_err(|_| DimasError::ShouldNotHappen)?;
 		Ok(())
 	}
@@ -87,7 +86,7 @@ impl QueryMsg {
 	/// Access the queries parameters
 	#[must_use]
 	pub fn parameters(&self) -> &str {
-		self.0.parameters()
+		self.0.parameters().as_str()
 	}
 
 	/// Decode [`QueryMsg`]
@@ -97,8 +96,8 @@ impl QueryMsg {
 	where
 		T: for<'a> Decode<'a>,
 	{
-		if let Some(value) = self.0.value() {
-			let content: Vec<u8> = value.try_into()?;
+		if let Some(value) = self.0.payload() {
+			let content: Vec<u8> = value.into();
 			return decode::<T>(content.as_slice()).map_err(|_| DimasError::Decoding.into());
 		}
 		Err(DimasError::NoMessage.into())
@@ -170,16 +169,14 @@ impl ObserverMsg {
 	/// Accept
 	///
 	/// # Errors
-	pub fn accept(self) -> crate::error::Result<()> 
-	{
+	pub fn accept(self) -> crate::error::Result<()> {
 		let key = self.0.selector().key_expr.to_string();
 		let content: Vec<u8> = Vec::new();
 		let encoded: Vec<u8> = encode(&ResponseType::Accepted(content));
-		let sample = Sample::try_from(key, encoded).map_err(|_| DimasError::ShouldNotHappen)?;
 
 		self.0
-			.reply(Ok(sample))
-			.res_sync()
+			.reply(&key, encoded)
+			.wait()
 			.map_err(|_| DimasError::ShouldNotHappen)?;
 		Ok(())
 	}
@@ -190,11 +187,10 @@ impl ObserverMsg {
 	pub fn decline(self) -> crate::error::Result<()> {
 		let key = self.0.selector().key_expr.to_string();
 		let encoded: Vec<u8> = encode(&ResponseType::Declined);
-		let sample = Sample::try_from(key, encoded).map_err(|_| DimasError::ShouldNotHappen)?;
 
 		self.0
-			.reply(Ok(sample))
-			.res_sync()
+			.reply(&key, encoded)
+			.wait()
 			.map_err(|_| DimasError::ShouldNotHappen)?;
 		Ok(())
 	}
@@ -202,7 +198,7 @@ impl ObserverMsg {
 	/// Access the queries parameters
 	#[must_use]
 	pub fn parameters(&self) -> &str {
-		self.0.parameters()
+		self.0.parameters().as_str()
 	}
 
 	/// Decode [`ObserverMsg`]
@@ -212,8 +208,8 @@ impl ObserverMsg {
 	where
 		T: for<'a> Decode<'a>,
 	{
-		if let Some(value) = self.0.value() {
-			let content: Vec<u8> = value.try_into()?;
+		if let Some(value) = self.0.payload() {
+			let content: Vec<u8> = value.into();
 			return decode::<T>(content.as_slice()).map_err(|_| DimasError::Decoding.into());
 		}
 		Err(DimasError::NoMessage.into())

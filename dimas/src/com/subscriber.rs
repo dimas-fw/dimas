@@ -16,10 +16,7 @@ use dimas_core::{
 };
 use tokio::task::JoinHandle;
 use tracing::{error, info, instrument, warn, Level};
-use zenoh::{
-	prelude::{r#async::AsyncResolve, SampleKind, SessionDeclarations},
-	subscriber::Reliability,
-};
+use zenoh::{sample::SampleKind, session::SessionDeclarations, subscriber::Reliability};
 // endregion:	--- modules
 
 // region:		--- Subscriber
@@ -171,7 +168,6 @@ where
 		.session()
 		.declare_subscriber(&selector)
 		.reliability(reliability)
-		.res_async()
 		.await?;
 
 	loop {
@@ -180,9 +176,9 @@ where
 			.await
 			.map_err(|_| DimasError::ShouldNotHappen)?;
 
-		match sample.kind {
+		match sample.kind() {
 			SampleKind::Put => {
-				let content: Vec<u8> = sample.value.try_into()?;
+				let content: Vec<u8> = sample.payload().into();
 				let msg = Message(content);
 				match p_cb.lock() {
 					Ok(mut lock) => {

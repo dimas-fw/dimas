@@ -15,7 +15,7 @@ use std::time::Duration;
 use tokio::task::JoinHandle;
 use tracing::info;
 use tracing::{error, instrument, warn, Level};
-use zenoh::prelude::{r#async::AsyncResolve, SampleKind, SessionDeclarations};
+use zenoh::{sample::SampleKind, session::SessionDeclarations};
 
 use super::ArcLivelinessCallback;
 // endregion:	--- modules
@@ -168,19 +168,18 @@ async fn run_liveliness<P>(
 		.session()
 		.liveliness()
 		.declare_subscriber(&token)
-		.res_async()
 		.await?;
 
 	loop {
 		let result = subscriber.recv_async().await;
 		match result {
 			Ok(sample) => {
-				let id = sample.key_expr.split('/').last().unwrap_or("");
+				let id = sample.key_expr().split('/').last().unwrap_or("");
 				// skip own live message
 				if id == ctx.uuid() {
 					continue;
 				};
-				match sample.kind {
+				match sample.kind() {
 					SampleKind::Put => match p_cb.lock() {
 						Ok(mut lock) => {
 							if let Err(error) = lock(&ctx, id) {
@@ -225,15 +224,14 @@ async fn run_initial<P>(
 		.liveliness()
 		.get(&token)
 		.timeout(Duration::from_millis(100))
-		.res()
 		.await;
 
 	match result {
 		Ok(replies) => {
 			while let Ok(reply) = replies.recv_async().await {
-				match reply.sample {
+				match reply.result() {
 					Ok(sample) => {
-						let id = sample.key_expr.split('/').last().unwrap_or("");
+						let id = sample.key_expr().split('/').last().unwrap_or("");
 						// skip own live message
 						if id == ctx.uuid() {
 							continue;
@@ -249,7 +247,7 @@ async fn run_initial<P>(
 							}
 						}
 					}
-					Err(err) => error!(">> liveliness subscriber delete error: {err})"),
+					Err(err) => error!(">> liveliness subscriber delete error: {:?})", err),
 				}
 			}
 		}

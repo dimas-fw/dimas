@@ -13,9 +13,9 @@ use dimas_core::{
 use std::{fmt::Debug, time::Duration};
 use tracing::{error, instrument, Level};
 use zenoh::{
-	prelude::{sync::SyncResolve, SampleKind},
+	core::Wait,
 	query::{ConsolidationMode, QueryTarget},
-	sample::Locality,
+	sample::{Locality, SampleKind},
 };
 // endregion:	--- modules
 
@@ -129,8 +129,11 @@ where
 	) -> Result<()> {
 		let cb = self.callback.clone();
 		let session = self.context.session();
-		let mut query = session
-			.get(&self.selector)
+		let mut query = message
+			.map_or_else(
+				|| session.get(&self.selector),
+				|msg| session.get(&self.selector).payload(msg.value()),
+			)
 			.target(self.target)
 			.consolidation(self.mode)
 			.allowed_destination(self.allowed_destination);
@@ -139,20 +142,15 @@ where
 			query = query.timeout(timeout);
 		};
 
-		if let Some(message) = message {
-			let value = message.value().to_owned();
-			query = query.with_value(value);
-		};
-
 		let replies = query
-			.res_sync()
+			.wait()
 			.map_err(|_| DimasError::ShouldNotHappen)?;
 
 		while let Ok(reply) = replies.recv() {
-			match reply.sample {
-				Ok(sample) => match sample.kind {
+			match reply.result() {
+				Ok(sample) => match sample.kind() {
 					SampleKind::Put => {
-						let content: Vec<u8> = sample.value.try_into()?;
+						let content: Vec<u8> = sample.payload().into();
 						let msg = QueryableMsg(content);
 						if callback.is_none() {
 							let guard = cb.lock();
@@ -174,7 +172,7 @@ where
 						error!("Delete in Query");
 					}
 				},
-				Err(err) => error!("receive error: {err})"),
+				Err(err) => error!("receive error: {:?})", err),
 			}
 		}
 		Ok(())

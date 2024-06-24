@@ -73,7 +73,9 @@ use std::{
 };
 use tokio::{select, signal};
 use tracing::{error, info, warn};
-use zenoh::{liveliness::LivelinessToken, prelude::sync::SyncResolve, SessionDeclarations};
+use zenoh::core::Wait;
+use zenoh::liveliness::LivelinessToken;
+use zenoh::session::SessionDeclarations;
 // endregion:	--- modules
 
 // region:	   --- callbacks
@@ -81,8 +83,8 @@ fn callback_dispatcher<P>(ctx: &Context<P>, request: QueryMsg) -> Result<()>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	if let Some(value) = request.value() {
-		let content: Vec<u8> = value.try_into()?;
+	if let Some(value) = request.payload() {
+		let content: Vec<u8> = value.into();
 		let msg = Message(content);
 		let signal: Signal = Message::decode(msg)?;
 		match signal {
@@ -438,7 +440,7 @@ where
 			let token = session
 				.liveliness()
 				.declare_token(&token_str)
-				.res_sync()
+				.wait()
 				.map_err(DimasError::ActivateLiveliness)?;
 
 			self.liveliness_token

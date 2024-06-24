@@ -16,7 +16,7 @@ use dimas_core::{
 };
 use itertools::Itertools;
 use std::{collections::HashMap, time::Duration};
-use zenoh::{config::WhatAmI, prelude::sync::*};
+use zenoh::{config::WhatAmI, core::Wait};
 // endregion:	--- modules
 
 // region:		--- command functions
@@ -84,12 +84,16 @@ pub fn scouting_list(config: &Config) -> Vec<ScoutingEntity> {
 	let mut map: HashMap<String, ScoutingEntity> = HashMap::new();
 	let what = WhatAmI::Router | WhatAmI::Peer | WhatAmI::Client;
 	let receiver = zenoh::scout(what, config.zenoh_config())
-		.res()
+		.wait()
 		.expect("scouting failed");
 
 	while let Ok(hello) = receiver.recv_timeout(Duration::from_millis(250)) {
-		let zid = hello.zid.to_string();
-		let entry = ScoutingEntity::new(zid.clone(), hello.whatami.to_string(), hello.locators);
+		let zid = hello.zid().to_string();
+		let entry = ScoutingEntity::new(
+			zid.clone(),
+			hello.whatami().to_string(),
+			hello.locators().to_owned(),
+		);
 		map.entry(zid).or_insert(entry);
 	}
 	let result: Vec<ScoutingEntity> = map.values().sorted().cloned().collect();

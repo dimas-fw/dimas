@@ -53,6 +53,7 @@ use std::{
 	sync::{mpsc::Sender, Arc, RwLock},
 };
 use tracing::{error, info, instrument, Level};
+use zenoh::Session;
 // endregion:	--- modules
 
 // region:		--- types
@@ -150,7 +151,7 @@ where
 		self.communicator.mode()
 	}
 
-	fn session(&self) -> Arc<zenoh::prelude::Session> {
+	fn session(&self) -> Arc<Session> {
 		self.communicator.session()
 	}
 

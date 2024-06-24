@@ -12,8 +12,8 @@ pub use std::sync::{Arc, RwLock};
 // bitcode encoding/decoding
 pub use bitcode::{Decode, Encode};
 // zenoh stuff
-pub use zenoh::publication::CongestionControl;
-pub use zenoh::publication::Priority;
+pub use zenoh::core::Priority;
+pub use zenoh::publisher::CongestionControl;
 pub use zenoh::query::ConsolidationMode;
 pub use zenoh::query::QueryTarget;
 pub use zenoh::sample::Locality;

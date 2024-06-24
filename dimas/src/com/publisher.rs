@@ -15,9 +15,10 @@ use dimas_core::{
 use std::fmt::Debug;
 use tracing::{instrument, Level};
 use zenoh::{
-	prelude::sync::SyncResolve,
-	publication::{CongestionControl, Priority},
-	SessionDeclarations,
+	core::{Priority, Wait},
+	publisher::CongestionControl,
+	sample::QoSBuilderTrait,
+	session::SessionDeclarations,
 };
 // endregion:	--- modules
 
@@ -33,7 +34,7 @@ where
 	activation_state: OperationState,
 	priority: Priority,
 	congestion_control: CongestionControl,
-	publisher: Option<zenoh::publication::Publisher<'static>>,
+	publisher: Option<zenoh::publisher::Publisher<'static>>,
 }
 
 impl<P> Debug for Publisher<P>
@@ -104,7 +105,7 @@ where
 			.declare_publisher(self.selector.clone())
 			.congestion_control(self.congestion_control)
 			.priority(self.priority)
-			.res_sync()?;
+			.wait()?;
 		//.map_err(|_| DimasError::Put.into())?;
 		self.publisher.replace(publ);
 		Ok(())
@@ -129,7 +130,7 @@ where
 			.clone()
 			.ok_or(DimasError::ShouldNotHappen)?
 			.put(message.0)
-			.res_sync()
+			.wait()
 		{
 			Ok(()) => Ok(()),
 			Err(_) => Err(DimasError::Put.into()),
@@ -146,7 +147,7 @@ where
 			.clone()
 			.ok_or(DimasError::ShouldNotHappen)?
 			.delete()
-			.res_sync()
+			.wait()
 		{
 			Ok(()) => Ok(()),
 			Err(_) => Err(DimasError::Delete.into()),
