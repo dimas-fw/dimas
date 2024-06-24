@@ -24,7 +24,7 @@ fn ping_received(_ctx: &Context<AgentProps>, message: QueryMsg) -> Result<()> {
 		.into_string()
 		.unwrap_or_else(|_| String::from("unknown host"));
 
-	let text = format!("pong! [{}]", query.counter);
+	let text = format!("pong! [{}] to {}", query.counter, query.ping_name);
 
 	// reply to ping query
 	message.reply(query)?;
