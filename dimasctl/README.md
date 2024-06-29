@@ -8,7 +8,7 @@ Can be installed from crates.io with
 
 or from within the root of the project directory with
 
-`cargo install --path=./dimasctl`
+`cargo install --path ./dimasctl`
 
 Help is provided with
 

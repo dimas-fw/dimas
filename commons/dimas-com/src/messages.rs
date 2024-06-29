@@ -13,6 +13,7 @@ use zenoh::config::Locator;
 
 // region:		--- AboutEntity
 /// A `DiMAS` entity
+#[repr(C)]
 #[derive(Encode, Decode, Derivative)]
 #[derivative(Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
 pub struct AboutEntity {
@@ -72,6 +73,7 @@ impl AboutEntity {
 
 // region:		--- PingEntity
 /// A `DiMAS` entity
+#[repr(C)]
 #[derive(Encode, Decode, Derivative)]
 #[derivative(Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
 pub struct PingEntity {
@@ -119,6 +121,7 @@ impl PingEntity {
 
 // region:		--- ScoutingEntity
 /// A `Zenoh` entity
+#[repr(C)]
 #[derive(Derivative)]
 #[derivative(Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
 pub struct ScoutingEntity {
