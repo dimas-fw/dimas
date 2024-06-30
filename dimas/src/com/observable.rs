@@ -2,20 +2,21 @@
 
 use std::sync::{Arc, Mutex};
 
+use bitcode::encode;
 // region:		--- modules
+use super::ArcObservableCallback;
+use crate::timer::Timer;
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
 	error::{DimasError, Result},
-	message_types::ObserverMsg,
+	message_types::{Message, ResponseType},
 	traits::{Capability, Context},
 };
 use tokio::task::JoinHandle;
 use tracing::{error, info, instrument, warn, Level};
+use zenoh::core::Wait;
 use zenoh::sample::Locality;
 use zenoh::session::SessionDeclarations;
-
-use super::ArcObservableCallback;
-use crate::timer::Timer;
 // endregion:	--- modules
 
 // region:		--- Observable
@@ -163,12 +164,45 @@ where
 		let p = query.parameters().as_str();
 		// TODO: make a proper "key: value" implementation
 		if p == "request" {
-			let session = ctx.session().clone();
-			let request = ObserverMsg(query, session);
+			let content = query.payload().map_or_else(
+				|| {
+					let content: Vec<u8> = Vec::new();
+					content
+				},
+				|value| {
+					let content: Vec<u8> = value.into();
+					content
+				},
+			);
+			let msg = Message(content);
 			match callback.lock() {
 				Ok(mut lock) => {
-					if let Err(error) = lock(&ctx, request) {
-						error!("observable callback failed with {error}");
+					let res = lock(&ctx, msg);
+					match res {
+						Ok(response) => match response {
+							ResponseType::Accepted => {
+								let key = query.selector().key_expr.to_string();
+								let publisher_selector =
+									format!("{}/feedback/{}", &key, ctx.session().zid());
+								dbg!(publisher_selector);
+								// send accepted response
+								let encoded: Vec<u8> = encode(&ResponseType::Accepted);
+
+								query
+									.reply(&key, encoded)
+									.wait()
+									.map_err(|_| DimasError::ShouldNotHappen)?;
+							}
+							ResponseType::Declined => {
+								let key = query.selector().key_expr.to_string();
+
+								query
+									.reply_del(&key)
+									.wait()
+									.map_err(|_| DimasError::ShouldNotHappen)?;
+							}
+						},
+						Err(error) => error!("observable callback failed with {error}"),
 					}
 				}
 				Err(err) => {

@@ -40,7 +40,7 @@ pub use crate::timer::Timer;
 
 pub use dimas_config::Config;
 pub use dimas_core::error::{DimasError, Result};
-pub use dimas_core::message_types::{Message, ObservableMsg, ObserverMsg, QueryMsg, QueryableMsg};
+pub use dimas_core::message_types::{Message, ObservableMsg, QueryMsg, QueryableMsg, ResponseType};
 pub use dimas_core::traits::Context;
 pub use dimas_core::utils::init_tracing;
 // endregeion:  --- modules

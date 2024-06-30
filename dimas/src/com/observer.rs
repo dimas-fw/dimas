@@ -140,7 +140,7 @@ where
 						let content: Vec<u8> = sample.payload().into();
 						let response: ResponseType = decode(&content)?;
 						match response {
-							ResponseType::Accepted(content) => {
+							ResponseType::Accepted => {
 								// create the subscriber for feedback
 								// use "<query_selector>/feedback/<replier_id>" as key
 								// in case there is no replier_id, listen on all id's

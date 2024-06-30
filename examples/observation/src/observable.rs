@@ -3,11 +3,13 @@
 
 // region:		--- modules
 use dimas::prelude::*;
+use observation::FibonacciRequest;
 use tracing::info;
 // endregion:	--- modules
 
 #[derive(Debug)]
 struct AgentProps {
+	limit: u128,
 	n_2: u128,
 	n_1: u128,
 }
@@ -28,6 +30,7 @@ async fn main() -> Result<()> {
 
 	// create & initialize agents properties
 	let properties = AgentProps {
+		limit: 0u128,
 		n_2: 0u128,
 		n_1: 1u128,
 	};
@@ -42,15 +45,17 @@ async fn main() -> Result<()> {
 	agent
 		.observable()
 		.topic("fibonacci")
-		.callback(|ctx, request| -> Result<()> {
-			info!("Observable callback");
+		.callback(|ctx, msg| -> Result<ResponseType> {
+			let message: FibonacciRequest = msg.decode()?;
+			info!("Requesting Fibonacci sequence up to {}", message.limit);
 			// check if properties are still in initial state
-			if ctx.read()?.n_2 == 0 && ctx.read()?.n_1 == 1 {
+			if ctx.read()?.limit == 0 && ctx.read()?.n_2 == 0 && ctx.read()?.n_1 == 1 {
 				// accept
-				request.accept()
+				ctx.write()?.limit = message.limit;
+				Ok(ResponseType::Accepted)
 			} else {
 				// decline
-				request.decline()
+				Ok(ResponseType::Declined)
 			}
 		})
 		.add()?;

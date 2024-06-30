@@ -5,8 +5,8 @@
 // region:		--- modules
 use crate::error::DimasError;
 use bitcode::{decode, encode, Decode, Encode};
-use std::{ops::Deref, sync::Arc};
-use zenoh::{core::Wait, query::Query, Session};
+use std::ops::Deref;
+use zenoh::{core::Wait, query::Query};
 // endregion:	--- modules
 
 // region:		--- Message
@@ -146,80 +146,79 @@ impl QueryableMsg {
 /// ?
 pub enum ResponseType {
 	/// ?
-	Accepted(Vec<u8>),
+	Accepted,
 	/// ?
 	Declined,
 }
 // endregion:	--- ResponseType
 
-// region:		--- ObserverMsg
-/// Messages of an `Observer`
-#[derive(Debug)]
-pub struct ObserverMsg(pub Query, pub Arc<Session>);
-
-impl Deref for ObserverMsg {
-	type Target = Query;
-
-	fn deref(&self) -> &Self::Target {
-		&self.0
-	}
-}
-
-impl ObserverMsg {
-	/// Accept
-	///
-	/// # Errors
-	pub fn accept(self) -> crate::error::Result<()> {
-		// TODO: create the publisher for feedback
-		// use "<query_selector>/feedback/<replier_id>" as key
-		let key = self.0.selector().key_expr.to_string();
-		let publisher_selector = format!("{}/feedback/{}", &key, self.1.zid());
-		dbg!(publisher_selector);
-		// send accepted response
-		let content: Vec<u8> = Vec::new();
-		let encoded: Vec<u8> = encode(&ResponseType::Accepted(content));
-
-		self.0
-			.reply(&key, encoded)
-			.wait()
-			.map_err(|_| DimasError::ShouldNotHappen)?;
-		Ok(())
-	}
-
-	/// Decline
-	///
-	/// # Errors
-	pub fn decline(self) -> crate::error::Result<()> {
-		let key = self.0.selector().key_expr.to_string();
-
-		self.0
-			.reply_del(&key)
-			.wait()
-			.map_err(|_| DimasError::ShouldNotHappen)?;
-		Ok(())
-	}
-
-	/// Access the queries parameters
-	#[must_use]
-	pub fn parameters(&self) -> &str {
-		self.0.parameters().as_str()
-	}
-
-	/// Decode [`ObserverMsg`]
-	///
-	/// # Errors
-	pub fn decode<T>(&self) -> crate::error::Result<T>
-	where
-		T: for<'a> Decode<'a>,
-	{
-		if let Some(value) = self.0.payload() {
-			let content: Vec<u8> = value.into();
-			return decode::<T>(content.as_slice()).map_err(|_| DimasError::Decoding.into());
-		}
-		Err(DimasError::NoMessage.into())
-	}
-}
-// endregion: 	--- ObserverMsg
+// // region:		--- ObserverMsg
+// /// Messages of an `Observer`
+// #[derive(Debug)]
+// pub struct ObserverMsg<P>(pub Query, pub Context<P>);
+//
+// impl<P> Deref for ObserverMsg<P> {
+// 	type Target = Query;
+//
+// 	fn deref(&self) -> &Self::Target {
+// 		&self.0
+// 	}
+// }
+//
+// impl<P> ObserverMsg<P> {
+// 	/// Accept
+// 	///
+// 	/// # Errors
+// 	pub fn accept(self) -> crate::error::Result<()> {
+// 		// TODO: create the publisher for feedback
+// 		// use "<query_selector>/feedback/<replier_id>" as key
+// 		let key = self.0.selector().key_expr.to_string();
+// 		let publisher_selector = format!("{}/feedback/{}", &key, self.1.session().zid());
+// 		dbg!(publisher_selector);
+// 		// send accepted response
+// 		let encoded: Vec<u8> = encode(&ResponseType::Accepted);
+//
+// 		self.0
+// 			.reply(&key, encoded)
+// 			.wait()
+// 			.map_err(|_| DimasError::ShouldNotHappen)?;
+// 		Ok(())
+// 	}
+//
+// 	/// Decline
+// 	///
+// 	/// # Errors
+// 	pub fn decline(self) -> crate::error::Result<()> {
+// 		let key = self.0.selector().key_expr.to_string();
+//
+// 		self.0
+// 			.reply_del(&key)
+// 			.wait()
+// 			.map_err(|_| DimasError::ShouldNotHappen)?;
+// 		Ok(())
+// 	}
+//
+// 	/// Access the queries parameters
+// 	#[must_use]
+// 	pub fn parameters(&self) -> &str {
+// 		self.0.parameters().as_str()
+// 	}
+//
+// 	/// Decode [`ObserverMsg`]
+// 	///
+// 	/// # Errors
+// 	pub fn decode<T>(&self) -> crate::error::Result<T>
+// 	where
+// 		T: for<'a> Decode<'a>,
+// 	{
+// 		if let Some(value) = self.0.payload() {
+// 			let content: Vec<u8> = value.into();
+// 			return decode::<T>(content.as_slice()).map_err(|_| DimasError::Decoding.into());
+// 		}
+// 		Err(DimasError::NoMessage.into())
+// 	}
+// }
+// // endregion: 	--- ObserverMsg
 
 // region:		--- ObservableMsg
 /// Messages of an `Observable`
@@ -253,6 +252,9 @@ impl ObservableMsg {
 mod tests {
 	use super::*;
 
+	#[derive(Debug)]
+	struct Props {}
+
 	// check, that the auto traits are available
 	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
 
@@ -261,7 +263,7 @@ mod tests {
 		is_normal::<Message>();
 		is_normal::<QueryMsg>();
 		is_normal::<QueryableMsg>();
-		is_normal::<ObserverMsg>();
+		//		is_normal::<ObserverMsg<Props>>();
 		is_normal::<ObservableMsg>();
 	}
 }
