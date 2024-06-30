@@ -3,12 +3,12 @@
 // region:		--- modules
 use crate::{
 	builder::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage},
-	com::{observer::Observer, ArcObserverCallback},
+	com::{observer::Observer, ArcPutCallback},
 };
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
-	message_types::ObservableMsg,
+	message_types::Message,
 	traits::Context,
 	utils::selector_from,
 };
@@ -99,12 +99,9 @@ where
 {
 	/// Set callback for messages
 	#[must_use]
-	pub fn callback<F>(
-		self,
-		callback: F,
-	) -> ObserverBuilder<P, K, Callback<ArcObserverCallback<P>>, S>
+	pub fn callback<F>(self, callback: F) -> ObserverBuilder<P, K, Callback<ArcPutCallback<P>>, S>
 	where
-		F: FnMut(&Context<P>, ObservableMsg) -> Result<()> + Send + Sync + Unpin + 'static,
+		F: FnMut(&Context<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
 			context,
@@ -113,7 +110,7 @@ where
 			storage,
 			..
 		} = self;
-		let callback: ArcObserverCallback<P> = Arc::new(Mutex::new(callback));
+		let callback: ArcPutCallback<P> = Arc::new(Mutex::new(callback));
 		ObserverBuilder {
 			context,
 			activation_state,
@@ -151,7 +148,7 @@ where
 	}
 }
 
-impl<P, S> ObserverBuilder<P, Selector, Callback<ArcObserverCallback<P>>, S>
+impl<P, S> ObserverBuilder<P, Selector, Callback<ArcPutCallback<P>>, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -177,7 +174,7 @@ where
 	}
 }
 
-impl<P> ObserverBuilder<P, Selector, Callback<ArcObserverCallback<P>>, Storage<Observer<P>>>
+impl<P> ObserverBuilder<P, Selector, Callback<ArcPutCallback<P>>, Storage<Observer<P>>>
 where
 	P: Send + Sync + Unpin + 'static,
 {

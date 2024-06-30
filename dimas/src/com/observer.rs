@@ -1,22 +1,24 @@
 // Copyright © 2024 Stephan Kunz
 
-use bitcode::decode;
 // region:		--- modules
+use bitcode::decode;
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
-	message_types::{Message, ObservableMsg, ResponseType},
+	message_types::{Message, ResponseType},
 	traits::{Capability, Context},
 };
+use std::sync::{Arc, Mutex};
 use tokio::task::JoinHandle;
 use tracing::{error, instrument, warn, Level};
 use zenoh::{
 	core::Wait,
 	query::{ConsolidationMode, QueryTarget},
 	sample::{Locality, SampleKind},
+	subscriber::Reliability,
 };
 
-use super::ArcObserverCallback;
+use super::{subscriber::Subscriber, ArcPutCallback};
 // endregion:	--- modules
 
 // region:		--- Observer
@@ -31,9 +33,9 @@ where
 	context: Context<P>,
 	activation_state: OperationState,
 	/// callback for feedback including result
-	callback: ArcObserverCallback<P>,
+	callback: ArcPutCallback<P>,
 	/// handle for the asynchronous feedback subscriber
-	feedback: Option<JoinHandle<()>>,
+	feedback: Arc<Mutex<Option<Subscriber<P>>>>,
 	handle: Option<JoinHandle<()>>,
 }
 
@@ -70,14 +72,14 @@ where
 		selector: String,
 		context: Context<P>,
 		activation_state: OperationState,
-		callback: ArcObserverCallback<P>,
+		callback: ArcPutCallback<P>,
 	) -> Self {
 		Self {
 			selector,
 			context,
 			activation_state,
 			callback,
-			feedback: None,
+			feedback: Arc::new(Mutex::new(None)),
 			handle: None,
 		}
 	}
@@ -139,7 +141,6 @@ where
 						let response: ResponseType = decode(&content)?;
 						match response {
 							ResponseType::Accepted(content) => {
-								// TODO: 
 								// create the subscriber for feedback
 								// use "<query_selector>/feedback/<replier_id>" as key
 								// in case there is no replier_id, listen on all id's
@@ -148,8 +149,22 @@ where
 									.map_or_else(|| "*".to_string(), |id| id.to_string());
 								let subscriber_selector =
 									format!("{}/feedback/{}", &self.selector, &replier_id);
-								dbg!(subscriber_selector);
-								let msg = ObservableMsg(content);
+								dbg!(&subscriber_selector);
+								let mut sub = Subscriber::new(
+									subscriber_selector,
+									self.context.clone(),
+									OperationState::Created,
+									self.callback.clone(),
+									Reliability::Reliable,
+									None,
+								);
+								sub.manage_operation_state(&OperationState::Active)?;
+								self.feedback
+									.lock()
+									.map_or_else(|_| todo!(), |mut fb| fb.replace(sub));
+								// TODO:
+								// clarify if this is needed
+								let msg = Message(content);
 								let guard = cb.lock();
 								match guard {
 									Ok(mut lock) => {
@@ -208,7 +223,7 @@ where
 				Ok(sample) => match sample.kind() {
 					SampleKind::Put => {
 						let content: Vec<u8> = sample.payload().into();
-						let msg = ObservableMsg(content);
+						let msg = Message(content);
 						let guard = cb.lock();
 						match guard {
 							Ok(mut lock) => {

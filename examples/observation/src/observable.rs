@@ -12,7 +12,7 @@ struct AgentProps {
 	n_1: u128,
 }
 
-fn fibonacci(ctx: &Context<AgentProps>) -> Result<u128> {
+fn _fibonacci(ctx: &Context<AgentProps>) -> Result<u128> {
 	let n_2 = ctx.read()?.n_2;
 	let n_1 = ctx.read()?.n_1;
 	let next = n_2 + n_1;

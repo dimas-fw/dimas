@@ -30,7 +30,7 @@ async fn main() -> Result<()> {
 	agent
 		.observer()
 		.topic("fibonacci")
-		.callback(|ctx, msg| -> Result<()> {
+		.callback(|_ctx, _msg| -> Result<()> {
 			info!("Observer callback");
 			Ok(())
 		})

@@ -1,5 +1,7 @@
 // Copyright © 2024 Stephan Kunz
 
+use std::sync::{Arc, Mutex};
+
 // region:		--- modules
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
@@ -13,6 +15,7 @@ use zenoh::sample::Locality;
 use zenoh::session::SessionDeclarations;
 
 use super::ArcObservableCallback;
+use crate::timer::Timer;
 // endregion:	--- modules
 
 // region:		--- Observable
@@ -29,7 +32,7 @@ where
 	/// callback for observation request and cancelation
 	callback: ArcObservableCallback<P>,
 	/// handle for the asynchronous feedback publisher
-	feedback: Option<JoinHandle<()>>,
+	_feedback: Arc<Mutex<Option<Timer<P>>>>,
 	handle: Option<JoinHandle<()>>,
 }
 
@@ -75,7 +78,7 @@ where
 			context,
 			activation_state,
 			callback,
-			feedback: None,
+			_feedback: Arc::new(Mutex::new(None)),
 			handle: None,
 		}
 	}
