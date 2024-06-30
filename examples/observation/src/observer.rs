@@ -38,14 +38,14 @@ async fn main() -> Result<()> {
 
 	// timer for regular querying
 	let interval = Duration::from_secs(10);
-	let mut counter = 0i128;
+	let mut counter = 0u128;
 	agent
 		.timer()
 		.name("timer")
 		.interval(interval)
 		.callback(move |ctx| -> Result<()> {
 			info!("Observation {counter}");
-			let msg = FibonacciRequest { limit: 10 };
+			let msg = FibonacciRequest { limit: counter * 5 };
 			let message = Message::encode(&msg);
 			ctx.observe("fibonacci", Some(message))?;
 			counter += 1;

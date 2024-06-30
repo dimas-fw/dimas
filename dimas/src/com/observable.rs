@@ -156,10 +156,12 @@ where
 			.recv_async()
 			.await
 			.map_err(|_| DimasError::ShouldNotHappen)?;
+
 		let p = query.parameters().as_str();
 		// TODO: make a proper "key: value" implementation
 		if p == "request" {
-			let request = ObserverMsg(query);
+			let session = ctx.session().clone();
+			let request = ObserverMsg(query, session);
 			match callback.lock() {
 				Ok(mut lock) => {
 					if let Err(error) = lock(&ctx, request) {

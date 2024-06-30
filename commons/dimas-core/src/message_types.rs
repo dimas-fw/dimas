@@ -5,8 +5,8 @@
 // region:		--- modules
 use crate::error::DimasError;
 use bitcode::{decode, encode, Decode, Encode};
-use std::ops::Deref;
-use zenoh::{core::Wait, query::Query};
+use std::{ops::Deref, sync::Arc};
+use zenoh::{core::Wait, query::Query, Session};
 // endregion:	--- modules
 
 // region:		--- Message
@@ -155,7 +155,7 @@ pub enum ResponseType {
 // region:		--- ObserverMsg
 /// Messages of an `Observer`
 #[derive(Debug)]
-pub struct ObserverMsg(pub Query);
+pub struct ObserverMsg(pub Query, pub Arc<Session>);
 
 impl Deref for ObserverMsg {
 	type Target = Query;
@@ -170,7 +170,12 @@ impl ObserverMsg {
 	///
 	/// # Errors
 	pub fn accept(self) -> crate::error::Result<()> {
+		// TODO: create the publisher for feedback
+		// use "<query_selector>/feedback/<replier_id>" as key
 		let key = self.0.selector().key_expr.to_string();
+		let publisher_selector = format!("{}/feedback/{}", &key, self.1.zid());
+		dbg!(publisher_selector);
+		// send accepted response
 		let content: Vec<u8> = Vec::new();
 		let encoded: Vec<u8> = encode(&ResponseType::Accepted(content));
 
@@ -186,10 +191,9 @@ impl ObserverMsg {
 	/// # Errors
 	pub fn decline(self) -> crate::error::Result<()> {
 		let key = self.0.selector().key_expr.to_string();
-		let encoded: Vec<u8> = encode(&ResponseType::Declined);
 
 		self.0
-			.reply(&key, encoded)
+			.reply_del(&key)
 			.wait()
 			.map_err(|_| DimasError::ShouldNotHappen)?;
 		Ok(())

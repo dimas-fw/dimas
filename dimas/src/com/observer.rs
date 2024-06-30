@@ -114,7 +114,7 @@ where
 		let selector = format!("{}?request", &self.selector);
 		let mut query = session
 			.get(&selector)
-			.target(QueryTarget::BestMatching)
+			.target(QueryTarget::All)
 			.consolidation(ConsolidationMode::None)
 			.allowed_destination(Locality::Any);
 
@@ -139,7 +139,16 @@ where
 						let response: ResponseType = decode(&content)?;
 						match response {
 							ResponseType::Accepted(content) => {
-								// TODO: create the subscriber for feedback
+								// TODO: 
+								// create the subscriber for feedback
+								// use "<query_selector>/feedback/<replier_id>" as key
+								// in case there is no replier_id, listen on all id's
+								let replier_id = reply
+									.replier_id()
+									.map_or_else(|| "*".to_string(), |id| id.to_string());
+								let subscriber_selector =
+									format!("{}/feedback/{}", &self.selector, &replier_id);
+								dbg!(subscriber_selector);
 								let msg = ObservableMsg(content);
 								let guard = cb.lock();
 								match guard {
