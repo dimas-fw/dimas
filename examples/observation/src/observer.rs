@@ -10,7 +10,9 @@ use tracing::info;
 // endregion:	--- modules
 
 #[derive(Debug)]
-struct AgentProps {}
+struct AgentProps {
+	limit: u128,
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -18,7 +20,7 @@ async fn main() -> Result<()> {
 	init_tracing();
 
 	// create & initialize agents properties
-	let properties = AgentProps {};
+	let properties = AgentProps { limit: 10u128 };
 
 	// create an agent with the properties and the prefix 'examples'
 	let mut agent = Agent::new(properties)
@@ -30,8 +32,14 @@ async fn main() -> Result<()> {
 	agent
 		.observer()
 		.topic("fibonacci")
-		.callback(|_ctx, _msg| -> Result<()> {
-			info!("Observer callback");
+		.callback(|ctx, msg| -> Result<()> {
+			let message: ObservableResponse = msg.decode()?;
+			info!("Observable response: {:?}", &message);
+			match message {
+				ObservableResponse::Accepted => ctx.write()?.limit += 10,
+				ObservableResponse::Declined => ctx.write()?.limit += 1,
+				_ => todo!(),
+			};
 			Ok(())
 		})
 		.add()?;
@@ -45,7 +53,9 @@ async fn main() -> Result<()> {
 		.interval(interval)
 		.callback(move |ctx| -> Result<()> {
 			info!("Observation {counter}");
-			let msg = FibonacciRequest { limit: 10u128 + counter * 5 };
+			let msg = FibonacciRequest {
+				limit: ctx.read()?.limit,
+			};
 			let message = Message::encode(&msg);
 			ctx.observe("fibonacci", Some(message))?;
 			counter += 1;

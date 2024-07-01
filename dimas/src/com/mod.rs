@@ -6,7 +6,7 @@
 // region:    	--- modules
 use dimas_core::{
 	error::Result,
-	message_types::{Message, QueryMsg, QueryableMsg, ResponseType},
+	message_types::{Message, ObservableResponse, QueryMsg, QueryableMsg},
 	traits::Context,
 };
 use std::sync::{Arc, Mutex};
@@ -33,7 +33,13 @@ pub type ArcQueryableCallback<P> =
 // 	Arc<Mutex<dyn FnMut(&Context<P>, ObservableMsg) -> Result<()> + Send + Sync + Unpin + 'static>>;
 /// Type definition for an observables atomic reference counted `control` callback
 pub type ArcObservableCallback<P> = Arc<
-	Mutex<dyn FnMut(&Context<P>, Message) -> Result<ResponseType> + Send + Sync + Unpin + 'static>,
+	Mutex<
+		dyn FnMut(&Context<P>, Message) -> Result<ObservableResponse>
+			+ Send
+			+ Sync
+			+ Unpin
+			+ 'static,
+	>,
 >;
 // endregion:	--- types
 

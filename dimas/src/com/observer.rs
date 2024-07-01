@@ -5,8 +5,8 @@ use bitcode::decode;
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
-	message_types::{Message, ResponseType},
-	traits::{Capability, Context},
+	message_types::{Message, ObservableResponse},
+	traits::{Capability, Context, ContextAbstraction},
 };
 use std::sync::{Arc, Mutex};
 use tokio::task::JoinHandle;
@@ -138,9 +138,9 @@ where
 				Ok(sample) => match sample.kind() {
 					SampleKind::Put => {
 						let content: Vec<u8> = sample.payload().into();
-						let response: ResponseType = decode(&content)?;
+						let response: ObservableResponse = decode(&content)?;
 						match response {
-							ResponseType::Accepted => {
+							ObservableResponse::Accepted => {
 								// create the subscriber for feedback
 								// use "<query_selector>/feedback/<replier_id>" as key
 								// in case there is no replier_id, listen on all id's
@@ -149,12 +149,20 @@ where
 									.map_or_else(|| "*".to_string(), |id| id.to_string());
 								let subscriber_selector =
 									format!("{}/feedback/{}", &self.selector, &replier_id);
-								dbg!(&subscriber_selector);
 								let mut sub = Subscriber::new(
 									subscriber_selector,
 									self.context.clone(),
 									OperationState::Created,
-									self.callback.clone(),
+									Arc::new(Mutex::new(
+										|ctx: &Arc<dyn ContextAbstraction<P>>,
+										 msg: Message|
+										 -> Result<()> {
+											let todo = true;
+											let msg: String = msg.decode()?;
+											dbg!(msg);
+											Ok(())
+										},
+									)),
 									Reliability::Reliable,
 									None,
 								);
@@ -177,9 +185,21 @@ where
 									}
 								}
 							}
-							ResponseType::Declined => {
-								todo!()
+							ObservableResponse::Declined => {
+								let msg = Message(content);
+								let guard = cb.lock();
+								match guard {
+									Ok(mut lock) => {
+										if let Err(error) = lock(&self.context.clone(), msg) {
+											error!("callback failed with {error}");
+										}
+									}
+									Err(err) => {
+										error!("callback lock failed with {err}");
+									}
+								}
 							}
+							_ => todo!(),
 						}
 					}
 					SampleKind::Delete => {

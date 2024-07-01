@@ -141,16 +141,33 @@ impl QueryableMsg {
 }
 // endregion:	--- QueryableMsg
 
-// region:		--- ResponseType
+// region:		--- ObserverRequest
 #[derive(Debug, Encode, Decode)]
 /// ?
-pub enum ResponseType {
+pub enum ObserverRequest {
+	/// ?
+	Run,
+	/// ?
+	Cancel,
+	/// ?
+	Update,
+}
+// endregion:	--- ObserverRequest
+
+// region:		--- ObservableResponse
+#[derive(Debug, Encode, Decode)]
+/// ?
+pub enum ObservableResponse {
 	/// ?
 	Accepted,
 	/// ?
 	Declined,
+	/// ?
+	Canceled,
+	/// ?
+	Finished,
 }
-// endregion:	--- ResponseType
+// endregion:	--- ObservableResponse
 
 // // region:		--- ObserverMsg
 // /// Messages of an `Observer`

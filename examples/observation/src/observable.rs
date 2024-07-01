@@ -45,17 +45,18 @@ async fn main() -> Result<()> {
 	agent
 		.observable()
 		.topic("fibonacci")
-		.callback(|ctx, msg| -> Result<ResponseType> {
+		.callback(|ctx, msg| -> Result<ObservableResponse> {
 			let message: FibonacciRequest = msg.decode()?;
-			info!("Requesting Fibonacci sequence up to {}", message.limit);
 			// check if properties are still in initial state
 			if ctx.read()?.limit == 0 && ctx.read()?.n_2 == 0 && ctx.read()?.n_1 == 1 {
 				// accept
+				info!("Accepting Fibonacci sequence up to {}", message.limit);
 				ctx.write()?.limit = message.limit;
-				Ok(ResponseType::Accepted)
+				Ok(ObservableResponse::Accepted)
 			} else {
 				// decline
-				Ok(ResponseType::Declined)
+				info!("Declining Fibonacci sequence up to {}", message.limit);
+				Ok(ObservableResponse::Declined)
 			}
 		})
 		.add()?;

@@ -1,6 +1,9 @@
 // Copyright © 2024 Stephan Kunz
 
-use std::sync::{Arc, Mutex};
+use std::{
+	sync::{Arc, Mutex},
+	time::Duration,
+};
 
 use bitcode::encode;
 // region:		--- modules
@@ -9,8 +12,8 @@ use crate::timer::Timer;
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
 	error::{DimasError, Result},
-	message_types::{Message, ResponseType},
-	traits::{Capability, Context},
+	message_types::{Message, ObservableResponse},
+	traits::{Capability, Context, ContextAbstraction},
 };
 use tokio::task::JoinHandle;
 use tracing::{error, info, instrument, warn, Level};
@@ -32,8 +35,6 @@ where
 	activation_state: OperationState,
 	/// callback for observation request and cancelation
 	callback: ArcObservableCallback<P>,
-	/// handle for the asynchronous feedback publisher
-	_feedback: Arc<Mutex<Option<Timer<P>>>>,
 	handle: Option<JoinHandle<()>>,
 }
 
@@ -79,7 +80,6 @@ where
 			context,
 			activation_state,
 			callback,
-			_feedback: Arc::new(Mutex::new(None)),
 			handle: None,
 		}
 	}
@@ -155,6 +155,10 @@ where
 		.allowed_origin(Locality::Any)
 		.await?;
 
+	// handle for the asynchronous feedback publisher
+	#[allow(clippy::collection_is_never_read)]
+	let mut feedback: Option<Timer<P>> = None;
+
 	loop {
 		let query = queryable
 			.recv_async()
@@ -179,29 +183,52 @@ where
 				Ok(mut lock) => {
 					let res = lock(&ctx, msg);
 					match res {
-						Ok(response) => match response {
-							ResponseType::Accepted => {
-								let key = query.selector().key_expr.to_string();
-								let publisher_selector =
-									format!("{}/feedback/{}", &key, ctx.session().zid());
-								dbg!(publisher_selector);
-								// send accepted response
-								let encoded: Vec<u8> = encode(&ResponseType::Accepted);
+						Ok(response) => {
+							match response {
+								ObservableResponse::Accepted => {
+									let key = query.selector().key_expr.to_string();
 
-								query
-									.reply(&key, encoded)
-									.wait()
-									.map_err(|_| DimasError::ShouldNotHappen)?;
-							}
-							ResponseType::Declined => {
-								let key = query.selector().key_expr.to_string();
+									// send accepted response
+									let encoded: Vec<u8> = encode(&ObservableResponse::Accepted);
 
-								query
-									.reply_del(&key)
-									.wait()
-									.map_err(|_| DimasError::ShouldNotHappen)?;
+									query
+										.reply(&key, encoded)
+										.wait()
+										.map_err(|_| DimasError::ShouldNotHappen)?;
+
+									// create and start feedback publisher
+									let publisher_selector =
+										format!("{}/feedback/{}", &key, ctx.session().zid());
+
+									let mut timer = Timer::new(
+										"feedback".to_string(),
+										ctx.clone(),
+										OperationState::Created,
+										Arc::new(Mutex::new(move |ctx: &Arc<dyn ContextAbstraction<P>>| -> Result<()> {
+											let todo = true;
+											let message = Message::encode(&"hello".to_string()); 
+											ctx.put_with(&publisher_selector, message) 
+										})),
+										Duration::from_millis(1000),
+										Some(Duration::from_millis(1000)),
+									);
+									timer.manage_operation_state(&OperationState::Active)?;
+									feedback.replace(timer);
+								}
+								ObservableResponse::Declined => {
+									let key = query.selector().key_expr.to_string();
+
+									// send declined response
+									let encoded: Vec<u8> = encode(&ObservableResponse::Declined);
+
+									query
+										.reply(&key, encoded)
+										.wait()
+										.map_err(|_| DimasError::ShouldNotHappen)?;
+								}
+								_ => todo!(),
 							}
-						},
+						}
 						Err(error) => error!("observable callback failed with {error}"),
 					}
 				}
@@ -209,6 +236,8 @@ where
 					error!("observable callback failed with {err}");
 				}
 			}
+		} else if p == "cancel" {
+			feedback.take();
 		} else {
 			error!("observable got unknown parameter: {p}");
 		}
