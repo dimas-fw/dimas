@@ -142,13 +142,29 @@ where
 						match response {
 							ObservableResponse::Accepted => {
 								// create the subscriber for feedback
-								// use "<query_selector>/feedback/<replier_id>" as key
-								// in case there is no replier_id, listen on all id's
-								let replier_id = reply
-									.replier_id()
-									.map_or_else(|| "*".to_string(), |id| id.to_string());
+								// use "<query_selector>/feedback/<source_id/replier_id>" as key
+								// in case there is no source_id/replier_id, listen on all id's
+								let source_id = reply.result().map_or_else(
+									|_| {
+										reply
+											.replier_id()
+											.map_or_else(|| "*".to_string(), |id| id.to_string())
+									},
+									|sample| {
+										sample.source_info().source_id.map_or_else(
+											|| {
+												reply.replier_id().map_or_else(
+													|| "*".to_string(),
+													|id| id.to_string(),
+												)
+											},
+											|id| id.zid().to_string(),
+										)
+									},
+								);
+
 								let subscriber_selector =
-									format!("{}/feedback/{}", &self.selector, &replier_id);
+									format!("{}/feedback/{}", &self.selector, &source_id);
 								let mut sub = Subscriber::new(
 									subscriber_selector,
 									self.context.clone(),

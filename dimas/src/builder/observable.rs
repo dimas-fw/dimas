@@ -3,7 +3,7 @@
 // region:		--- modules
 use crate::{
 	builder::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage},
-	com::{observable::Observable, ArcObservableCallback},
+	com::{observable::Observable, ArcControlCallback},
 };
 use dimas_core::{
 	enums::OperationState,
@@ -102,7 +102,7 @@ where
 	pub fn callback<F>(
 		self,
 		callback: F,
-	) -> ObservableBuilder<P, K, Callback<ArcObservableCallback<P>>, S>
+	) -> ObservableBuilder<P, K, Callback<ArcControlCallback<P>>, S>
 	where
 		F: FnMut(&Context<P>, Message) -> Result<ObservableResponse>
 			+ Send
@@ -117,7 +117,7 @@ where
 			storage,
 			..
 		} = self;
-		let callback: ArcObservableCallback<P> = Arc::new(Mutex::new(callback));
+		let callback: ArcControlCallback<P> = Arc::new(Mutex::new(callback));
 		ObservableBuilder {
 			context,
 			activation_state,
@@ -155,7 +155,7 @@ where
 	}
 }
 
-impl<P, S> ObservableBuilder<P, Selector, Callback<ArcObservableCallback<P>>, S>
+impl<P, S> ObservableBuilder<P, Selector, Callback<ArcControlCallback<P>>, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -180,7 +180,7 @@ where
 	}
 }
 
-impl<P> ObservableBuilder<P, Selector, Callback<ArcObservableCallback<P>>, Storage<Observable<P>>>
+impl<P> ObservableBuilder<P, Selector, Callback<ArcControlCallback<P>>, Storage<Observable<P>>>
 where
 	P: Send + Sync + Unpin + 'static,
 {

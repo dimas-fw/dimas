@@ -7,7 +7,7 @@ use std::{
 
 use bitcode::encode;
 // region:		--- modules
-use super::ArcObservableCallback;
+use super::ArcControlCallback;
 use crate::timer::Timer;
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
@@ -34,7 +34,7 @@ where
 	context: Context<P>,
 	activation_state: OperationState,
 	/// callback for observation request and cancelation
-	callback: ArcObservableCallback<P>,
+	callback: ArcControlCallback<P>,
 	handle: Option<JoinHandle<()>>,
 }
 
@@ -73,7 +73,7 @@ where
 		selector: String,
 		context: Context<P>,
 		activation_state: OperationState,
-		callback: ArcObservableCallback<P>,
+		callback: ArcControlCallback<P>,
 	) -> Self {
 		Self {
 			selector,
@@ -142,7 +142,7 @@ where
 #[instrument(name="observable", level = Level::ERROR, skip_all)]
 async fn run_observable<P>(
 	selector: String,
-	callback: ArcObservableCallback<P>,
+	callback: ArcControlCallback<P>,
 	ctx: Context<P>,
 ) -> Result<()>
 where
@@ -186,17 +186,8 @@ where
 						Ok(response) => {
 							match response {
 								ObservableResponse::Accepted => {
-									let key = query.selector().key_expr.to_string();
-
-									// send accepted response
-									let encoded: Vec<u8> = encode(&ObservableResponse::Accepted);
-
-									query
-										.reply(&key, encoded)
-										.wait()
-										.map_err(|_| DimasError::ShouldNotHappen)?;
-
 									// create and start feedback publisher
+									let key = query.selector().key_expr.to_string();
 									let publisher_selector =
 										format!("{}/feedback/{}", &key, ctx.session().zid());
 
@@ -207,20 +198,28 @@ where
 										Arc::new(Mutex::new(move |ctx: &Arc<dyn ContextAbstraction<P>>| -> Result<()> {
 											let todo = true;
 											let message = Message::encode(&"hello".to_string()); 
-											ctx.put_with(&publisher_selector, message) 
+											ctx.put_with(&publisher_selector, message)
 										})),
 										Duration::from_millis(1000),
 										Some(Duration::from_millis(1000)),
 									);
 									timer.manage_operation_state(&OperationState::Active)?;
 									feedback.replace(timer);
+
+									// run task
+									let todo = true;
+
+									// send accepted response
+									let encoded: Vec<u8> = encode(&ObservableResponse::Accepted);
+									query
+										.reply(&key, encoded)
+										.wait()
+										.map_err(|_| DimasError::ShouldNotHappen)?;
 								}
 								ObservableResponse::Declined => {
-									let key = query.selector().key_expr.to_string();
-
 									// send declined response
+									let key = query.selector().key_expr.to_string();
 									let encoded: Vec<u8> = encode(&ObservableResponse::Declined);
-
 									query
 										.reply(&key, encoded)
 										.wait()
@@ -237,7 +236,16 @@ where
 				}
 			}
 		} else if p == "cancel" {
+			// stop running observation
 			feedback.take();
+
+			// send canceled response
+			let encoded: Vec<u8> = encode(&ObservableResponse::Canceled);
+			let key = query.selector().key_expr.to_string();
+			query
+				.reply(&key, encoded)
+				.wait()
+				.map_err(|_| DimasError::ShouldNotHappen)?;
 		} else {
 			error!("observable got unknown parameter: {p}");
 		}

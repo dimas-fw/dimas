@@ -161,9 +161,11 @@ pub enum ObservableResponse {
 	/// ?
 	Accepted,
 	/// ?
+	Canceled,
+	/// ?
 	Declined,
 	/// ?
-	Canceled,
+	Feedback,
 	/// ?
 	Finished,
 }
