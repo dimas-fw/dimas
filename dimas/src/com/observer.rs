@@ -176,6 +176,7 @@ where
 									},
 								);
 
+								let rcb2 = rcb.clone();
 								let fcb2 = fcb.clone();
 								let subscriber_selector =
 									format!("{}/feedback/{}", &self.selector, &source_id);
@@ -188,11 +189,20 @@ where
 										move |ctx: &Arc<dyn ContextAbstraction<P>>,
 										      msg: Message|
 										      -> Result<()> {
-											fcb2.lock().map_or_else(
+											let res: Result<ResultResponse> = msg.clone().decode();
+											res.map_or_else(
 												|_| {
-													todo!()
+													fcb2.lock().map_or_else(
+														|_| todo!(),
+														|mut cb| cb(ctx, msg),
+													)
 												},
-												|mut cb| cb(ctx, msg),
+												|response| {
+													rcb2.lock().map_or_else(
+														|_| todo!(),
+														|mut cb| cb(ctx, response),
+													)
+												},
 											)
 										},
 									)),
@@ -215,17 +225,15 @@ where
 										error!("control callback lock failed with {err}");
 									}
 								}
-							},
-							ControlResponse::Declined => {
-								match ccb.lock() {
-									Ok(mut lock) => {
-										if let Err(error) = lock(&self.context.clone(), response) {
-											error!("control callback failed with {error}");
-										}
+							}
+							ControlResponse::Declined => match ccb.lock() {
+								Ok(mut lock) => {
+									if let Err(error) = lock(&self.context.clone(), response) {
+										error!("control callback failed with {error}");
 									}
-									Err(err) => {
-										error!("control callback lock failed with {err}");
-									}
+								}
+								Err(err) => {
+									error!("control callback lock failed with {err}");
 								}
 							},
 							ControlResponse::Canceled => todo!(),

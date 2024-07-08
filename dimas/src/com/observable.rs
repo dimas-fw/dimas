@@ -15,7 +15,7 @@ use crate::timer::Timer;
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
 	error::{DimasError, Result},
-	message_types::{ControlResponse, Message, ResultResponse},
+	message_types::{ControlResponse, Message},
 	traits::{Capability, Context, ContextAbstraction},
 };
 use tokio::task::JoinHandle;
@@ -46,6 +46,8 @@ where
 	feedback_callback: ArcObservableFeedbackCallback<P>,
 	/// fuction for observation execution
 	execution_function: ArcObservableExecutionFunction<P>,
+	/// inner data
+	rt_data: Arc<Mutex<ObservableData<P>>>,
 	handle: Option<JoinHandle<()>>,
 }
 
@@ -89,6 +91,12 @@ where
 		feedback_callback: ArcObservableFeedbackCallback<P>,
 		execution_function: ArcObservableExecutionFunction<P>,
 	) -> Self {
+	// helper for handling runtime data
+	let rt_data = Arc::new(Mutex::new(ObservableData {
+		publisher: None,
+		timer: None,
+		execution: None,
+	}));
 		Self {
 			selector,
 			context,
@@ -97,6 +105,7 @@ where
 			control_callback,
 			feedback_callback,
 			execution_function,
+			rt_data,
 			handle: None,
 		}
 	}
@@ -127,6 +136,7 @@ where
 		let efc = self.execution_function.clone();
 		let ctx1 = self.context.clone();
 		let ctx2 = self.context.clone();
+		let rt_data = self.rt_data.clone();
 
 		self.handle
 			.replace(tokio::task::spawn(async move {
@@ -142,7 +152,7 @@ where
 						info!("restarting observable!");
 					};
 				}));
-				if let Err(error) = run_observable(selector, interval, ccb, fcb, efc, ctx2).await {
+				if let Err(error) = run_observable(selector, rt_data, interval, ccb, fcb, efc, ctx2).await {
 					error!("observable failed with {error}");
 				};
 			}));
@@ -158,10 +168,151 @@ where
 		}
 	}
 }
+// endregion:	--- Observable
+
+// region:		--- ObservableData
+struct ObservableData<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	publisher: Option<Arc<Mutex<Publisher<P>>>>,
+	timer: Option<Timer<P>>,
+	execution: Option<JoinHandle<()>>,
+}
+
+impl<P> ObservableData<P>
+where
+	P: Send + Sync + Unpin + 'static,
+{
+	fn create_publisher(
+		&mut self,
+		key: &String,
+		feedback_interval: Duration,
+		feedback_callback: ArcObservableFeedbackCallback<P>,
+		ctx: Context<P>,
+	) -> Result<()> {
+		let publisher_selector = format!("{}/feedback/{}", &key, ctx.session().zid());
+
+		let mut publisher = Publisher::new(
+			publisher_selector,
+			ctx.clone(),
+			OperationState::Created,
+			Priority::RealTime,
+			CongestionControl::Block,
+		);
+		publisher.manage_operation_state(&OperationState::Active)?;
+
+		let arc_publisher = Arc::new(Mutex::new(publisher));
+		let publisher = arc_publisher.clone();
+		self.publisher = Some(arc_publisher);
+
+		let mut timer = Timer::new(
+			"feedback".to_string(),
+			ctx,
+			OperationState::Created,
+			Arc::new(Mutex::new(
+				move |ctx: &Arc<dyn ContextAbstraction<P>>| -> Result<()> {
+					match feedback_callback.lock() {
+						Ok(mut fcb) => {
+							let msg = fcb(ctx)?;
+							match publisher.lock() {
+								Ok(lock) => lock.put(msg),
+								Err(reason) => {
+									error!("could not publish feedback: {}", reason);
+									Ok(())
+								}
+							}
+						}
+						Err(_) => todo!(),
+					}
+				},
+			)),
+			feedback_interval,
+			Some(feedback_interval),
+		);
+		timer.manage_operation_state(&OperationState::Active)?;
+		self.timer.replace(timer);
+
+		Ok(())
+	}
+
+	fn create_executor(
+		&mut self,
+		key: String,
+		execution_function: ArcObservableExecutionFunction<P>,
+		ctx: Context<P>,
+		rt_data: Arc<Mutex<Self>>,
+	) {
+		let ctx2 = ctx.clone();
+		let publisher = self.publisher.take();
+
+		self
+		.execution
+		.replace(tokio::task::spawn(async move {
+			std::panic::set_hook(Box::new(move |reason| {
+				error!("observable execution panic: {}", reason);
+				if let Err(reason) = ctx.sender().send(
+					TaskSignal::RestartObservable(key.clone()),
+				) {
+					error!(
+						"could not restart observable: {}",
+						reason
+					);
+				} else {
+					info!("restarting observable!");
+				};
+			}));
+			let publisher2 = publisher.expect("snh");
+			match execution_function.lock() {
+				Ok(mut cb) => {
+					let res = cb(&ctx2);
+					match res {
+						Ok(result) => {
+							let msg = Message::encode(&result);
+							match publisher2.lock() {
+								Ok(lock) => {
+									if let Err(reason) =
+										lock.put(msg)
+									{
+										error!("could not publish result: {}", reason);
+									}
+								}
+								Err(reason) => {
+									error!(
+										"could not publish result: {}",
+										reason
+									);
+								}
+							};
+							match rt_data.lock() {
+								Ok(mut lock) => {
+									lock.execution.take();
+									lock.timer.take();
+									lock.publisher.take();
+								},
+								Err(error) => error!("inner lock failed with {error}"),
+							};
+						}
+						Err(error) => error!(
+						"execution function failed with {error}"
+						),
+					}
+				}
+				Err(err) => {
+					error!(
+						"execution function lock failed with {err}"
+					);
+				}
+			}
+		}));
+	}
+}
+// endregion:	--- ObservableData
 
 #[instrument(name="observable", level = Level::ERROR, skip_all)]
 async fn run_observable<P>(
 	selector: String,
+	rt_data: Arc<Mutex<ObservableData<P>>>,
 	feedback_interval: Duration,
 	control_callback: ArcObservableControlCallback<P>,
 	feedback_callback: ArcObservableFeedbackCallback<P>,
@@ -177,10 +328,6 @@ where
 		.complete(true)
 		.allowed_origin(Locality::Any)
 		.await?;
-
-	// handle for the asynchronous feedback publisher
-	#[allow(clippy::collection_is_never_read)]
-	let mut feedback: Option<Timer<P>> = None;
 
 	loop {
 		let feedback_callback = feedback_callback.clone();
@@ -202,7 +349,7 @@ where
 					content
 				},
 			);
-			let msg = Message(content);
+			let msg = Message::new(content);
 			match control_callback.lock() {
 				Ok(mut lock) => {
 					let res = lock(&ctx, msg);
@@ -210,48 +357,24 @@ where
 						Ok(response) => {
 							match response {
 								ControlResponse::Accepted => {
-									// create and start feedback publisher
-									let key = query.selector().key_expr.to_string();
-									let publisher_selector =
-										format!("{}/feedback/{}", &key, ctx.session().zid());
+									match rt_data.lock() {
+										Ok(mut lock) => {
+											// create and start feedback publisher
+											let key = query.selector().key_expr.to_string();
+											lock.create_publisher(&key, feedback_interval.clone(), feedback_callback.clone(), ctx.clone())?;
 
-									let mut publisher = Publisher::new(
-										publisher_selector,
-										ctx.clone(),
-										OperationState::Created,
-										Priority::RealTime,
-										CongestionControl::Block,
-									);
-									publisher.manage_operation_state(&OperationState::Active)?;
+											// run task
+											lock.create_executor(key.clone(), execution_function.clone(), ctx.clone(), rt_data.clone());
 
-									let mut timer = Timer::new(
-										"feedback".to_string(),
-										ctx.clone(),
-										OperationState::Created,
-										Arc::new(Mutex::new(move |ctx: &Arc<dyn ContextAbstraction<P>>| -> Result<()> {
-											match feedback_callback.lock() {
-												Ok(mut fcb) => {
-													let msg = fcb(ctx)?;
-													publisher.put(msg)
-												},
-												Err(_) => todo!(),
-											}
-										})),
-										feedback_interval,
-										Some(feedback_interval),
-									);
-									timer.manage_operation_state(&OperationState::Active)?;
-									feedback.replace(timer);
-
-									// run task
-									let todo = true;
-
-									// send accepted response
-									let encoded: Vec<u8> = encode(&ControlResponse::Accepted);
-									query
-										.reply(&key, encoded)
-										.wait()
-										.map_err(|_| DimasError::ShouldNotHappen)?;
+											// send accepted response
+											let encoded: Vec<u8> = encode(&ControlResponse::Accepted);
+											query
+												.reply(&key, encoded)
+												.wait()
+												.map_err(|_| DimasError::ShouldNotHappen)?;
+										},
+										Err(_) => todo!(),
+									};
 								}
 								ControlResponse::Declined => {
 									// send declined response
@@ -275,7 +398,14 @@ where
 		} else if p == "cancel" {
 			let todo = true;
 			// stop running observation
-			feedback.take();
+			match rt_data.lock() {
+				Ok(mut lock) => {
+					lock.execution.take();
+					lock.timer.take();
+					lock.publisher.take();
+				},
+				Err(error) => error!("inner lock failed with {error}"),
+			};
 
 			// send canceled response
 			let state = Message::encode(&"canceled".to_string());
@@ -290,7 +420,6 @@ where
 		}
 	}
 }
-// endregion:	--- Observable
 
 #[cfg(test)]
 mod tests {

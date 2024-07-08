@@ -21,7 +21,10 @@ async fn main() -> Result<()> {
 	init_tracing();
 
 	// create & initialize agents properties
-	let properties = AgentProps { limit: 0u128, new_limit: 10u128 };
+	let properties = AgentProps {
+		limit: 0u128,
+		new_limit: 10u128,
+	};
 
 	// create an agent with the properties and the prefix 'examples'
 	let mut agent = Agent::new(properties)
@@ -30,39 +33,53 @@ async fn main() -> Result<()> {
 		.config(&Config::default())?;
 
 	// create the observer for fibonacci
+	#[allow(clippy::cognitive_complexity)]
 	agent
 		.observer()
 		.topic("fibonacci")
 		.control_callback(|ctx, response| -> Result<()> {
 			match response {
 				ControlResponse::Accepted => {
-					let limit =  ctx.read()?.new_limit;
+					let limit = ctx.read()?.new_limit;
 					info!("Accepted fibonacci up to {}", limit);
 					ctx.write()?.limit = limit;
-					ctx.write()?.new_limit += 10;
-				},
+					ctx.write()?.new_limit += 1;
+				}
 				ControlResponse::Declined => {
 					info!("Declined fibonacci up to {}", ctx.read()?.new_limit);
-				},
+				}
 				ControlResponse::Canceled => {
 					info!("Canceled fibonacci up to {}", ctx.read()?.limit);
-				},
+				}
 			};
 			Ok(())
 		})
-		.feedback_callback(|ctx, msg| -> Result<()> {
-			let msg: String = msg.decode()?; 
-			info!("received feedback {msg}");
-			Ok(()) 
+		.feedback_callback(|_ctx, msg| -> Result<()> {
+			let msg: Vec<u128> = msg.decode()?;
+			info!("received feedback {:?}", msg);
+			Ok(())
 		})
-		.result_callback(|ctx, result| -> Result<()> {
-			info!("received result");
-			Ok(()) 
+		.result_callback(|_ctx, response| -> Result<()> {
+			match response {
+				ResultResponse::Canceled(value) => {
+					info!("canceled");
+					let msg = Message::new(value);
+					//let result: Vec<u128> = msg.decode()?;
+					//info!("canceled at {:?}", result);
+				}
+				ResultResponse::Finished(value) => {
+					info!("finished");
+					let msg = Message::new(value);
+					//let result: Vec<u128> = msg.decode()?;
+					//info!("received result {:?}", result);
+				}
+			}
+			Ok(())
 		})
 		.add()?;
 
 	// timer for regular querying
-	let interval = Duration::from_secs(10);
+	let interval = Duration::from_secs(100);
 	let mut counter = 0u128;
 	agent
 		.timer()

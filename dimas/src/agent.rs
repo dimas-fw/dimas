@@ -85,7 +85,7 @@ where
 {
 	if let Some(value) = request.payload() {
 		let content: Vec<u8> = value.into();
-		let msg = Message(content);
+		let msg = Message::new(content);
 		let signal: Signal = Message::decode(msg)?;
 		match signal {
 			Signal::About => about_handler(ctx, request)?,

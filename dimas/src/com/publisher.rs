@@ -129,7 +129,7 @@ where
 			.publisher
 			.clone()
 			.ok_or(DimasError::ShouldNotHappen)?
-			.put(message.0)
+			.put(message.value())
 			.wait()
 		{
 			Ok(()) => Ok(()),

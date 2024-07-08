@@ -69,7 +69,7 @@ impl Communicator {
 	#[allow(clippy::needless_pass_by_value)]
 	pub fn put(&self, selector: &str, message: Message) -> Result<()> {
 		self.session
-			.put(selector, message.0)
+			.put(selector, message.value())
 			.wait()
 			.map_err(|_| DimasError::Put.into())
 	}

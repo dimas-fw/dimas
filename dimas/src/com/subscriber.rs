@@ -179,7 +179,7 @@ where
 		match sample.kind() {
 			SampleKind::Put => {
 				let content: Vec<u8> = sample.payload().into();
-				let msg = Message(content);
+				let msg = Message::new(content);
 				match p_cb.lock() {
 					Ok(mut lock) => {
 						if let Err(error) = lock(&ctx, msg) {

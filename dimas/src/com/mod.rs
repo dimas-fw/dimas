@@ -16,18 +16,22 @@ use std::sync::{Arc, Mutex};
 /// Type definition for a liveliness atomic reference counted callback
 pub type ArcLivelinessCallback<P> =
 	Arc<Mutex<dyn FnMut(&Context<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static>>;
+// Subscriber
 /// Type definition for a subscribers atomic reference counted `put` callback
 pub type ArcPutCallback<P> =
 	Arc<Mutex<dyn FnMut(&Context<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static>>;
 /// Type definition for a subscribers atomic reference counted `delete` callback
 pub type ArcDeleteCallback<P> =
 	Arc<Mutex<dyn FnMut(&Context<P>) -> Result<()> + Send + Sync + Unpin + 'static>>;
+// Query
 /// type definition for a queries atomic reference counted `response` callback
 pub type ArcQueryCallback<P> =
 	Arc<Mutex<dyn FnMut(&Context<P>, QueryableMsg) -> Result<()> + Send + Sync + Unpin + 'static>>;
+// Queryable
 /// type defnition for a queryables atomic reference counted `request` callback
 pub type ArcQueryableCallback<P> =
 	Arc<Mutex<dyn FnMut(&Context<P>, QueryMsg) -> Result<()> + Send + Sync + Unpin + 'static>>;
+// Observer
 /// Type definition for an observer atomic reference counted `control` callback
 pub type ArcObserverControlCallback<P> = Arc<
 	Mutex<dyn FnMut(&Context<P>, ControlResponse) -> Result<()> + Send + Sync + Unpin + 'static>,
@@ -39,6 +43,7 @@ pub type ArcObserverFeedbackCallback<P> =
 pub type ArcObserverResultCallback<P> = Arc<
 	Mutex<dyn FnMut(&Context<P>, ResultResponse) -> Result<()> + Send + Sync + Unpin + 'static>,
 >;
+// Observable
 /// Type definition for an observables atomic reference counted `control` callback
 pub type ArcObservableControlCallback<P> = Arc<
 	Mutex<

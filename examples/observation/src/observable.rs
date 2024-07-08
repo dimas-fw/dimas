@@ -1,6 +1,8 @@
 //! `DiMAS` observation example
 //! Copyright © 2024 Stephan Kunz
 
+use std::{thread::sleep, time::Duration};
+
 // region:		--- modules
 use dimas::prelude::*;
 use observation::FibonacciRequest;
@@ -10,18 +12,24 @@ use tracing::info;
 #[derive(Debug)]
 struct AgentProps {
 	limit: u128,
-	n_2: u128,
-	n_1: u128,
+	sequence: Vec<u128>,
 }
 
 fn fibonacci(ctx: &Context<AgentProps>) -> Result<ResultResponse> {
-	let n_2 = ctx.read()?.n_2;
-	let n_1 = ctx.read()?.n_1;
-	let next = n_2 + n_1;
-	ctx.write()?.n_2 = n_1;
-	ctx.write()?.n_1 = next;
-	let result = Message::encode(&"done".to_string());
-	Ok(ResultResponse::Finished(result.0))
+	let limit = ctx.read()?.limit;
+	let mut n_2 = 0;
+	let mut n_1 = 1;
+	for _ in 2..limit {
+		let next = n_2 + n_1;
+		n_2 = n_1;
+		n_1 = next;
+		ctx.write()?.sequence.push(next);
+		// artificial time consumption
+		sleep(Duration::from_secs(1));
+	}
+	let result = Message::encode(&ctx.read()?.sequence);
+	ctx.write()?.sequence.clear();
+	Ok(ResultResponse::Finished(result.value().to_owned()))
 }
 
 #[tokio::main]
@@ -32,8 +40,7 @@ async fn main() -> Result<()> {
 	// create & initialize agents properties
 	let properties = AgentProps {
 		limit: 0u128,
-		n_2: 0u128,
-		n_1: 1u128,
+		sequence: Vec::new(),
 	};
 
 	// create an agent with the properties and the prefix 'examples'
@@ -49,10 +56,13 @@ async fn main() -> Result<()> {
 		.control_callback(|ctx, msg| -> Result<ControlResponse> {
 			let message: FibonacciRequest = msg.decode()?;
 			// check if properties are still in initial state
-			if ctx.read()?.limit == 0 && ctx.read()?.n_2 == 0 && ctx.read()?.n_1 == 1 {
+			if ctx.read()?.sequence.is_empty() {
 				// accept
 				info!("Accepting Fibonacci sequence up to {}", message.limit);
 				ctx.write()?.limit = message.limit;
+				// add first two elements
+				ctx.write()?.sequence.push(0);
+				ctx.write()?.sequence.push(1);
 				Ok(ControlResponse::Accepted)
 			} else {
 				// decline
@@ -61,7 +71,8 @@ async fn main() -> Result<()> {
 			}
 		})
 		.feedback_callback(|ctx| -> Result<Message> {
-			let message = Message::encode(&"hello world".to_string());
+			let seq = ctx.read()?.sequence.clone();
+			let message = Message::encode(&seq);
 			Ok(message)
 		})
 		.execution_function(fibonacci)
