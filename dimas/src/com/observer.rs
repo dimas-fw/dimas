@@ -5,7 +5,7 @@ use bitcode::decode;
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
-	message_types::{Message, ObservableResponse},
+	message_types::{ControlResponse, Message, ResultResponse},
 	traits::{Capability, Context, ContextAbstraction},
 };
 use std::sync::{Arc, Mutex};
@@ -18,7 +18,10 @@ use zenoh::{
 	subscriber::Reliability,
 };
 
-use super::{subscriber::Subscriber, ArcPutCallback};
+use super::{
+	subscriber::Subscriber, ArcObserverControlCallback, ArcObserverFeedbackCallback,
+	ArcObserverResultCallback, ArcPutCallback,
+};
 // endregion:	--- modules
 
 // region:		--- Observer
@@ -32,8 +35,12 @@ where
 	/// Context for the Observer
 	context: Context<P>,
 	activation_state: OperationState,
-	/// callback for feedback including result
-	callback: ArcPutCallback<P>,
+	/// callback for control request results
+	control_callback: ArcObserverControlCallback<P>,
+	/// callback for feedback
+	feedback_callback: ArcObserverFeedbackCallback<P>,
+	/// callback for result
+	result_callback: ArcObserverResultCallback<P>,
 	/// handle for the asynchronous feedback subscriber
 	feedback: Arc<Mutex<Option<Subscriber<P>>>>,
 	handle: Option<JoinHandle<()>>,
@@ -72,13 +79,17 @@ where
 		selector: String,
 		context: Context<P>,
 		activation_state: OperationState,
-		callback: ArcPutCallback<P>,
+		control_callback: ArcObserverControlCallback<P>,
+		feedback_callback: ArcObserverFeedbackCallback<P>,
+		result_callback: ArcObserverResultCallback<P>,
 	) -> Self {
 		Self {
 			selector,
 			context,
 			activation_state,
-			callback,
+			control_callback,
+			feedback_callback,
+			result_callback,
 			feedback: Arc::new(Mutex::new(None)),
 			handle: None,
 		}
@@ -110,7 +121,9 @@ where
 	/// Run an observation with an optional [`Message`].
 	#[instrument(name="observer", level = Level::ERROR, skip_all)]
 	pub fn observe(&self, message: Option<Message>) -> Result<()> {
-		let cb = self.callback.clone();
+		let ccb = self.control_callback.clone();
+		let fcb = self.feedback_callback.clone();
+		let rcb = self.result_callback.clone();
 		let session = self.context.session();
 		// TODO: make a proper "key: value" implementation
 		let selector = format!("{}?request", &self.selector);
@@ -138,9 +151,9 @@ where
 				Ok(sample) => match sample.kind() {
 					SampleKind::Put => {
 						let content: Vec<u8> = sample.payload().into();
-						let response: ObservableResponse = decode(&content)?;
+						let response: ControlResponse = decode(&content)?;
 						match response {
-							ObservableResponse::Accepted => {
+							ControlResponse::Accepted => {
 								// create the subscriber for feedback
 								// use "<query_selector>/feedback/<source_id/replier_id>" as key
 								// in case there is no source_id/replier_id, listen on all id's
@@ -163,59 +176,59 @@ where
 									},
 								);
 
+								let fcb2 = fcb.clone();
 								let subscriber_selector =
 									format!("{}/feedback/{}", &self.selector, &source_id);
+
 								let mut sub = Subscriber::new(
 									subscriber_selector,
 									self.context.clone(),
 									OperationState::Created,
 									Arc::new(Mutex::new(
-										|ctx: &Arc<dyn ContextAbstraction<P>>,
-										 msg: Message|
-										 -> Result<()> {
-											let todo = true;
-											let msg: String = msg.decode()?;
-											dbg!(msg);
-											Ok(())
+										move |ctx: &Arc<dyn ContextAbstraction<P>>,
+										      msg: Message|
+										      -> Result<()> {
+											fcb2.lock().map_or_else(
+												|_| {
+													todo!()
+												},
+												|mut cb| cb(ctx, msg),
+											)
 										},
 									)),
 									Reliability::Reliable,
 									None,
 								);
+
 								sub.manage_operation_state(&OperationState::Active)?;
 								self.feedback
 									.lock()
 									.map_or_else(|_| todo!(), |mut fb| fb.replace(sub));
-								// TODO:
-								// clarify if this is needed
-								let msg = Message(content);
-								let guard = cb.lock();
-								match guard {
+
+								match ccb.lock() {
 									Ok(mut lock) => {
-										if let Err(error) = lock(&self.context.clone(), msg) {
-											error!("callback failed with {error}");
+										if let Err(error) = lock(&self.context.clone(), response) {
+											error!("control callback failed with {error}");
 										}
 									}
 									Err(err) => {
-										error!("callback lock failed with {err}");
+										error!("control callback lock failed with {err}");
 									}
 								}
-							}
-							ObservableResponse::Declined => {
-								let msg = Message(content);
-								let guard = cb.lock();
-								match guard {
+							},
+							ControlResponse::Declined => {
+								match ccb.lock() {
 									Ok(mut lock) => {
-										if let Err(error) = lock(&self.context.clone(), msg) {
-											error!("callback failed with {error}");
+										if let Err(error) = lock(&self.context.clone(), response) {
+											error!("control callback failed with {error}");
 										}
 									}
 									Err(err) => {
-										error!("callback lock failed with {err}");
+										error!("control callback lock failed with {err}");
 									}
 								}
-							}
-							_ => todo!(),
+							},
+							ControlResponse::Canceled => todo!(),
 						}
 					}
 					SampleKind::Delete => {
@@ -231,7 +244,7 @@ where
 	/// Cancel a running observation
 	#[instrument(name="observer", level = Level::ERROR, skip_all)]
 	pub fn cancel(&self) -> Result<()> {
-		let cb = self.callback.clone();
+		let cb = self.control_callback.clone();
 		let session = self.context.session();
 		// TODO: make a proper "key: value" implementation
 		let selector = format!("{}?cancel", &self.selector);
@@ -259,13 +272,14 @@ where
 				Ok(sample) => match sample.kind() {
 					SampleKind::Put => {
 						let content: Vec<u8> = sample.payload().into();
-						let msg = Message(content);
+						let response: ControlResponse = decode(&content)?;
 						let guard = cb.lock();
 						match guard {
 							Ok(mut lock) => {
-								if let Err(error) = lock(&self.context.clone(), msg) {
-									error!("callback failed with {error}");
-								}
+								lock(&self.context.clone(), response);
+								//if let Err(error) = lock(&self.context.clone(), msg) {
+								//	error!("callback failed with {error}");
+								//}
 							}
 							Err(err) => {
 								error!("callback lock failed with {err}");

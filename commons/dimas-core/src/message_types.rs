@@ -141,35 +141,62 @@ impl QueryableMsg {
 }
 // endregion:	--- QueryableMsg
 
-// region:		--- ObserverRequest
+// region:		--- ControlResponse
 #[derive(Debug, Encode, Decode)]
 /// ?
-pub enum ObserverRequest {
-	/// ?
-	Run,
-	/// ?
-	Cancel,
-	/// ?
-	Update,
-}
-// endregion:	--- ObserverRequest
-
-// region:		--- ObservableResponse
-#[derive(Debug, Encode, Decode)]
-/// ?
-pub enum ObservableResponse {
+pub enum ControlResponse {
 	/// ?
 	Accepted,
 	/// ?
 	Canceled,
 	/// ?
 	Declined,
-	/// ?
-	Feedback,
-	/// ?
-	Finished,
 }
-// endregion:	--- ObservableResponse
+// endregion:	--- ControlResponse
+
+// region:		--- ResultResponse
+#[derive(Debug, Encode, Decode)]
+/// ?
+pub enum ResultResponse {
+	/// ?
+	Canceled(Vec<u8>),
+	/// ?
+	Finished(Vec<u8>),
+}
+// endregion:	--- ResultResponse
+
+// // region:		--- ObservableResponse
+// #[derive(Debug, Encode, Decode)]
+// /// ?
+// pub enum ObservableResponse {
+// 	/// ?
+// 	Accepted,
+// 	/// ?
+// 	Declined,
+// 	/// ?
+// 	Errored,
+// 	/// ?
+// 	Feedback(Vec<u8>),
+// 	/// ?
+// 	Canceled(Vec<u8>),
+// 	/// ?
+// 	Finished(Vec<u8>),
+// }
+//
+// impl ObservableResponse {
+// 	/// Get the Message where available
+// 	#[must_use]
+// 	pub fn message(self) -> Option<Message> {
+// 		match self {
+// 			Self::Feedback(value) | Self::Canceled(value) | Self::Finished(value) => {
+// 				Some(Message(value))
+// 			}
+// 			// Accepted | Declined
+// 			_ => None,
+// 		}
+// 	}
+// }
+// // endregion:	--- ObservableResponse
 
 // // region:		--- ObserverMsg
 // /// Messages of an `Observer`

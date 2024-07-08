@@ -12,6 +12,7 @@ use tracing::info;
 #[derive(Debug)]
 struct AgentProps {
 	limit: u128,
+	new_limit: u128,
 }
 
 #[tokio::main]
@@ -20,7 +21,7 @@ async fn main() -> Result<()> {
 	init_tracing();
 
 	// create & initialize agents properties
-	let properties = AgentProps { limit: 10u128 };
+	let properties = AgentProps { limit: 0u128, new_limit: 10u128 };
 
 	// create an agent with the properties and the prefix 'examples'
 	let mut agent = Agent::new(properties)
@@ -32,15 +33,31 @@ async fn main() -> Result<()> {
 	agent
 		.observer()
 		.topic("fibonacci")
-		.callback(|ctx, msg| -> Result<()> {
-			let message: ObservableResponse = msg.decode()?;
-			info!("Observable response: {:?}", &message);
-			match message {
-				ObservableResponse::Accepted => ctx.write()?.limit += 10,
-				ObservableResponse::Declined => ctx.write()?.limit += 1,
-				_ => todo!(),
+		.control_callback(|ctx, response| -> Result<()> {
+			match response {
+				ControlResponse::Accepted => {
+					let limit =  ctx.read()?.new_limit;
+					info!("Accepted fibonacci up to {}", limit);
+					ctx.write()?.limit = limit;
+					ctx.write()?.new_limit += 10;
+				},
+				ControlResponse::Declined => {
+					info!("Declined fibonacci up to {}", ctx.read()?.new_limit);
+				},
+				ControlResponse::Canceled => {
+					info!("Canceled fibonacci up to {}", ctx.read()?.limit);
+				},
 			};
 			Ok(())
+		})
+		.feedback_callback(|ctx, msg| -> Result<()> {
+			let msg: String = msg.decode()?; 
+			info!("received feedback {msg}");
+			Ok(()) 
+		})
+		.result_callback(|ctx, result| -> Result<()> {
+			info!("received result");
+			Ok(()) 
 		})
 		.add()?;
 
@@ -54,7 +71,7 @@ async fn main() -> Result<()> {
 		.callback(move |ctx| -> Result<()> {
 			info!("Observation {counter}");
 			let msg = FibonacciRequest {
-				limit: ctx.read()?.limit,
+				limit: ctx.read()?.new_limit,
 			};
 			let message = Message::encode(&msg);
 			ctx.observe("fibonacci", Some(message))?;

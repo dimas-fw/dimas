@@ -341,6 +341,8 @@ where
 		P,
 		crate::builder::NoSelector,
 		crate::builder::NoCallback,
+		crate::builder::NoCallback,
+		crate::builder::NoCallback,
 		crate::builder::Storage<Observable<P>>,
 	> {
 		ObservableBuilder::new(self.context.clone()).storage(self.context.observables().clone())
@@ -353,6 +355,8 @@ where
 	) -> ObserverBuilder<
 		P,
 		crate::builder::NoSelector,
+		crate::builder::NoCallback,
+		crate::builder::NoCallback,
 		crate::builder::NoCallback,
 		crate::builder::Storage<Observer<P>>,
 	> {

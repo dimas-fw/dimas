@@ -7,19 +7,25 @@ use std::{
 
 use bitcode::encode;
 // region:		--- modules
-use super::ArcControlCallback;
+use super::{
+	publisher::Publisher, ArcObservableControlCallback, ArcObservableExecutionFunction,
+	ArcObservableFeedbackCallback,
+};
 use crate::timer::Timer;
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
 	error::{DimasError, Result},
-	message_types::{Message, ObservableResponse},
+	message_types::{ControlResponse, Message, ResultResponse},
 	traits::{Capability, Context, ContextAbstraction},
 };
 use tokio::task::JoinHandle;
 use tracing::{error, info, instrument, warn, Level};
-use zenoh::core::Wait;
 use zenoh::sample::Locality;
 use zenoh::session::SessionDeclarations;
+use zenoh::{
+	core::{Priority, Wait},
+	publisher::CongestionControl,
+};
 // endregion:	--- modules
 
 // region:		--- Observable
@@ -33,8 +39,13 @@ where
 	/// Context for the Observable
 	context: Context<P>,
 	activation_state: OperationState,
+	feedback_interval: Duration,
 	/// callback for observation request and cancelation
-	callback: ArcControlCallback<P>,
+	control_callback: ArcObservableControlCallback<P>,
+	/// callback for observation feedback
+	feedback_callback: ArcObservableFeedbackCallback<P>,
+	/// fuction for observation execution
+	execution_function: ArcObservableExecutionFunction<P>,
 	handle: Option<JoinHandle<()>>,
 }
 
@@ -73,13 +84,19 @@ where
 		selector: String,
 		context: Context<P>,
 		activation_state: OperationState,
-		callback: ArcControlCallback<P>,
+		feedback_interval: Duration,
+		control_callback: ArcObservableControlCallback<P>,
+		feedback_callback: ArcObservableFeedbackCallback<P>,
+		execution_function: ArcObservableExecutionFunction<P>,
 	) -> Self {
 		Self {
 			selector,
 			context,
 			activation_state,
-			callback,
+			feedback_interval,
+			control_callback,
+			feedback_callback,
+			execution_function,
 			handle: None,
 		}
 	}
@@ -97,14 +114,17 @@ where
 		self.stop();
 
 		{
-			if self.callback.lock().is_err() {
+			if self.control_callback.lock().is_err() {
 				warn!("found poisoned put Mutex");
-				self.callback.clear_poison();
+				self.control_callback.clear_poison();
 			}
 		}
 
 		let selector = self.selector.clone();
-		let cb = self.callback.clone();
+		let interval = self.feedback_interval;
+		let ccb = self.control_callback.clone();
+		let fcb = self.feedback_callback.clone();
+		let efc = self.execution_function.clone();
 		let ctx1 = self.context.clone();
 		let ctx2 = self.context.clone();
 
@@ -122,7 +142,7 @@ where
 						info!("restarting observable!");
 					};
 				}));
-				if let Err(error) = run_observable(selector, cb, ctx2).await {
+				if let Err(error) = run_observable(selector, interval, ccb, fcb, efc, ctx2).await {
 					error!("observable failed with {error}");
 				};
 			}));
@@ -142,7 +162,10 @@ where
 #[instrument(name="observable", level = Level::ERROR, skip_all)]
 async fn run_observable<P>(
 	selector: String,
-	callback: ArcControlCallback<P>,
+	feedback_interval: Duration,
+	control_callback: ArcObservableControlCallback<P>,
+	feedback_callback: ArcObservableFeedbackCallback<P>,
+	execution_function: ArcObservableExecutionFunction<P>,
 	ctx: Context<P>,
 ) -> Result<()>
 where
@@ -160,6 +183,7 @@ where
 	let mut feedback: Option<Timer<P>> = None;
 
 	loop {
+		let feedback_callback = feedback_callback.clone();
 		let query = queryable
 			.recv_async()
 			.await
@@ -179,29 +203,42 @@ where
 				},
 			);
 			let msg = Message(content);
-			match callback.lock() {
+			match control_callback.lock() {
 				Ok(mut lock) => {
 					let res = lock(&ctx, msg);
 					match res {
 						Ok(response) => {
 							match response {
-								ObservableResponse::Accepted => {
+								ControlResponse::Accepted => {
 									// create and start feedback publisher
 									let key = query.selector().key_expr.to_string();
 									let publisher_selector =
 										format!("{}/feedback/{}", &key, ctx.session().zid());
+
+									let mut publisher = Publisher::new(
+										publisher_selector,
+										ctx.clone(),
+										OperationState::Created,
+										Priority::RealTime,
+										CongestionControl::Block,
+									);
+									publisher.manage_operation_state(&OperationState::Active)?;
 
 									let mut timer = Timer::new(
 										"feedback".to_string(),
 										ctx.clone(),
 										OperationState::Created,
 										Arc::new(Mutex::new(move |ctx: &Arc<dyn ContextAbstraction<P>>| -> Result<()> {
-											let todo = true;
-											let message = Message::encode(&"hello".to_string()); 
-											ctx.put_with(&publisher_selector, message)
+											match feedback_callback.lock() {
+												Ok(mut fcb) => {
+													let msg = fcb(ctx)?;
+													publisher.put(msg)
+												},
+												Err(_) => todo!(),
+											}
 										})),
-										Duration::from_millis(1000),
-										Some(Duration::from_millis(1000)),
+										feedback_interval,
+										Some(feedback_interval),
 									);
 									timer.manage_operation_state(&OperationState::Active)?;
 									feedback.replace(timer);
@@ -210,22 +247,22 @@ where
 									let todo = true;
 
 									// send accepted response
-									let encoded: Vec<u8> = encode(&ObservableResponse::Accepted);
+									let encoded: Vec<u8> = encode(&ControlResponse::Accepted);
 									query
 										.reply(&key, encoded)
 										.wait()
 										.map_err(|_| DimasError::ShouldNotHappen)?;
 								}
-								ObservableResponse::Declined => {
+								ControlResponse::Declined => {
 									// send declined response
 									let key = query.selector().key_expr.to_string();
-									let encoded: Vec<u8> = encode(&ObservableResponse::Declined);
+									let encoded: Vec<u8> = encode(&ControlResponse::Declined);
 									query
 										.reply(&key, encoded)
 										.wait()
 										.map_err(|_| DimasError::ShouldNotHappen)?;
 								}
-								_ => todo!(),
+								ControlResponse::Canceled => todo!(),
 							}
 						}
 						Err(error) => error!("observable callback failed with {error}"),
@@ -236,11 +273,13 @@ where
 				}
 			}
 		} else if p == "cancel" {
+			let todo = true;
 			// stop running observation
 			feedback.take();
 
 			// send canceled response
-			let encoded: Vec<u8> = encode(&ObservableResponse::Canceled);
+			let state = Message::encode(&"canceled".to_string());
+			let encoded: Vec<u8> = encode(&ControlResponse::Canceled);
 			let key = query.selector().key_expr.to_string();
 			query
 				.reply(&key, encoded)

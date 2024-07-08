@@ -6,7 +6,7 @@
 // region:    	--- modules
 use dimas_core::{
 	error::Result,
-	message_types::{Message, ObservableResponse, QueryMsg, QueryableMsg},
+	message_types::{ControlResponse, Message, QueryMsg, QueryableMsg, ResultResponse},
 	traits::Context,
 };
 use std::sync::{Arc, Mutex};
@@ -28,20 +28,29 @@ pub type ArcQueryCallback<P> =
 /// type defnition for a queryables atomic reference counted `request` callback
 pub type ArcQueryableCallback<P> =
 	Arc<Mutex<dyn FnMut(&Context<P>, QueryMsg) -> Result<()> + Send + Sync + Unpin + 'static>>;
-/// Type definition for an observables atomic reference counted `feedback` callback
-pub type ArcFeedbackCallback<P> = Arc<
-	Mutex<dyn FnMut(&Context<P>) -> Result<ObservableResponse> + Send + Sync + Unpin + 'static>,
+/// Type definition for an observer atomic reference counted `control` callback
+pub type ArcObserverControlCallback<P> = Arc<
+	Mutex<dyn FnMut(&Context<P>, ControlResponse) -> Result<()> + Send + Sync + Unpin + 'static>,
+>;
+/// Type definition for an observer atomic reference counted `feedback` callback
+pub type ArcObserverFeedbackCallback<P> =
+	Arc<Mutex<dyn FnMut(&Context<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static>>;
+/// Type definition for an observables atomic reference counted `result` callback
+pub type ArcObserverResultCallback<P> = Arc<
+	Mutex<dyn FnMut(&Context<P>, ResultResponse) -> Result<()> + Send + Sync + Unpin + 'static>,
 >;
 /// Type definition for an observables atomic reference counted `control` callback
-pub type ArcControlCallback<P> = Arc<
+pub type ArcObservableControlCallback<P> = Arc<
 	Mutex<
-		dyn FnMut(&Context<P>, Message) -> Result<ObservableResponse>
-			+ Send
-			+ Sync
-			+ Unpin
-			+ 'static,
+		dyn FnMut(&Context<P>, Message) -> Result<ControlResponse> + Send + Sync + Unpin + 'static,
 	>,
 >;
+/// Type definition for an observables atomic reference counted `feedback` callback
+pub type ArcObservableFeedbackCallback<P> =
+	Arc<Mutex<dyn FnMut(&Context<P>) -> Result<Message> + Send + Sync + Unpin + 'static>>;
+/// Type definition for an observables atomic reference counted `execution` function
+pub type ArcObservableExecutionFunction<P> =
+	Arc<Mutex<dyn FnMut(&Context<P>) -> Result<ResultResponse> + Send + Sync + Unpin + 'static>>;
 // endregion:	--- types
 
 /// `Liveliness`
