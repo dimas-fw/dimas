@@ -15,9 +15,10 @@ use dimas_core::{
 use std::fmt::Debug;
 use tracing::{instrument, Level};
 use zenoh::{
-	core::{Priority, Wait},
-	publisher::CongestionControl,
-	sample::QoSBuilderTrait,
+	qos::Priority, 
+	Wait,
+	qos::CongestionControl,
+	qos::QoSBuilderTrait,
 	session::SessionDeclarations,
 };
 // endregion:	--- modules
@@ -34,7 +35,7 @@ where
 	activation_state: OperationState,
 	priority: Priority,
 	congestion_control: CongestionControl,
-	publisher: Option<zenoh::publisher::Publisher<'static>>,
+	publisher: Option<zenoh::pubsub::Publisher<'static>>,
 }
 
 impl<P> Debug for Publisher<P>

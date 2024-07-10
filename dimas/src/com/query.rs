@@ -13,7 +13,7 @@ use dimas_core::{
 use std::{fmt::Debug, time::Duration};
 use tracing::{error, instrument, Level};
 use zenoh::{
-	core::Wait,
+	Wait,
 	query::{ConsolidationMode, QueryTarget},
 	sample::{Locality, SampleKind},
 };

@@ -16,7 +16,7 @@ use dimas_core::{
 };
 use tokio::task::JoinHandle;
 use tracing::{error, info, instrument, warn, Level};
-use zenoh::{sample::SampleKind, session::SessionDeclarations, subscriber::Reliability};
+use zenoh::{sample::SampleKind, session::SessionDeclarations, pubsub::Reliability};
 // endregion:	--- modules
 
 // region:		--- Subscriber

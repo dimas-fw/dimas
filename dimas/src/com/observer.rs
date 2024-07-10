@@ -12,15 +12,12 @@ use std::sync::{Arc, Mutex};
 use tokio::task::JoinHandle;
 use tracing::{error, instrument, warn, Level};
 use zenoh::{
-	core::Wait,
-	query::{ConsolidationMode, QueryTarget},
-	sample::{Locality, SampleKind},
-	subscriber::Reliability,
+	pubsub::Reliability, query::{ConsolidationMode, QueryTarget}, sample::{Locality, SampleKind}, Wait
 };
 
 use super::{
 	subscriber::Subscriber, ArcObserverControlCallback, ArcObserverFeedbackCallback,
-	ArcObserverResultCallback, ArcPutCallback,
+	ArcObserverResultCallback,
 };
 // endregion:	--- modules
 

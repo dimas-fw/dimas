@@ -23,8 +23,8 @@ use tracing::{error, info, instrument, warn, Level};
 use zenoh::sample::Locality;
 use zenoh::session::SessionDeclarations;
 use zenoh::{
-	core::{Priority, Wait},
-	publisher::CongestionControl,
+	qos::Priority, Wait,
+	qos::CongestionControl,
 };
 // endregion:	--- modules
 

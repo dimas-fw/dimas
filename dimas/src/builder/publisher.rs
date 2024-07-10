@@ -15,8 +15,8 @@ use dimas_core::{
 	utils::selector_from,
 };
 use std::sync::{Arc, RwLock};
-use zenoh::core::Priority;
-use zenoh::publisher::CongestionControl;
+use zenoh::qos::Priority;
+use zenoh::qos::CongestionControl;
 // endregion:	--- modules
 
 // region:		--- PublisherBuilder

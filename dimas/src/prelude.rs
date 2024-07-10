@@ -12,12 +12,12 @@ pub use std::sync::{Arc, RwLock};
 // bitcode encoding/decoding
 pub use bitcode::{Decode, Encode};
 // zenoh stuff
-pub use zenoh::core::Priority;
-pub use zenoh::publisher::CongestionControl;
+pub use zenoh::pubsub::Reliability;
+pub use zenoh::qos::CongestionControl;
+pub use zenoh::qos::Priority;
 pub use zenoh::query::ConsolidationMode;
 pub use zenoh::query::QueryTarget;
 pub use zenoh::sample::Locality;
-pub use zenoh::subscriber::Reliability;
 
 // dimas stuff
 pub use crate::agent::Agent;

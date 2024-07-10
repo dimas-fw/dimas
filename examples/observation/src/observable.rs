@@ -29,6 +29,7 @@ fn fibonacci(ctx: &Context<AgentProps>) -> Result<ResultResponse> {
 	}
 	let result = Message::encode(&ctx.read()?.sequence);
 	ctx.write()?.sequence.clear();
+	info!("finished executor");
 	Ok(ResultResponse::Finished(result.value().to_owned()))
 }
 
@@ -71,6 +72,7 @@ async fn main() -> Result<()> {
 			}
 		})
 		.feedback_callback(|ctx| -> Result<Message> {
+			info!("sending feedback");
 			let seq = ctx.read()?.sequence.clone();
 			let message = Message::encode(&seq);
 			Ok(message)

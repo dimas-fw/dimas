@@ -16,7 +16,7 @@ use dimas_core::{
 };
 use itertools::Itertools;
 use std::{collections::HashMap, time::Duration};
-use zenoh::{config::WhatAmI, core::Wait};
+use zenoh::{config::WhatAmI, Wait};
 // endregion:	--- modules
 
 // region:		--- command functions

@@ -6,7 +6,7 @@
 use crate::error::DimasError;
 use bitcode::{decode, encode, Decode, Encode};
 use std::ops::Deref;
-use zenoh::{core::Wait, query::Query};
+use zenoh::{Wait, query::Query};
 // endregion:	--- modules
 
 // region:		--- Message

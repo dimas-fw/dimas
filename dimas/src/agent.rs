@@ -73,7 +73,7 @@ use std::{
 };
 use tokio::{select, signal};
 use tracing::{error, info, warn};
-use zenoh::core::Wait;
+use zenoh::Wait;
 use zenoh::liveliness::LivelinessToken;
 use zenoh::session::SessionDeclarations;
 // endregion:	--- modules

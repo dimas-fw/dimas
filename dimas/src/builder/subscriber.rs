@@ -15,7 +15,7 @@ use dimas_core::{
 	utils::selector_from,
 };
 use std::sync::{Arc, Mutex, RwLock};
-use zenoh::subscriber::Reliability;
+use zenoh::pubsub::Reliability;
 
 use crate::builder::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use crate::com::{subscriber::Subscriber, ArcDeleteCallback, ArcPutCallback};
