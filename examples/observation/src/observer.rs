@@ -47,6 +47,9 @@ async fn main() -> Result<()> {
 				}
 				ControlResponse::Declined => {
 					info!("Declined fibonacci up to {}", ctx.read()?.new_limit);
+					ctx.write()?.limit = 0;
+					ctx.write()?.new_limit = 10;
+					ctx.cancel_observe("fibonacci")?;
 				}
 				ControlResponse::Canceled => {
 					info!("Canceled fibonacci up to {}", ctx.read()?.limit);
@@ -54,24 +57,22 @@ async fn main() -> Result<()> {
 			};
 			Ok(())
 		})
-		.feedback_callback(|_ctx, msg| -> Result<()> {
-			let msg: Vec<u128> = msg.decode()?;
-			info!("received feedback {:?}", msg);
-			Ok(())
-		})
-		.result_callback(|_ctx, response| -> Result<()> {
+		.response_callback(|_ctx, response| -> Result<()> {
 			match response {
-				ResultResponse::Canceled(value) => {
-					info!("canceled");
+				ObservableResponse::Canceled(value) => {
 					let msg = Message::new(value);
-					//let result: Vec<u128> = msg.decode()?;
-					//info!("canceled at {:?}", result);
+					let result: Vec<u128> = msg.decode()?;
+					info!("canceled at {:?}", result);
 				}
-				ResultResponse::Finished(value) => {
-					info!("finished");
+				ObservableResponse::Feedback(value) => {
 					let msg = Message::new(value);
-					//let result: Vec<u128> = msg.decode()?;
-					//info!("received result {:?}", result);
+					let result: Vec<u128> = msg.decode()?;
+					info!("received feedback {:?}", result);
+				}
+				ObservableResponse::Finished(value) => {
+					let msg = Message::new(value);
+					let result: Vec<u128> = msg.decode()?;
+					info!("received result {:?}", result);
 				}
 			}
 			Ok(())
@@ -79,7 +80,7 @@ async fn main() -> Result<()> {
 		.add()?;
 
 	// timer for regular querying
-	let interval = Duration::from_secs(100);
+	let interval = Duration::from_secs(20);
 	let mut counter = 0u128;
 	agent
 		.timer()

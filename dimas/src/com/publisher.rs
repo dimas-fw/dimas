@@ -15,11 +15,7 @@ use dimas_core::{
 use std::fmt::Debug;
 use tracing::{instrument, Level};
 use zenoh::{
-	qos::Priority, 
-	Wait,
-	qos::CongestionControl,
-	qos::QoSBuilderTrait,
-	session::SessionDeclarations,
+	qos::CongestionControl, qos::Priority, qos::QoSBuilderTrait, session::SessionDeclarations, Wait,
 };
 // endregion:	--- modules
 

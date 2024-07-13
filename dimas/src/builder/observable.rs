@@ -11,7 +11,7 @@ use crate::{
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
-	message_types::{ControlResponse, Message, ResultResponse},
+	message_types::{ControlResponse, Message},
 	traits::Context,
 	utils::selector_from,
 };
@@ -203,7 +203,7 @@ where
 		function: F,
 	) -> ObservableBuilder<P, K, CC, FC, Callback<ArcObservableExecutionFunction<P>>, S>
 	where
-		F: FnMut(&Context<P>) -> Result<ResultResponse> + Send + Sync + Unpin + 'static,
+		F: FnMut(&Context<P>) -> Result<Message> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
 			context,

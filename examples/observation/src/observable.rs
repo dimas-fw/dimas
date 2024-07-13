@@ -1,7 +1,7 @@
 //! `DiMAS` observation example
 //! Copyright © 2024 Stephan Kunz
 
-use std::{thread::sleep, time::Duration};
+use std::time::Duration;
 
 // region:		--- modules
 use dimas::prelude::*;
@@ -15,7 +15,7 @@ struct AgentProps {
 	sequence: Vec<u128>,
 }
 
-fn fibonacci(ctx: &Context<AgentProps>) -> Result<ResultResponse> {
+fn fibonacci(ctx: &Context<AgentProps>) -> Result<Message> {
 	let limit = ctx.read()?.limit;
 	let mut n_2 = 0;
 	let mut n_1 = 1;
@@ -25,12 +25,12 @@ fn fibonacci(ctx: &Context<AgentProps>) -> Result<ResultResponse> {
 		n_1 = next;
 		ctx.write()?.sequence.push(next);
 		// artificial time consumption
-		sleep(Duration::from_secs(1));
+		std::thread::sleep(Duration::from_secs(1));
 	}
 	let result = Message::encode(&ctx.read()?.sequence);
 	ctx.write()?.sequence.clear();
 	info!("finished executor");
-	Ok(ResultResponse::Finished(result.value().to_owned()))
+	Ok(result)
 }
 
 #[tokio::main]
@@ -77,6 +77,7 @@ async fn main() -> Result<()> {
 			let message = Message::encode(&seq);
 			Ok(message)
 		})
+		.feedback_interval(Duration::from_secs(2))
 		.execution_function(fibonacci)
 		.add()?;
 	// activate liveliness

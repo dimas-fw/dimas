@@ -13,9 +13,9 @@ use dimas_core::{
 use std::{fmt::Debug, time::Duration};
 use tracing::{error, instrument, Level};
 use zenoh::{
-	Wait,
 	query::{ConsolidationMode, QueryTarget},
 	sample::{Locality, SampleKind},
+	Wait,
 };
 // endregion:	--- modules
 

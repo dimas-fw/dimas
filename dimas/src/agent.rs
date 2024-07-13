@@ -73,9 +73,9 @@ use std::{
 };
 use tokio::{select, signal};
 use tracing::{error, info, warn};
-use zenoh::Wait;
 use zenoh::liveliness::LivelinessToken;
 use zenoh::session::SessionDeclarations;
+use zenoh::Wait;
 // endregion:	--- modules
 
 // region:	   --- callbacks
@@ -355,7 +355,6 @@ where
 	) -> ObserverBuilder<
 		P,
 		crate::builder::NoSelector,
-		crate::builder::NoCallback,
 		crate::builder::NoCallback,
 		crate::builder::NoCallback,
 		crate::builder::Storage<Observer<P>>,

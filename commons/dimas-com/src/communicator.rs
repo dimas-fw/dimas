@@ -12,10 +12,9 @@ use std::fmt::Debug;
 use std::sync::Arc;
 use zenoh::{
 	config::WhatAmI,
-	Wait,
 	query::{ConsolidationMode, QueryTarget},
 	sample::{Locality, SampleKind},
-	Session,
+	Session, Wait,
 };
 // endregion:	--- modules
 

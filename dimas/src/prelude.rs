@@ -41,7 +41,7 @@ pub use crate::timer::Timer;
 pub use dimas_config::Config;
 pub use dimas_core::error::{DimasError, Result};
 pub use dimas_core::message_types::{
-	ControlResponse, Message, QueryMsg, QueryableMsg, ResultResponse,
+	ControlResponse, Message, ObservableResponse, QueryMsg, QueryableMsg,
 };
 pub use dimas_core::traits::Context;
 pub use dimas_core::utils::init_tracing;

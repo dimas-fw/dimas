@@ -6,7 +6,7 @@
 use crate::error::DimasError;
 use bitcode::{decode, encode, Decode, Encode};
 use std::ops::Deref;
-use zenoh::{Wait, query::Query};
+use zenoh::{query::Query, Wait};
 // endregion:	--- modules
 
 // region:		--- Message
@@ -179,16 +179,18 @@ pub enum ControlResponse {
 }
 // endregion:	--- ControlResponse
 
-// region:		--- ResultResponse
+// region:		--- ObservableResponse
 #[derive(Debug, Encode, Decode)]
 /// ?
-pub enum ResultResponse {
+pub enum ObservableResponse {
 	/// ?
 	Canceled(Vec<u8>),
 	/// ?
+	Feedback(Vec<u8>),
+	/// ?
 	Finished(Vec<u8>),
 }
-// endregion:	--- ResultResponse
+// endregion:	--- ObservableResponse
 
 #[cfg(test)]
 mod tests {
@@ -206,6 +208,6 @@ mod tests {
 		is_normal::<QueryMsg>();
 		is_normal::<QueryableMsg>();
 		is_normal::<ControlResponse>();
-		is_normal::<ResultResponse>();
+		is_normal::<ObservableResponse>();
 	}
 }

@@ -5,20 +5,20 @@ use bitcode::decode;
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
-	message_types::{ControlResponse, Message, ResultResponse},
+	message_types::{ControlResponse, Message, ObservableResponse},
 	traits::{Capability, Context, ContextAbstraction},
 };
 use std::sync::{Arc, Mutex};
 use tokio::task::JoinHandle;
 use tracing::{error, instrument, warn, Level};
 use zenoh::{
-	pubsub::Reliability, query::{ConsolidationMode, QueryTarget}, sample::{Locality, SampleKind}, Wait
+	pubsub::Reliability,
+	query::{ConsolidationMode, QueryTarget},
+	sample::{Locality, SampleKind},
+	Wait,
 };
 
-use super::{
-	subscriber::Subscriber, ArcObserverControlCallback, ArcObserverFeedbackCallback,
-	ArcObserverResultCallback,
-};
+use super::{subscriber::Subscriber, ArcObserverControlCallback, ArcObserverResponseCallback};
 // endregion:	--- modules
 
 // region:		--- Observer
@@ -34,12 +34,9 @@ where
 	activation_state: OperationState,
 	/// callback for control request results
 	control_callback: ArcObserverControlCallback<P>,
-	/// callback for feedback
-	feedback_callback: ArcObserverFeedbackCallback<P>,
-	/// callback for result
-	result_callback: ArcObserverResultCallback<P>,
-	/// handle for the asynchronous feedback subscriber
-	feedback: Arc<Mutex<Option<Subscriber<P>>>>,
+	/// callback for responses
+	response_callback: ArcObserverResponseCallback<P>,
+	subscriber: Mutex<Option<Subscriber<P>>>,
 	handle: Option<JoinHandle<()>>,
 }
 
@@ -77,17 +74,15 @@ where
 		context: Context<P>,
 		activation_state: OperationState,
 		control_callback: ArcObserverControlCallback<P>,
-		feedback_callback: ArcObserverFeedbackCallback<P>,
-		result_callback: ArcObserverResultCallback<P>,
+		response_callback: ArcObserverResponseCallback<P>,
 	) -> Self {
 		Self {
 			selector,
 			context,
 			activation_state,
 			control_callback,
-			feedback_callback,
-			result_callback,
-			feedback: Arc::new(Mutex::new(None)),
+			response_callback,
+			subscriber: Mutex::new(None),
 			handle: None,
 		}
 	}
@@ -119,8 +114,7 @@ where
 	#[instrument(name="observer", level = Level::ERROR, skip_all)]
 	pub fn observe(&self, message: Option<Message>) -> Result<()> {
 		let ccb = self.control_callback.clone();
-		let fcb = self.feedback_callback.clone();
-		let rcb = self.result_callback.clone();
+		let rcb = self.response_callback.clone();
 		let session = self.context.session();
 		// TODO: make a proper "key: value" implementation
 		let selector = format!("{}?request", &self.selector);
@@ -173,44 +167,45 @@ where
 									},
 								);
 
-								let rcb2 = rcb.clone();
-								let fcb2 = fcb.clone();
-								let subscriber_selector =
-									format!("{}/feedback/{}", &self.selector, &source_id);
+								self.subscriber.lock().map_or_else(
+									|_| todo!(),
+									|mut subscriber| {
+										if subscriber.is_none() {
+											let rcb2 = rcb.clone();
+											let subscriber_selector = format!(
+												"{}/feedback/{}",
+												&self.selector, &source_id
+											);
 
-								let mut sub = Subscriber::new(
-									subscriber_selector,
-									self.context.clone(),
-									OperationState::Created,
-									Arc::new(Mutex::new(
-										move |ctx: &Arc<dyn ContextAbstraction<P>>,
-										      msg: Message|
-										      -> Result<()> {
-											let res: Result<ResultResponse> = msg.clone().decode();
-											res.map_or_else(
-												|_| {
-													fcb2.lock().map_or_else(
-														|_| todo!(),
-														|mut cb| cb(ctx, msg),
-													)
-												},
-												|response| {
-													rcb2.lock().map_or_else(
-														|_| todo!(),
-														|mut cb| cb(ctx, response),
-													)
-												},
-											)
-										},
-									)),
-									Reliability::Reliable,
-									None,
+											let mut sub = Subscriber::new(
+												subscriber_selector,
+												self.context.clone(),
+												OperationState::Created,
+												Arc::new(Mutex::new(
+													move |ctx: &Arc<dyn ContextAbstraction<P>>,
+													      msg: Message|
+													      -> Result<()> {
+														rcb2.lock().map_or_else(
+															|_| todo!(),
+															|mut cb| {
+																let msg: ObservableResponse =
+																	msg.decode()?;
+																//dbg!(&msg);
+																cb(ctx, msg)
+															},
+														)
+													},
+												)),
+												Reliability::Reliable,
+												None,
+											);
+
+											let _ =
+												sub.manage_operation_state(&OperationState::Active);
+											subscriber.replace(sub);
+										}
+									},
 								);
-
-								sub.manage_operation_state(&OperationState::Active)?;
-								self.feedback
-									.lock()
-									.map_or_else(|_| todo!(), |mut fb| fb.replace(sub));
 
 								match ccb.lock() {
 									Ok(mut lock) => {
@@ -233,7 +228,17 @@ where
 									error!("control callback lock failed with {err}");
 								}
 							},
-							ControlResponse::Canceled => todo!(),
+							ControlResponse::Canceled => {
+								self.subscriber.lock().map_or_else(
+									|_| todo!(),
+									|mut subscriber| {
+										if let Some(mut sub) = subscriber.take() {
+											let _ = sub
+												.manage_operation_state(&OperationState::Created);
+										}
+									},
+								);
+							}
 						}
 					}
 					SampleKind::Delete => {
@@ -281,10 +286,9 @@ where
 						let guard = cb.lock();
 						match guard {
 							Ok(mut lock) => {
-								lock(&self.context.clone(), response);
-								//if let Err(error) = lock(&self.context.clone(), msg) {
-								//	error!("callback failed with {error}");
-								//}
+								if let Err(error) = lock(&self.context.clone(), response) {
+									error!("callback failed with {error}");
+								}
 							}
 							Err(err) => {
 								error!("callback lock failed with {err}");
