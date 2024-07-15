@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.2] - 2024-??-??
 
 ### Added
+- observable and observer with example
 
 ### Changed
 - internal restructuring of the builders

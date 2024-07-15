@@ -10,7 +10,7 @@ use dimas_core::{
 };
 use std::sync::{Arc, Mutex};
 use tokio::task::JoinHandle;
-use tracing::{error, instrument, warn, Level};
+use tracing::{error, info, instrument, warn, Level};
 use zenoh::{
 	pubsub::Reliability,
 	query::{ConsolidationMode, QueryTarget},
@@ -111,7 +111,7 @@ where
 	}
 
 	/// Run an observation with an optional [`Message`].
-	#[instrument(name="observer", level = Level::ERROR, skip_all)]
+	#[instrument(name="observer observe", level = Level::ERROR, skip_all)]
 	pub fn observe(&self, message: Option<Message>) -> Result<()> {
 		let ccb = self.control_callback.clone();
 		let rcb = self.response_callback.clone();
@@ -218,6 +218,7 @@ where
 									}
 								}
 							}
+							ControlResponse::Canceled => todo!(),		// should never happen
 							ControlResponse::Declined => match ccb.lock() {
 								Ok(mut lock) => {
 									if let Err(error) = lock(&self.context.clone(), response) {
@@ -228,17 +229,6 @@ where
 									error!("control callback lock failed with {err}");
 								}
 							},
-							ControlResponse::Canceled => {
-								self.subscriber.lock().map_or_else(
-									|_| todo!(),
-									|mut subscriber| {
-										if let Some(mut sub) = subscriber.take() {
-											let _ = sub
-												.manage_operation_state(&OperationState::Created);
-										}
-									},
-								);
-							}
 						}
 					}
 					SampleKind::Delete => {
@@ -252,7 +242,7 @@ where
 	}
 
 	/// Cancel a running observation
-	#[instrument(name="observer", level = Level::ERROR, skip_all)]
+	#[instrument(name="observer cancel", level = Level::ERROR, skip_all)]
 	pub fn cancel(&self) -> Result<()> {
 		let cb = self.control_callback.clone();
 		let session = self.context.session();
@@ -283,25 +273,33 @@ where
 					SampleKind::Put => {
 						let content: Vec<u8> = sample.payload().into();
 						let response: ControlResponse = decode(&content)?;
-						let guard = cb.lock();
-						match guard {
-							Ok(mut lock) => {
-								if let Err(error) = lock(&self.context.clone(), response) {
-									error!("callback failed with {error}");
-								}
-							}
-							Err(err) => {
-								error!("callback lock failed with {err}");
-							}
-						}
+						dbg!(&response);
+						match response {
+							ControlResponse::Accepted => todo!(),	// should never happen
+							ControlResponse::Canceled => {
+								//let guard = cb.lock();
+								//match guard {
+								//	Ok(mut lock) => {
+								//		if let Err(error) = lock(&self.context.clone(), response) {
+								//			error!("callback failed with {error}");
+								//		}
+								//	}
+								//	Err(err) => {
+								//		error!("callback lock failed with {err}");
+								//	}
+								//}
+							},
+							ControlResponse::Declined => todo!(),	// should never happen
+						};
 					}
 					SampleKind::Delete => {
 						error!("Delete in cancel");
-					}
+					},
 				},
 				Err(err) => error!("receive error: {:?})", err),
 			}
 		}
+		info!("canceled");
 		Ok(())
 	}
 }

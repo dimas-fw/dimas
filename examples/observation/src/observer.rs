@@ -80,7 +80,7 @@ async fn main() -> Result<()> {
 		.add()?;
 
 	// timer for regular querying
-	let interval = Duration::from_secs(20);
+	let interval = Duration::from_secs(10);
 	let mut counter = 0u128;
 	agent
 		.timer()
