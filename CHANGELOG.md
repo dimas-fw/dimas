@@ -16,6 +16,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 
+## [0.2.3] - 2024-??-??
+
+### Added
+
+### Changed
+
+### Fixed
+- change of zenoh config syntax in provided config files
+
+### Removed
+
+
 ## [0.2.2] - 2024-07-27
 
 ### Added
@@ -25,10 +37,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - internal restructuring of the builders
 - bump to zenoh 1.0.0-alpha
 - priority of lints
-
-### Fixed
-
-### Removed
 
 
 ## [0.2.1] - 2024-06-06
