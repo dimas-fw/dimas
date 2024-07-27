@@ -1,6 +1,6 @@
 // Copyright © 2024 Stephan Kunz
 
-import { TabWidget } from "std-widgets.slint";
+import { AboutSlint, Button, StandardButton, TabWidget } from "std-widgets.slint";
 
 export component MainWindow inherits Window {
     title: "DiMAS Monitor";
@@ -8,6 +8,19 @@ export component MainWindow inherits Window {
     preferred-height: 720px;
     min-width: 640px;
     min-height: 480px;
+
+    splash_popup := PopupWindow {
+        height: 150px; width: 250px;
+        x: 0.5*(root.width - 250px); 
+        y: 0.5*(root.height - 150px);
+        
+        Rectangle {
+            background: #2e053d;
+
+            AboutSlint {
+            }
+        }
+    }
 
     VerticalLayout {
         width: 100%;
@@ -17,6 +30,11 @@ export component MainWindow inherits Window {
         top_menu := Rectangle {
             height: 44px;
             background: gray;
+
+            Button {
+                text: "??";
+                clicked => { splash_popup.show(); }
+            }    
         }
 
         HorizontalLayout {
