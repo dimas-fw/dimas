@@ -216,19 +216,23 @@ where
 									Err(err) => {
 										error!("control callback lock failed with {err}");
 									}
-								}
+								};
 							}
-							ControlResponse::Canceled => todo!(),		// should never happen
-							ControlResponse::Declined => match ccb.lock() {
-								Ok(mut lock) => {
-									if let Err(error) = lock(&self.context.clone(), response) {
-										error!("control callback failed with {error}");
+							ControlResponse::Canceled => {
+								error!("unexpected response on request");
+							} // should never happen
+							ControlResponse::Declined | ControlResponse::Occupied => {
+								match ccb.lock() {
+									Ok(mut lock) => {
+										if let Err(error) = lock(&self.context.clone(), response) {
+											error!("control callback failed with {error}");
+										}
 									}
-								}
-								Err(err) => {
-									error!("control callback lock failed with {err}");
-								}
-							},
+									Err(err) => {
+										error!("control callback lock failed with {err}");
+									}
+								};
+							}
 						}
 					}
 					SampleKind::Delete => {
@@ -244,7 +248,7 @@ where
 	/// Cancel a running observation
 	#[instrument(name="observer cancel", level = Level::ERROR, skip_all)]
 	pub fn cancel(&self) -> Result<()> {
-		let cb = self.control_callback.clone();
+		let ccb = self.control_callback.clone();
 		let session = self.context.session();
 		// TODO: make a proper "key: value" implementation
 		let selector = format!("{}?cancel", &self.selector);
@@ -273,28 +277,26 @@ where
 					SampleKind::Put => {
 						let content: Vec<u8> = sample.payload().into();
 						let response: ControlResponse = decode(&content)?;
-						dbg!(&response);
-						match response {
-							ControlResponse::Accepted => todo!(),	// should never happen
-							ControlResponse::Canceled => {
-								//let guard = cb.lock();
-								//match guard {
-								//	Ok(mut lock) => {
-								//		if let Err(error) = lock(&self.context.clone(), response) {
-								//			error!("callback failed with {error}");
-								//		}
-								//	}
-								//	Err(err) => {
-								//		error!("callback lock failed with {err}");
-								//	}
-								//}
-							},
-							ControlResponse::Declined => todo!(),	// should never happen
+						if matches!(response, ControlResponse::Canceled) {
+							println!("TODO: got canceled acknowledge");
+						// TODO: deadlock because it is called inide an occupied control response
+						//match ccb.lock() {
+						//	Ok(mut lock) => {
+						//		if let Err(error) = lock(&self.context.clone(), response) {
+						//			error!("callback failed with {error}");
+						//		}
+						//	}
+						//	Err(err) => {
+						//		error!("callback lock failed with {err}");
+						//	}
+						//};
+						} else {
+							error!("unexpected response on cancelation");
 						};
 					}
 					SampleKind::Delete => {
 						error!("Delete in cancel");
-					},
+					}
 				},
 				Err(err) => error!("receive error: {:?})", err),
 			}

@@ -1,27 +1,22 @@
 // Copyright © 2024 Stephan Kunz
 
-use std::{
-	sync::{Arc, Mutex},
-	time::Duration,
-};
+use std::time::Duration;
 
 use bitcode::encode;
 // region:		--- modules
 use super::{
-	publisher::Publisher, ArcObservableControlCallback, ArcObservableExecutionFunction,
-	ArcObservableFeedbackCallback,
+	ArcObservableControlCallback, ArcObservableExecutionFunction, ArcObservableFeedbackCallback,
 };
-use crate::timer::Timer;
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
-	error::{DimasError, Result},
+	error::Result,
 	message_types::{ControlResponse, Message, ObservableResponse},
-	traits::{Capability, Context, ContextAbstraction},
+	traits::{Capability, Context},
 };
 use tokio::task::JoinHandle;
 use tracing::{error, info, instrument, warn, Level};
-use zenoh::session::SessionDeclarations;
 use zenoh::Wait;
+use zenoh::{qos::QoSBuilderTrait, session::SessionDeclarations};
 use zenoh::{
 	qos::{CongestionControl, Priority},
 	sample::Locality,
@@ -173,6 +168,7 @@ async fn run_observable<P>(
 where
 	P: Send + Sync + Unpin + 'static,
 {
+	// create the control queryable
 	let queryable = ctx
 		.session()
 		.declare_queryable(&selector)
@@ -180,225 +176,189 @@ where
 		.allowed_origin(Locality::Any)
 		.await?;
 
-	let mut executor_handle: Option<Arc<Mutex<JoinHandle<()>>>> = None;
-	let mut feedback_handle: Option<JoinHandle<()>> = None;
-	let mut response_publisher: Option<Arc<Mutex<Publisher<P>>>> = None;
+	// initialize a pinned feedback timer
+	// TODO: init here leads to on unnecessary timer-cycle without doing something
+	let feedback_timer = tokio::time::sleep(feedback_interval);
+	tokio::pin!(feedback_timer);
 
+	// base communication key & selector for feedback publisher
+	let key = selector.clone();
+	let publisher_selector = format!("{}/feedback/{}", &key, ctx.session().zid());
+
+	// variables to manage control loop
+	let mut is_running = false;
+	let (tx, mut rx) = tokio::sync::mpsc::channel(8);
+	let mut execution_handle: Option<JoinHandle<()>> = None;
+	let mut feedback_publisher: Option<zenoh::pubsub::Publisher> = None;
+
+	// main control loop of the observable
+	// started and terminated by state management
+	// do not terminate loop in case of errors during execution
 	loop {
-		let feedback_callback = feedback_callback.clone();
-		let execution_function = execution_function.clone();
-		let query = queryable
-			.recv_async()
-			.await
-			.map_err(|_| DimasError::ShouldNotHappen)?;
+		// different cases that may happen
+		tokio::select! {
+			// got query from an observer
+			Ok(query) = queryable.recv_async() => {
+				// TODO: make a proper "key: value" implementation
+				let p = query.parameters().as_str();
+				if p == "request" {
+					// received request => if no execution is running: spawn execution with channel for result else: return already running message
+					if is_running {
+						// send occupied response
+						let key = query.selector().key_expr.to_string();
+						let encoded: Vec<u8> = encode(&ControlResponse::Occupied);
+						match query.reply(&key, encoded).wait() {
+							Ok(()) => {},
+							Err(err) => error!("failed to reply with {err}"),
+						};
+					} else {
+						// start a computation
+						// create Message from payload
+						let content = query.payload().map_or_else(
+							|| {
+								let content: Vec<u8> = Vec::new();
+								content
+							},
+							|value| {
+								let content: Vec<u8> = value.into();
+								content
+							},
+						);
+						let msg = Message::new(content);
+						// check whether request is possible using control callback
+						match control_callback.lock() {
+							Ok(mut lock) => {
+								let res = lock(&ctx, msg);
+								match res {
+									Ok(response) => {
+										if matches!(response, ControlResponse::Accepted ) {
+											// create feedback publisher
+											ctx.session()
+												.declare_publisher(publisher_selector.clone())
+												.congestion_control(CongestionControl::Block)
+												.priority(Priority::RealTime)
+												.wait()
+												.map_or_else(
+													|err| error!("could not create feedback publisher due to {err}"),
+													|publ| { feedback_publisher.replace(publ); }
+												);
 
-		let p = query.parameters().as_str();
-		// TODO: make a proper "key: value" implementation
-		if p == "request" {
-			let content = query.payload().map_or_else(
-				|| {
-					let content: Vec<u8> = Vec::new();
-					content
-				},
-				|value| {
-					let content: Vec<u8> = value.into();
-					content
-				},
-			);
-			let msg = Message::new(content);
-			match control_callback.lock() {
-				Ok(mut lock) => {
-					let res = lock(&ctx, msg);
-					match res {
-						Ok(response) => {
-							match response {
-								ControlResponse::Accepted => {
-									let key = query.selector().key_expr.to_string();
-									let publisher_selector =
-										format!("{}/feedback/{}", &key, ctx.session().zid());
 
-									let mut publisher = Publisher::new(
-										publisher_selector,
-										ctx.clone(),
-										OperationState::Created,
-										Priority::RealTime,
-										CongestionControl::Block,
-									);
-									publisher
-										.manage_operation_state(&OperationState::Active)
-										.expect("snh");
+											// spawn execution
+											let tx_clone = tx.clone();
+											let execution_function_clone = execution_function.clone();
+											let ctx_clone = ctx.clone();
+											execution_handle.replace(tokio::spawn( async move {
+												let res = execution_function_clone.lock().map_or_else(
+													|_| { todo!() },
+													|mut f| {
+														f(&ctx_clone).map_or_else(
+															|_| { todo!() },
+															|res| { res }
+														)
+													}
+												);
+												if !matches!(tx_clone.send(res).await, Ok(())) { error!("failed to send back execution result") };
+											}));
 
-									let publisher = Arc::new(Mutex::new(publisher));
-									response_publisher.replace(publisher.clone());
-
-									// start executor
-									let executor = Arc::new(Mutex::new(start_executor(
-										publisher.clone(),
-										execution_function,
-										ctx.clone(),
-									)));
-									executor_handle.replace(executor.clone());
-									feedback_handle.replace(start_feedback(
-										publisher.clone(),
-										feedback_interval,
-										feedback_callback,
-										ctx.clone(),
-										executor,
-									));
-									// send accepted response
-									let encoded: Vec<u8> = encode(&ControlResponse::Accepted);
-									query
-										.reply(&key, encoded)
-										.wait()
-										.map_err(|_| DimasError::ShouldNotHappen)?;
+											// start feedback timer
+											feedback_timer.set(tokio::time::sleep(feedback_interval));
+											is_running = true;
+										}
+										// send  response back to requestor
+										let encoded: Vec<u8> = encode(&response);
+										match query.reply(&key, encoded).wait() {
+											Ok(()) => {},
+											Err(err) => error!("failed to reply with {err}"),
+										};
+									}
+									Err(error) => error!("control callback failed with {error}"),
 								}
-								ControlResponse::Declined => {
-									// send declined response
-									let key = query.selector().key_expr.to_string();
-									let encoded: Vec<u8> = encode(&ControlResponse::Declined);
-									query
-										.reply(&key, encoded)
-										.wait()
-										.map_err(|_| DimasError::ShouldNotHappen)?;
-								}
-								ControlResponse::Canceled => todo!(),
 							}
+							Err(error) => error!("control callback failed with {error}"),
 						}
-						Err(error) => error!("observable cotrol callback failed with {error}"),
 					}
-				}
-				Err(err) => {
-					error!("observable control callback failed with {err}");
+				} else if p == "cancel" {
+					// received cancel => abort a running execution
+					if is_running {
+						is_running = false;
+						let publisher = feedback_publisher.take();
+						let handle = execution_handle.take();
+						if let Some(h) = handle { h.abort() } else { error!("unexpected absence of join handle") };
+
+						// send cancelation feedback with last state
+						match feedback_callback.lock() {
+							Ok(mut fcb) => {
+								let Ok(msg) = fcb(&ctx) else { todo!() };
+								let response =
+									ObservableResponse::Canceled(msg.value().clone());
+								if let Some(p) = publisher {
+									match p.put(Message::encode(&response).value().clone()).wait() {
+										Ok(()) => {},
+										Err(err) => error!("could not send result due to {err}"),
+									};
+								} else {
+									error!("missing publisher");
+								};
+							}
+							Err(_) => { todo!() },
+						}
+					}
+					// acknowledge cancel request
+					let encoded: Vec<u8> = encode(&ControlResponse::Canceled);
+					match query.reply(&key, encoded).wait() {
+						Ok(()) => {},
+						Err(err) => error!("failed to reply with {err}"),
+					};
+				} else {
+					error!("observable got unknown parameter: {p}");
 				}
 			}
-		} else if p == "cancel" {
-			// stop running observation
-			if let Some(handle) = feedback_handle.take() {
-				handle.abort();
-			};
-			if let Some(handle) = executor_handle.take() {
-				handle
-					.lock()
-					.map_or_else(|_| {}, |handle| handle.abort());
-			};
 
-			// send canceled resultresponse
-			if let Some(publisher) = response_publisher.clone() {
-				let msg = match feedback_callback.lock() {
-					Ok(mut fcb) => fcb(&ctx)?,
-					Err(_) => todo!(),
-				};
-				let response = ObservableResponse::Canceled(msg.value().clone());
-				match publisher.lock() {
-					Ok(lock) => {
-						let _res = lock.put(Message::encode(&response));
-					}
-					Err(reason) => {
-						error!("could not publish cancelation: {}", reason);
-					}
-				}
-			};
-			// send canceled control response
-			let encoded: Vec<u8> = encode(&ControlResponse::Canceled);
-			let key = query.selector().key_expr.to_string();
-			query
-				.reply(&key, encoded)
-				.wait()
-				.map_err(|_| DimasError::ShouldNotHappen)?;
-		} else {
-			error!("observable got unknown parameter: {p}");
-		}
-	}
-}
-
-fn start_feedback<P>(
-	publisher: Arc<Mutex<Publisher<P>>>,
-	feedback_interval: Duration,
-	feedback_callback: ArcObservableFeedbackCallback<P>,
-	ctx: Context<P>,
-	executor_handle: Arc<Mutex<JoinHandle<()>>>,
-) -> JoinHandle<()>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-	let handle = tokio::task::spawn(async move {
-		let mut timer = Timer::new(
-			"feedback".to_string(),
-			ctx,
-			OperationState::Created,
-			Arc::new(Mutex::new(
-				move |ctx: &Arc<dyn ContextAbstraction<P>>| -> Result<()> {
-					match executor_handle.lock() {
-						Ok(handle) => {
-							if !handle.is_finished() {
-								match feedback_callback.lock() {
-									Ok(mut fcb) => {
-										let msg = fcb(ctx)?;
-										let response =
-											ObservableResponse::Feedback(msg.value().clone());
-										match publisher.lock() {
-											Ok(lock) => {
-												let _res = lock.put(Message::encode(&response));
-											}
-											Err(reason) => {
-												error!("could not publish feedback: {}", reason);
-											}
-										}
-									}
-									Err(_) => todo!(),
-								}
-							}
+			// request finished => send back result of request (which may be a failure)
+			Some(result) = rx.recv() => {
+				if is_running {
+					is_running = false;
+					execution_handle.take();
+					let response = ObservableResponse::Finished(result.value().clone());
+					feedback_publisher.take().map_or_else(
+						|| error!("could not publish result"),
+						|p| {
+							match p.put(Message::encode(&response).value()).wait() {
+								Ok(()) => {},
+								Err(err) => error!("publishing result failed due to {err}"),
+							};
 						}
-						Err(_) => todo!(),
-					};
-					Ok(())
-				},
-			)),
-			feedback_interval,
-			Some(Duration::from_millis(5)),
-		);
-		timer
-			.manage_operation_state(&OperationState::Active)
-			.expect("snh");
-	});
-	handle
-}
+					);
+				}
+			}
 
-fn start_executor<P>(
-	publisher: Arc<Mutex<Publisher<P>>>,
-	execution_function: ArcObservableExecutionFunction<P>,
-	ctx: Context<P>,
-) -> JoinHandle<()>
-where
-	P: Send + Sync + Unpin + 'static,
-{
-	let handle = tokio::task::spawn(async move {
-		match execution_function.lock() {
-			Ok(mut cb) => {
-				let res = cb(&ctx);
-				match res {
-					Ok(msg) => {
-						let response = ObservableResponse::Finished(msg.value().clone());
-						match publisher.lock() {
-							Ok(lock) => {
-								if let Err(reason) = lock.put(Message::encode(&response)) {
-									error!("could not publish result: {}", reason);
-								}
-							}
-							Err(reason) => {
-								error!("could not publish result: {}", reason);
-							}
+			// feedback timer expired and observable still is executing
+			() = &mut feedback_timer, if is_running => {
+				// send feedback
+				match feedback_callback.lock() {
+					Ok(mut fcb) => {
+						let Ok(msg) = fcb(&ctx) else { todo!() };
+						let response =
+							ObservableResponse::Feedback(msg.value().clone());
+
+						let publisher = feedback_publisher.as_ref().map_or_else(
+							|| { todo!() },
+							|p| p
+						);
+						match publisher.put(Message::encode(&response).value().clone()).wait() {
+							Ok(()) => {},
+							Err(err) => error!("publishing feedback failed due to {err}"),
 						};
 					}
-					Err(error) => error!("execution function failed with {error}"),
+					Err(_) => { todo!() },
 				}
-			}
-			Err(err) => {
-				error!("execution function lock failed with {err}");
+
+				// restart timer
+				feedback_timer.set(tokio::time::sleep(feedback_interval));
 			}
 		}
-	});
-	handle
+	}
 }
 // endregion:	--- functions
 

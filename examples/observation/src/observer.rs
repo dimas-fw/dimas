@@ -23,7 +23,7 @@ async fn main() -> Result<()> {
 	// create & initialize agents properties
 	let properties = AgentProps {
 		limit: 0u128,
-		new_limit: 10u128,
+		new_limit: 5u128,
 	};
 
 	// create an agent with the properties and the prefix 'examples'
@@ -32,12 +32,15 @@ async fn main() -> Result<()> {
 		.name("observer")
 		.config(&Config::default())?;
 
+	// counter for occupancy
+	let mut occupied_counter = 0u128;
+
 	// create the observer for fibonacci
 	#[allow(clippy::cognitive_complexity)]
 	agent
 		.observer()
 		.topic("fibonacci")
-		.control_callback(|ctx, response| -> Result<()> {
+		.control_callback(move |ctx, response| -> Result<()> {
 			match response {
 				ControlResponse::Accepted => {
 					let limit = ctx.read()?.new_limit;
@@ -48,8 +51,15 @@ async fn main() -> Result<()> {
 				ControlResponse::Declined => {
 					info!("Declined fibonacci up to {}", ctx.read()?.new_limit);
 					ctx.write()?.limit = 0;
-					ctx.write()?.new_limit = 10;
-					ctx.cancel_observe("fibonacci")?;
+					ctx.write()?.new_limit = 5;
+				}
+				ControlResponse::Occupied => {
+					info!("Service fibonacci is occupied");
+					occupied_counter += 1;
+					// cancel running request whenever 5 occupied messages arrived
+					if occupied_counter % 5 == 0 {
+						ctx.cancel_observe("fibonacci")?;
+					}
 				}
 				ControlResponse::Canceled => {
 					info!("Canceled fibonacci up to {}", ctx.read()?.limit);
@@ -80,7 +90,7 @@ async fn main() -> Result<()> {
 		.add()?;
 
 	// timer for regular querying
-	let interval = Duration::from_secs(10);
+	let interval = Duration::from_secs(5);
 	let mut counter = 0u128;
 	agent
 		.timer()

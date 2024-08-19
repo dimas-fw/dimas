@@ -56,8 +56,8 @@ async fn main() -> Result<()> {
 		.topic("fibonacci")
 		.control_callback(|ctx, msg| -> Result<ControlResponse> {
 			let message: FibonacciRequest = msg.decode()?;
-			// check if properties are still in initial state
-			if ctx.read()?.sequence.is_empty() {
+			// check wanted limit
+			if message.limit <= 20 {
 				// accept
 				info!("Accepting Fibonacci sequence up to {}", message.limit);
 				ctx.write()?.limit = message.limit;

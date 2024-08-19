@@ -176,6 +176,8 @@ pub enum ControlResponse {
 	Canceled,
 	/// ?
 	Declined,
+	/// ?
+	Occupied,
 }
 // endregion:	--- ControlResponse
 
