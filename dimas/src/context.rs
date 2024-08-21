@@ -300,7 +300,7 @@ where
 			.map_err(|_| DimasError::ReadContext("observers".into()))?
 			.get(selector)
 			.ok_or(DimasError::ShouldNotHappen)?
-			.observe(message)?;
+			.request(message)?;
 		Ok(())
 	}
 
