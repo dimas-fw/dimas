@@ -57,16 +57,16 @@ bitcode = "0.6"
 clap = { version = "4", features = ["derive"] }
 chrono = "0.4"
 derivative = "2"
-dimas = { path = "dimas" }
-#dimas = "0.2.3"
-dimas-com = { path = "commons/dimas-com" }
-#dimas-com = "0.2.3"
-dimas-commands = { path = "commons/dimas-commands" }
-#dimas-commands = "0.2.3"
-dimas-config = { path = "commons/dimas-config" }
-#dimas-config = "0.2.3"
-dimas-core = { path = "commons/dimas-core" }
-#dimas-core = "0.2.3"
+#dimas = { path = "dimas" }
+dimas = "0.2.3"
+#dimas-com = { path = "commons/dimas-com" }
+dimas-com = "0.2.3"
+#dimas-commands = { path = "commons/dimas-commands" }
+dimas-commands = "0.2.3"
+#dimas-config = { path = "commons/dimas-config" }
+dimas-config = "0.2.3"
+#dimas-core = { path = "commons/dimas-core" }
+dimas-core = "0.2.3"
 dirs = "5"
 doc-comment = "0.3"
 hostname = "0.4"
