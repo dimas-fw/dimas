@@ -130,7 +130,7 @@ where
 					error!("queryable panic: {}", reason);
 					if let Err(reason) = ctx1
 						.sender()
-						.send(TaskSignal::RestartObservable(key.clone()))
+						.blocking_send(TaskSignal::RestartObservable(key.clone()))
 					{
 						error!("could not restart observable: {}", reason);
 					} else {

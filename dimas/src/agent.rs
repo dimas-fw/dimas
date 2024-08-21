@@ -60,7 +60,7 @@ use chrono::Local;
 use dimas_com::messages::{AboutEntity, PingEntity};
 use dimas_config::Config;
 use dimas_core::{
-	enums::{wait_for_task_signals, OperationState, Signal, TaskSignal},
+	enums::{OperationState, Signal, TaskSignal},
 	error::{DimasError, Result},
 	message_types::{Message, QueryMsg},
 	traits::{Capability, Context, ContextAbstraction},
@@ -69,9 +69,9 @@ use std::sync::Arc;
 use std::time::Duration;
 use std::{
 	fmt::Debug,
-	sync::{mpsc, Mutex, RwLock},
+	sync::RwLock,
 };
-use tokio::{select, signal};
+use tokio::{select, signal, sync::mpsc};
 use tracing::{error, info, warn};
 use zenoh::liveliness::LivelinessToken;
 use zenoh::session::SessionDeclarations;
@@ -149,7 +149,7 @@ where
 	let ctx = ctx.clone();
 	tokio::task::spawn(async move {
 		tokio::time::sleep(Duration::from_millis(2)).await;
-		let _ = ctx.sender().send(TaskSignal::Shutdown);
+		let _ = ctx.sender().blocking_send(TaskSignal::Shutdown);
 	});
 	Ok(())
 }
@@ -228,8 +228,7 @@ where
 	///
 	pub fn config(self, config: &Config) -> Result<Agent<'a, P>> {
 		// we need an mpsc channel with a receiver behind a mutex guard
-		let (tx, rx) = mpsc::channel();
-		let rx = Mutex::new(rx);
+		let (tx, rx) = mpsc::channel(32);
 		let context: Arc<ContextImpl<P>> = Arc::new(ContextImpl::new(
 			config,
 			self.props,
@@ -282,7 +281,7 @@ where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// A reciever for signals from tasks
-	rx: Mutex<mpsc::Receiver<TaskSignal>>,
+	rx: mpsc::Receiver<TaskSignal>,
 	/// The agents context structure
 	context: Arc<ContextImpl<P>>,
 	/// Flag to control whether sending liveliness or not
@@ -473,8 +472,8 @@ pub struct RunningAgent<'a, P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
-	/// A reciever for signals from tasks
-	rx: Mutex<mpsc::Receiver<TaskSignal>>,
+	/// The receiver for signals from tasks
+	rx: mpsc::Receiver<TaskSignal>,
 	/// The agents context structure
 	context: Arc<ContextImpl<P>>,
 	/// Flag to control whether sending liveliness or not
@@ -489,13 +488,14 @@ where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// run
-	async fn run(self) -> Result<Agent<'a, P>> {
+	async fn run(mut self) -> Result<Agent<'a, P>> {
 		loop {
 			// different possibilities that can happen
 			select! {
 				// `TaskSignal`s
-				signal = wait_for_task_signals(&self.rx) => {
-					match *signal {
+				Some(signal) = self.rx.recv() => {
+				//signal = wait_for_task_signals(&self.rx) => {
+					match signal {
 						TaskSignal::RestartLiveliness(selector) => {
 							self.context.liveliness_subscribers()
 								.write()

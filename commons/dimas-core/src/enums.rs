@@ -6,11 +6,7 @@
 // region:		--- modules
 use crate::error::{DimasError, Result};
 use bitcode::{Decode, Encode};
-use std::{
-	fmt::{Debug, Display},
-	sync::{mpsc::Receiver, Mutex},
-	time::Duration,
-};
+use std::fmt::{Debug, Display};
 // endregion:	--- modules
 
 // region:		--- OperationState
@@ -100,17 +96,5 @@ pub enum TaskSignal {
 	RestartTimer(String),
 	/// Shutdown whole process
 	Shutdown,
-}
-
-/// Wait non-blocking for [`TaskSignal`]s.<br>
-/// # Panics
-pub async fn wait_for_task_signals(rx: &Mutex<Receiver<TaskSignal>>) -> Box<TaskSignal> {
-	loop {
-		if let Ok(signal) = rx.lock().expect("snh").try_recv() {
-			return Box::new(signal);
-		};
-		// TODO: maybe there is a better solution than sleep
-		tokio::time::sleep(Duration::from_millis(1)).await;
-	}
 }
 // endregion:	--- TaskSignal

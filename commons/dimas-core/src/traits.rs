@@ -11,8 +11,9 @@ use crate::{
 };
 use std::{
 	fmt::Debug,
-	sync::{mpsc::Sender, Arc},
+	sync::Arc,
 };
+use tokio::sync::mpsc::Sender;
 use zenoh::Session;
 // endregion:	--- modules
 

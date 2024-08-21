@@ -189,7 +189,7 @@ where
 						error!("interval timer panic: {}", reason);
 						if let Err(reason) = ctx1
 							.sender()
-							.send(TaskSignal::RestartTimer(key.clone()))
+							.blocking_send(TaskSignal::RestartTimer(key.clone()))
 						{
 							error!("could not restart timer: {}", reason);
 						} else {
@@ -228,7 +228,7 @@ where
 						error!("delayed timer panic: {}", reason);
 						if let Err(reason) = ctx1
 							.sender()
-							.send(TaskSignal::RestartTimer(key.clone()))
+							.blocking_send(TaskSignal::RestartTimer(key.clone()))
 						{
 							error!("could not restart timer: {}", reason);
 						} else {

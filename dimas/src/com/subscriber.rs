@@ -128,7 +128,7 @@ where
 					error!("subscriber panic: {}", reason);
 					if let Err(reason) = ctx1
 						.sender()
-						.send(TaskSignal::RestartSubscriber(key.clone()))
+						.blocking_send(TaskSignal::RestartSubscriber(key.clone()))
 					{
 						error!("could not restart subscriber: {}", reason);
 					} else {

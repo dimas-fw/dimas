@@ -134,7 +134,7 @@ where
 					error!("liveliness subscriber panic: {}", reason);
 					if let Err(reason) = ctx1
 						.sender()
-						.send(TaskSignal::RestartLiveliness(key.clone()))
+						.blocking_send(TaskSignal::RestartLiveliness(key.clone()))
 					{
 						error!("could not restart liveliness subscriber: {}", reason);
 					} else {
