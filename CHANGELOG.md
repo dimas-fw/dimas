@@ -15,18 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-
-## [0.2.3] - 2024-??-??
-
-### Added
+## [0.2.3] - 2024-08-21 _Has breaking changes!!_
 
 ### Changed
+- refactored observer and observable
+- replaced std::sync::mpsc with tokio::sync::mpsc
 
 ### Fixed
 - change of zenoh config syntax in provided config files
-
-### Removed
-
+- adopted to latest zenoh syntax changes
 
 ## [0.2.2] - 2024-07-27
 
@@ -37,7 +34,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - internal restructuring of the builders
 - bump to zenoh 1.0.0-alpha
 - priority of lints
-
 
 ## [0.2.1] - 2024-06-06
 
@@ -50,7 +46,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - query/queryable with `Message`
-
 
 ## [0.2.0] - 2024-05-29 <br>_Has breaking changes!!_
 
@@ -79,7 +74,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - features
 - method `Communicator::create_publisher(&self, ...)`
 
-
 ## [0.1.1] - 2024-05-01
 
 ### Added
@@ -90,7 +84,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - compile & doc warnings
-
 
 ## [0.1.0] - 2024-04-25
 
@@ -106,7 +99,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - tracing initialisation now fits to zenohs usage of tracing crate
-
 
 ## [0.0.8] - 2024-03-22  <br>_Has breaking changes!!_
 
@@ -125,8 +117,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Broken documentaton on docs.rs
 - Same naming scheme for TimerBuilder as for other builders
 
-
-## [0.0.7] - 2024-03-17 <br>_Has breaking changes!!_
+## [0.0.7] - 2024-03-17 _Has breaking changes!!_
 
 ### Added
 - Configuration via json5 file together with some new dedicated configuration methods
@@ -140,8 +131,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ArcContext is now a regular struct not only a type
 - updated internal dependencies of zenoh & bitcode
 
-
-## [0.0.6] - 2024-03-03 <br>_Has breaking changes!!_
+## [0.0.6] - 2024-03-03 _Has breaking changes!!_
 
 ### Added
 - using cargo vet as auditing tool
@@ -155,7 +145,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed crate clap from examples
 - calls to panic!, unwrap()'s, expect(...)'s and others
 
-## [0.0.5] - 2024-02-29 <br>_Has breaking changes!!_
+## [0.0.5] - 2024-02-29 _Has breaking changes!!_
 
 ### Added
 - Instrumentation level debug for communication activities
@@ -169,8 +159,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - _Removed parameter `props` from callbacks, access now via `Context`_
 - _Removed `Context<P>` from public api and replaced it with a thread safe `ArcContext<P>`_
 
-
-## [0.0.4] - 2024-02-23 <br>_Has breaking changes!!_
+## [0.0.4] - 2024-02-23 _Has breaking changes!!_
 
 ### Added
 - Ability to store Publisher's and Query's in Agent's Context
@@ -193,8 +182,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Cleanup dependencies
 
-
-## [0.0.3] - 2024-02-08 <br>_Has breaking changes!!_
+## [0.0.3] - 2024-02-08 _Has breaking changes!!_
 
 ### Added
 - More documentation
@@ -205,7 +193,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Moved zenoh into an internal dependency
 - _Removed parameter `mode` in ad-hoc query through `Context`_
 
-## [0.0.2] - 2024-01-28 <br>_Has breaking changes!!_
+## [0.0.2] - 2024-01-28 _Has breaking changes!!_
 
 ### Added
 - README's & Documentation
@@ -217,7 +205,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 - Some unnecessary dependencies.
-
 
 ## [0.0.1] - 2024-01-21
 
@@ -231,7 +218,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Liveliness
   - Publisher using Timer / Subscriber
   - Query using Timer / Queryable
-
 
 ## [0.0.0] - 2023-09-19
 

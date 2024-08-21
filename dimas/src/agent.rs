@@ -67,10 +67,7 @@ use dimas_core::{
 };
 use std::sync::Arc;
 use std::time::Duration;
-use std::{
-	fmt::Debug,
-	sync::RwLock,
-};
+use std::{fmt::Debug, sync::RwLock};
 use tokio::{select, signal, sync::mpsc};
 use tracing::{error, info, warn};
 use zenoh::liveliness::LivelinessToken;

@@ -11,7 +11,11 @@ use dimas_core::{
 use tokio::task::JoinHandle;
 use tracing::{error, instrument, warn, Level};
 use zenoh::{
-	pubsub::Reliability, query::{ConsolidationMode, QueryTarget}, sample::{Locality, SampleKind}, session::SessionDeclarations, Wait
+	pubsub::Reliability,
+	query::{ConsolidationMode, QueryTarget},
+	sample::{Locality, SampleKind},
+	session::SessionDeclarations,
+	Wait,
 };
 
 use super::{ArcObserverControlCallback, ArcObserverResponseCallback};
@@ -134,7 +138,7 @@ where
 				Ok(sample) => match sample.kind() {
 					SampleKind::Put => {
 						let ccb = self.control_callback.clone();
-						let ctx  = self.context.clone();
+						let ctx = self.context.clone();
 						let content: Vec<u8> = sample.payload().into();
 						let response: ControlResponse = decode(&content)?;
 						if matches!(response, ControlResponse::Canceled) {
@@ -196,7 +200,7 @@ where
 					SampleKind::Put => {
 						let content: Vec<u8> = sample.payload().into();
 						decode::<ControlResponse>(&content).map_or_else(
-							|_| todo!(), 
+							|_| todo!(),
 							|response| {
 								if matches!(response, ControlResponse::Accepted) {
 									let ctx = self.context.clone();
@@ -204,9 +208,10 @@ where
 									// in case there is no source_id/replier_id, listen on all id's
 									let source_id = reply.result().map_or_else(
 										|_| {
-											reply
-												.replier_id()
-												.map_or_else(|| "*".to_string(), |id| id.to_string())
+											reply.replier_id().map_or_else(
+												|| "*".to_string(),
+												|id| id.to_string(),
+											)
 										},
 										|sample| {
 											sample.source_info().source_id.map_or_else(
@@ -220,14 +225,14 @@ where
 											)
 										},
 									);
-									let selector = format!(
-										"{}/feedback/{}",
-										&self.selector, &source_id
-									);
+									let selector =
+										format!("{}/feedback/{}", &self.selector, &source_id);
 
 									let rcb = self.response_callback.clone();
 									tokio::task::spawn(async move {
-										if let Err(error) = run_observation(selector, ctx, rcb).await {
+										if let Err(error) =
+											run_observation(selector, ctx, rcb).await
+										{
 											error!("observation failed with {error}");
 										};
 									});
@@ -243,7 +248,7 @@ where
 										error!("control callback lock failed with {err}");
 									}
 								};
-							}
+							},
 						);
 					}
 					SampleKind::Delete => {
@@ -285,21 +290,24 @@ async fn run_observation<P>(
 								let stop = !matches!(response, ObservableResponse::Feedback(_));
 								rcb.lock().map_or_else(
 									|_| todo!(),
-									|mut cb| { 
+									|mut cb| {
 										if let Err(error) = cb(&ctx, response) {
 											error!("response callback failed with {error}");
 										};
-									});
-								if stop { break; }
-							},
+									},
+								);
+								if stop {
+									break;
+								}
+							}
 							Err(_) => todo!(),
 						};
-					},
+					}
 					SampleKind::Delete => {
 						error!("unexpected delete in observation response");
-					},
+					}
 				}
-			},
+			}
 			Err(err) => {
 				error!("observation response with {err}");
 			}
