@@ -5,7 +5,6 @@
 use chrono::Local;
 use dimas::prelude::*;
 use pingpong::PingPongMessage;
-use tracing::info;
 // endregion:	--- modules
 
 #[derive(Debug)]
@@ -29,7 +28,7 @@ fn ping_received(_ctx: &Context<AgentProps>, message: QueryMsg) -> Result<()> {
 	// reply to ping query
 	message.reply(query)?;
 
-	info!("response '{}'", &text);
+	println!("response '{}'", &text);
 
 	Ok(())
 }

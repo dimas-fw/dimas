@@ -6,7 +6,6 @@ use chrono::Local;
 use dimas::prelude::*;
 use pingpong::PingPongMessage;
 use std::time::Duration;
-use tracing::info;
 // endregion:	--- modules
 
 #[derive(Debug)]
@@ -86,7 +85,7 @@ async fn main() -> Result<()> {
 			ctx.get("pingpong", Some(message), None)?;
 
 			let text = format!("ping! [{counter}]");
-			info!("Sent {} ", &text);
+			println!("Sent {} ", &text);
 
 			// increase counter
 			ctx.write()?.counter += 1;

@@ -3,7 +3,6 @@
 
 // region:		--- modules
 use dimas::prelude::*;
-use tracing::info;
 // endregion:	--- modules
 
 #[derive(Debug)]
@@ -13,14 +12,14 @@ struct AgentProps {
 
 fn hello_publishing(_ctx: &Context<AgentProps>, message: Message) -> Result<()> {
 	let message: String = message.decode()?;
-	info!("Received '{message}'");
+	println!("Received '{message}'");
 
 	Ok(())
 }
 
 fn hello_deletion(ctx: &Context<AgentProps>) -> Result<()> {
 	let _value = ctx.read()?.test;
-	info!("Shall delete 'hello' message");
+	println!("Shall delete 'hello' message");
 	Ok(())
 }
 

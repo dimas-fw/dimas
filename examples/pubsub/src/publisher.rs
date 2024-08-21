@@ -4,7 +4,6 @@
 // region:		--- modules
 use dimas::prelude::*;
 use std::time::Duration;
-use tracing::info;
 // endregion:	--- modules
 
 #[derive(Debug)]
@@ -38,7 +37,7 @@ async fn main() -> Result<()> {
 			let counter = ctx.read()?.counter;
 
 			let text = format!("Hello World! [{counter}]");
-			info!("Sending '{}'", &text);
+			println!("Sending '{}'", &text);
 			// publishing with stored publisher
 			let message = Message::encode(&text);
 			let _ = ctx.put("hello", message);
@@ -54,7 +53,7 @@ async fn main() -> Result<()> {
 		.name("timer2")
 		.interval(duration)
 		.callback(move |ctx| -> Result<()> {
-			info!("Deleting");
+			println!("Deleting");
 			// delete with stored publisher
 			ctx.delete("hello")?;
 			Ok(())

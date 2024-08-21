@@ -119,7 +119,7 @@ where
 					error!("queryable panic: {}", reason);
 					if let Err(reason) = ctx1
 						.sender()
-						.send(TaskSignal::RestartQueryable(key.clone()))
+						.blocking_send(TaskSignal::RestartQueryable(key.clone()))
 					{
 						error!("could not restart queryable: {}", reason);
 					} else {

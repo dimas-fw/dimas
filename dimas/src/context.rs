@@ -50,8 +50,9 @@ use dimas_core::{
 use std::{
 	collections::HashMap,
 	fmt::Debug,
-	sync::{mpsc::Sender, Arc, RwLock},
+	sync::{Arc, RwLock},
 };
+use tokio::sync::mpsc::Sender;
 use tracing::{error, info, instrument, Level};
 use zenoh::Session;
 // endregion:	--- modules
@@ -300,7 +301,7 @@ where
 			.map_err(|_| DimasError::ReadContext("observers".into()))?
 			.get(selector)
 			.ok_or(DimasError::ShouldNotHappen)?
-			.observe(message)?;
+			.request(message)?;
 		Ok(())
 	}
 

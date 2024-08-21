@@ -20,6 +20,5 @@ path = "src/router.rs"
 [dependencies]
 dimas = { workspace = true }
 tokio = { workspace = true, features = ["macros"] }
-tracing = { workspace = true }
 
 [dev-dependencies]

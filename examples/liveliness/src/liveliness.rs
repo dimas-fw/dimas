@@ -3,7 +3,6 @@
 
 // region:		--- modules
 use dimas::prelude::*;
-use tracing::info;
 // endregion:	--- modules
 
 #[derive(Debug, Default)]
@@ -12,7 +11,7 @@ struct AgentProps {
 }
 
 fn liveliness_subscription(ctx: &Context<AgentProps>, id: &str) -> Result<()> {
-	info!("{id} is alive");
+	println!("{id} is alive");
 	let mut val = ctx.read()?.num;
 	val += 1;
 	ctx.write()?.num = val;
@@ -21,7 +20,7 @@ fn liveliness_subscription(ctx: &Context<AgentProps>, id: &str) -> Result<()> {
 }
 
 fn delete_subscription(ctx: &Context<AgentProps>, id: &str) -> Result<()> {
-	info!("{id} died");
+	println!("{id} died");
 	let mut val = ctx.read()?.num;
 	val -= 1;
 	ctx.write()?.num = val;
