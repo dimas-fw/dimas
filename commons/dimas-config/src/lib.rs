@@ -50,7 +50,7 @@ pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + S
 use dirs::{config_dir, config_local_dir, home_dir};
 use std::env;
 use std::io::{Error, ErrorKind};
-use tracing::{error, info, warn};
+use tracing::{debug, error, warn};
 // endregion:	--- modules
 
 // region:		--- utils
@@ -58,7 +58,7 @@ use tracing::{error, info, warn};
 fn _read_file(filename: &str) -> Result<String> {
 	// handle environment path current working directory `CWD`
 	let path = find_config_file(filename)?;
-	info!("using file {:?}", &path);
+	debug!("using file {:?}", &path);
 	Ok(std::fs::read_to_string(path)?)
 }
 // endregion:	--- utils
@@ -82,7 +82,7 @@ impl Default for Config {
 	fn default() -> Self {
 		match find_config_file("default.json5") {
 			Ok(path) => {
-				info!("trying file {:?}", &path);
+				debug!("trying file {:?}", &path);
 				match std::fs::read_to_string(path) {
 					Ok(content) => match json5::from_str(&content) {
 						Ok(result) => result,
@@ -123,7 +123,7 @@ impl Config {
 	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.
 	pub fn local() -> Result<Self> {
 		let path = find_config_file("local.json5")?;
-		info!("using file {:?}", &path);
+		debug!("using file {:?}", &path);
 		let content = std::fs::read_to_string(path)?;
 		let cfg = json5::from_str(&content)?;
 		Ok(cfg)
@@ -137,7 +137,7 @@ impl Config {
 	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.
 	pub fn client() -> Result<Self> {
 		let path = find_config_file("client.json5")?;
-		info!("using file {:?}", &path);
+		debug!("using file {:?}", &path);
 		let content = std::fs::read_to_string(path)?;
 		let cfg = json5::from_str(&content)?;
 		Ok(cfg)
@@ -151,7 +151,7 @@ impl Config {
 	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.
 	pub fn peer() -> Result<Self> {
 		let path = find_config_file("peer.json5")?;
-		info!("using file {:?}", &path);
+		debug!("using file {:?}", &path);
 		let content = std::fs::read_to_string(path)?;
 		let cfg = json5::from_str(&content)?;
 		Ok(cfg)
@@ -165,7 +165,7 @@ impl Config {
 	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.
 	pub fn router() -> Result<Self> {
 		let path = find_config_file("router.json5")?;
-		info!("using file {:?}", &path);
+		debug!("using file {:?}", &path);
 		let content = std::fs::read_to_string(path)?;
 
 		let cfg = json5::from_str(&content)?;
@@ -179,7 +179,7 @@ impl Config {
 	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.
 	pub fn from_file(filename: &str) -> Result<Self> {
 		let path = find_config_file(filename)?;
-		info!("using file {:?}", &path);
+		debug!("using file {:?}", &path);
 		let content = std::fs::read_to_string(path)?;
 		let cfg = json5::from_str(&content)?;
 		Ok(cfg)

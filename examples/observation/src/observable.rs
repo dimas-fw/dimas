@@ -6,7 +6,6 @@ use std::time::Duration;
 // region:		--- modules
 use dimas::prelude::*;
 use observation::FibonacciRequest;
-use tracing::info;
 // endregion:	--- modules
 
 #[derive(Debug)]
@@ -29,7 +28,6 @@ fn fibonacci(ctx: &Context<AgentProps>) -> Result<Message> {
 	}
 	let result = Message::encode(&ctx.read()?.sequence);
 	ctx.write()?.sequence.clear();
-	info!("finished executor");
 	Ok(result)
 }
 
@@ -59,7 +57,7 @@ async fn main() -> Result<()> {
 			// check wanted limit
 			if message.limit <= 20 {
 				// accept
-				info!("Accepting Fibonacci sequence up to {}", message.limit);
+				println!("Accepting Fibonacci sequence up to {}", message.limit);
 				ctx.write()?.limit = message.limit;
 				// add first two elements
 				ctx.write()?.sequence.push(0);
@@ -67,12 +65,11 @@ async fn main() -> Result<()> {
 				Ok(ControlResponse::Accepted)
 			} else {
 				// decline
-				info!("Declining Fibonacci sequence up to {}", message.limit);
+				println!("Declining Fibonacci sequence up to {}", message.limit);
 				Ok(ControlResponse::Declined)
 			}
 		})
 		.feedback_callback(|ctx| -> Result<Message> {
-			info!("sending feedback");
 			let seq = ctx.read()?.sequence.clone();
 			let message = Message::encode(&seq);
 			Ok(message)

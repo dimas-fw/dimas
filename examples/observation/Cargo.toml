@@ -24,6 +24,5 @@ path = "src/observable.rs"
 [dependencies]
 dimas = { workspace = true }
 tokio = { workspace = true, features = ["macros"] }
-tracing = { workspace = true }
 
 [dev-dependencies]

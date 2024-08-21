@@ -9,7 +9,7 @@ use dimas_core::{
 	traits::{Capability, Context},
 };
 use tokio::task::JoinHandle;
-use tracing::{error, info, instrument, warn, Level};
+use tracing::{error, instrument, warn, Level};
 use zenoh::{
 	pubsub::Reliability, query::{ConsolidationMode, QueryTarget}, sample::{Locality, SampleKind}, session::SessionDeclarations, Wait
 };
@@ -138,7 +138,6 @@ where
 						let content: Vec<u8> = sample.payload().into();
 						let response: ControlResponse = decode(&content)?;
 						if matches!(response, ControlResponse::Canceled) {
-							println!("TODO: got canceled acknowledge");
 							// without spawning possible deadlock when called inside an control response
 							tokio::spawn(async move {
 								match ccb.lock() {
@@ -163,7 +162,6 @@ where
 				Err(err) => error!("receive error: {:?})", err),
 			}
 		}
-		info!("canceled");
 		Ok(())
 	}
 
@@ -275,15 +273,15 @@ async fn run_observation<P>(
 		.await?;
 
 	loop {
-		tokio::select!{
+		match subscriber.recv_async().await {
 			// feedback from observable
-			Ok(sample) = subscriber.recv_async() => {
+			Ok(sample) => {
 				match sample.kind() {
 					SampleKind::Put => {
 						let content: Vec<u8> = sample.payload().into();
 						match decode::<ObservableResponse>(&content) {
 							Ok(response) => {
-								// remember to stop loop on cannceled or finished
+								// remember to stop loop on anything that is not feedback
 								let stop = !matches!(response, ObservableResponse::Feedback(_));
 								rcb.lock().map_or_else(
 									|_| todo!(),
@@ -301,6 +299,9 @@ async fn run_observation<P>(
 						error!("unexpected delete in observation response");
 					},
 				}
+			},
+			Err(err) => {
+				error!("observation response with {err}");
 			}
 		}
 	}

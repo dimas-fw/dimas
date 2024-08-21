@@ -3,7 +3,6 @@
 
 // region:		--- modules
 use dimas::prelude::*;
-use tracing::info;
 // endregion:	--- modules
 
 #[derive(Debug)]
@@ -15,7 +14,7 @@ fn queryable(ctx: &Context<AgentProps>, request: QueryMsg) -> Result<()> {
 	let received: u128 = request.decode()?;
 	let value = ctx.read()?.counter;
 	let query = request.key_expr();
-	info!(
+	println!(
 		"Received query for {} with {}, responding with {}",
 		&query, &received, &value
 	);

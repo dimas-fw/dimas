@@ -6,7 +6,6 @@ use std::time::Duration;
 // region:		--- modules
 use dimas::prelude::*;
 use observation::FibonacciRequest;
-use tracing::info;
 // endregion:	--- modules
 
 #[derive(Debug)]
@@ -44,17 +43,17 @@ async fn main() -> Result<()> {
 			match response {
 				ControlResponse::Accepted => {
 					let limit = ctx.read()?.new_limit;
-					info!("Accepted fibonacci up to {}", limit);
+					println!("Accepted fibonacci up to {limit}");
 					ctx.write()?.limit = limit;
 					ctx.write()?.new_limit += 1;
 				}
 				ControlResponse::Declined => {
-					info!("Declined fibonacci up to {}", ctx.read()?.new_limit);
+					println!("Declined fibonacci up to {}", ctx.read()?.new_limit);
 					ctx.write()?.limit = 0;
 					ctx.write()?.new_limit = 5;
 				}
 				ControlResponse::Occupied => {
-					info!("Service fibonacci is occupied");
+					println!("Service fibonacci is occupied");
 					occupied_counter += 1;
 					// cancel running request whenever 5 occupied messages arrived
 					if occupied_counter % 5 == 0 {
@@ -62,7 +61,7 @@ async fn main() -> Result<()> {
 					}
 				}
 				ControlResponse::Canceled => {
-					info!("Canceled fibonacci up to {}", ctx.read()?.limit);
+					println!("Canceled fibonacci up to {}", ctx.read()?.limit);
 				}
 			};
 			Ok(())
@@ -72,17 +71,17 @@ async fn main() -> Result<()> {
 				ObservableResponse::Canceled(value) => {
 					let msg = Message::new(value);
 					let result: Vec<u128> = msg.decode()?;
-					info!("canceled at {:?}", result);
+					println!("Canceled at {result:?}");
 				}
 				ObservableResponse::Feedback(value) => {
 					let msg = Message::new(value);
 					let result: Vec<u128> = msg.decode()?;
-					info!("received feedback {:?}", result);
+					println!("Received feedback {result:?}");
 				}
 				ObservableResponse::Finished(value) => {
 					let msg = Message::new(value);
 					let result: Vec<u128> = msg.decode()?;
-					info!("received result {:?}", result);
+					println!("Received result {result:?}");
 				}
 			}
 			Ok(())
@@ -97,7 +96,7 @@ async fn main() -> Result<()> {
 		.name("timer")
 		.interval(interval)
 		.callback(move |ctx| -> Result<()> {
-			info!("Observation {counter}");
+			println!("Observation {counter}");
 			let msg = FibonacciRequest {
 				limit: ctx.read()?.new_limit,
 			};

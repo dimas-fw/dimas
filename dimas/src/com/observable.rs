@@ -14,7 +14,7 @@ use dimas_core::{
 	traits::{Capability, Context},
 };
 use tokio::task::JoinHandle;
-use tracing::{error, info, instrument, warn, Level};
+use tracing::{debug, error, info, instrument, warn, Level};
 use zenoh::Wait;
 use zenoh::{qos::QoSBuilderTrait, session::SessionDeclarations};
 use zenoh::{
@@ -281,6 +281,7 @@ where
 				} else if p == "cancel" {
 					// received cancel => abort a running execution
 					if is_running {
+						debug!("sending cancelation state");
 						is_running = false;
 						let publisher = feedback_publisher.take();
 						let handle = execution_handle.take();
