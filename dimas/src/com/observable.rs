@@ -14,7 +14,7 @@ use dimas_core::{
 	traits::{Capability, Context},
 };
 use tokio::task::JoinHandle;
-use tracing::{debug, error, info, instrument, warn, Level};
+use tracing::{error, info, instrument, warn, Level};
 use zenoh::Wait;
 use zenoh::{qos::QoSBuilderTrait, session::SessionDeclarations};
 use zenoh::{
@@ -112,6 +112,13 @@ where
 			if self.control_callback.lock().is_err() {
 				warn!("found poisoned put Mutex");
 				self.control_callback.clear_poison();
+			}
+		}
+
+		{
+			if self.feedback_callback.lock().is_err() {
+				warn!("found poisoned put Mutex");
+				self.feedback_callback.clear_poison();
 			}
 		}
 
@@ -281,29 +288,33 @@ where
 				} else if p == "cancel" {
 					// received cancel => abort a running execution
 					if is_running {
-						debug!("sending cancelation state");
 						is_running = false;
 						let publisher = feedback_publisher.take();
 						let handle = execution_handle.take();
-						if let Some(h) = handle { h.abort() } else { error!("unexpected absence of join handle") };
-
-						// send cancelation feedback with last state
-						match feedback_callback.lock() {
-							Ok(mut fcb) => {
-								let Ok(msg) = fcb(&ctx) else { todo!() };
-								let response =
-									ObservableResponse::Canceled(msg.value().clone());
-								if let Some(p) = publisher {
-									match p.put(Message::encode(&response).value().clone()).wait() {
-										Ok(()) => {},
-										Err(err) => error!("could not send result due to {err}"),
+						if let Some(h) = handle { 
+							h.abort();
+							// wait for abortion
+							let _ = h.await;
+							// send cancelation feedback with last state
+							match feedback_callback.lock() {
+								Ok(mut fcb) => {
+									let Ok(msg) = fcb(&ctx) else { todo!() };
+									let response =
+										ObservableResponse::Canceled(msg.value().clone());
+									if let Some(p) = publisher {
+										match p.put(Message::encode(&response).value().clone()).wait() {
+											Ok(()) => {},
+											Err(err) => error!("could not send result due to {err}"),
+										};
+									} else {
+										error!("missing publisher");
 									};
-								} else {
-									error!("missing publisher");
-								};
-							}
-							Err(_) => { todo!() },
-						}
+								}
+								Err(_) => { todo!() },
+							};
+						} else { 
+							error!("unexpected absence of join handle");
+						};
 					}
 					// acknowledge cancel request
 					let encoded: Vec<u8> = encode(&ControlResponse::Canceled);

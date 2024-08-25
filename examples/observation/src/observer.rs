@@ -66,22 +66,33 @@ async fn main() -> Result<()> {
 			};
 			Ok(())
 		})
-		.response_callback(|_ctx, response| -> Result<()> {
+		.response_callback(|ctx, response| -> Result<()> {
 			match response {
 				ObservableResponse::Canceled(value) => {
 					let msg = Message::new(value);
 					let result: Vec<u128> = msg.decode()?;
+
 					println!("Canceled at {result:?}");
 				}
 				ObservableResponse::Feedback(value) => {
 					let msg = Message::new(value);
 					let result: Vec<u128> = msg.decode()?;
-					println!("Received feedback {result:?}");
+					let limit = ctx.read()?.limit;
+					if result.len() <= limit as usize {
+						println!("Received feedback {result:?}");
+					} else {
+						println!("Wrong feedback {result:?}");
+					}
 				}
 				ObservableResponse::Finished(value) => {
 					let msg = Message::new(value);
 					let result: Vec<u128> = msg.decode()?;
-					println!("Received result {result:?}");
+					let limit = ctx.read()?.limit;
+					if result.len() == limit as usize {
+						println!("Received result {result:?}");
+					} else {
+						println!("Wrong result {result:?}");
+					}
 				}
 			}
 			Ok(())
@@ -90,19 +101,16 @@ async fn main() -> Result<()> {
 
 	// timer for regular querying
 	let interval = Duration::from_secs(5);
-	let mut counter = 0u128;
 	agent
 		.timer()
 		.name("timer")
 		.interval(interval)
 		.callback(move |ctx| -> Result<()> {
-			println!("Observation {counter}");
 			let msg = FibonacciRequest {
 				limit: ctx.read()?.new_limit,
 			};
 			let message = Message::encode(&msg);
 			ctx.observe("fibonacci", Some(message))?;
-			counter += 1;
 			Ok(())
 		})
 		.add()?;

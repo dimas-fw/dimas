@@ -16,18 +16,24 @@ struct AgentProps {
 
 fn fibonacci(ctx: &Context<AgentProps>) -> Result<Message> {
 	let limit = ctx.read()?.limit;
+	// clear any existing result
+	ctx.write()?.sequence.clear();
+	// create and add first two elements
 	let mut n_2 = 0;
+	ctx.write()?.sequence.push(n_2);
 	let mut n_1 = 1;
+	ctx.write()?.sequence.push(n_1);
 	for _ in 2..limit {
 		let next = n_2 + n_1;
 		n_2 = n_1;
 		n_1 = next;
 		ctx.write()?.sequence.push(next);
 		// artificial time consumption
-		std::thread::sleep(Duration::from_secs(1));
+		std::thread::sleep(Duration::from_millis(1000));
 	}
-	let result = Message::encode(&ctx.read()?.sequence);
-	ctx.write()?.sequence.clear();
+	let sequence = ctx.read()?.sequence.clone();
+	let result = Message::encode(&sequence);
+	println!("result: {:?}", &sequence);
 	Ok(result)
 }
 
@@ -55,13 +61,10 @@ async fn main() -> Result<()> {
 		.control_callback(|ctx, msg| -> Result<ControlResponse> {
 			let message: FibonacciRequest = msg.decode()?;
 			// check wanted limit
-			if message.limit <= 20 {
+			if message.limit > 2 && message.limit <= 20 {
 				// accept
 				println!("Accepting Fibonacci sequence up to {}", message.limit);
 				ctx.write()?.limit = message.limit;
-				// add first two elements
-				ctx.write()?.sequence.push(0);
-				ctx.write()?.sequence.push(1);
 				Ok(ControlResponse::Accepted)
 			} else {
 				// decline
@@ -72,6 +75,7 @@ async fn main() -> Result<()> {
 		.feedback_callback(|ctx| -> Result<Message> {
 			let seq = ctx.read()?.sequence.clone();
 			let message = Message::encode(&seq);
+			println!("feedback: {:?}", &seq);
 			Ok(message)
 		})
 		.feedback_interval(Duration::from_secs(2))
