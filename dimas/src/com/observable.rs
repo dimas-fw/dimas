@@ -108,17 +108,25 @@ where
 	fn start(&mut self) -> Result<()> {
 		self.stop();
 
+		// check Mutexes
 		{
 			if self.control_callback.lock().is_err() {
-				warn!("found poisoned put Mutex");
+				warn!("found poisoned control Mutex");
 				self.control_callback.clear_poison();
 			}
 		}
 
 		{
 			if self.feedback_callback.lock().is_err() {
-				warn!("found poisoned put Mutex");
+				warn!("found poisoned feedback Mutex");
 				self.feedback_callback.clear_poison();
+			}
+		}
+
+		{
+			if self.execution_function.lock().is_err() {
+				warn!("found poisoned feedback Mutex");
+				self.execution_function.clear_poison();
 			}
 		}
 

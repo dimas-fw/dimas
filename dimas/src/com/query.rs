@@ -11,7 +11,7 @@ use dimas_core::{
 	traits::{Capability, Context},
 };
 use std::{fmt::Debug, time::Duration};
-use tracing::{error, instrument, Level};
+use tracing::{error, instrument, warn, Level};
 use zenoh::{
 	query::{ConsolidationMode, QueryTarget},
 	sample::{Locality, SampleKind},
@@ -127,6 +127,14 @@ where
 		message: Option<Message>,
 		mut callback: Option<&dyn Fn(QueryableMsg) -> Result<()>>,
 	) -> Result<()> {
+		// check Mutex
+		{
+			if self.callback.lock().is_err() {
+				warn!("found poisoned Mutex");
+				self.callback.clear_poison();
+			}
+		}
+
 		let cb = self.callback.clone();
 		let session = self.context.session();
 		let mut query = message

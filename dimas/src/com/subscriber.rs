@@ -100,6 +100,7 @@ where
 	fn start(&mut self) -> Result<()> {
 		self.stop();
 
+		// check Mutexes
 		{
 			if self.put_callback.lock().is_err() {
 				warn!("found poisoned put Mutex");
