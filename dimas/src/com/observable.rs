@@ -125,7 +125,7 @@ where
 
 		//{
 		//	if self.execution_function.lock().is_err() {
-		//		warn!("found poisoned feedback Mutex");
+		//		warn!("found poisoned execution Mutex");
 		//		self.execution_function.clear_poison();
 		//	}
 		//}
