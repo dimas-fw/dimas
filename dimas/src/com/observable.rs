@@ -123,12 +123,12 @@ where
 			}
 		}
 
-		{
-			if self.execution_function.lock().is_err() {
-				warn!("found poisoned feedback Mutex");
-				self.execution_function.clear_poison();
-			}
-		}
+		//{
+		//	if self.execution_function.lock().is_err() {
+		//		warn!("found poisoned feedback Mutex");
+		//		self.execution_function.clear_poison();
+		//	}
+		//}
 
 		let selector = self.selector.clone();
 		let interval = self.feedback_interval;
@@ -264,14 +264,9 @@ where
 											let execution_function_clone = execution_function.clone();
 											let ctx_clone = ctx.clone();
 											execution_handle.replace(tokio::spawn( async move {
-												let res = execution_function_clone.lock().map_or_else(
+												let res = execution_function_clone.lock().await(&ctx_clone).map_or_else(
 													|_| { todo!() },
-													|mut f| {
-														f(&ctx_clone).map_or_else(
-															|_| { todo!() },
-															|res| { res }
-														)
-													}
+													|res| { res }
 												);
 												if !matches!(tx_clone.send(res).await, Ok(())) { error!("failed to send back execution result") };
 											}));
