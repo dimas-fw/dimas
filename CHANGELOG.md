@@ -15,15 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-## [0.2.4] - 2024-??-??
-
-### Added
-
-### Changed
+## [0.2.4] - 2024-08-31
 
 ### Fixed
 
-### Removed
+- logic of observation cancelation
+- missing checks of Mutexes
 
 ## [0.2.3] - 2024-08-21 _Has breaking changes!!_
 
