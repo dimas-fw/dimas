@@ -14,7 +14,7 @@ use dimas_core::{
 	traits::{Capability, Context},
 };
 use tokio::task::JoinHandle;
-use tracing::{debug, error, info, instrument, warn, Level};
+use tracing::{error, info, instrument, warn, Level};
 use zenoh::Wait;
 use zenoh::{qos::QoSBuilderTrait, session::SessionDeclarations};
 use zenoh::{
@@ -108,12 +108,27 @@ where
 	fn start(&mut self) -> Result<()> {
 		self.stop();
 
+		// check Mutexes
 		{
 			if self.control_callback.lock().is_err() {
-				warn!("found poisoned put Mutex");
+				warn!("found poisoned control Mutex");
 				self.control_callback.clear_poison();
 			}
 		}
+
+		{
+			if self.feedback_callback.lock().is_err() {
+				warn!("found poisoned feedback Mutex");
+				self.feedback_callback.clear_poison();
+			}
+		}
+
+		//{
+		//	if self.execution_function.lock().is_err() {
+		//		warn!("found poisoned execution Mutex");
+		//		self.execution_function.clear_poison();
+		//	}
+		//}
 
 		let selector = self.selector.clone();
 		let interval = self.feedback_interval;
@@ -249,14 +264,9 @@ where
 											let execution_function_clone = execution_function.clone();
 											let ctx_clone = ctx.clone();
 											execution_handle.replace(tokio::spawn( async move {
-												let res = execution_function_clone.lock().map_or_else(
+												let res = execution_function_clone.lock().await(&ctx_clone).map_or_else(
 													|_| { todo!() },
-													|mut f| {
-														f(&ctx_clone).map_or_else(
-															|_| { todo!() },
-															|res| { res }
-														)
-													}
+													|res| { res }
 												);
 												if !matches!(tx_clone.send(res).await, Ok(())) { error!("failed to send back execution result") };
 											}));
@@ -281,29 +291,33 @@ where
 				} else if p == "cancel" {
 					// received cancel => abort a running execution
 					if is_running {
-						debug!("sending cancelation state");
 						is_running = false;
 						let publisher = feedback_publisher.take();
 						let handle = execution_handle.take();
-						if let Some(h) = handle { h.abort() } else { error!("unexpected absence of join handle") };
-
-						// send cancelation feedback with last state
-						match feedback_callback.lock() {
-							Ok(mut fcb) => {
-								let Ok(msg) = fcb(&ctx) else { todo!() };
-								let response =
-									ObservableResponse::Canceled(msg.value().clone());
-								if let Some(p) = publisher {
-									match p.put(Message::encode(&response).value().clone()).wait() {
-										Ok(()) => {},
-										Err(err) => error!("could not send result due to {err}"),
+						if let Some(h) = handle { 
+							h.abort();
+							// wait for abortion
+							let _ = h.await;
+							// send cancelation feedback with last state
+							match feedback_callback.lock() {
+								Ok(mut fcb) => {
+									let Ok(msg) = fcb(&ctx) else { todo!() };
+									let response =
+										ObservableResponse::Canceled(msg.value().clone());
+									if let Some(p) = publisher {
+										match p.put(Message::encode(&response).value().clone()).wait() {
+											Ok(()) => {},
+											Err(err) => error!("could not send result due to {err}"),
+										};
+									} else {
+										error!("missing publisher");
 									};
-								} else {
-									error!("missing publisher");
-								};
-							}
-							Err(_) => { todo!() },
-						}
+								}
+								Err(_) => { todo!() },
+							};
+						} else { 
+							error!("unexpected absence of join handle");
+						};
 					}
 					// acknowledge cancel request
 					let encoded: Vec<u8> = encode(&ControlResponse::Canceled);

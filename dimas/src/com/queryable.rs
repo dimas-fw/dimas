@@ -98,9 +98,10 @@ where
 	fn start(&mut self) -> Result<()> {
 		self.stop();
 
+		// check Mutexes
 		{
 			if self.callback.lock().is_err() {
-				warn!("found poisoned put Mutex");
+				warn!("found poisoned callback Mutex");
 				self.callback.clear_poison();
 			}
 		}

@@ -171,6 +171,7 @@ where
 				callback,
 				handle,
 			} => {
+				// check Mutexes
 				{
 					if callback.lock().is_err() {
 						warn!("found poisoned Mutex");
@@ -209,6 +210,7 @@ where
 				callback,
 				handle,
 			} => {
+				// check Mutexes
 				{
 					if callback.lock().is_err() {
 						warn!("found poisoned Mutex");
