@@ -31,7 +31,7 @@ impl Clone for Message {
 impl Message {
 	/// Create a Message from raw data
 	#[must_use]
-	pub fn new(value: Vec<u8>) -> Self {
+	pub const fn new(value: Vec<u8>) -> Self {
 		Self(value)
 	}
 
@@ -197,9 +197,6 @@ pub enum ObservableResponse {
 #[cfg(test)]
 mod tests {
 	use super::*;
-
-	#[derive(Debug)]
-	struct Props {}
 
 	// check, that the auto traits are available
 	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}

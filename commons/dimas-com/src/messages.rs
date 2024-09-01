@@ -144,7 +144,7 @@ impl Display for ScoutingEntity {
 impl ScoutingEntity {
 	/// Constructor
 	#[must_use]
-	pub fn new(zid: String, kind: String, locators: Vec<Locator>) -> Self {
+	pub const fn new(zid: String, kind: String, locators: Vec<Locator>) -> Self {
 		Self {
 			zid,
 			kind,

@@ -73,7 +73,7 @@ pub enum Signal {
 	Shutdown,
 	/// State
 	State {
-		/// Optional OperationState to set
+		/// Optional `OperationState` to set
 		state: Option<OperationState>,
 	},
 }

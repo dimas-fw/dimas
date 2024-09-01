@@ -48,7 +48,7 @@ pub enum DimasError {
 	#[error("could not execute callback")]
 	ExecuteCallback,
 
-	/// Invalid OperationState
+	/// Invalid `OperationState`
 	#[error("invalid OperationState {0}")]
 	OperationState(String),
 	/// File not found
