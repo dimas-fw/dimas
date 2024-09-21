@@ -34,6 +34,7 @@ where
 	allowed_destination: Locality,
 	target: QueryTarget,
 	timeout: Option<Duration>,
+	key_expr: Option<zenoh::key_expr::KeyExpr<'static>>,
 }
 
 impl<P> Debug for Query<P>
@@ -89,6 +90,7 @@ where
 			allowed_destination,
 			target,
 			timeout,
+			key_expr: None,
 		}
 	}
 
@@ -106,6 +108,12 @@ where
 	where
 		P: Send + Sync + Unpin + 'static,
 	{
+		let key_expr = self
+			.context
+			.session()
+			.declare_keyexpr(self.selector.clone())
+			.wait()?;
+		self.key_expr.replace(key_expr);
 		Ok(())
 	}
 
@@ -117,6 +125,7 @@ where
 	where
 		P: Send + Sync + Unpin + 'static,
 	{
+		self.key_expr.take();
 		Ok(())
 	}
 

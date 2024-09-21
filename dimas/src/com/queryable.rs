@@ -13,7 +13,6 @@ use std::fmt::Debug;
 use tokio::task::JoinHandle;
 use tracing::{error, info, instrument, warn, Level};
 use zenoh::sample::Locality;
-use zenoh::session::SessionDeclarations;
 
 use super::ArcQueryableCallback;
 // endregion:	--- modules

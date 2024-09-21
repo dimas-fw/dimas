@@ -11,10 +11,8 @@ use dimas_core::{
 use tokio::task::JoinHandle;
 use tracing::{error, instrument, warn, Level};
 use zenoh::{
-	pubsub::Reliability,
 	query::{ConsolidationMode, QueryTarget},
 	sample::{Locality, SampleKind},
-	session::SessionDeclarations,
 	Wait,
 };
 
@@ -214,7 +212,7 @@ where
 											)
 										},
 										|sample| {
-											sample.source_info().source_id.map_or_else(
+											sample.source_info().source_id().map_or_else(
 												|| {
 													reply.replier_id().map_or_else(
 														|| "*".to_string(),
@@ -274,7 +272,6 @@ async fn run_observation<P>(
 	let subscriber = ctx
 		.session()
 		.declare_subscriber(&selector)
-		.reliability(Reliability::Reliable)
 		.await?;
 
 	loop {

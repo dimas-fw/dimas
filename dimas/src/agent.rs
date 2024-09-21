@@ -71,7 +71,6 @@ use std::{fmt::Debug, sync::RwLock};
 use tokio::{select, signal, sync::mpsc};
 use tracing::{error, info, warn};
 use zenoh::liveliness::LivelinessToken;
-use zenoh::session::SessionDeclarations;
 use zenoh::Wait;
 // endregion:	--- modules
 
@@ -190,7 +189,7 @@ where
 	props: P,
 }
 
-impl<'a, P> UnconfiguredAgent<P>
+impl<P> UnconfiguredAgent<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
@@ -223,7 +222,7 @@ where
 	///
 	/// # Errors
 	///
-	pub fn config(self, config: &Config) -> Result<Agent<'a, P>> {
+	pub fn config(self, config: &Config) -> Result<Agent<P>> {
 		// we need an mpsc channel with a receiver behind a mutex guard
 		let (tx, rx) = mpsc::channel(32);
 		let context: Arc<ContextImpl<P>> = Arc::new(ContextImpl::new(
@@ -273,7 +272,7 @@ where
 // region:	   --- Agent
 /// An Agent with the basic configuration decisions fixed, but not running
 #[allow(clippy::module_name_repetitions)]
-pub struct Agent<'a, P>
+pub struct Agent<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
@@ -285,10 +284,10 @@ where
 	liveliness: bool,
 	/// The liveliness token - typically the uuid sent to other participants<br>
 	/// Is available in the [`LivelinessSubscriber`] callback
-	liveliness_token: RwLock<Option<LivelinessToken<'a>>>,
+	liveliness_token: RwLock<Option<LivelinessToken>>,
 }
 
-impl<'a, P> Debug for Agent<'a, P>
+impl<P> Debug for Agent<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
@@ -301,7 +300,7 @@ where
 	}
 }
 
-impl<'a, P> Agent<'a, P>
+impl<P> Agent<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
@@ -424,7 +423,7 @@ where
 	///
 	/// # Errors
 	#[tracing::instrument(skip_all)]
-	pub async fn start(self) -> Result<Agent<'a, P>> {
+	pub async fn start(self) -> Result<Self> {
 		let session = self.context.session();
 
 		// activate sending liveliness
@@ -465,7 +464,7 @@ where
 // region:	   --- RunningAgent
 /// A running Agent, which can't be modified while running
 #[allow(clippy::module_name_repetitions)]
-pub struct RunningAgent<'a, P>
+pub struct RunningAgent<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
@@ -477,15 +476,15 @@ where
 	liveliness: bool,
 	/// The liveliness token - typically the uuid sent to other participants<br>
 	/// Is available in the [`LivelinessSubscriber`] callback
-	liveliness_token: RwLock<Option<LivelinessToken<'a>>>,
+	liveliness_token: RwLock<Option<LivelinessToken>>,
 }
 
-impl<'a, P> RunningAgent<'a, P>
+impl<P> RunningAgent<P>
 where
 	P: Debug + Send + Sync + Unpin + 'static,
 {
 	/// run
-	async fn run(mut self) -> Result<Agent<'a, P>> {
+	async fn run(mut self) -> Result<Agent<P>> {
 		loop {
 			// different possibilities that can happen
 			select! {
@@ -562,7 +561,7 @@ where
 	/// # Errors
 	/// Propagation of errors from [`Context::stop_registered_tasks()`].
 	#[tracing::instrument(skip_all)]
-	pub fn stop(self) -> Result<Agent<'a, P>> {
+	pub fn stop(self) -> Result<Agent<P>> {
 		self.context.set_state(OperationState::Created)?;
 
 		// stop liveliness

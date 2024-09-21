@@ -16,7 +16,7 @@ use dimas_core::{
 };
 use tokio::task::JoinHandle;
 use tracing::{error, info, instrument, warn, Level};
-use zenoh::{pubsub::Reliability, sample::SampleKind, session::SessionDeclarations};
+use zenoh::sample::SampleKind;
 // endregion:	--- modules
 
 // region:		--- Subscriber
@@ -32,7 +32,6 @@ where
 	/// [`OperationState`] on which this subscriber is started
 	activation_state: OperationState,
 	put_callback: ArcPutCallback<P>,
-	reliability: Reliability,
 	delete_callback: Option<ArcDeleteCallback<P>>,
 	handle: Option<JoinHandle<()>>,
 }
@@ -74,7 +73,6 @@ where
 		context: Context<P>,
 		activation_state: OperationState,
 		put_callback: ArcPutCallback<P>,
-		reliability: Reliability,
 		delete_callback: Option<ArcDeleteCallback<P>>,
 	) -> Self {
 		Self {
@@ -82,7 +80,6 @@ where
 			context,
 			activation_state,
 			put_callback,
-			reliability,
 			delete_callback,
 			handle: None,
 		}
@@ -118,7 +115,6 @@ where
 		let selector = self.selector.clone();
 		let p_cb = self.put_callback.clone();
 		let d_cb = self.delete_callback.clone();
-		let reliability = self.reliability;
 		let ctx1 = self.context.clone();
 		let ctx2 = self.context.clone();
 
@@ -136,9 +132,7 @@ where
 						info!("restarting subscriber!");
 					};
 				}));
-				if let Err(error) =
-					run_subscriber(selector, p_cb, d_cb, reliability, ctx2.clone()).await
-				{
+				if let Err(error) = run_subscriber(selector, p_cb, d_cb, ctx2.clone()).await {
 					error!("spawning subscriber failed with {error}");
 				};
 			}));
@@ -159,7 +153,6 @@ async fn run_subscriber<P>(
 	selector: String,
 	p_cb: ArcPutCallback<P>,
 	d_cb: Option<ArcDeleteCallback<P>>,
-	reliability: Reliability,
 	ctx: Context<P>,
 ) -> Result<()>
 where
@@ -168,7 +161,6 @@ where
 	let subscriber = ctx
 		.session()
 		.declare_subscriber(&selector)
-		.reliability(reliability)
 		.await?;
 
 	loop {

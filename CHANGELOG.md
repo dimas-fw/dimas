@@ -15,15 +15,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-## [0.3.0] - 2024-??-?? _Has breaking changes!!_
-
-### Added
+## [0.2.5] - 2024-??-?? _Has breaking changes!!_
 
 ### Changed
 
+- predeclaration of query key expression
+- sequentialize initial liveliness query and liveliness subscriber
+
 ### Fixed
 
-### Removed
+- changes in zenoh api
 
 ## [0.2.4] - 2024-08-31
 

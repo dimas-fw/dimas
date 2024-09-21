@@ -215,7 +215,8 @@ where
 			feedback_callback,
 			..
 		} = self;
-		let function: ArcObservableExecutionFunction<P> = Arc::new(tokio::sync::Mutex::new(function));
+		let function: ArcObservableExecutionFunction<P> =
+			Arc::new(tokio::sync::Mutex::new(function));
 		ObservableBuilder {
 			context,
 			activation_state,

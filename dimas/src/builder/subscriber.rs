@@ -15,7 +15,6 @@ use dimas_core::{
 	utils::selector_from,
 };
 use std::sync::{Arc, Mutex, RwLock};
-use zenoh::pubsub::Reliability;
 
 use crate::builder::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use crate::com::{subscriber::Subscriber, ArcDeleteCallback, ArcPutCallback};
@@ -34,7 +33,6 @@ where
 	selector: K,
 	put_callback: C,
 	storage: S,
-	reliability: Reliability,
 	delete_callback: Option<ArcDeleteCallback<P>>,
 }
 
@@ -51,7 +49,6 @@ where
 			selector: NoSelector,
 			put_callback: NoCallback,
 			storage: NoStorage,
-			reliability: Reliability::BestEffort,
 			delete_callback: None,
 		}
 	}
@@ -65,13 +62,6 @@ where
 	#[must_use]
 	pub const fn activation_state(mut self, state: OperationState) -> Self {
 		self.activation_state = state;
-		self
-	}
-
-	/// Set reliability
-	#[must_use]
-	pub const fn set_reliability(mut self, reliability: Reliability) -> Self {
-		self.reliability = reliability;
 		self
 	}
 
@@ -100,7 +90,6 @@ where
 			storage,
 			put_callback,
 			delete_callback,
-			reliability,
 			..
 		} = self;
 		SubscriberBuilder {
@@ -111,7 +100,6 @@ where
 			},
 			put_callback,
 			storage,
-			reliability,
 			delete_callback,
 		}
 	}
@@ -143,7 +131,6 @@ where
 			activation_state,
 			selector,
 			storage,
-			reliability,
 			delete_callback,
 			..
 		} = self;
@@ -154,7 +141,6 @@ where
 			selector,
 			put_callback: Callback { callback },
 			storage,
-			reliability,
 			delete_callback,
 		}
 	}
@@ -175,7 +161,6 @@ where
 			activation_state,
 			selector,
 			put_callback,
-			reliability,
 			delete_callback,
 			..
 		} = self;
@@ -185,7 +170,6 @@ where
 			selector,
 			put_callback,
 			storage: Storage { storage },
-			reliability,
 			delete_callback,
 		}
 	}
@@ -205,7 +189,6 @@ where
 			activation_state,
 			selector,
 			put_callback,
-			reliability,
 			delete_callback,
 			..
 		} = self;
@@ -214,7 +197,6 @@ where
 			context,
 			activation_state,
 			put_callback.callback,
-			reliability,
 			delete_callback,
 		))
 	}

@@ -14,9 +14,7 @@ use dimas_core::{
 };
 use std::fmt::Debug;
 use tracing::{instrument, Level};
-use zenoh::{
-	qos::CongestionControl, qos::Priority, qos::QoSBuilderTrait, session::SessionDeclarations, Wait,
-};
+use zenoh::{qos::CongestionControl, qos::Priority, Wait};
 // endregion:	--- modules
 
 // region:		--- Publisher
@@ -124,7 +122,7 @@ where
 	pub fn put(&self, message: Message) -> Result<()> {
 		match self
 			.publisher
-			.clone()
+			.as_ref()
 			.ok_or(DimasError::ShouldNotHappen)?
 			.put(message.value())
 			.wait()
@@ -141,7 +139,7 @@ where
 	pub fn delete(&self) -> Result<()> {
 		match self
 			.publisher
-			.clone()
+			.as_ref()
 			.ok_or(DimasError::ShouldNotHappen)?
 			.delete()
 			.wait()

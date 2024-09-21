@@ -16,7 +16,6 @@ use dimas_core::{
 use tokio::task::JoinHandle;
 use tracing::{error, info, instrument, warn, Level};
 use zenoh::Wait;
-use zenoh::{qos::QoSBuilderTrait, session::SessionDeclarations};
 use zenoh::{
 	qos::{CongestionControl, Priority},
 	sample::Locality,
@@ -220,7 +219,7 @@ where
 					// received request => if no execution is running: spawn execution with channel for result else: return already running message
 					if is_running {
 						// send occupied response
-						let key = query.selector().key_expr.to_string();
+						let key = query.selector().key_expr().to_string();
 						let encoded: Vec<u8> = encode(&ControlResponse::Occupied);
 						match query.reply(&key, encoded).wait() {
 							Ok(()) => {},
@@ -294,7 +293,7 @@ where
 						is_running = false;
 						let publisher = feedback_publisher.take();
 						let handle = execution_handle.take();
-						if let Some(h) = handle { 
+						if let Some(h) = handle {
 							h.abort();
 							// wait for abortion
 							let _ = h.await;
@@ -315,7 +314,7 @@ where
 								}
 								Err(_) => { todo!() },
 							};
-						} else { 
+						} else {
 							error!("unexpected absence of join handle");
 						};
 					}

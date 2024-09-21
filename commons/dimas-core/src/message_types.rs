@@ -92,7 +92,7 @@ impl QueryMsg {
 	where
 		T: Encode,
 	{
-		let key = self.0.selector().key_expr.to_string();
+		let key = self.0.selector().key_expr().to_string();
 		let encoded: Vec<u8> = encode(&value);
 
 		self.0

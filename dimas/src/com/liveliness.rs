@@ -15,7 +15,7 @@ use std::time::Duration;
 use tokio::task::JoinHandle;
 use tracing::info;
 use tracing::{error, instrument, warn, Level};
-use zenoh::{sample::SampleKind, session::SessionDeclarations};
+use zenoh::sample::SampleKind;
 
 use super::ArcLivelinessCallback;
 // endregion:	--- modules
@@ -111,29 +111,22 @@ where
 			}
 		}
 
-		// the initial liveliness query
-		let p_cb = self.put_callback.clone();
-		let ctx = self.context.clone();
-		let token = self.token.clone();
-		tokio::task::spawn(async move {
-			if let Err(error) = run_initial(token, p_cb, ctx).await {
-				error!("spawning initial liveliness failed with {error}");
-			};
-		});
-
-		// the liveliness subscriber
-		let token = self.token.clone();
-		let p_cb = self.put_callback.clone();
+		// liveliness handling
+		let key = self.token.clone();
+		let token1 = self.token.clone();
+		let token2 = self.token.clone();
+		let p_cb1 = self.put_callback.clone();
+		let p_cb2 = self.put_callback.clone();
 		let d_cb = self.delete_callback.clone();
+		let ctx = self.context.clone();
 		let ctx1 = self.context.clone();
 		let ctx2 = self.context.clone();
 
 		self.handle
 			.replace(tokio::task::spawn(async move {
-				let key = token.clone();
 				std::panic::set_hook(Box::new(move |reason| {
 					error!("liveliness subscriber panic: {}", reason);
-					if let Err(reason) = ctx1
+					if let Err(reason) = ctx
 						.sender()
 						.blocking_send(TaskSignal::RestartLiveliness(key.clone()))
 					{
@@ -142,8 +135,17 @@ where
 						info!("restarting liveliness subscriber!");
 					};
 				}));
-				if let Err(error) = run_liveliness(token, p_cb, d_cb, ctx2).await {
-					error!("spawning liveliness subscriber failed with {error}");
+
+				// the initial liveliness query
+				if let Err(error) = run_initial(token1, p_cb1, ctx1).await {
+					error!("running initial liveliness failed with {error}");
+				};
+
+				tokio::time::sleep(Duration::from_nanos(1)).await;
+
+				// the liveliness subscriber
+				if let Err(error) = run_liveliness(token2, p_cb2, d_cb, ctx2).await {
+					error!("running liveliness subscriber failed with {error}");
 				};
 			}));
 		Ok(())

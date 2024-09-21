@@ -88,26 +88,26 @@ impl Default for Config {
 						Ok(result) => result,
 						Err(error) => {
 							error!("{}", error);
-							warn!("using default zenoh peer configuration instead");
+							warn!("using default zenoh configuration instead");
 							Self {
-								zenoh: zenoh::config::peer(),
+								zenoh: zenoh::Config::default(),
 							}
 						}
 					},
 					Err(error) => {
 						error!("{}", error);
-						warn!("using default zenoh peer configuration instead");
+						warn!("using default zenoh configuration instead");
 						Self {
-							zenoh: zenoh::config::peer(),
+							zenoh: zenoh::Config::default(),
 						}
 					}
 				}
 			}
 			Err(error) => {
 				error!("{}", error);
-				warn!("using default zenoh peer configuration instead");
+				warn!("using default zenoh configuration instead");
 				Self {
-					zenoh: zenoh::config::peer(),
+					zenoh: zenoh::Config::default(),
 				}
 			}
 		}
