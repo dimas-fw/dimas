@@ -201,7 +201,8 @@ impl<P, S>
 		Callback<ArcObserverControlCallback<P>>,
 		Callback<ArcObserverResponseCallback<P>>,
 		S,
-	> where
+	>
+where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// Build the [`Subscriber`].
@@ -235,7 +236,8 @@ impl<P>
 		Callback<ArcObserverControlCallback<P>>,
 		Callback<ArcObserverResponseCallback<P>>,
 		Storage<Observer<P>>,
-	> where
+	>
+where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// Build and add the [`Observer`] to the [`Agent`].

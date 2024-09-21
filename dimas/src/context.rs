@@ -414,6 +414,7 @@ where
 	/// - [`Observable`]s
 	/// - [`Subscriber`]s  and last
 	/// - [`Timer`]s
+	///
 	/// Beforehand of starting the [`Timer`]s there is the initialisation of the
 	/// - [`Publisher`]s the
 	/// - [`Observer`]s and the

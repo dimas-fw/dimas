@@ -227,7 +227,11 @@ where
 }
 
 impl<P>
-	LivelinessSubscriberBuilder<P, Callback<ArcLivelinessCallback<P>>, Storage<LivelinessSubscriber<P>>>
+	LivelinessSubscriberBuilder<
+		P,
+		Callback<ArcLivelinessCallback<P>>,
+		Storage<LivelinessSubscriber<P>>,
+	>
 where
 	P: Send + Sync + Unpin + 'static,
 {

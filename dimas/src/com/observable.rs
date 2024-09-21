@@ -263,10 +263,7 @@ where
 											let execution_function_clone = execution_function.clone();
 											let ctx_clone = ctx.clone();
 											execution_handle.replace(tokio::spawn( async move {
-												let res = execution_function_clone.lock().await(&ctx_clone).map_or_else(
-													|_| { todo!() },
-													|res| { res }
-												);
+												let res = execution_function_clone.lock().await(&ctx_clone).unwrap_or_else(|_| { todo!() });
 												if !matches!(tx_clone.send(res).await, Ok(())) { error!("failed to send back execution result") };
 											}));
 

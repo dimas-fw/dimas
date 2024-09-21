@@ -109,9 +109,9 @@ where
 				callback: _,
 				handle,
 			} => {
-				if (state >= &activation_state) && handle.is_none() {
+				if (state >= activation_state) && handle.is_none() {
 					return self.start();
-				} else if (state < &activation_state) && handle.is_some() {
+				} else if (state < activation_state) && handle.is_some() {
 					self.stop();
 					return Ok(());
 				}

@@ -271,7 +271,8 @@ impl<P, S>
 		Callback<ArcObservableFeedbackCallback<P>>,
 		Callback<ArcObservableExecutionFunction<P>>,
 		S,
-	> where
+	>
+where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// Build the [`Observable`]
@@ -308,7 +309,8 @@ impl<P>
 		Callback<ArcObservableFeedbackCallback<P>>,
 		Callback<ArcObservableExecutionFunction<P>>,
 		Storage<Observable<P>>,
-	> where
+	>
+where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// Build and add the queryable to the agents context
