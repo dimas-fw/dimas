@@ -28,7 +28,7 @@ pub struct ObservableBuilder<P, K, CC, FC, EF, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	/// Context for the ObservableBuilder
+	/// Context for the `ObservableBuilder`
 	context: Context<P>,
 	activation_state: OperationState,
 	feedback_interval: Duration,

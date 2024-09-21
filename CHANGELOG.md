@@ -15,7 +15,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-## [0.2.5] - 2024-??-?? _Has breaking changes!!_
+## [0.3.0] - 2024-??-?? _Has breaking changes!!_
+
+### Added
+
+### Changed
+
+- minimum rust version 1.81
+
+### Fixed
+
+### Removed
+
+## [0.2.5] - 2024-09-21 _Has breaking changes!!_
 
 ### Changed
 

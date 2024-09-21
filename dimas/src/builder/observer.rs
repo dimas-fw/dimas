@@ -22,7 +22,7 @@ pub struct ObserverBuilder<P, K, CC, RC, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	/// Context for the ObserverBuilder
+	/// Context for the `ObserverBuilder`
 	context: Context<P>,
 	activation_state: OperationState,
 	selector: K,
