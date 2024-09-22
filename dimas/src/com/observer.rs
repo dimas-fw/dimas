@@ -37,11 +37,11 @@ where
 	handle: Option<JoinHandle<()>>,
 }
 
-impl<P> std::fmt::Debug for Observer<P>
+impl<P> core::fmt::Debug for Observer<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		f.debug_struct("Observer").finish_non_exhaustive()
 	}
 }

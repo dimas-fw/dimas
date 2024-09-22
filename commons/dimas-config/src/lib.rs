@@ -9,7 +9,7 @@
 //! # Examples
 //! ```rust,no_run
 //! # use dimas_config::Config;
-//! # fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+//! # fn main() -> Result<(), Box<dyn core::error::Error + Send + Sync + 'static>> {
 //! // create a configuration from a file named `default.json5`
 //! // located in one of the directories listed below.
 //! // If that file does not exist, a default config will be created
@@ -42,8 +42,8 @@
 // endregion:	--- exports
 
 // region:		--- types
-/// Type alias for `std::result::Result` to ease up implementation
-pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync + 'static>>;
+/// Type alias for `core::result::Result` to ease up implementation
+pub type Result<T> = core::result::Result<T, Box<dyn core::error::Error + Send + Sync + 'static>>;
 // endregion:	--- types
 
 // region:		--- modules

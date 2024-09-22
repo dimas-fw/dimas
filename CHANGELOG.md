@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - minimum rust version 1.81
+- replaced `std::` with `core::` where  possible
+- re-export of `core::time::Duration` in `dimas::prelude`
 
 ### Fixed
 
@@ -138,6 +140,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Additional features for Publisher, Subscriber, Query & Queryable
 
 ### Changed
+
+use core::time::Duration;
 
 - MSRV bumped to '1.77' due to Mutex::clear_poison()
 - Bumped version of 'zenoh' to '0.11.0-rc'

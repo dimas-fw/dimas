@@ -9,7 +9,8 @@ use crate::{
 	error::Result,
 	message_types::{Message, QueryableMsg},
 };
-use std::{fmt::Debug, sync::Arc};
+use core::fmt::Debug;
+use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
 use zenoh::Session;
 // endregion:	--- modules

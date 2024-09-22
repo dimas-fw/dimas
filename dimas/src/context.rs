@@ -39,6 +39,7 @@ use crate::{
 	},
 	timer::Timer,
 };
+use core::fmt::Debug;
 use dimas_com::communicator::Communicator;
 use dimas_config::Config;
 use dimas_core::{
@@ -49,7 +50,6 @@ use dimas_core::{
 };
 use std::{
 	collections::HashMap,
-	fmt::Debug,
 	sync::{Arc, RwLock},
 };
 use tokio::sync::mpsc::Sender;

@@ -1,12 +1,11 @@
 // Copyright © 2024 Stephan Kunz
 
-use std::time::Duration;
-
-use bitcode::encode;
 // region:		--- modules
 use super::{
 	ArcObservableControlCallback, ArcObservableExecutionFunction, ArcObservableFeedbackCallback,
 };
+use core::time::Duration;
+use bitcode::encode;
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
 	error::Result,
@@ -43,11 +42,11 @@ where
 	handle: Option<JoinHandle<()>>,
 }
 
-impl<P> std::fmt::Debug for Observable<P>
+impl<P> core::fmt::Debug for Observable<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		f.debug_struct("Observable")
 			.finish_non_exhaustive()
 	}

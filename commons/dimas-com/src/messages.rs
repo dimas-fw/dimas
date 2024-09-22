@@ -7,7 +7,7 @@ use bitcode::{Decode, Encode};
 // region:		--- modules
 use derivative::Derivative;
 use dimas_core::enums::OperationState;
-use std::fmt::Display;
+use core::fmt::Display;
 use zenoh::config::Locator;
 // endregion:	--- modules
 
@@ -24,7 +24,7 @@ pub struct AboutEntity {
 }
 
 impl Display for AboutEntity {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		write!(
 			f,
 			"name: {} kind: {} state: {} zid: {}",
@@ -83,7 +83,7 @@ pub struct PingEntity {
 }
 
 impl Display for PingEntity {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		write!(
 			f,
 			"name: {} zid: {} oneway: {}",
@@ -132,7 +132,7 @@ pub struct ScoutingEntity {
 }
 
 impl Display for ScoutingEntity {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		f.debug_struct("ScoutingEntity")
 			.field("zid", &self.zid)
 			.field("kind", &self.kind)

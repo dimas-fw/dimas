@@ -8,7 +8,7 @@ use dimas_core::{
 	error::{DimasError, Result},
 	message_types::{Message, QueryableMsg},
 };
-use std::fmt::Debug;
+use core::fmt::Debug;
 use std::sync::Arc;
 use zenoh::{
 	config::WhatAmI,

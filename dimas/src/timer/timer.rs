@@ -9,11 +9,11 @@ use dimas_core::{
 	error::Result,
 	traits::{Capability, Context},
 };
-use std::{
+use core::{
 	fmt::Debug,
-	sync::{Arc, Mutex},
 	time::Duration,
 };
+use std::sync::{Arc, Mutex};
 use tokio::{task::JoinHandle, time};
 use tracing::{error, info, instrument, warn, Level};
 // endregion:	--- modules
@@ -69,7 +69,7 @@ impl<P> Debug for Timer<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		match self {
 			Self::Interval { interval, .. } => f
 				.debug_struct("IntervalTimer")

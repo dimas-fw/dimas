@@ -11,7 +11,7 @@ use dimas_core::{
 };
 #[cfg(doc)]
 use std::collections::HashMap;
-use std::time::Duration;
+use core::time::Duration;
 use tokio::task::JoinHandle;
 use tracing::info;
 use tracing::{error, instrument, warn, Level};
@@ -35,11 +35,11 @@ where
 	handle: Option<JoinHandle<()>>,
 }
 
-impl<P> std::fmt::Debug for LivelinessSubscriber<P>
+impl<P> core::fmt::Debug for LivelinessSubscriber<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		f.debug_struct("LivelinessSubscriber")
 			.finish_non_exhaustive()
 	}

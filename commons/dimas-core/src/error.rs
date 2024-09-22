@@ -1,11 +1,12 @@
 // Copyright © 2023 Stephan Kunz
 
-//! The `DiMAS` specific error enum `DimasError` together with a type alias for [`std::result::Result`] to write only `Result<T>`.
+//! The `DiMAS` specific error enum `DimasError` together with a
+//! type alias for [`core::result::Result`] to write only `Result<T>`.
 //!
 
 // region:		--- types
-/// Type alias for `std::result::Result` to ease up implementation
-pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync + 'static>>;
+/// Type alias for `core::result::Result` to ease up implementation
+pub type Result<T> = core::result::Result<T, Box<dyn core::error::Error + Send + Sync + 'static>>;
 // endregion:	--- types
 
 // region:    --- DimasError
@@ -66,18 +67,18 @@ pub enum DimasError {
 
 	/// `zenoh` session creation failed
 	#[error("creation of zenoh session failed with {0}")]
-	CreateSession(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+	CreateSession(#[source] Box<dyn core::error::Error + Send + Sync + 'static>),
 	/// `zenoh` activate sending liveliness failed
 	#[error("activation of zenoh liveliness failed with {0}")]
-	ActivateLiveliness(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+	ActivateLiveliness(#[source] Box<dyn core::error::Error + Send + Sync + 'static>),
 	/// `zenoh` publisher  declaration failed
 	#[error("declaration of zenoh publisher failed with {0}")]
-	DeclarePublisher(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+	DeclarePublisher(#[source] Box<dyn core::error::Error + Send + Sync + 'static>),
 
 	// should be last line
-	/// auto conversion for boxed `std::error::Error`
+	/// auto conversion for boxed `core::error::Error`
 	#[error(transparent)]
-	StdError(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),
+	StdError(#[from] Box<dyn core::error::Error + Send + Sync + 'static>),
 } // endregion: --- DimasError
 
 #[cfg(test)]

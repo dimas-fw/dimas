@@ -1,8 +1,6 @@
 //! `DiMAS` observation example
 //! Copyright © 2024 Stephan Kunz
 
-use std::time::Duration;
-
 // region:		--- modules
 use dimas::prelude::*;
 use observation::FibonacciRequest;

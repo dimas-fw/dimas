@@ -10,7 +10,7 @@ use dimas_core::{
 	message_types::{Message, QueryableMsg},
 	traits::{Capability, Context},
 };
-use std::{fmt::Debug, time::Duration};
+use core::{fmt::Debug, time::Duration};
 use tracing::{error, instrument, warn, Level};
 use zenoh::{
 	query::{ConsolidationMode, QueryTarget},
@@ -41,7 +41,7 @@ impl<P> Debug for Query<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		f.debug_struct("Query")
 			.field("selector", &self.selector)
 			.field("mode", &self.mode)

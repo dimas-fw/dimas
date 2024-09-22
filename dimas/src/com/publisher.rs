@@ -12,7 +12,7 @@ use dimas_core::{
 	message_types::Message,
 	traits::{Capability, Context},
 };
-use std::fmt::Debug;
+use core::fmt::Debug;
 use tracing::{instrument, Level};
 use zenoh::{qos::CongestionControl, qos::Priority, Wait};
 // endregion:	--- modules
@@ -36,7 +36,7 @@ impl<P> Debug for Publisher<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		f.debug_struct("Publisher")
 			.field("selector", &self.selector)
 			.field("initialized", &self.publisher.is_some())

@@ -1,16 +1,20 @@
 # dimas
 
-[DiMAS](https://github.com/dimas-fw/dimas/tree/main/dimas) - A framework for building **Di**stributed **M**ulti **A**gent **S**ystems
+[DiMAS](https://github.com/dimas-fw/dimas/tree/main/dimas) - A framework
+for building **Di**stributed **M**ulti **A**gent **S**ystems
 
-⚠️ WARNING ⚠️ : DiMAS is under active development, so expect gaps between implementation and documentation.
+⚠️ WARNING ⚠️ : DiMAS is under active development,
+so expect gaps between implementation and documentation.
 
-A distributed multi agent system is a set of independant agents that are widely distributed but somehow connected.
+A distributed multi agent system is a set of independant agents
+that are widely distributed but somehow connected.
 They are designed in a way that they can solve complex tasks by working together.
 
 The system is characterised by
 
 - a somewhat large and complex environment
-- containing a set of (non agent) objects that can be perceived, created, moved, modified or destroyed by the agents
+- containing a set of (non agent) objects that can be perceived, created, moved,
+modified or destroyed by the agents
 - that changes over time due to external rules
 
 with multiple agents operating in that environment which
@@ -21,27 +25,30 @@ with multiple agents operating in that environment which
 
 This crate is available on [crates.io](https://crates.io/crates/dimas).
 
-[DiMAS](https://github.com/dimas-fw/dimas/tree/main/dimas) follows the semantic versioning principle with the enhancement,
-that until version 1.0.0 each new minor version has breaking changes, while patches are non breaking changes but may include enhancements.
+[DiMAS](https://github.com/dimas-fw/dimas/tree/main/dimas) follows the semantic
+versioning principle with the enhancement, that until version 1.0.0
+each new minor version has breaking changes, while patches are non breaking
+changes but may include enhancements.
 
 ## Usage
 
-DiMAS needs an `async` runtime. You have to define your `main` function as an `async` function.
+DiMAS needs the `tokio` runtime, you have to define your `main` function as a
+`tokio async` function.
 
-So include `dimas` together with an async runtime in the dependencies section of your `Cargo.toml`.
-As DiMAS uses `tokio` as async runtime, so preferably use `tokio` for your application.
-Ensure that you use a multi-threaded runtime, otherwise dimas will panic.
+So include `dimas` together with `tokio` runtime in the dependencies section of
+your `Cargo.toml`. Ensure that you use the multi-threaded runtime, otherwise
+dimas will panic.
 
 Your `Cargo.toml` should include:
 
 ```toml
 [dependencies]
-dimas = "0.2"
+dimas = "0.3"
 tokio = { version = "1", features = ["macros"] }
 ```
 
 It also makes sense to return a `Result`, as some functions may return one.
-DiMAS errors are always of type `Box<dyn std::error::Error>` and should be thread safe.
+DiMAS errors are always of type `Box<dyn core::error::Error>` and should be threadsafe.
 DiMAS provides a type definition `Result<T>` to make life easier
 
 A suitable main program skeleton may look like:
@@ -68,7 +75,7 @@ The `Cargo.toml` for this publisher/subscriber example should include
 
 ```toml
 [dependencies]
-dimas = version = "0.2"
+dimas = version = "0.3"
 tokio = { version = "1",features = ["macros"] }
 ```
 
@@ -78,7 +85,7 @@ The `publisher.rs` should look like this:
 
 ```rust,no_run
 use dimas::prelude::*;
-use std::time::Duration;
+use core::time::Duration;
 
 /// The Agent's properties
 #[derive(Debug)]

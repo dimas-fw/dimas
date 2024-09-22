@@ -18,7 +18,7 @@
 //! # Examples
 //! ```rust,no_run
 //! use dimas::prelude::*;
-//! use std::time::Duration;
+//! use core::time::Duration;
 //!
 //! #[derive(Debug)]
 //! struct AgentProps {}
@@ -65,9 +65,9 @@ use dimas_core::{
 	message_types::{Message, QueryMsg},
 	traits::{Capability, Context, ContextAbstraction},
 };
-use std::sync::Arc;
-use std::time::Duration;
-use std::{fmt::Debug, sync::RwLock};
+use std::sync::{Arc, RwLock};
+use core::time::Duration;
+use core::fmt::Debug;
 use tokio::{select, signal, sync::mpsc};
 use tracing::{error, info, warn};
 use zenoh::liveliness::LivelinessToken;

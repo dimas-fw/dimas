@@ -15,7 +15,8 @@ use dimas_core::{
 	message_types::Message,
 };
 use itertools::Itertools;
-use std::{collections::HashMap, time::Duration};
+use std::collections::HashMap;
+use core::time::Duration;
 use zenoh::{config::WhatAmI, Wait};
 // endregion:	--- modules
 

@@ -3,6 +3,7 @@
 //! Module `query` provides an information/compute requestor `Query` which can be created using the `QueryBuilder`.
 
 // region:		--- modules
+use core::time::Duration;
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
@@ -10,10 +11,7 @@ use dimas_core::{
 	traits::Context,
 	utils::selector_from,
 };
-use std::{
-	sync::{Arc, Mutex, RwLock},
-	time::Duration,
-};
+use std::sync::{Arc, Mutex, RwLock};
 use zenoh::{
 	query::{ConsolidationMode, QueryTarget},
 	sample::Locality,

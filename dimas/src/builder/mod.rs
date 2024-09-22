@@ -4,10 +4,10 @@
 //!
 
 // region:    --- modules
+use core::time::Duration;
 use std::{
 	collections::HashMap,
 	sync::{Arc, RwLock},
-	time::Duration,
 };
 // endregion: --- modules
 

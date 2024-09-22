@@ -9,7 +9,7 @@ use dimas_core::{
 	message_types::QueryMsg,
 	traits::{Capability, Context},
 };
-use std::fmt::Debug;
+use core::fmt::Debug;
 use tokio::task::JoinHandle;
 use tracing::{error, info, instrument, warn, Level};
 use zenoh::sample::Locality;
@@ -37,7 +37,7 @@ impl<P> Debug for Queryable<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		f.debug_struct("Queryable")
 			.field("selector", &self.selector)
 			.field("complete", &self.completeness)

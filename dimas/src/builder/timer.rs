@@ -3,22 +3,21 @@
 //! Module `timer` provides a set of `Timer` variants which can be created using the `TimerBuilder`.
 //! When fired, a `Timer` calls his assigned `TimerCallback`.
 
+// region:		--- modules
 use crate::builder::{
 	Callback, Interval, NoCallback, NoInterval, NoSelector, NoStorage, Selector, Storage,
 };
 
 use crate::timer::timer::TimerCallback;
-// region:		--- modules
 use crate::timer::Timer;
+
+use core::time::Duration;
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
 	traits::Context,
 };
-use std::{
-	sync::{Arc, Mutex, RwLock},
-	time::Duration,
-};
+use std::sync::{Arc, Mutex, RwLock};
 // endregion:	--- modules
 
 // region:		--- TimerBuilder
