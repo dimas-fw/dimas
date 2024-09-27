@@ -60,7 +60,7 @@ pub mod observer;
 /// `PublisherBuilder`
 pub mod publisher;
 /// `QueryBuilder`
-pub mod query;
+pub mod querier;
 /// `QueryableBuilder`
 pub mod queryable;
 /// `SubscriberBuilder`

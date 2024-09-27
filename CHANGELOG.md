@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - minimum rust version 1.81
 - replaced `std::` with `core::` where  possible
 - re-export of `core::time::Duration` in `dimas::prelude`
+- renamed `Query` to `Querier` `QueryBuilder` to `QuerierBuilder`
+  to differentiate from data structure
 
 ### Fixed
 

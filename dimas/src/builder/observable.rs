@@ -43,7 +43,7 @@ impl<P> ObservableBuilder<P, NoSelector, NoCallback, NoCallback, NoCallback, NoS
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	/// Construct a `QueryBuilder` in initial state
+	/// Construct a `ObservableBuilder` in initial state
 	#[must_use]
 	pub const fn new(context: Context<P>) -> Self {
 		Self {
@@ -234,7 +234,7 @@ impl<P, K, CC, FC, EF> ObservableBuilder<P, K, CC, FC, EF, NoStorage>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	/// Provide agents storage for the queryable
+	/// Provide agents storage for the observable
 	#[must_use]
 	pub fn storage(
 		self,
@@ -313,7 +313,7 @@ impl<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	/// Build and add the queryable to the agents context
+	/// Build and add the observable to the agents context
 	/// # Errors
 	///
 	pub fn add(self) -> Result<Option<Observable<P>>> {

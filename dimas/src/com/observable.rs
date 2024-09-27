@@ -140,7 +140,7 @@ where
 			.replace(tokio::task::spawn(async move {
 				let key = selector.clone();
 				std::panic::set_hook(Box::new(move |reason| {
-					error!("queryable panic: {}", reason);
+					error!("observable panic: {}", reason);
 					if let Err(reason) = ctx1
 						.sender()
 						.blocking_send(TaskSignal::RestartObservable(key.clone()))

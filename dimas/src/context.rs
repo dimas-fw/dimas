@@ -35,7 +35,7 @@ use crate::agent::Agent;
 use crate::{
 	com::{
 		liveliness::LivelinessSubscriber, observable::Observable, observer::Observer,
-		publisher::Publisher, query::Query, queryable::Queryable, subscriber::Subscriber,
+		publisher::Publisher, querier::Querier, queryable::Queryable, subscriber::Subscriber,
 	},
 	timer::Timer,
 };
@@ -92,7 +92,7 @@ where
 	/// Registered [`Publisher`]
 	publishers: Arc<RwLock<HashMap<String, Publisher<P>>>>,
 	/// Registered [`Query`]s
-	queries: Arc<RwLock<HashMap<String, Query<P>>>>,
+	queries: Arc<RwLock<HashMap<String, Querier<P>>>>,
 	/// Registered [`Queryable`]s
 	queryables: Arc<RwLock<HashMap<String, Queryable<P>>>>,
 	/// Registered [`Subscriber`]
@@ -385,7 +385,7 @@ where
 
 	/// Get the queries
 	#[must_use]
-	pub const fn queries(&self) -> &Arc<RwLock<HashMap<String, Query<P>>>> {
+	pub const fn queries(&self) -> &Arc<RwLock<HashMap<String, Querier<P>>>> {
 		&self.queries
 	}
 

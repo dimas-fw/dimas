@@ -47,12 +47,12 @@
 // region:		--- modules
 use crate::builder::{
 	liveliness::LivelinessSubscriberBuilder, observable::ObservableBuilder,
-	observer::ObserverBuilder, publisher::PublisherBuilder, query::QueryBuilder,
+	observer::ObserverBuilder, publisher::PublisherBuilder, querier::QuerierBuilder,
 	queryable::QueryableBuilder, subscriber::SubscriberBuilder, timer::TimerBuilder,
 };
 use crate::com::{
 	liveliness::LivelinessSubscriber, observable::Observable, observer::Observer,
-	publisher::Publisher, query::Query, queryable::Queryable, subscriber::Subscriber,
+	publisher::Publisher, querier::Querier, queryable::Queryable, subscriber::Subscriber,
 };
 use crate::context::ContextImpl;
 use crate::timer::Timer;
@@ -369,13 +369,13 @@ where
 	#[must_use]
 	pub fn query(
 		&self,
-	) -> QueryBuilder<
+	) -> QuerierBuilder<
 		P,
 		crate::builder::NoSelector,
 		crate::builder::NoCallback,
-		crate::builder::Storage<Query<P>>,
+		crate::builder::Storage<Querier<P>>,
 	> {
-		QueryBuilder::new(self.context.clone()).storage(self.context.queries().clone())
+		QuerierBuilder::new(self.context.clone()).storage(self.context.queries().clone())
 	}
 
 	/// Get a [`QueryableBuilder`], the builder for a [`Queryable`].

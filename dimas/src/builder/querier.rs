@@ -1,6 +1,6 @@
 // Copyright © 2023 Stephan Kunz
 
-//! Module `query` provides an information/compute requestor `Query` which can be created using the `QueryBuilder`.
+//! Module `query` provides an information/compute requestor `Query` which can be created using the `QuerierBuilder`.
 
 // region:		--- modules
 use core::time::Duration;
@@ -18,14 +18,14 @@ use zenoh::{
 };
 
 use crate::builder::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
-use crate::com::{query::Query, ArcQueryCallback};
+use crate::com::{querier::Querier, ArcQuerierCallback};
 // endregion:	--- modules
 
-// region:		--- QueryBuilder
+// region:		--- QuerierBuilder
 /// The builder for a query
 #[allow(clippy::module_name_repetitions)]
 #[derive(Clone)]
-pub struct QueryBuilder<P, K, C, S>
+pub struct QuerierBuilder<P, K, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -40,11 +40,11 @@ where
 	target: QueryTarget,
 }
 
-impl<P> QueryBuilder<P, NoSelector, NoCallback, NoStorage>
+impl<P> QuerierBuilder<P, NoSelector, NoCallback, NoStorage>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	/// Construct a `QueryBuilder` in initial state
+	/// Construct a `QuerierBuilder` in initial state
 	#[must_use]
 	pub const fn new(context: Context<P>) -> Self {
 		Self {
@@ -61,7 +61,7 @@ where
 	}
 }
 
-impl<P, K, C, S> QueryBuilder<P, K, C, S>
+impl<P, K, C, S> QuerierBuilder<P, K, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -101,13 +101,13 @@ where
 	}
 }
 
-impl<P, C, S> QueryBuilder<P, NoSelector, C, S>
+impl<P, C, S> QuerierBuilder<P, NoSelector, C, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// Set the full expression for the query
 	#[must_use]
-	pub fn selector(self, selector: &str) -> QueryBuilder<P, Selector, C, S> {
+	pub fn selector(self, selector: &str) -> QuerierBuilder<P, Selector, C, S> {
 		let Self {
 			context,
 			activation_state,
@@ -119,7 +119,7 @@ where
 			target,
 			..
 		} = self;
-		QueryBuilder {
+		QuerierBuilder {
 			context,
 			activation_state,
 			allowed_destination,
@@ -137,19 +137,19 @@ where
 	/// Set only the message qualifing part of the query.
 	/// Will be prefixed with agents prefix.
 	#[must_use]
-	pub fn topic(self, topic: &str) -> QueryBuilder<P, Selector, C, S> {
+	pub fn topic(self, topic: &str) -> QuerierBuilder<P, Selector, C, S> {
 		let selector = selector_from(topic, self.context.prefix());
 		self.selector(&selector)
 	}
 }
 
-impl<P, K, S> QueryBuilder<P, K, NoCallback, S>
+impl<P, K, S> QuerierBuilder<P, K, NoCallback, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// Set query callback for response messages
 	#[must_use]
-	pub fn callback<F>(self, callback: F) -> QueryBuilder<P, K, Callback<ArcQueryCallback<P>>, S>
+	pub fn callback<F>(self, callback: F) -> QuerierBuilder<P, K, Callback<ArcQuerierCallback<P>>, S>
 	where
 		F: FnMut(&Context<P>, QueryableMsg) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
@@ -164,8 +164,8 @@ where
 			target,
 			..
 		} = self;
-		let callback: ArcQueryCallback<P> = Arc::new(Mutex::new(callback));
-		QueryBuilder {
+		let callback: ArcQuerierCallback<P> = Arc::new(Mutex::new(callback));
+		QuerierBuilder {
 			context,
 			activation_state,
 			allowed_destination,
@@ -179,7 +179,7 @@ where
 	}
 }
 
-impl<P, K, C> QueryBuilder<P, K, C, NoStorage>
+impl<P, K, C> QuerierBuilder<P, K, C, NoStorage>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -187,8 +187,8 @@ where
 	#[must_use]
 	pub fn storage(
 		self,
-		storage: Arc<RwLock<std::collections::HashMap<String, Query<P>>>>,
-	) -> QueryBuilder<P, K, C, Storage<Query<P>>> {
+		storage: Arc<RwLock<std::collections::HashMap<String, Querier<P>>>>,
+	) -> QuerierBuilder<P, K, C, Storage<Querier<P>>> {
 		let Self {
 			context,
 			activation_state,
@@ -200,7 +200,7 @@ where
 			target,
 			..
 		} = self;
-		QueryBuilder {
+		QuerierBuilder {
 			context,
 			activation_state,
 			allowed_destination,
@@ -214,14 +214,14 @@ where
 	}
 }
 
-impl<P, S> QueryBuilder<P, Selector, Callback<ArcQueryCallback<P>>, S>
+impl<P, S> QuerierBuilder<P, Selector, Callback<ArcQuerierCallback<P>>, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// Build the [`Query`]
 	/// # Errors
 	///
-	pub fn build(self) -> Result<Query<P>> {
+	pub fn build(self) -> Result<Querier<P>> {
 		let Self {
 			context,
 			activation_state,
@@ -234,7 +234,7 @@ where
 			..
 		} = self;
 		let selector = selector.selector;
-		Ok(Query::new(
+		Ok(Querier::new(
 			selector,
 			context,
 			activation_state,
@@ -247,13 +247,13 @@ where
 	}
 }
 
-impl<P> QueryBuilder<P, Selector, Callback<ArcQueryCallback<P>>, Storage<Query<P>>>
+impl<P> QuerierBuilder<P, Selector, Callback<ArcQuerierCallback<P>>, Storage<Querier<P>>>
 where
 	P: Send + Sync + Unpin + 'static,
 {
 	/// Build and add the query to the agents context
 	/// # Errors
-	pub fn add(self) -> Result<Option<Query<P>>> {
+	pub fn add(self) -> Result<Option<Querier<P>>> {
 		let collection = self.storage.storage.clone();
 		let q = self.build()?;
 
@@ -264,7 +264,7 @@ where
 		Ok(r)
 	}
 }
-// endregion:	--- QueryBuilder
+// endregion:	--- QuerierBuilder
 
 #[cfg(test)]
 mod tests {
@@ -278,6 +278,6 @@ mod tests {
 
 	#[test]
 	const fn normal_types() {
-		is_normal::<QueryBuilder<Props, NoSelector, NoCallback, NoStorage>>();
+		is_normal::<QuerierBuilder<Props, NoSelector, NoCallback, NoStorage>>();
 	}
 }

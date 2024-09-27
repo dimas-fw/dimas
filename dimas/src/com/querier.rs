@@ -1,9 +1,9 @@
 // Copyright © 2023 Stephan Kunz
 
-//! Module `query` provides an information/compute requestor `Query` which can be created using the `QueryBuilder`.
+//! Module `Querier` provides an information/compute requestor `Querier` which can be created using the `QuerierBuilder`.
 
 // region:		--- modules
-use super::ArcQueryCallback;
+use super::ArcQuerierCallback;
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
@@ -19,17 +19,17 @@ use zenoh::{
 };
 // endregion:	--- modules
 
-// region:		--- Query
-/// Query
-pub struct Query<P>
+// region:		--- Querier
+/// Querier
+pub struct Querier<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
 	selector: String,
-	/// Context for the Query
+	/// Context for the Querier
 	context: Context<P>,
 	activation_state: OperationState,
-	callback: ArcQueryCallback<P>,
+	callback: ArcQuerierCallback<P>,
 	mode: ConsolidationMode,
 	allowed_destination: Locality,
 	target: QueryTarget,
@@ -37,12 +37,12 @@ where
 	key_expr: Option<zenoh::key_expr::KeyExpr<'static>>,
 }
 
-impl<P> Debug for Query<P>
+impl<P> Debug for Querier<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
 	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-		f.debug_struct("Query")
+		f.debug_struct("Querier")
 			.field("selector", &self.selector)
 			.field("mode", &self.mode)
 			.field("allowed_destination", &self.allowed_destination)
@@ -50,7 +50,7 @@ where
 	}
 }
 
-impl<P> Capability for Query<P>
+impl<P> Capability for Querier<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
@@ -64,18 +64,18 @@ where
 	}
 }
 
-impl<P> Query<P>
+impl<P> Querier<P>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	/// Constructor for a [`Query`]
+	/// Constructor for a [`Querier`]
 	#[must_use]
 	#[allow(clippy::too_many_arguments)]
 	pub fn new(
 		selector: String,
 		context: Context<P>,
 		activation_state: OperationState,
-		response_callback: ArcQueryCallback<P>,
+		response_callback: ArcQuerierCallback<P>,
 		mode: ConsolidationMode,
 		allowed_destination: Locality,
 		target: QueryTarget,
@@ -129,8 +129,8 @@ where
 		Ok(())
 	}
 
-	/// Run a Query with an optional [`Message`].
-	#[instrument(name="query", level = Level::ERROR, skip_all)]
+	/// Run a Querier with an optional [`Message`].
+	#[instrument(name="Querier", level = Level::ERROR, skip_all)]
 	pub fn get(
 		&self,
 		message: Option<Message>,
@@ -146,7 +146,7 @@ where
 
 		let cb = self.callback.clone();
 		let session = self.context.session();
-		let mut query = message
+		let mut querier = message
 			.map_or_else(
 				|| session.get(&self.selector),
 				|msg| session.get(&self.selector).payload(msg.value()),
@@ -156,10 +156,10 @@ where
 			.allowed_destination(self.allowed_destination);
 
 		if let Some(timeout) = self.timeout {
-			query = query.timeout(timeout);
+			querier = querier.timeout(timeout);
 		};
 
-		let replies = query
+		let replies = querier
 			.wait()
 			.map_err(|_| DimasError::ShouldNotHappen)?;
 
@@ -186,7 +186,7 @@ where
 						}
 					}
 					SampleKind::Delete => {
-						error!("Delete in Query");
+						error!("Delete in Querier");
 					}
 				},
 				Err(err) => error!("receive error: {:?})", err),
@@ -195,7 +195,7 @@ where
 		Ok(())
 	}
 }
-// endregion:	--- Query
+// endregion:	--- Querier
 
 #[cfg(test)]
 mod tests {
@@ -209,6 +209,6 @@ mod tests {
 
 	#[test]
 	const fn normal_types() {
-		is_normal::<Query<Props>>();
+		is_normal::<Querier<Props>>();
 	}
 }

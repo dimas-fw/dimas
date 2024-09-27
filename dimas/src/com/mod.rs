@@ -23,9 +23,9 @@ pub type ArcPutCallback<P> =
 /// Type definition for a subscribers atomic reference counted `delete` callback
 pub type ArcDeleteCallback<P> =
 	Arc<Mutex<dyn FnMut(&Context<P>) -> Result<()> + Send + Sync + Unpin + 'static>>;
-// ------ Query
-/// type definition for a queries atomic reference counted `response` callback
-pub type ArcQueryCallback<P> =
+// ------ Querier
+/// type definition for a queriers atomic reference counted `response` callback
+pub type ArcQuerierCallback<P> =
 	Arc<Mutex<dyn FnMut(&Context<P>, QueryableMsg) -> Result<()> + Send + Sync + Unpin + 'static>>;
 // ------ Queryable
 /// type defnition for a queryables atomic reference counted `request` callback
@@ -65,7 +65,7 @@ pub mod observer;
 /// `Publisher`
 pub mod publisher;
 /// `Query`
-pub mod query;
+pub mod querier;
 /// `Queryable`
 pub mod queryable;
 /// `Subscriber`

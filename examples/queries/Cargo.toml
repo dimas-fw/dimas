@@ -18,8 +18,8 @@ name = "queryable"
 path = "src/queryable.rs"
 
 [[bin]]
-name = "query"
-path = "src/query.rs"
+name = "querier"
+path = "src/querier.rs"
 
 [dependencies]
 dimas = { workspace = true }
