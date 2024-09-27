@@ -83,7 +83,7 @@ use zenoh::Wait;
 // endregion:	--- modules
 
 // region:	   --- callbacks
-fn callback_dispatcher<P>(ctx: &Context<P>, request: QueryMsg) -> Result<()>
+fn callback_dispatcher<P>(ctx: Context<P>, request: QueryMsg) -> Result<()>
 where
 	P: Send + Sync + 'static,
 {
@@ -101,7 +101,7 @@ where
 	Ok(())
 }
 
-fn about_handler<P>(ctx: &Context<P>, request: QueryMsg) -> Result<()>
+fn about_handler<P>(ctx: Context<P>, request: QueryMsg) -> Result<()>
 where
 	P: Send + Sync + 'static,
 {
@@ -112,11 +112,12 @@ where
 	let zid = ctx.uuid();
 	let state = ctx.state();
 	let value = AboutEntity::new(name, mode, zid, state);
+	drop(ctx);
 	request.reply(value)?;
 	Ok(())
 }
 
-fn ping_handler<P>(ctx: &Context<P>, request: QueryMsg, sent: i64) -> Result<()>
+fn ping_handler<P>(ctx: Context<P>, request: QueryMsg, sent: i64) -> Result<()>
 where
 	P: Send + Sync + 'static,
 {
@@ -131,11 +132,12 @@ where
 		.unwrap_or_else(|| String::from("--"));
 	let zid = ctx.uuid();
 	let value = PingEntity::new(name, zid, now - sent);
+	drop(ctx);
 	request.reply(value)?;
 	Ok(())
 }
 
-fn shutdown_handler<P>(ctx: &Context<P>, request: QueryMsg) -> Result<()>
+fn shutdown_handler<P>(ctx: Context<P>, request: QueryMsg) -> Result<()>
 where
 	P: Send + Sync + 'static,
 {
@@ -150,7 +152,6 @@ where
 	request.reply(value)?;
 
 	// shutdown agent after a short wait time to be able to send response
-	let ctx = ctx.clone();
 	tokio::task::spawn(async move {
 		tokio::time::sleep(Duration::from_millis(2)).await;
 		let _ = ctx.sender().blocking_send(TaskSignal::Shutdown);
@@ -159,7 +160,7 @@ where
 }
 
 fn state_handler<P>(
-	ctx: &Context<P>,
+	ctx: Context<P>,
 	request: QueryMsg,
 	state: Option<OperationState>,
 ) -> Result<()>
@@ -179,6 +180,7 @@ where
 	let zid = ctx.uuid();
 	let state = ctx.state();
 	let value = AboutEntity::new(name, mode, zid, state);
+	drop(ctx);
 	request.reply(value)?;
 	Ok(())
 }

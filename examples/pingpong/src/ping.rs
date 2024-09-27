@@ -13,7 +13,7 @@ struct AgentProps {
 }
 
 #[allow(clippy::cast_precision_loss)]
-fn pong_received(_ctx: &Context<AgentProps>, message: QueryableMsg) -> Result<()> {
+fn pong_received(_ctx: Context<AgentProps>, message: QueryableMsg) -> Result<()> {
 	let message: PingPongMessage = message.decode()?;
 
 	// get current timestamp

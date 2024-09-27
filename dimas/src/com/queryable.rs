@@ -181,7 +181,8 @@ where
 
 		match callback.lock() {
 			Ok(mut lock) => {
-				if let Err(error) = lock(&ctx, request) {
+				let ctx = ctx.clone();
+				if let Err(error) = lock(ctx, request) {
 					error!("queryable callback failed with {error}");
 				}
 			}

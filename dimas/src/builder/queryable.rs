@@ -134,7 +134,7 @@ where
 		callback: F,
 	) -> QueryableBuilder<P, K, Callback<ArcQueryableCallback<P>>, S>
 	where
-		F: FnMut(&Context<P>, QueryMsg) -> Result<()> + Send + Sync + 'static,
+		F: FnMut(Context<P>, QueryMsg) -> Result<()> + Send + Sync + 'static,
 	{
 		let Self {
 			context,

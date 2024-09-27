@@ -169,7 +169,7 @@ where
 	#[must_use]
 	pub fn callback<F>(self, callback: F) -> TimerBuilder<P, K, I, Callback<TimerCallback<P>>, S>
 	where
-		F: FnMut(&Context<P>) -> Result<()> + Send + Sync + 'static,
+		F: FnMut(Context<P>) -> Result<()> + Send + Sync + 'static,
 	{
 		let Self {
 			context,

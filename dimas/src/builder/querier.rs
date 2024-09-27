@@ -158,7 +158,7 @@ where
 		callback: F,
 	) -> QuerierBuilder<P, K, Callback<ArcQuerierCallback<P>>, S>
 	where
-		F: FnMut(&Context<P>, QueryableMsg) -> Result<()> + Send + Sync + 'static,
+		F: FnMut(Context<P>, QueryableMsg) -> Result<()> + Send + Sync + 'static,
 	{
 		let Self {
 			context,

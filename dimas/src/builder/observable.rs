@@ -129,7 +129,7 @@ where
 		callback: F,
 	) -> ObservableBuilder<P, K, Callback<ArcObservableControlCallback<P>>, FC, EF, S>
 	where
-		F: FnMut(&Context<P>, Message) -> Result<ControlResponse> + Send + Sync + 'static,
+		F: FnMut(Context<P>, Message) -> Result<ControlResponse> + Send + Sync + 'static,
 	{
 		let Self {
 			context,
@@ -166,7 +166,7 @@ where
 		callback: F,
 	) -> ObservableBuilder<P, K, CC, Callback<ArcObservableFeedbackCallback<P>>, EF, S>
 	where
-		F: FnMut(&Context<P>) -> Result<Message> + Send + Sync + 'static,
+		F: FnMut(Context<P>) -> Result<Message> + Send + Sync + 'static,
 	{
 		let Self {
 			context,
@@ -203,7 +203,7 @@ where
 		function: F,
 	) -> ObservableBuilder<P, K, CC, FC, Callback<ArcObservableExecutionFunction<P>>, S>
 	where
-		F: FnMut(&Context<P>) -> Result<Message> + Send + Sync + 'static,
+		F: FnMut(Context<P>) -> Result<Message> + Send + Sync + 'static,
 	{
 		let Self {
 			context,

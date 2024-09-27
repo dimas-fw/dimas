@@ -147,7 +147,7 @@ where
 							tokio::spawn(async move {
 								match ccb.lock() {
 									Ok(mut lock) => {
-										if let Err(error) = lock(&ctx.clone(), response) {
+										if let Err(error) = lock(ctx.clone(), response) {
 											error!("callback failed with {error}");
 										}
 									}
@@ -246,7 +246,7 @@ where
 								// call control callback
 								match self.control_callback.lock() {
 									Ok(mut lock) => {
-										if let Err(error) = lock(&self.context.clone(), response) {
+										if let Err(error) = lock(self.context.clone(), response) {
 											error!("control callback failed with {error}");
 										}
 									}
@@ -296,7 +296,8 @@ async fn run_observation<P>(
 								rcb.lock().map_or_else(
 									|_| todo!(),
 									|mut cb| {
-										if let Err(error) = cb(&ctx, response) {
+										let ctx = ctx.clone();
+										if let Err(error) = cb(ctx, response) {
 											error!("response callback failed with {error}");
 										};
 									},

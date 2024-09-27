@@ -113,7 +113,7 @@ where
 	#[must_use]
 	pub fn delete_callback<F>(self, callback: F) -> Self
 	where
-		F: FnMut(&Context<P>, &str) -> Result<()> + Send + Sync + 'static,
+		F: FnMut(Context<P>, &str) -> Result<()> + Send + Sync + 'static,
 	{
 		let Self {
 			token,
@@ -147,7 +147,7 @@ where
 		callback: F,
 	) -> LivelinessSubscriberBuilder<P, Callback<ArcLivelinessCallback<P>>, S>
 	where
-		F: FnMut(&Context<P>, &str) -> Result<()> + Send + Sync + 'static,
+		F: FnMut(Context<P>, &str) -> Result<()> + Send + Sync + 'static,
 	{
 		let Self {
 			token,

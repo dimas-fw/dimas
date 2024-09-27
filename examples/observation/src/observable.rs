@@ -12,7 +12,7 @@ struct AgentProps {
 	sequence: Vec<u128>,
 }
 
-fn fibonacci(ctx: &Context<AgentProps>) -> Result<Message> {
+fn fibonacci(ctx: Context<AgentProps>) -> Result<Message> {
 	let limit = ctx.read()?.limit;
 	// clear any existing result
 	ctx.write()?.sequence.clear();

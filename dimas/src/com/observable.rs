@@ -210,6 +210,7 @@ where
 	// started and terminated by state management
 	// do not terminate loop in case of errors during execution
 	loop {
+		let ctx = ctx.clone();
 		// different cases that may happen
 		tokio::select! {
 			// got query from an observer
@@ -243,7 +244,8 @@ where
 						// check whether request is possible using control callback
 						match control_callback.lock() {
 							Ok(mut lock) => {
-								let res = lock(&ctx, msg);
+								let ctx_clone = ctx.clone();
+								let res = lock(ctx_clone, msg);
 								match res {
 									Ok(response) => {
 										if matches!(response, ControlResponse::Accepted ) {
@@ -264,7 +266,7 @@ where
 											let execution_function_clone = execution_function.clone();
 											let ctx_clone = ctx.clone();
 											execution_handle.replace(tokio::spawn( async move {
-												let res = execution_function_clone.lock().await(&ctx_clone).unwrap_or_else(|_| { todo!() });
+												let res = execution_function_clone.lock().await(ctx_clone).unwrap_or_else(|_| { todo!() });
 												if !matches!(tx_clone.send(res).await, Ok(())) { error!("failed to send back execution result") };
 											}));
 
@@ -298,7 +300,7 @@ where
 							// send cancelation feedback with last state
 							match feedback_callback.lock() {
 								Ok(mut fcb) => {
-									let Ok(msg) = fcb(&ctx) else { todo!() };
+									let Ok(msg) = fcb(ctx) else { todo!() };
 									let response =
 										ObservableResponse::Canceled(msg.value().clone());
 									if let Some(p) = publisher {
@@ -350,7 +352,7 @@ where
 				// send feedback
 				match feedback_callback.lock() {
 					Ok(mut fcb) => {
-						let Ok(msg) = fcb(&ctx) else { todo!() };
+						let Ok(msg) = fcb(ctx) else { todo!() };
 						let response =
 							ObservableResponse::Feedback(msg.value().clone());
 

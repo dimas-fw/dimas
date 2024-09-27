@@ -10,14 +10,14 @@ struct AgentProps {
 	test: u8,
 }
 
-fn hello_publishing(_ctx: &Context<AgentProps>, message: Message) -> Result<()> {
+fn hello_publishing(_ctx: Context<AgentProps>, message: Message) -> Result<()> {
 	let message: String = message.decode()?;
 	println!("Received '{message}'");
 
 	Ok(())
 }
 
-fn hello_deletion(ctx: &Context<AgentProps>) -> Result<()> {
+fn hello_deletion(ctx: Context<AgentProps>) -> Result<()> {
 	let _value = ctx.read()?.test;
 	println!("Shall delete 'hello' message");
 	Ok(())

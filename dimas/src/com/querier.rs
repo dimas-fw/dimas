@@ -188,7 +188,7 @@ where
 							let guard = cb.lock();
 							match guard {
 								Ok(mut lock) => {
-									if let Err(error) = lock(&self.context.clone(), msg) {
+									if let Err(error) = lock(self.context.clone(), msg) {
 										error!("callback failed with {error}");
 									}
 								}

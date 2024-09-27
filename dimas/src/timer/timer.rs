@@ -19,7 +19,7 @@ use tracing::{error, info, instrument, warn, Level};
 /// type definition for the functions called by a timer
 #[allow(clippy::module_name_repetitions)]
 pub type TimerCallback<P> =
-	Arc<Mutex<dyn FnMut(&Context<P>) -> Result<()> + Send + Sync + 'static>>;
+	Arc<Mutex<dyn FnMut(Context<P>) -> Result<()> + Send + Sync + 'static>>;
 // endregion:	--- types
 
 // region:		--- Timer
@@ -278,11 +278,12 @@ where
 {
 	let mut interval = time::interval(interval);
 	loop {
+		let ctx = ctx.clone();
 		interval.tick().await;
 
 		match cb.lock() {
 			Ok(mut cb) => {
-				if let Err(error) = cb(&ctx) {
+				if let Err(error) = cb(ctx) {
 					error!("callback failed with {error}");
 				}
 			}

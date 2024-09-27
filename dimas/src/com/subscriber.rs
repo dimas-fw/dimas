@@ -175,7 +175,8 @@ where
 				let msg = Message::new(content);
 				match p_cb.lock() {
 					Ok(mut lock) => {
-						if let Err(error) = lock(&ctx, msg) {
+						let ctx = ctx.clone();
+						if let Err(error) = lock(ctx, msg) {
 							error!("subscriber put callback failed with {error}");
 						}
 					}
@@ -188,7 +189,8 @@ where
 				if let Some(cb) = d_cb.clone() {
 					match cb.lock() {
 						Ok(mut lock) => {
-							if let Err(error) = lock(&ctx) {
+							let ctx = ctx.clone();
+							if let Err(error) = lock(ctx) {
 								error!("subscriber delete callback failed with {error}");
 							}
 						}

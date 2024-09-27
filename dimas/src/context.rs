@@ -13,7 +13,7 @@
 //!   counter: i32,
 //! }
 //! // A [`Timer`] callback
-//! fn timer_callback(context: &Context<AgentProps>) -> Result<()> {
+//! fn timer_callback(context: Context<AgentProps>) -> Result<()> {
 //!   // reading properties
 //!   let mut value = context.read()?.counter;
 //!   value +=1;
