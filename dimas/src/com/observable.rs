@@ -14,17 +14,17 @@ use dimas_core::{
 };
 use tokio::task::JoinHandle;
 use tracing::{error, info, instrument, warn, Level};
-use zenoh::Wait;
 use zenoh::qos::{CongestionControl, Priority};
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
+use zenoh::Wait;
 // endregion:	--- modules
 
 // region:		--- Observable
 /// Observable
 pub struct Observable<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// The observables key expression
 	selector: String,
@@ -43,7 +43,7 @@ where
 
 impl<P> core::fmt::Debug for Observable<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		f.debug_struct("Observable")
@@ -53,7 +53,7 @@ where
 
 impl<P> Capability for Observable<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()> {
 		if (state >= &self.activation_state) && self.handle.is_none() {
@@ -68,7 +68,7 @@ where
 
 impl<P> Observable<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Constructor for an [`Observable`]
 	#[must_use]
@@ -178,17 +178,17 @@ async fn run_observable<P>(
 	ctx: Context<P>,
 ) -> Result<()>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	// create the control queryable
 	let session = ctx.session();
-	let queryable =	session
+	let queryable = session
 		.declare_queryable(&selector)
 		.complete(true);
 
 	#[cfg(feature = "unstable")]
 	let queryable = queryable.allowed_origin(Locality::Any);
-		
+
 	let queryable = queryable.await?;
 
 	// initialize a pinned feedback timer
@@ -382,7 +382,7 @@ mod tests {
 	struct Props {}
 
 	// check, that the auto traits are available
-	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
 	#[test]
 	const fn normal_types() {

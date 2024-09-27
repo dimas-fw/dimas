@@ -19,14 +19,14 @@ use tracing::{error, info, instrument, warn, Level};
 /// type definition for the functions called by a timer
 #[allow(clippy::module_name_repetitions)]
 pub type TimerCallback<P> =
-	Arc<Mutex<dyn FnMut(&Context<P>) -> Result<()> + Send + Sync + Unpin + 'static>>;
+	Arc<Mutex<dyn FnMut(&Context<P>) -> Result<()> + Send + Sync + 'static>>;
 // endregion:	--- types
 
 // region:		--- Timer
 /// Timer
 pub enum Timer<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// A Timer with an Interval
 	Interval {
@@ -64,7 +64,7 @@ where
 
 impl<P> Debug for Timer<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		match self {
@@ -85,7 +85,7 @@ where
 
 impl<P> Capability for Timer<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()> {
 		match self {
@@ -120,7 +120,7 @@ where
 
 impl<P> Timer<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Constructor for a [Timer]
 	#[must_use]
@@ -274,7 +274,7 @@ where
 #[instrument(name="timer", level = Level::ERROR, skip_all)]
 async fn run_timer<P>(interval: Duration, cb: TimerCallback<P>, ctx: Context<P>)
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	let mut interval = time::interval(interval);
 	loop {
@@ -302,7 +302,7 @@ mod tests {
 	struct Props {}
 
 	// check, that the auto traits are available
-	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
 	#[test]
 	const fn normal_types() {

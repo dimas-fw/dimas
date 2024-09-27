@@ -36,8 +36,8 @@ use crate::agent::Agent;
 use crate::com::liveliness::LivelinessSubscriber;
 use crate::{
 	com::{
-		observable::Observable, observer::Observer,
-		publisher::Publisher, querier::Querier, queryable::Queryable, subscriber::Subscriber,
+		observable::Observable, observer::Observer, publisher::Publisher, querier::Querier,
+		queryable::Queryable, subscriber::Subscriber,
 	},
 	timer::Timer,
 };
@@ -70,7 +70,7 @@ const INITIAL_SIZE: usize = 9;
 #[allow(clippy::module_name_repetitions)]
 pub struct ContextImpl<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// The [`Agent`]s name.
 	/// Name must not, but should be unique.
@@ -106,7 +106,7 @@ where
 
 impl<P> ContextAbstraction<P> for ContextImpl<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + 'static,
 {
 	/// Get the name
 	#[must_use]
@@ -322,7 +322,7 @@ where
 
 impl<P> ContextImpl<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Constructor for the [`ContextInner`]
 	pub fn new(
@@ -627,7 +627,7 @@ mod tests {
 	use super::*;
 
 	// check, that the auto traits are available
-	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
 	#[derive(Debug)]
 	struct Props {}

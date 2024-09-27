@@ -24,7 +24,7 @@ use crate::com::{queryable::Queryable, ArcQueryableCallback};
 #[derive(Clone)]
 pub struct QueryableBuilder<P, K, C, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	context: Context<P>,
 	activation_state: OperationState,
@@ -38,7 +38,7 @@ where
 
 impl<P> QueryableBuilder<P, NoSelector, NoCallback, NoStorage>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Construct a `QueryableBuilder` in initial state
 	#[must_use]
@@ -58,7 +58,7 @@ where
 
 impl<P, K, C, S> QueryableBuilder<P, K, C, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set the activation state.
 	#[must_use]
@@ -85,7 +85,7 @@ where
 
 impl<P, C, S> QueryableBuilder<P, NoSelector, C, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set the full expression for the [`Queryable`].
 	#[must_use]
@@ -125,7 +125,7 @@ where
 
 impl<P, K, S> QueryableBuilder<P, K, NoCallback, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set callback for request messages
 	#[must_use]
@@ -134,7 +134,7 @@ where
 		callback: F,
 	) -> QueryableBuilder<P, K, Callback<ArcQueryableCallback<P>>, S>
 	where
-		F: FnMut(&Context<P>, QueryMsg) -> Result<()> + Send + Sync + Unpin + 'static,
+		F: FnMut(&Context<P>, QueryMsg) -> Result<()> + Send + Sync + 'static,
 	{
 		let Self {
 			context,
@@ -162,7 +162,7 @@ where
 
 impl<P, K, C> QueryableBuilder<P, K, C, NoStorage>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Provide agents storage for the queryable
 	#[must_use]
@@ -195,7 +195,7 @@ where
 
 impl<P, S> QueryableBuilder<P, Selector, Callback<ArcQueryableCallback<P>>, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Build the [`Queryable`]
 	/// # Errors
@@ -226,7 +226,7 @@ where
 
 impl<P> QueryableBuilder<P, Selector, Callback<ArcQueryableCallback<P>>, Storage<Queryable<P>>>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Build and add the queryable to the agents context
 	/// # Errors
@@ -252,7 +252,7 @@ mod tests {
 	struct Props {}
 
 	// check, that the auto traits are available
-	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
 	#[test]
 	const fn normal_types() {

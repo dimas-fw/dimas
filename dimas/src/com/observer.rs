@@ -1,6 +1,7 @@
 // Copyright © 2024 Stephan Kunz
 
 // region:		--- modules
+use super::{ArcObserverControlCallback, ArcObserverResponseCallback};
 use bitcode::decode;
 use dimas_core::{
 	enums::OperationState,
@@ -10,21 +11,20 @@ use dimas_core::{
 };
 use tokio::task::JoinHandle;
 use tracing::{error, instrument, warn, Level};
+#[cfg(feature = "unstable")]
+use zenoh::sample::Locality;
 use zenoh::{
 	query::{ConsolidationMode, QueryTarget},
 	sample::SampleKind,
 	Wait,
 };
-#[cfg(feature = "unstable")]
-use zenoh::sample::Locality;
-use super::{ArcObserverControlCallback, ArcObserverResponseCallback};
 // endregion:	--- modules
 
 // region:		--- Observer
 /// Observer
 pub struct Observer<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// The observers key expression
 	selector: String,
@@ -40,7 +40,7 @@ where
 
 impl<P> core::fmt::Debug for Observer<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		f.debug_struct("Observer").finish_non_exhaustive()
@@ -49,7 +49,7 @@ where
 
 impl<P> Capability for Observer<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()> {
 		if state >= &self.activation_state {
@@ -63,7 +63,7 @@ where
 
 impl<P> Observer<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Constructor for an [`Observer`]
 	#[must_use]
@@ -210,7 +210,7 @@ where
 									// use "<query_selector>/feedback/<source_id/replier_id>" as key
 									// in case there is no source_id/replier_id, listen on all id's
 									#[cfg(not(feature = "unstable"))]
-									let source_id = "*".to_string(); 
+									let source_id = "*".to_string();
 									#[cfg(feature = "unstable")]
 									let source_id = reply.result().map_or_else(
 										|_| {
@@ -330,7 +330,7 @@ mod tests {
 	struct Props {}
 
 	// check, that the auto traits are available
-	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
 	#[test]
 	const fn normal_types() {

@@ -12,20 +12,20 @@ use dimas_core::{
 	traits::{Capability, Context},
 };
 use tracing::{error, instrument, warn, Level};
+#[cfg(feature = "unstable")]
+use zenoh::sample::Locality;
 use zenoh::{
 	query::{ConsolidationMode, QueryTarget},
 	sample::SampleKind,
 	Wait,
 };
-#[cfg(feature = "unstable")]
-use zenoh::sample::Locality;
 // endregion:	--- modules
 
 // region:		--- Querier
 /// Querier
 pub struct Querier<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	selector: String,
 	/// Context for the Querier
@@ -42,27 +42,29 @@ where
 
 impl<P> Debug for Querier<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		#[cfg(feature = "unstable")]
-		let res = f.debug_struct("Querier")
+		let res = f
+			.debug_struct("Querier")
 			.field("selector", &self.selector)
 			.field("mode", &self.mode)
 			.field("allowed_destination", &self.allowed_destination)
 			.finish_non_exhaustive();
 		#[cfg(not(feature = "unstable"))]
-		let res = f.debug_struct("Querier")
+		let res = f
+			.debug_struct("Querier")
 			.field("selector", &self.selector)
 			.field("mode", &self.mode)
 			.finish_non_exhaustive();
 		res
-		}
+	}
 }
 
 impl<P> Capability for Querier<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()> {
 		if state >= &self.activation_state {
@@ -76,7 +78,7 @@ where
 
 impl<P> Querier<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Constructor for a [`Querier`]
 	#[must_use]
@@ -87,8 +89,7 @@ where
 		activation_state: OperationState,
 		response_callback: ArcQuerierCallback<P>,
 		mode: ConsolidationMode,
-		#[cfg(feature = "unstable")]
-		allowed_destination: Locality,
+		#[cfg(feature = "unstable")] allowed_destination: Locality,
 		target: QueryTarget,
 		timeout: Option<Duration>,
 	) -> Self {
@@ -118,7 +119,7 @@ where
 	#[allow(clippy::unnecessary_wraps)]
 	fn init(&mut self) -> Result<()>
 	where
-		P: Send + Sync + Unpin + 'static,
+		P: Send + Sync + 'static,
 	{
 		let key_expr = self
 			.context
@@ -135,7 +136,7 @@ where
 	#[allow(clippy::unnecessary_wraps)]
 	fn de_init(&mut self) -> Result<()>
 	where
-		P: Send + Sync + Unpin + 'static,
+		P: Send + Sync + 'static,
 	{
 		self.key_expr.take();
 		Ok(())
@@ -219,7 +220,7 @@ mod tests {
 	struct Props {}
 
 	// check, that the auto traits are available
-	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
 	#[test]
 	const fn normal_types() {

@@ -26,7 +26,7 @@ use crate::com::{querier::Querier, ArcQuerierCallback};
 #[derive(Clone)]
 pub struct QuerierBuilder<P, K, C, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	context: Context<P>,
 	activation_state: OperationState,
@@ -42,7 +42,7 @@ where
 
 impl<P> QuerierBuilder<P, NoSelector, NoCallback, NoStorage>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Construct a `QuerierBuilder` in initial state
 	#[must_use]
@@ -64,7 +64,7 @@ where
 
 impl<P, K, C, S> QuerierBuilder<P, K, C, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set the activation state.
 	#[must_use]
@@ -105,7 +105,7 @@ where
 
 impl<P, C, S> QuerierBuilder<P, NoSelector, C, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set the full expression for the query
 	#[must_use]
@@ -149,7 +149,7 @@ where
 
 impl<P, K, S> QuerierBuilder<P, K, NoCallback, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set query callback for response messages
 	#[must_use]
@@ -158,7 +158,7 @@ where
 		callback: F,
 	) -> QuerierBuilder<P, K, Callback<ArcQuerierCallback<P>>, S>
 	where
-		F: FnMut(&Context<P>, QueryableMsg) -> Result<()> + Send + Sync + Unpin + 'static,
+		F: FnMut(&Context<P>, QueryableMsg) -> Result<()> + Send + Sync + 'static,
 	{
 		let Self {
 			context,
@@ -190,7 +190,7 @@ where
 
 impl<P, K, C> QuerierBuilder<P, K, C, NoStorage>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Provide agents storage for the query
 	#[must_use]
@@ -227,7 +227,7 @@ where
 
 impl<P, S> QuerierBuilder<P, Selector, Callback<ArcQuerierCallback<P>>, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Build the [`Querier`]
 	/// # Errors
@@ -262,7 +262,7 @@ where
 
 impl<P> QuerierBuilder<P, Selector, Callback<ArcQuerierCallback<P>>, Storage<Querier<P>>>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Build and add the query to the agents context
 	/// # Errors
@@ -287,7 +287,7 @@ mod tests {
 	struct Props {}
 
 	// check, that the auto traits are available
-	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
 	#[test]
 	const fn normal_types() {

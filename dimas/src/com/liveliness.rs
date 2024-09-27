@@ -25,7 +25,7 @@ use super::ArcLivelinessCallback;
 #[allow(clippy::module_name_repetitions)]
 pub struct LivelinessSubscriber<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	token: String,
 	context: Context<P>,
@@ -37,7 +37,7 @@ where
 
 impl<P> core::fmt::Debug for LivelinessSubscriber<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		f.debug_struct("LivelinessSubscriber")
@@ -47,7 +47,7 @@ where
 
 impl<P> Capability for LivelinessSubscriber<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()> {
 		if (state >= &self.activation_state) && self.handle.is_none() {
@@ -62,7 +62,7 @@ where
 
 impl<P> LivelinessSubscriber<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Constructor for a [`LivelinessSubscriber`]
 	pub fn new(
@@ -270,7 +270,7 @@ mod tests {
 	struct Props {}
 
 	// check, that the auto traits are available
-	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
 	#[test]
 	const fn normal_types() {

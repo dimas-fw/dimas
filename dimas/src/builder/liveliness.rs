@@ -23,7 +23,7 @@ use std::{
 #[allow(clippy::module_name_repetitions)]
 pub struct LivelinessSubscriberBuilder<P, C, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	token: String,
 	context: Context<P>,
@@ -35,7 +35,7 @@ where
 
 impl<P> LivelinessSubscriberBuilder<P, NoCallback, NoStorage>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Construct a `LivelinessSubscriberBuilder` in initial state
 	#[must_use]
@@ -57,7 +57,7 @@ where
 
 impl<P, C, S> LivelinessSubscriberBuilder<P, C, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set the activation state.
 	#[must_use]
@@ -113,7 +113,7 @@ where
 	#[must_use]
 	pub fn delete_callback<F>(self, callback: F) -> Self
 	where
-		F: FnMut(&Context<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static,
+		F: FnMut(&Context<P>, &str) -> Result<()> + Send + Sync + 'static,
 	{
 		let Self {
 			token,
@@ -138,7 +138,7 @@ where
 
 impl<P, S> LivelinessSubscriberBuilder<P, NoCallback, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set liveliness subscribers callback for `put` messages
 	#[must_use]
@@ -147,7 +147,7 @@ where
 		callback: F,
 	) -> LivelinessSubscriberBuilder<P, Callback<ArcLivelinessCallback<P>>, S>
 	where
-		F: FnMut(&Context<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static,
+		F: FnMut(&Context<P>, &str) -> Result<()> + Send + Sync + 'static,
 	{
 		let Self {
 			token,
@@ -173,7 +173,7 @@ where
 
 impl<P, C> LivelinessSubscriberBuilder<P, C, NoStorage>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Provide agents storage for the liveliness subscriber
 	#[must_use]
@@ -202,7 +202,7 @@ where
 
 impl<P, S> LivelinessSubscriberBuilder<P, Callback<ArcLivelinessCallback<P>>, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Build the [`LivelinessSubscriber`]
 	/// # Errors
@@ -233,7 +233,7 @@ impl<P>
 		Storage<LivelinessSubscriber<P>>,
 	>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Build and add the liveliness subscriber to the agent
 	/// # Errors
@@ -259,7 +259,7 @@ mod tests {
 	struct Props {}
 
 	// check, that the auto traits are available
-	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
 	#[test]
 	const fn normal_types() {

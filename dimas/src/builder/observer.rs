@@ -22,7 +22,7 @@ use std::sync::{Arc, Mutex, RwLock};
 #[allow(clippy::module_name_repetitions)]
 pub struct ObserverBuilder<P, K, CC, RC, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Context for the `ObserverBuilder`
 	context: Context<P>,
@@ -37,7 +37,7 @@ where
 
 impl<P> ObserverBuilder<P, NoSelector, NoCallback, NoCallback, NoStorage>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Construct an `ObserverBuilder` in initial state
 	#[must_use]
@@ -55,7 +55,7 @@ where
 
 impl<P, K, CC, RC, S> ObserverBuilder<P, K, CC, RC, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set the activation state.
 	#[must_use]
@@ -67,7 +67,7 @@ where
 
 impl<P, CC, RC, S> ObserverBuilder<P, NoSelector, CC, RC, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set the full key expression for the [`Observer`].
 	#[must_use]
@@ -103,7 +103,7 @@ where
 
 impl<P, K, RC, S> ObserverBuilder<P, K, NoCallback, RC, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set callback for messages
 	#[must_use]
@@ -112,7 +112,7 @@ where
 		callback: F,
 	) -> ObserverBuilder<P, K, Callback<ArcObserverControlCallback<P>>, RC, S>
 	where
-		F: FnMut(&Context<P>, ControlResponse) -> Result<()> + Send + Sync + Unpin + 'static,
+		F: FnMut(&Context<P>, ControlResponse) -> Result<()> + Send + Sync + 'static,
 	{
 		let Self {
 			context,
@@ -136,7 +136,7 @@ where
 
 impl<P, K, CC, S> ObserverBuilder<P, K, CC, NoCallback, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set callback for response messages
 	#[must_use]
@@ -145,7 +145,7 @@ where
 		callback: F,
 	) -> ObserverBuilder<P, K, CC, Callback<ArcObserverResponseCallback<P>>, S>
 	where
-		F: FnMut(&Context<P>, ObservableResponse) -> Result<()> + Send + Sync + Unpin + 'static,
+		F: FnMut(&Context<P>, ObservableResponse) -> Result<()> + Send + Sync + 'static,
 	{
 		let Self {
 			context,
@@ -169,7 +169,7 @@ where
 
 impl<P, K, CC, RC> ObserverBuilder<P, K, CC, RC, NoStorage>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Provide agents storage for the subscriber
 	#[must_use]
@@ -205,7 +205,7 @@ impl<P, S>
 		S,
 	>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Build the [`Observer`].
 	///
@@ -240,7 +240,7 @@ impl<P>
 		Storage<Observer<P>>,
 	>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Build and add the [`Observer`] to the [`Agent`].
 	///
@@ -267,7 +267,7 @@ mod tests {
 	struct Props {}
 
 	// check, that the auto traits are available
-	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
 	#[test]
 	const fn normal_types() {

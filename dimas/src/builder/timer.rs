@@ -26,7 +26,7 @@ use std::sync::{Arc, Mutex, RwLock};
 #[derive(Clone)]
 pub struct TimerBuilder<P, K, I, C, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	context: Context<P>,
 	activation_state: OperationState,
@@ -39,7 +39,7 @@ where
 
 impl<P> TimerBuilder<P, NoSelector, NoInterval, NoCallback, NoStorage>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Construct a `TimerBuilder` in initial state
 	#[must_use]
@@ -58,7 +58,7 @@ where
 
 impl<P, K, I, C, S> TimerBuilder<P, K, I, C, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set the activation state.
 	#[must_use]
@@ -77,7 +77,7 @@ where
 
 impl<P, I, C, S> TimerBuilder<P, NoSelector, I, C, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set the key expression for the timer
 	#[must_use]
@@ -135,7 +135,7 @@ where
 
 impl<P, K, C, S> TimerBuilder<P, K, NoInterval, C, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// set timers interval
 	#[must_use]
@@ -163,13 +163,13 @@ where
 
 impl<P, K, I, S> TimerBuilder<P, K, I, NoCallback, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set interval callback for timer
 	#[must_use]
 	pub fn callback<F>(self, callback: F) -> TimerBuilder<P, K, I, Callback<TimerCallback<P>>, S>
 	where
-		F: FnMut(&Context<P>) -> Result<()> + Send + Sync + Unpin + 'static,
+		F: FnMut(&Context<P>) -> Result<()> + Send + Sync + 'static,
 	{
 		let Self {
 			context,
@@ -195,7 +195,7 @@ where
 
 impl<P, K, I, C> TimerBuilder<P, K, I, C, NoStorage>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Provide agents storage for the timer
 	#[must_use]
@@ -226,7 +226,7 @@ where
 
 impl<P, S> TimerBuilder<P, Selector, Interval, Callback<TimerCallback<P>>, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Build the [Timer]
 	/// # Errors
@@ -255,7 +255,7 @@ where
 
 impl<P> TimerBuilder<P, Selector, Interval, Callback<TimerCallback<P>>, Storage<Timer<P>>>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Build and add the timer to the agents context
 	/// # Errors
@@ -282,7 +282,7 @@ mod tests {
 	struct Props {}
 
 	// check, that the auto traits are available
-	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
 	#[test]
 	const fn normal_types() {

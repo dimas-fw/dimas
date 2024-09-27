@@ -45,22 +45,21 @@
 //!
 
 // region:		--- modules
-#[cfg(feature = "unstable")]
-use crate::{
-	builder::liveliness::LivelinessSubscriberBuilder,
-	com::liveliness::LivelinessSubscriber,
-};
 use crate::builder::{
-	observable::ObservableBuilder,
-	observer::ObserverBuilder, publisher::PublisherBuilder, querier::QuerierBuilder,
-	queryable::QueryableBuilder, subscriber::SubscriberBuilder, timer::TimerBuilder,
+	observable::ObservableBuilder, observer::ObserverBuilder, publisher::PublisherBuilder,
+	querier::QuerierBuilder, queryable::QueryableBuilder, subscriber::SubscriberBuilder,
+	timer::TimerBuilder,
 };
 use crate::com::{
-	observable::Observable, observer::Observer,
-	publisher::Publisher, querier::Querier, queryable::Queryable, subscriber::Subscriber,
+	observable::Observable, observer::Observer, publisher::Publisher, querier::Querier,
+	queryable::Queryable, subscriber::Subscriber,
 };
 use crate::context::ContextImpl;
 use crate::timer::Timer;
+#[cfg(feature = "unstable")]
+use crate::{
+	builder::liveliness::LivelinessSubscriberBuilder, com::liveliness::LivelinessSubscriber,
+};
 use chrono::Local;
 use core::fmt::Debug;
 use core::time::Duration;
@@ -86,7 +85,7 @@ use zenoh::Wait;
 // region:	   --- callbacks
 fn callback_dispatcher<P>(ctx: &Context<P>, request: QueryMsg) -> Result<()>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	if let Some(value) = request.payload() {
 		let content: Vec<u8> = value.into();
@@ -104,7 +103,7 @@ where
 
 fn about_handler<P>(ctx: &Context<P>, request: QueryMsg) -> Result<()>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	let name = ctx
 		.fq_name()
@@ -119,7 +118,7 @@ where
 
 fn ping_handler<P>(ctx: &Context<P>, request: QueryMsg, sent: i64) -> Result<()>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	let now = Local::now()
 		.naive_utc()
@@ -138,7 +137,7 @@ where
 
 fn shutdown_handler<P>(ctx: &Context<P>, request: QueryMsg) -> Result<()>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	// send back current infos
 	let name = ctx
@@ -165,7 +164,7 @@ fn state_handler<P>(
 	state: Option<OperationState>,
 ) -> Result<()>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	// is a state value given?
 	if let Some(value) = state {
@@ -191,7 +190,7 @@ where
 #[derive(Debug)]
 pub struct UnconfiguredAgent<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + 'static,
 {
 	name: Option<String>,
 	prefix: Option<String>,
@@ -200,7 +199,7 @@ where
 
 impl<P> UnconfiguredAgent<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + 'static,
 {
 	/// Constructor
 	const fn new(properties: P) -> Self {
@@ -285,7 +284,7 @@ where
 #[allow(clippy::module_name_repetitions)]
 pub struct Agent<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + 'static,
 {
 	/// A reciever for signals from tasks
 	rx: mpsc::Receiver<TaskSignal>,
@@ -302,7 +301,7 @@ where
 
 impl<P> Debug for Agent<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + 'static,
 {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Agent")
@@ -315,7 +314,7 @@ where
 
 impl<P> Agent<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + 'static,
 {
 	/// Builder
 	#[allow(clippy::new_ret_no_self)]
@@ -483,7 +482,7 @@ where
 #[allow(clippy::module_name_repetitions)]
 pub struct RunningAgent<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + 'static,
 {
 	/// The receiver for signals from tasks
 	rx: mpsc::Receiver<TaskSignal>,
@@ -500,7 +499,7 @@ where
 
 impl<P> RunningAgent<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + 'static,
 {
 	/// run
 	async fn run(mut self) -> Result<Agent<P>> {
@@ -610,7 +609,7 @@ mod tests {
 	use super::*;
 
 	// check, that the auto traits are available
-	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
 	#[derive(Debug)]
 	struct Props {}

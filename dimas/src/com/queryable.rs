@@ -22,7 +22,7 @@ use super::ArcQueryableCallback;
 /// Queryable
 pub struct Queryable<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	selector: String,
 	/// Context for the Subscriber
@@ -37,7 +37,7 @@ where
 
 impl<P> Debug for Queryable<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		f.debug_struct("Queryable")
@@ -49,7 +49,7 @@ where
 
 impl<P> Capability for Queryable<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()> {
 		if (state >= &self.activation_state) && self.handle.is_none() {
@@ -64,7 +64,7 @@ where
 
 impl<P> Queryable<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Constructor for a [`Queryable`]
 	#[must_use]
@@ -74,8 +74,7 @@ where
 		activation_state: OperationState,
 		request_callback: ArcQueryableCallback<P>,
 		completeness: bool,
-		#[cfg(feature = "unstable")]
-		allowed_origin: Locality,
+		#[cfg(feature = "unstable")] allowed_origin: Locality,
 	) -> Self {
 		Self {
 			selector,
@@ -131,14 +130,15 @@ where
 						info!("restarting queryable!");
 					};
 				}));
-				if let Err(error) =
-					run_queryable(
-						selector, cb, 
-						completeness, 
-						#[cfg(feature = "unstable")]
-						allowed_origin,
-						ctx2
-					).await
+				if let Err(error) = run_queryable(
+					selector,
+					cb,
+					completeness,
+					#[cfg(feature = "unstable")]
+					allowed_origin,
+					ctx2,
+				)
+				.await
 				{
 					error!("queryable failed with {error}");
 				};
@@ -160,15 +160,15 @@ async fn run_queryable<P>(
 	selector: String,
 	callback: ArcQueryableCallback<P>,
 	completeness: bool,
-	#[cfg(feature = "unstable")]
-	allowed_origin: Locality,
+	#[cfg(feature = "unstable")] allowed_origin: Locality,
 	ctx: Context<P>,
 ) -> Result<()>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	let session = ctx.session();
-	let queryable = session.declare_queryable(&selector)
+	let queryable = session
+		.declare_queryable(&selector)
 		.complete(completeness);
 	#[cfg(feature = "unstable")]
 	let queryable = queryable.allowed_origin(allowed_origin);
@@ -201,7 +201,7 @@ mod tests {
 	struct Props {}
 
 	// check, that the auto traits are available
-	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
 	#[test]
 	const fn normal_types() {

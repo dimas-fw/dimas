@@ -21,7 +21,7 @@ use zenoh::{qos::CongestionControl, qos::Priority, Wait};
 /// Publisher
 pub struct Publisher<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	selector: String,
 	/// Context for the Publisher
@@ -34,7 +34,7 @@ where
 
 impl<P> Debug for Publisher<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		f.debug_struct("Publisher")
@@ -46,7 +46,7 @@ where
 
 impl<P> Capability for Publisher<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()> {
 		if state >= &self.activation_state {
@@ -60,7 +60,7 @@ where
 
 impl<P> Publisher<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Constructor for a [`Publisher`]
 	#[must_use]
@@ -92,7 +92,7 @@ where
 	///
 	fn init(&mut self) -> Result<()>
 	where
-		P: Send + Sync + Unpin + 'static,
+		P: Send + Sync + 'static,
 	{
 		let publ = self
 			.context
@@ -159,7 +159,7 @@ mod tests {
 	struct Props {}
 
 	// check, that the auto traits are available
-	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
 	#[test]
 	const fn normal_types() {

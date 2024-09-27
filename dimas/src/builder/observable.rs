@@ -26,7 +26,7 @@ use std::{
 #[allow(clippy::module_name_repetitions)]
 pub struct ObservableBuilder<P, K, CC, FC, EF, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Context for the `ObservableBuilder`
 	context: Context<P>,
@@ -41,7 +41,7 @@ where
 
 impl<P> ObservableBuilder<P, NoSelector, NoCallback, NoCallback, NoCallback, NoStorage>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Construct a `ObservableBuilder` in initial state
 	#[must_use]
@@ -61,7 +61,7 @@ where
 
 impl<P, K, CC, FC, EC, S> ObservableBuilder<P, K, CC, FC, EC, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set the activation state.
 	#[must_use]
@@ -80,7 +80,7 @@ where
 
 impl<P, CC, FC, EF, S> ObservableBuilder<P, NoSelector, CC, FC, EF, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set the full expression for the [`Observable`].
 	#[must_use]
@@ -120,7 +120,7 @@ where
 
 impl<P, K, FC, EF, S> ObservableBuilder<P, K, NoCallback, FC, EF, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set callback for control messages
 	#[must_use]
@@ -129,7 +129,7 @@ where
 		callback: F,
 	) -> ObservableBuilder<P, K, Callback<ArcObservableControlCallback<P>>, FC, EF, S>
 	where
-		F: FnMut(&Context<P>, Message) -> Result<ControlResponse> + Send + Sync + Unpin + 'static,
+		F: FnMut(&Context<P>, Message) -> Result<ControlResponse> + Send + Sync + 'static,
 	{
 		let Self {
 			context,
@@ -157,7 +157,7 @@ where
 
 impl<P, K, CC, EF, S> ObservableBuilder<P, K, CC, NoCallback, EF, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set callback for feedback messages
 	#[must_use]
@@ -166,7 +166,7 @@ where
 		callback: F,
 	) -> ObservableBuilder<P, K, CC, Callback<ArcObservableFeedbackCallback<P>>, EF, S>
 	where
-		F: FnMut(&Context<P>) -> Result<Message> + Send + Sync + Unpin + 'static,
+		F: FnMut(&Context<P>) -> Result<Message> + Send + Sync + 'static,
 	{
 		let Self {
 			context,
@@ -194,7 +194,7 @@ where
 
 impl<P, K, CC, FC, S> ObservableBuilder<P, K, CC, FC, NoCallback, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set execution function
 	#[must_use]
@@ -203,7 +203,7 @@ where
 		function: F,
 	) -> ObservableBuilder<P, K, CC, FC, Callback<ArcObservableExecutionFunction<P>>, S>
 	where
-		F: FnMut(&Context<P>) -> Result<Message> + Send + Sync + Unpin + 'static,
+		F: FnMut(&Context<P>) -> Result<Message> + Send + Sync + 'static,
 	{
 		let Self {
 			context,
@@ -232,7 +232,7 @@ where
 
 impl<P, K, CC, FC, EF> ObservableBuilder<P, K, CC, FC, EF, NoStorage>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Provide agents storage for the observable
 	#[must_use]
@@ -273,7 +273,7 @@ impl<P, S>
 		S,
 	>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Build the [`Observable`]
 	/// # Errors
@@ -311,7 +311,7 @@ impl<P>
 		Storage<Observable<P>>,
 	>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Build and add the observable to the agents context
 	/// # Errors
@@ -337,7 +337,7 @@ mod tests {
 	struct Props {}
 
 	// check, that the auto traits are available
-	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
 	#[test]
 	const fn normal_types() {

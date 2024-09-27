@@ -26,7 +26,7 @@ use crate::com::{subscriber::Subscriber, ArcDeleteCallback, ArcPutCallback};
 #[derive(Clone)]
 pub struct SubscriberBuilder<P, K, C, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	context: Context<P>,
 	activation_state: OperationState,
@@ -38,7 +38,7 @@ where
 
 impl<P> SubscriberBuilder<P, NoSelector, NoCallback, NoStorage>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Construct a `SubscriberBuilder` in initial state
 	#[must_use]
@@ -56,7 +56,7 @@ where
 
 impl<P, K, C, S> SubscriberBuilder<P, K, C, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set the activation state.
 	#[must_use]
@@ -69,7 +69,7 @@ where
 	#[must_use]
 	pub fn delete_callback<F>(mut self, callback: F) -> Self
 	where
-		F: FnMut(&Context<P>) -> Result<()> + Send + Sync + Unpin + 'static,
+		F: FnMut(&Context<P>) -> Result<()> + Send + Sync + 'static,
 	{
 		self.delete_callback
 			.replace(Arc::new(Mutex::new(callback)));
@@ -79,7 +79,7 @@ where
 
 impl<P, C, S> SubscriberBuilder<P, NoSelector, C, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set the full key expression for the [`Subscriber`].
 	#[must_use]
@@ -115,7 +115,7 @@ where
 
 impl<P, K, S> SubscriberBuilder<P, K, NoCallback, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set callback for put messages
 	#[must_use]
@@ -124,7 +124,7 @@ where
 		callback: F,
 	) -> SubscriberBuilder<P, K, Callback<ArcPutCallback<P>>, S>
 	where
-		F: FnMut(&Context<P>, Message) -> Result<()> + Send + Sync + Unpin + 'static,
+		F: FnMut(&Context<P>, Message) -> Result<()> + Send + Sync + 'static,
 	{
 		let Self {
 			context,
@@ -148,7 +148,7 @@ where
 
 impl<P, K, C> SubscriberBuilder<P, K, C, NoStorage>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Provide agents storage for the subscriber
 	#[must_use]
@@ -177,7 +177,7 @@ where
 
 impl<P, S> SubscriberBuilder<P, Selector, Callback<ArcPutCallback<P>>, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Build the [`Subscriber`].
 	///
@@ -204,7 +204,7 @@ where
 
 impl<P> SubscriberBuilder<P, Selector, Callback<ArcPutCallback<P>>, Storage<Subscriber<P>>>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Build and add the [`Subscriber`] to the [`Agent`].
 	///
@@ -231,7 +231,7 @@ mod tests {
 	struct Props {}
 
 	// check, that the auto traits are available
-	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
 	#[test]
 	const fn normal_types() {

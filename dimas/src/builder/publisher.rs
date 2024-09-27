@@ -24,7 +24,7 @@ use zenoh::qos::Priority;
 #[allow(clippy::module_name_repetitions)]
 pub struct PublisherBuilder<P, K, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	context: Context<P>,
 	activation_state: OperationState,
@@ -36,7 +36,7 @@ where
 
 impl<P> PublisherBuilder<P, NoSelector, NoStorage>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Construct a [`PublisherBuilder`] in initial state
 	#[must_use]
@@ -54,7 +54,7 @@ where
 
 impl<P, K, S> PublisherBuilder<P, K, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set the activation state.
 	#[must_use]
@@ -80,7 +80,7 @@ where
 
 impl<P, K> PublisherBuilder<P, K, NoStorage>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Provide agents storage for the publisher
 	#[must_use]
@@ -109,7 +109,7 @@ where
 
 impl<P, S> PublisherBuilder<P, NoSelector, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set the full key expression for the [`Publisher`]
 	#[must_use]
@@ -145,7 +145,7 @@ where
 
 impl<P, S> PublisherBuilder<P, Selector, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Build the [`Publisher`]
 	///
@@ -164,7 +164,7 @@ where
 
 impl<P> PublisherBuilder<P, Selector, Storage<Publisher<P>>>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Build and add the [Publisher] to the [`Agent`]s context
 	///
@@ -190,7 +190,7 @@ mod tests {
 	struct Props {}
 
 	// check, that the auto traits are available
-	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
 	#[test]
 	const fn normal_types() {

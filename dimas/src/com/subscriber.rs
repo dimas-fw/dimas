@@ -23,7 +23,7 @@ use zenoh::sample::SampleKind;
 /// Subscriber
 pub struct Subscriber<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// The subscribers key expression
 	selector: String,
@@ -38,7 +38,7 @@ where
 
 impl<P> core::fmt::Debug for Subscriber<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		f.debug_struct("Subscriber")
@@ -49,7 +49,7 @@ where
 
 impl<P> Capability for Subscriber<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()> {
 		if (state >= &self.activation_state) && self.handle.is_none() {
@@ -64,7 +64,7 @@ where
 
 impl<P> Subscriber<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Constructor for a [`Subscriber`].
 	#[must_use]
@@ -156,7 +156,7 @@ async fn run_subscriber<P>(
 	ctx: Context<P>,
 ) -> Result<()>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	let subscriber = ctx
 		.session()
@@ -211,7 +211,7 @@ mod tests {
 	struct Props {}
 
 	// check, that the auto traits are available
-	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
 	#[test]
 	const fn normal_types() {

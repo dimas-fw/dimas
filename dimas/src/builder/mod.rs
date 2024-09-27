@@ -17,7 +17,7 @@ pub struct NoStorage;
 /// State signaling that the builderhas the storage value set
 pub struct Storage<S>
 where
-	S: Send + Sync + Unpin + 'static,
+	S: Send + Sync + 'static,
 {
 	/// Thread safe reference to a [`HashMap`] to store the created item of type T
 	pub storage: Arc<RwLock<HashMap<String, S>>>,
@@ -44,7 +44,7 @@ pub struct NoCallback;
 /// State signaling that the builder has a callback set
 pub struct Callback<C>
 where
-	C: Send + Sync + Unpin + 'static,
+	C: Send + Sync + 'static,
 {
 	/// The callback to use
 	pub callback: C,
