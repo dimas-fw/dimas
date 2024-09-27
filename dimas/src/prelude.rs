@@ -19,10 +19,12 @@ pub use zenoh::qos::CongestionControl;
 pub use zenoh::qos::Priority;
 pub use zenoh::query::ConsolidationMode;
 pub use zenoh::query::QueryTarget;
+#[cfg(feature = "unstable")]
 pub use zenoh::sample::Locality;
 
 // dimas stuff
 pub use crate::agent::Agent;
+#[cfg(feature = "unstable")]
 pub use crate::builder::liveliness::LivelinessSubscriberBuilder;
 pub use crate::builder::observable::ObservableBuilder;
 pub use crate::builder::observer::ObserverBuilder;
@@ -31,6 +33,7 @@ pub use crate::builder::querier::QuerierBuilder;
 pub use crate::builder::queryable::QueryableBuilder;
 pub use crate::builder::subscriber::SubscriberBuilder;
 pub use crate::builder::timer::TimerBuilder;
+#[cfg(feature = "unstable")]
 pub use crate::com::liveliness::LivelinessSubscriber;
 pub use crate::com::observable::Observable;
 pub use crate::com::observer::Observer;

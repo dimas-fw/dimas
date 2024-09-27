@@ -11,6 +11,7 @@ use dimas_core::{
 	utils::selector_from,
 };
 use std::sync::{Arc, Mutex, RwLock};
+#[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
 
 use crate::builder::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
@@ -28,6 +29,7 @@ where
 	context: Context<P>,
 	activation_state: OperationState,
 	completeness: bool,
+	#[cfg(feature = "unstable")]
 	allowed_origin: Locality,
 	selector: K,
 	callback: C,
@@ -45,6 +47,7 @@ where
 			context,
 			activation_state: OperationState::Standby,
 			completeness: true,
+			#[cfg(feature = "unstable")]
 			allowed_origin: Locality::Any,
 			selector: NoSelector,
 			callback: NoCallback,
@@ -72,6 +75,7 @@ where
 	}
 
 	/// Set the allowed origin of the [`Queryable`].
+	#[cfg(feature = "unstable")]
 	#[must_use]
 	pub const fn allowed_origin(mut self, allowed_origin: Locality) -> Self {
 		self.allowed_origin = allowed_origin;
@@ -90,6 +94,7 @@ where
 			context,
 			activation_state,
 			completeness,
+			#[cfg(feature = "unstable")]
 			allowed_origin,
 			storage,
 			callback,
@@ -99,6 +104,7 @@ where
 			context,
 			activation_state,
 			completeness,
+			#[cfg(feature = "unstable")]
 			allowed_origin,
 			selector: Selector {
 				selector: selector.into(),
@@ -134,6 +140,7 @@ where
 			context,
 			activation_state,
 			completeness,
+			#[cfg(feature = "unstable")]
 			allowed_origin,
 			selector,
 			storage,
@@ -144,6 +151,7 @@ where
 			context,
 			activation_state,
 			completeness,
+			#[cfg(feature = "unstable")]
 			allowed_origin,
 			selector,
 			callback: Callback { callback },
@@ -166,6 +174,7 @@ where
 			context,
 			activation_state,
 			completeness,
+			#[cfg(feature = "unstable")]
 			allowed_origin,
 			selector,
 			callback,
@@ -175,6 +184,7 @@ where
 			context,
 			activation_state,
 			completeness,
+			#[cfg(feature = "unstable")]
 			allowed_origin,
 			selector,
 			callback,
@@ -195,6 +205,7 @@ where
 			context,
 			activation_state,
 			completeness,
+			#[cfg(feature = "unstable")]
 			allowed_origin,
 			selector,
 			callback,
@@ -207,6 +218,7 @@ where
 			activation_state,
 			callback.callback,
 			completeness,
+			#[cfg(feature = "unstable")]
 			allowed_origin,
 		))
 	}

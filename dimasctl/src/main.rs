@@ -3,8 +3,8 @@
 //! Commandline tool for `DiMAS`
 
 // region:		--- modules
-use core::time::Duration;
 use clap::{Parser, Subcommand};
+use core::time::Duration;
 use dimas_com::Communicator;
 use dimas_config::Config;
 use dimas_core::{enums::OperationState, error::Result};

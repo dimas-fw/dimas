@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- feature `unstable`, which encapsulates zenoh unstable feature
+
 ### Changed
 
 - minimum rust version 1.81

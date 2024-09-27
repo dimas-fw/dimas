@@ -6,13 +6,13 @@
 // these ones are only for doc needed
 #[cfg(doc)]
 use crate::agent::Agent;
+use core::fmt::Debug;
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
 	message_types::Message,
 	traits::{Capability, Context},
 };
-use core::fmt::Debug;
 use tracing::{instrument, Level};
 use zenoh::{qos::CongestionControl, qos::Priority, Wait};
 // endregion:	--- modules

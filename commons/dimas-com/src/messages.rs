@@ -5,9 +5,9 @@
 
 use bitcode::{Decode, Encode};
 // region:		--- modules
+use core::fmt::Display;
 use derivative::Derivative;
 use dimas_core::enums::OperationState;
-use core::fmt::Display;
 use zenoh::config::Locator;
 // endregion:	--- modules
 

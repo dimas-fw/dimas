@@ -3,15 +3,16 @@
 //! Module `queryable` provides an information/compute provider `Queryable` which can be created using the `QueryableBuilder`.
 
 // region:		--- modules
+use core::fmt::Debug;
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
 	error::Result,
 	message_types::QueryMsg,
 	traits::{Capability, Context},
 };
-use core::fmt::Debug;
 use tokio::task::JoinHandle;
 use tracing::{error, info, instrument, warn, Level};
+#[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
 
 use super::ArcQueryableCallback;
@@ -29,6 +30,7 @@ where
 	activation_state: OperationState,
 	callback: ArcQueryableCallback<P>,
 	completeness: bool,
+	#[cfg(feature = "unstable")]
 	allowed_origin: Locality,
 	handle: Option<JoinHandle<()>>,
 }
@@ -72,6 +74,7 @@ where
 		activation_state: OperationState,
 		request_callback: ArcQueryableCallback<P>,
 		completeness: bool,
+		#[cfg(feature = "unstable")]
 		allowed_origin: Locality,
 	) -> Self {
 		Self {
@@ -80,6 +83,7 @@ where
 			activation_state,
 			callback: request_callback,
 			completeness,
+			#[cfg(feature = "unstable")]
 			allowed_origin,
 			handle: None,
 		}
@@ -106,6 +110,7 @@ where
 		}
 
 		let completeness = self.completeness;
+		#[cfg(feature = "unstable")]
 		let allowed_origin = self.allowed_origin;
 		let selector = self.selector.clone();
 		let cb = self.callback.clone();
@@ -127,7 +132,13 @@ where
 					};
 				}));
 				if let Err(error) =
-					run_queryable(selector, cb, completeness, allowed_origin, ctx2).await
+					run_queryable(
+						selector, cb, 
+						completeness, 
+						#[cfg(feature = "unstable")]
+						allowed_origin,
+						ctx2
+					).await
 				{
 					error!("queryable failed with {error}");
 				};
@@ -149,18 +160,20 @@ async fn run_queryable<P>(
 	selector: String,
 	callback: ArcQueryableCallback<P>,
 	completeness: bool,
+	#[cfg(feature = "unstable")]
 	allowed_origin: Locality,
 	ctx: Context<P>,
 ) -> Result<()>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	let queryable = ctx
-		.session()
-		.declare_queryable(&selector)
-		.complete(completeness)
-		.allowed_origin(allowed_origin)
-		.await?;
+	let session = ctx.session();
+	let queryable = session.declare_queryable(&selector)
+		.complete(completeness);
+	#[cfg(feature = "unstable")]
+	let queryable = queryable.allowed_origin(allowed_origin);
+
+	let queryable = queryable.await?;
 
 	loop {
 		let query = queryable.recv_async().await?;

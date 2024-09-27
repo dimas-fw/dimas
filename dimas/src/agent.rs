@@ -45,18 +45,25 @@
 //!
 
 // region:		--- modules
+#[cfg(feature = "unstable")]
+use crate::{
+	builder::liveliness::LivelinessSubscriberBuilder,
+	com::liveliness::LivelinessSubscriber,
+};
 use crate::builder::{
-	liveliness::LivelinessSubscriberBuilder, observable::ObservableBuilder,
+	observable::ObservableBuilder,
 	observer::ObserverBuilder, publisher::PublisherBuilder, querier::QuerierBuilder,
 	queryable::QueryableBuilder, subscriber::SubscriberBuilder, timer::TimerBuilder,
 };
 use crate::com::{
-	liveliness::LivelinessSubscriber, observable::Observable, observer::Observer,
+	observable::Observable, observer::Observer,
 	publisher::Publisher, querier::Querier, queryable::Queryable, subscriber::Subscriber,
 };
 use crate::context::ContextImpl;
 use crate::timer::Timer;
 use chrono::Local;
+use core::fmt::Debug;
+use core::time::Duration;
 use dimas_com::messages::{AboutEntity, PingEntity};
 use dimas_config::Config;
 use dimas_core::{
@@ -65,12 +72,14 @@ use dimas_core::{
 	message_types::{Message, QueryMsg},
 	traits::{Capability, Context, ContextAbstraction},
 };
-use std::sync::{Arc, RwLock};
-use core::time::Duration;
-use core::fmt::Debug;
+use std::sync::Arc;
+#[cfg(feature = "unstable")]
+use std::sync::RwLock;
 use tokio::{select, signal, sync::mpsc};
 use tracing::{error, info, warn};
+#[cfg(feature = "unstable")]
 use zenoh::liveliness::LivelinessToken;
+#[cfg(feature = "unstable")]
 use zenoh::Wait;
 // endregion:	--- modules
 
@@ -236,7 +245,9 @@ where
 		let agent = Agent {
 			rx,
 			context,
+			#[cfg(feature = "unstable")]
 			liveliness: false,
+			#[cfg(feature = "unstable")]
 			liveliness_token: RwLock::new(None),
 		};
 
@@ -281,9 +292,11 @@ where
 	/// The agents context structure
 	context: Arc<ContextImpl<P>>,
 	/// Flag to control whether sending liveliness or not
+	#[cfg(feature = "unstable")]
 	liveliness: bool,
 	/// The liveliness token - typically the uuid sent to other participants<br>
 	/// Is available in the [`LivelinessSubscriber`] callback
+	#[cfg(feature = "unstable")]
 	liveliness_token: RwLock<Option<LivelinessToken>>,
 }
 
@@ -311,11 +324,13 @@ where
 	}
 
 	/// Activate sending liveliness information
+	#[cfg(feature = "unstable")]
 	pub fn liveliness(&mut self, activate: bool) {
 		self.liveliness = activate;
 	}
 
 	/// Get a [`LivelinessSubscriberBuilder`], the builder for a [`LivelinessSubscriber`].
+	#[cfg(feature = "unstable")]
 	#[must_use]
 	pub fn liveliness_subscriber(
 		&self,
@@ -365,7 +380,7 @@ where
 		PublisherBuilder::new(self.context.clone()).storage(self.context.publishers().clone())
 	}
 
-	/// Get a [`QueryBuilder`], the builder for a [`Query`].
+	/// Get a [`QuerierBuilder`], the builder for a [`Querier`].
 	#[must_use]
 	pub fn query(
 		&self,
@@ -424,10 +439,10 @@ where
 	/// # Errors
 	#[tracing::instrument(skip_all)]
 	pub async fn start(self) -> Result<Self> {
-		let session = self.context.session();
-
 		// activate sending liveliness
+		#[cfg(feature = "unstable")]
 		if self.liveliness {
+			let session = self.context.session();
 			let token_str = self
 				.context
 				.prefix()
@@ -452,7 +467,9 @@ where
 		RunningAgent {
 			rx: self.rx,
 			context: self.context,
+			#[cfg(feature = "unstable")]
 			liveliness: self.liveliness,
+			#[cfg(feature = "unstable")]
 			liveliness_token: self.liveliness_token,
 		}
 		.run()
@@ -473,9 +490,11 @@ where
 	/// The agents context structure
 	context: Arc<ContextImpl<P>>,
 	/// Flag to control whether sending liveliness or not
+	#[cfg(feature = "unstable")]
 	liveliness: bool,
 	/// The liveliness token - typically the uuid sent to other participants<br>
 	/// Is available in the [`LivelinessSubscriber`] callback
+	#[cfg(feature = "unstable")]
 	liveliness_token: RwLock<Option<LivelinessToken>>,
 }
 
@@ -492,6 +511,7 @@ where
 				Some(signal) = self.rx.recv() => {
 				//signal = wait_for_task_signals(&self.rx) => {
 					match signal {
+						#[cfg(feature = "unstable")]
 						TaskSignal::RestartLiveliness(selector) => {
 							self.context.liveliness_subscribers()
 								.write()
@@ -565,6 +585,7 @@ where
 		self.context.set_state(OperationState::Created)?;
 
 		// stop liveliness
+		#[cfg(feature = "unstable")]
 		if self.liveliness {
 			self.liveliness_token
 				.write()
@@ -574,7 +595,9 @@ where
 		let r = Agent {
 			rx: self.rx,
 			context: self.context,
+			#[cfg(feature = "unstable")]
 			liveliness: self.liveliness,
+			#[cfg(feature = "unstable")]
 			liveliness_token: self.liveliness_token,
 		};
 		Ok(r)

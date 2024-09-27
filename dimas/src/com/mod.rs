@@ -14,6 +14,7 @@ use std::sync::{Arc, Mutex};
 
 // region:		--- types
 /// Type definition for a liveliness atomic reference counted callback
+#[cfg(feature = "unstable")]
 pub type ArcLivelinessCallback<P> =
 	Arc<Mutex<dyn FnMut(&Context<P>, &str) -> Result<()> + Send + Sync + Unpin + 'static>>;
 // ------ Subscriber
@@ -57,6 +58,7 @@ pub type ArcObservableExecutionFunction<P> = Arc<
 // endregion:	--- types
 
 /// `Liveliness`
+#[cfg(feature = "unstable")]
 pub mod liveliness;
 /// `Observable`
 pub mod observable;

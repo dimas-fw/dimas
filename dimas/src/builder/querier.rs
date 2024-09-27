@@ -12,10 +12,9 @@ use dimas_core::{
 	utils::selector_from,
 };
 use std::sync::{Arc, Mutex, RwLock};
-use zenoh::{
-	query::{ConsolidationMode, QueryTarget},
-	sample::Locality,
-};
+use zenoh::query::{ConsolidationMode, QueryTarget};
+#[cfg(feature = "unstable")]
+use zenoh::sample::Locality;
 
 use crate::builder::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use crate::com::{querier::Querier, ArcQuerierCallback};
@@ -31,6 +30,7 @@ where
 {
 	context: Context<P>,
 	activation_state: OperationState,
+	#[cfg(feature = "unstable")]
 	allowed_destination: Locality,
 	timeout: Option<Duration>,
 	selector: K,
@@ -50,6 +50,7 @@ where
 		Self {
 			context,
 			activation_state: OperationState::Standby,
+			#[cfg(feature = "unstable")]
 			allowed_destination: Locality::Any,
 			timeout: None,
 			selector: NoSelector,
@@ -72,28 +73,29 @@ where
 		self
 	}
 
-	/// Set the [`ConsolidationMode`] of the [`Query`].
+	/// Set the [`ConsolidationMode`] of the [`Querier`].
 	#[must_use]
 	pub const fn mode(mut self, mode: ConsolidationMode) -> Self {
 		self.mode = mode;
 		self
 	}
 
-	/// Set the [`QueryTarget`] of the [`Query`].
+	/// Set the [`QueryTarget`] of the [`Querier`].
 	#[must_use]
 	pub const fn target(mut self, target: QueryTarget) -> Self {
 		self.target = target;
 		self
 	}
 
-	/// Set the allowed destination of the [`Query`].
+	/// Set the allowed destination of the [`Querier`].
+	#[cfg(feature = "unstable")]
 	#[must_use]
 	pub const fn allowed_destination(mut self, allowed_destination: Locality) -> Self {
 		self.allowed_destination = allowed_destination;
 		self
 	}
 
-	/// Set a timeout for the [`Query`].
+	/// Set a timeout for the [`Querier`].
 	#[must_use]
 	pub const fn timeout(mut self, timeout: Option<Duration>) -> Self {
 		self.timeout = timeout;
@@ -111,6 +113,7 @@ where
 		let Self {
 			context,
 			activation_state,
+			#[cfg(feature = "unstable")]
 			allowed_destination,
 			timeout,
 			storage,
@@ -122,6 +125,7 @@ where
 		QuerierBuilder {
 			context,
 			activation_state,
+			#[cfg(feature = "unstable")]
 			allowed_destination,
 			timeout,
 			selector: Selector {
@@ -149,13 +153,17 @@ where
 {
 	/// Set query callback for response messages
 	#[must_use]
-	pub fn callback<F>(self, callback: F) -> QuerierBuilder<P, K, Callback<ArcQuerierCallback<P>>, S>
+	pub fn callback<F>(
+		self,
+		callback: F,
+	) -> QuerierBuilder<P, K, Callback<ArcQuerierCallback<P>>, S>
 	where
 		F: FnMut(&Context<P>, QueryableMsg) -> Result<()> + Send + Sync + Unpin + 'static,
 	{
 		let Self {
 			context,
 			activation_state,
+			#[cfg(feature = "unstable")]
 			allowed_destination,
 			timeout,
 			selector,
@@ -168,6 +176,7 @@ where
 		QuerierBuilder {
 			context,
 			activation_state,
+			#[cfg(feature = "unstable")]
 			allowed_destination,
 			timeout,
 			selector,
@@ -192,6 +201,7 @@ where
 		let Self {
 			context,
 			activation_state,
+			#[cfg(feature = "unstable")]
 			allowed_destination,
 			timeout,
 			selector,
@@ -203,6 +213,7 @@ where
 		QuerierBuilder {
 			context,
 			activation_state,
+			#[cfg(feature = "unstable")]
 			allowed_destination,
 			timeout,
 			selector,
@@ -218,13 +229,14 @@ impl<P, S> QuerierBuilder<P, Selector, Callback<ArcQuerierCallback<P>>, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	/// Build the [`Query`]
+	/// Build the [`Querier`]
 	/// # Errors
 	///
 	pub fn build(self) -> Result<Querier<P>> {
 		let Self {
 			context,
 			activation_state,
+			#[cfg(feature = "unstable")]
 			allowed_destination,
 			timeout,
 			selector,
@@ -240,6 +252,7 @@ where
 			activation_state,
 			response.callback,
 			mode,
+			#[cfg(feature = "unstable")]
 			allowed_destination,
 			target,
 			timeout,

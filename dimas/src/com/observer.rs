@@ -12,10 +12,11 @@ use tokio::task::JoinHandle;
 use tracing::{error, instrument, warn, Level};
 use zenoh::{
 	query::{ConsolidationMode, QueryTarget},
-	sample::{Locality, SampleKind},
+	sample::SampleKind,
 	Wait,
 };
-
+#[cfg(feature = "unstable")]
+use zenoh::sample::Locality;
 use super::{ArcObserverControlCallback, ArcObserverResponseCallback};
 // endregion:	--- modules
 
@@ -115,8 +116,10 @@ where
 		let query = session
 			.get(&selector)
 			.target(QueryTarget::All)
-			.consolidation(ConsolidationMode::None)
-			.allowed_destination(Locality::Any);
+			.consolidation(ConsolidationMode::None);
+
+		#[cfg(feature = "unstable")]
+		let query = query.allowed_destination(Locality::Any);
 
 		//if let Some(timeout) = self.timeout {
 		//	query = query.timeout(timeout);
@@ -176,8 +179,7 @@ where
 		let mut query = session
 			.get(&selector)
 			.target(QueryTarget::All)
-			.consolidation(ConsolidationMode::None)
-			.allowed_destination(Locality::Any);
+			.consolidation(ConsolidationMode::None);
 
 		//if let Some(timeout) = self.timeout {
 		//	query = query.timeout(timeout);
@@ -187,6 +189,9 @@ where
 			let value = message.value().to_owned();
 			query = query.payload(value);
 		};
+
+		#[cfg(feature = "unstable")]
+		let query = query.allowed_destination(Locality::Any);
 
 		let replies = query
 			.wait()
@@ -204,6 +209,9 @@ where
 									let ctx = self.context.clone();
 									// use "<query_selector>/feedback/<source_id/replier_id>" as key
 									// in case there is no source_id/replier_id, listen on all id's
+									#[cfg(not(feature = "unstable"))]
+									let source_id = "*".to_string(); 
+									#[cfg(feature = "unstable")]
 									let source_id = reply.result().map_or_else(
 										|_| {
 											reply.replier_id().map_or_else(

@@ -32,9 +32,11 @@
 // only for doc needed
 #[cfg(doc)]
 use crate::agent::Agent;
+#[cfg(feature = "unstable")]
+use crate::com::liveliness::LivelinessSubscriber;
 use crate::{
 	com::{
-		liveliness::LivelinessSubscriber, observable::Observable, observer::Observer,
+		observable::Observable, observer::Observer,
 		publisher::Publisher, querier::Querier, queryable::Queryable, subscriber::Subscriber,
 	},
 	timer::Timer,
@@ -84,6 +86,7 @@ where
 	/// The [`Agent`]s [`Communicator`]
 	communicator: Arc<Communicator>,
 	/// Registered [`LivelinessSubscriber`]
+	#[cfg(feature = "unstable")]
 	liveliness_subscribers: Arc<RwLock<HashMap<String, LivelinessSubscriber<P>>>>,
 	/// Registered [`Observable`]
 	observables: Arc<RwLock<HashMap<String, Observable<P>>>>,
@@ -337,6 +340,7 @@ where
 			sender,
 			communicator: Arc::new(communicator),
 			props: Arc::new(RwLock::new(props)),
+			#[cfg(feature = "unstable")]
 			liveliness_subscribers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 			observables: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 			observers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
@@ -359,6 +363,7 @@ where
 	}
 
 	/// Get the liveliness subscribers
+	#[cfg(feature = "unstable")]
 	#[must_use]
 	pub const fn liveliness_subscribers(
 		&self,
@@ -425,6 +430,7 @@ where
 	#[allow(unused_variables)]
 	fn upgrade_registered_tasks(&self, new_state: OperationState) -> Result<()> {
 		// start liveliness subscriber
+		#[cfg(feature = "unstable")]
 		self.liveliness_subscribers
 			.write()
 			.map_err(|_| DimasError::ModifyContext("liveliness subscribers".into()))?
@@ -601,6 +607,7 @@ where
 			});
 
 		// stop all registered liveliness subscribers
+		#[cfg(feature = "unstable")]
 		self.liveliness_subscribers
 			.write()
 			.map_err(|_| DimasError::ModifyContext("liveliness subscribers".into()))?

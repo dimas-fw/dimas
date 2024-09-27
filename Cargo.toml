@@ -79,8 +79,9 @@ thiserror = "1"
 tokio = "1"
 tracing = "0.1"
 tracing-subscriber = "0.3"
-#zenoh = { path = "../../zenoh/zenoh", features = ["unstable"] } #", transport_serial"] } 
-zenoh = { version = "=1.0.0-beta.3", features = ["unstable"] } #", transport_serial"] } 
+#zenoh = { path = "../../zenoh/zenoh", features = ["unstable"] } #", transport_serial" } 
+#zenoh = { version = "=1.0.0-beta.3", features = ["unstable"] } #", features = [transport_serial"] } 
+zenoh = "=1.0.0-beta.3"
 
 [profile.release]
 opt-level = 'z'   # Optimize for size.

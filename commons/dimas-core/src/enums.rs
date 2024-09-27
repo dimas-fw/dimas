@@ -85,6 +85,7 @@ pub enum Signal {
 #[allow(clippy::enum_variant_names)]
 pub enum TaskSignal {
 	/// Restart a certain liveliness subscriber, identified by its key expression
+	#[cfg(feature = "unstable")]
 	RestartLiveliness(String),
 	/// Restart a certain observable, identified by its key expression
 	RestartObservable(String),

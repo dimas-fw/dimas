@@ -4,14 +4,11 @@
 //! When fired, a `Timer` calls his assigned `TimerCallback`.
 
 // region:		--- modules
+use core::{fmt::Debug, time::Duration};
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
 	error::Result,
 	traits::{Capability, Context},
-};
-use core::{
-	fmt::Debug,
-	time::Duration,
 };
 use std::sync::{Arc, Mutex};
 use tokio::{task::JoinHandle, time};

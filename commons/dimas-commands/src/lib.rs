@@ -4,6 +4,7 @@
 
 use chrono::Local;
 // region:		--- modules
+use core::time::Duration;
 use dimas_com::{
 	messages::{AboutEntity, PingEntity, ScoutingEntity},
 	Communicator,
@@ -16,7 +17,6 @@ use dimas_core::{
 };
 use itertools::Itertools;
 use std::collections::HashMap;
-use core::time::Duration;
 use zenoh::{config::WhatAmI, Wait};
 // endregion:	--- modules
 

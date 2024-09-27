@@ -4,8 +4,8 @@
 use super::{
 	ArcObservableControlCallback, ArcObservableExecutionFunction, ArcObservableFeedbackCallback,
 };
-use core::time::Duration;
 use bitcode::encode;
+use core::time::Duration;
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
 	error::Result,
@@ -15,10 +15,9 @@ use dimas_core::{
 use tokio::task::JoinHandle;
 use tracing::{error, info, instrument, warn, Level};
 use zenoh::Wait;
-use zenoh::{
-	qos::{CongestionControl, Priority},
-	sample::Locality,
-};
+use zenoh::qos::{CongestionControl, Priority};
+#[cfg(feature = "unstable")]
+use zenoh::sample::Locality;
 // endregion:	--- modules
 
 // region:		--- Observable
@@ -182,12 +181,15 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	// create the control queryable
-	let queryable = ctx
-		.session()
+	let session = ctx.session();
+	let queryable =	session
 		.declare_queryable(&selector)
-		.complete(true)
-		.allowed_origin(Locality::Any)
-		.await?;
+		.complete(true);
+
+	#[cfg(feature = "unstable")]
+	let queryable = queryable.allowed_origin(Locality::Any);
+		
+	let queryable = queryable.await?;
 
 	// initialize a pinned feedback timer
 	// TODO: init here leads to on unnecessary timer-cycle without doing something

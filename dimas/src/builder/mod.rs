@@ -52,6 +52,7 @@ where
 // endregion:	--- states
 
 /// `LivelinessBuilder`
+#[cfg(feature = "unstable")]
 pub mod liveliness;
 /// `ObservableBuilder`
 pub mod observable;

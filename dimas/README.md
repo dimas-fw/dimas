@@ -194,3 +194,7 @@ async fn main() -> Result<()> {
 
 You can find some simple examples in [dimas-fw/dimas/examples](https://github.com/dimas-fw/dimas/blob/main/examples/README.md)
 and more complex examples in [dimas-fw/examples](https://github.com/dimas-fw/examples/blob/main/README.md)
+
+## Features
+
+- unstable: Enables the unstable features.

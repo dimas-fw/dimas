@@ -4,16 +4,19 @@
 //!
 
 // region:		--- modules
+use core::fmt::Debug;
 use dimas_core::{
 	error::{DimasError, Result},
 	message_types::{Message, QueryableMsg},
 };
-use core::fmt::Debug;
 use std::sync::Arc;
+#[cfg(feature = "unstable")]
+use zenoh::config::WhatAmI;
+#[cfg(feature = "unstable")]
+use zenoh::sample::Locality;
 use zenoh::{
-	config::WhatAmI,
 	query::{ConsolidationMode, QueryTarget},
-	sample::{Locality, SampleKind},
+	sample::SampleKind,
 	Session, Wait,
 };
 // endregion:	--- modules
@@ -33,7 +36,10 @@ impl Communicator {
 	/// # Errors
 	pub fn new(config: &dimas_config::Config) -> Result<Self> {
 		let cfg = config.zenoh_config();
+		#[cfg(feature = "unstable")]
 		let kind = cfg.mode().unwrap_or(WhatAmI::Peer).to_string();
+		#[cfg(not(feature = "unstable"))]
+		let kind = String::from("unknown");
 		let session = Arc::new(
 			zenoh::open(cfg)
 				.wait()
@@ -96,8 +102,12 @@ impl Communicator {
 				|msg| self.session.get(selector).payload(msg.value()),
 			)
 			.consolidation(ConsolidationMode::None)
-			.target(QueryTarget::All)
-			.allowed_destination(Locality::Any)
+			.target(QueryTarget::All);
+
+		#[cfg(feature = "unstable")]
+		let replies = replies.allowed_destination(Locality::Any);
+
+		let replies = replies
 			//.timeout(Duration::from_millis(1000))
 			.wait()
 			.map_err(|_| DimasError::ShouldNotHappen)?;

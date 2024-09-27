@@ -34,3 +34,4 @@ zenoh = { workspace = true }
 doc-comment = { workspace = true }
 
 [features]
+unstable = ["zenoh/unstable", "dimas-core/unstable", "dimas-com/unstable"]

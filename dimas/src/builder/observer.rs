@@ -1,6 +1,8 @@
 // Copyright © 2024 Stephan Kunz
 
 // region:		--- modules
+#[cfg(doc)]
+use crate::prelude::Agent;
 use crate::{
 	builder::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage},
 	com::{observer::Observer, ArcObserverControlCallback, ArcObserverResponseCallback},
@@ -205,7 +207,7 @@ impl<P, S>
 where
 	P: Send + Sync + Unpin + 'static,
 {
-	/// Build the [`Subscriber`].
+	/// Build the [`Observer`].
 	///
 	/// # Errors
 	/// Currently none

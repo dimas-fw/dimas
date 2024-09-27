@@ -4,19 +4,21 @@
 
 // region:		--- modules
 use super::ArcQuerierCallback;
+use core::{fmt::Debug, time::Duration};
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
 	message_types::{Message, QueryableMsg},
 	traits::{Capability, Context},
 };
-use core::{fmt::Debug, time::Duration};
 use tracing::{error, instrument, warn, Level};
 use zenoh::{
 	query::{ConsolidationMode, QueryTarget},
-	sample::{Locality, SampleKind},
+	sample::SampleKind,
 	Wait,
 };
+#[cfg(feature = "unstable")]
+use zenoh::sample::Locality;
 // endregion:	--- modules
 
 // region:		--- Querier
@@ -31,6 +33,7 @@ where
 	activation_state: OperationState,
 	callback: ArcQuerierCallback<P>,
 	mode: ConsolidationMode,
+	#[cfg(feature = "unstable")]
 	allowed_destination: Locality,
 	target: QueryTarget,
 	timeout: Option<Duration>,
@@ -42,12 +45,19 @@ where
 	P: Send + Sync + Unpin + 'static,
 {
 	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-		f.debug_struct("Querier")
+		#[cfg(feature = "unstable")]
+		let res = f.debug_struct("Querier")
 			.field("selector", &self.selector)
 			.field("mode", &self.mode)
 			.field("allowed_destination", &self.allowed_destination)
-			.finish_non_exhaustive()
-	}
+			.finish_non_exhaustive();
+		#[cfg(not(feature = "unstable"))]
+		let res = f.debug_struct("Querier")
+			.field("selector", &self.selector)
+			.field("mode", &self.mode)
+			.finish_non_exhaustive();
+		res
+		}
 }
 
 impl<P> Capability for Querier<P>
@@ -77,6 +87,7 @@ where
 		activation_state: OperationState,
 		response_callback: ArcQuerierCallback<P>,
 		mode: ConsolidationMode,
+		#[cfg(feature = "unstable")]
 		allowed_destination: Locality,
 		target: QueryTarget,
 		timeout: Option<Duration>,
@@ -87,6 +98,7 @@ where
 			activation_state,
 			callback: response_callback,
 			mode,
+			#[cfg(feature = "unstable")]
 			allowed_destination,
 			target,
 			timeout,
@@ -152,12 +164,14 @@ where
 				|msg| session.get(&self.selector).payload(msg.value()),
 			)
 			.target(self.target)
-			.consolidation(self.mode)
-			.allowed_destination(self.allowed_destination);
+			.consolidation(self.mode);
 
 		if let Some(timeout) = self.timeout {
 			querier = querier.timeout(timeout);
 		};
+
+		#[cfg(feature = "unstable")]
+		let querier = querier.allowed_destination(self.allowed_destination);
 
 		let replies = querier
 			.wait()
