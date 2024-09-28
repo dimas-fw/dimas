@@ -7,6 +7,8 @@
 // these ones are only for doc needed
 #[cfg(doc)]
 use crate::agent::Agent;
+use crate::builder::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
+use crate::com::{subscriber::Subscriber, ArcDeleteCallback, ArcPutCallback};
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
@@ -15,9 +17,8 @@ use dimas_core::{
 	utils::selector_from,
 };
 use std::sync::{Arc, Mutex, RwLock};
-
-use crate::builder::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
-use crate::com::{subscriber::Subscriber, ArcDeleteCallback, ArcPutCallback};
+#[cfg(feature = "unstable")]
+use zenoh::sample::Locality;
 // endregion:	--- modules
 
 // region:		--- SubscriberBuilder
@@ -30,6 +31,9 @@ where
 {
 	context: Context<P>,
 	activation_state: OperationState,
+	#[cfg(feature = "unstable")]
+	allowed_origin: Locality,
+	undeclare_on_drop: bool,
 	selector: K,
 	put_callback: C,
 	storage: S,
@@ -46,6 +50,9 @@ where
 		Self {
 			context,
 			activation_state: OperationState::Standby,
+			#[cfg(feature = "unstable")]
+			allowed_origin: Locality::Any,
+			undeclare_on_drop: true,
 			selector: NoSelector,
 			put_callback: NoCallback,
 			storage: NoStorage,
@@ -62,6 +69,21 @@ where
 	#[must_use]
 	pub const fn activation_state(mut self, state: OperationState) -> Self {
 		self.activation_state = state;
+		self
+	}
+
+	/// Set the allowed origin.
+	#[cfg(feature = "unstable")]
+	#[must_use]
+	pub const fn allowed_origin(mut self, allowed_origin: Locality) -> Self {
+		self.allowed_origin = allowed_origin;
+		self
+	}
+
+	/// Set undeclare on drop.
+	#[must_use]
+	pub const fn undeclare_on_drop(mut self, undeclare_on_drop: bool) -> Self {
+		self.undeclare_on_drop = undeclare_on_drop;
 		self
 	}
 
@@ -87,6 +109,9 @@ where
 		let Self {
 			context,
 			activation_state,
+			#[cfg(feature = "unstable")]
+			allowed_origin,
+			undeclare_on_drop,
 			storage,
 			put_callback,
 			delete_callback,
@@ -95,6 +120,9 @@ where
 		SubscriberBuilder {
 			context,
 			activation_state,
+			#[cfg(feature = "unstable")]
+			allowed_origin,
+			undeclare_on_drop,
 			selector: Selector {
 				selector: selector.into(),
 			},
@@ -129,6 +157,9 @@ where
 		let Self {
 			context,
 			activation_state,
+			#[cfg(feature = "unstable")]
+			allowed_origin,
+			undeclare_on_drop,
 			selector,
 			storage,
 			delete_callback,
@@ -138,6 +169,9 @@ where
 		SubscriberBuilder {
 			context,
 			activation_state,
+			#[cfg(feature = "unstable")]
+			allowed_origin,
+			undeclare_on_drop,
 			selector,
 			put_callback: Callback { callback },
 			storage,
@@ -159,6 +193,9 @@ where
 		let Self {
 			context,
 			activation_state,
+			#[cfg(feature = "unstable")]
+			allowed_origin,
+			undeclare_on_drop,
 			selector,
 			put_callback,
 			delete_callback,
@@ -167,6 +204,9 @@ where
 		SubscriberBuilder {
 			context,
 			activation_state,
+			#[cfg(feature = "unstable")]
+			allowed_origin,
+			undeclare_on_drop,
 			selector,
 			put_callback,
 			storage: Storage { storage },
@@ -185,9 +225,12 @@ where
 	/// Currently none
 	pub fn build(self) -> Result<Subscriber<P>> {
 		let Self {
+			selector,
 			context,
 			activation_state,
-			selector,
+			#[cfg(feature = "unstable")]
+			allowed_origin,
+			undeclare_on_drop,
 			put_callback,
 			delete_callback,
 			..
@@ -196,6 +239,9 @@ where
 			selector.selector,
 			context,
 			activation_state,
+			#[cfg(feature = "unstable")]
+			allowed_origin,
+			undeclare_on_drop,
 			put_callback.callback,
 			delete_callback,
 		))

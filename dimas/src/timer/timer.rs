@@ -18,8 +18,7 @@ use tracing::{error, info, instrument, warn, Level};
 // region:		--- types
 /// type definition for the functions called by a timer
 #[allow(clippy::module_name_repetitions)]
-pub type TimerCallback<P> =
-	Arc<Mutex<dyn FnMut(Context<P>) -> Result<()> + Send + Sync + 'static>>;
+pub type TimerCallback<P> = Arc<Mutex<dyn FnMut(Context<P>) -> Result<()> + Send + Sync + 'static>>;
 // endregion:	--- types
 
 // region:		--- Timer

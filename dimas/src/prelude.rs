@@ -8,7 +8,7 @@ pub extern crate bitcode;
 // region:    --- modules
 // re-exports
 // Duration for Timers
-pub use core::time::Duration;
+pub use tokio::time::Duration;
 // used std synchronisation primitives
 pub use std::sync::{Arc, RwLock};
 

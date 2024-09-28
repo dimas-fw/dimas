@@ -35,6 +35,7 @@ where
 	mode: ConsolidationMode,
 	#[cfg(feature = "unstable")]
 	allowed_destination: Locality,
+	encoding: String,
 	target: QueryTarget,
 	timeout: Option<Duration>,
 	key_expr: Option<zenoh::key_expr::KeyExpr<'static>>,
@@ -90,6 +91,7 @@ where
 		response_callback: ArcQuerierCallback<P>,
 		mode: ConsolidationMode,
 		#[cfg(feature = "unstable")] allowed_destination: Locality,
+		encoding: String,
 		target: QueryTarget,
 		timeout: Option<Duration>,
 	) -> Self {
@@ -101,6 +103,7 @@ where
 			mode,
 			#[cfg(feature = "unstable")]
 			allowed_destination,
+			encoding,
 			target,
 			timeout,
 			key_expr: None,
@@ -164,6 +167,7 @@ where
 				|| session.get(&self.selector),
 				|msg| session.get(&self.selector).payload(msg.value()),
 			)
+			.encoding(self.encoding.as_str())
 			.target(self.target)
 			.consolidation(self.mode);
 

@@ -15,8 +15,11 @@ use dimas_core::{
 	utils::selector_from,
 };
 use std::sync::{Arc, RwLock};
+use zenoh::bytes::Encoding;
 use zenoh::qos::CongestionControl;
 use zenoh::qos::Priority;
+#[cfg(feature = "unstable")]
+use zenoh::{qos::Reliability, sample::Locality};
 // endregion:	--- modules
 
 // region:		--- PublisherBuilder
@@ -28,8 +31,14 @@ where
 {
 	context: Context<P>,
 	activation_state: OperationState,
-	priority: Priority,
+	#[cfg(feature = "unstable")]
+	allowed_destination: Locality,
 	congestion_control: CongestionControl,
+	encoding: String,
+	express: bool,
+	priority: Priority,
+	#[cfg(feature = "unstable")]
+	reliability: Reliability,
 	selector: K,
 	storage: S,
 }
@@ -40,12 +49,18 @@ where
 {
 	/// Construct a [`PublisherBuilder`] in initial state
 	#[must_use]
-	pub const fn new(context: Context<P>) -> Self {
+	pub fn new(context: Context<P>) -> Self {
 		Self {
 			context,
 			activation_state: OperationState::Standby,
-			priority: Priority::Data,
+			#[cfg(feature = "unstable")]
+			allowed_destination: Locality::Any,
 			congestion_control: CongestionControl::Drop,
+			encoding: Encoding::default().to_string(),
+			express: false,
+			priority: Priority::Data,
+			#[cfg(feature = "unstable")]
+			reliability: Reliability::BestEffort,
 			selector: NoSelector,
 			storage: NoStorage,
 		}
@@ -63,10 +78,11 @@ where
 		self
 	}
 
-	/// Set the publishers priority
+	/// Set the publishers alllowed destinations
+	#[cfg(feature = "unstable")]
 	#[must_use]
-	pub const fn set_priority(mut self, priority: Priority) -> Self {
-		self.priority = priority;
+	pub const fn set_allowed_destination(mut self, allowed_destination: Locality) -> Self {
+		self.allowed_destination = allowed_destination;
 		self
 	}
 
@@ -74,6 +90,35 @@ where
 	#[must_use]
 	pub const fn set_congestion_control(mut self, congestion_control: CongestionControl) -> Self {
 		self.congestion_control = congestion_control;
+		self
+	}
+
+	/// Set the publishers encoding
+	#[must_use]
+	pub fn set_encoding(mut self, encoding: String) -> Self {
+		self.encoding = encoding;
+		self
+	}
+
+	/// Set the publishers enexpress policy
+	#[must_use]
+	pub const fn set_express(mut self, express: bool) -> Self {
+		self.express = express;
+		self
+	}
+
+	/// Set the publishers priority
+	#[must_use]
+	pub const fn set_priority(mut self, priority: Priority) -> Self {
+		self.priority = priority;
+		self
+	}
+
+	/// Set the publishers reliability
+	#[cfg(feature = "unstable")]
+	#[must_use]
+	pub const fn set_reliability(mut self, reliability: Reliability) -> Self {
+		self.reliability = reliability;
 		self
 	}
 }
@@ -91,16 +136,28 @@ where
 		let Self {
 			context,
 			activation_state,
-			priority,
+			#[cfg(feature = "unstable")]
+			allowed_destination,
 			congestion_control,
+			encoding,
+			express,
+			priority,
+			#[cfg(feature = "unstable")]
+			reliability,
 			selector,
 			..
 		} = self;
 		PublisherBuilder {
 			context,
 			activation_state,
-			priority,
+			#[cfg(feature = "unstable")]
+			allowed_destination,
 			congestion_control,
+			encoding,
+			express,
+			priority,
+			#[cfg(feature = "unstable")]
+			reliability,
 			selector,
 			storage: Storage { storage },
 		}
@@ -117,16 +174,28 @@ where
 		let Self {
 			context,
 			activation_state,
-			priority,
+			#[cfg(feature = "unstable")]
+			allowed_destination,
 			congestion_control,
+			encoding,
+			express,
+			priority,
+			#[cfg(feature = "unstable")]
+			reliability,
 			storage,
 			..
 		} = self;
 		PublisherBuilder {
 			context,
 			activation_state,
-			priority,
+			#[cfg(feature = "unstable")]
+			allowed_destination,
 			congestion_control,
+			encoding,
+			express,
+			priority,
+			#[cfg(feature = "unstable")]
+			reliability,
 			selector: Selector {
 				selector: selector.into(),
 			},
@@ -156,8 +225,14 @@ where
 			self.selector.selector,
 			self.context,
 			self.activation_state,
-			self.priority,
+			#[cfg(feature = "unstable")]
+			self.allowed_destination,
 			self.congestion_control,
+			self.encoding,
+			self.express,
+			self.priority,
+			#[cfg(feature = "unstable")]
+			self.reliability,
 		))
 	}
 }

@@ -32,6 +32,7 @@ where
 	completeness: bool,
 	#[cfg(feature = "unstable")]
 	allowed_origin: Locality,
+	undeclare_on_drop: bool,
 	handle: Option<JoinHandle<()>>,
 }
 
@@ -75,6 +76,7 @@ where
 		request_callback: ArcQueryableCallback<P>,
 		completeness: bool,
 		#[cfg(feature = "unstable")] allowed_origin: Locality,
+		undeclare_on_drop: bool,
 	) -> Self {
 		Self {
 			selector,
@@ -84,6 +86,7 @@ where
 			completeness,
 			#[cfg(feature = "unstable")]
 			allowed_origin,
+			undeclare_on_drop,
 			handle: None,
 		}
 	}
@@ -115,6 +118,7 @@ where
 		let cb = self.callback.clone();
 		let ctx1 = self.context.clone();
 		let ctx2 = self.context.clone();
+		let undeclare_on_drop = self.undeclare_on_drop;
 
 		self.handle
 			.replace(tokio::task::spawn(async move {
@@ -136,6 +140,7 @@ where
 					completeness,
 					#[cfg(feature = "unstable")]
 					allowed_origin,
+					undeclare_on_drop,
 					ctx2,
 				)
 				.await
@@ -161,6 +166,7 @@ async fn run_queryable<P>(
 	callback: ArcQueryableCallback<P>,
 	completeness: bool,
 	#[cfg(feature = "unstable")] allowed_origin: Locality,
+	undeclare_on_drop: bool,
 	ctx: Context<P>,
 ) -> Result<()>
 where
@@ -169,6 +175,7 @@ where
 	let session = ctx.session();
 	let queryable = session
 		.declare_queryable(&selector)
+		.undeclare_on_drop(undeclare_on_drop)
 		.complete(completeness);
 	#[cfg(feature = "unstable")]
 	let queryable = queryable.allowed_origin(allowed_origin);

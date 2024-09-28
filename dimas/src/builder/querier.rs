@@ -12,7 +12,7 @@ use dimas_core::{
 	utils::selector_from,
 };
 use std::sync::{Arc, Mutex, RwLock};
-use zenoh::query::{ConsolidationMode, QueryTarget};
+use zenoh::{bytes::Encoding, query::{ConsolidationMode, QueryTarget}};
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
 
@@ -32,6 +32,7 @@ where
 	activation_state: OperationState,
 	#[cfg(feature = "unstable")]
 	allowed_destination: Locality,
+	encoding: String,
 	timeout: Option<Duration>,
 	selector: K,
 	callback: C,
@@ -46,12 +47,13 @@ where
 {
 	/// Construct a `QuerierBuilder` in initial state
 	#[must_use]
-	pub const fn new(context: Context<P>) -> Self {
+	pub fn new(context: Context<P>) -> Self {
 		Self {
 			context,
 			activation_state: OperationState::Standby,
 			#[cfg(feature = "unstable")]
 			allowed_destination: Locality::Any,
+			encoding: Encoding::default().to_string(),
 			timeout: None,
 			selector: NoSelector,
 			callback: NoCallback,
@@ -95,6 +97,13 @@ where
 		self
 	}
 
+	/// Set the publishers encoding
+	#[must_use]
+	pub fn set_encoding(mut self, encoding: String) -> Self {
+		self.encoding = encoding;
+		self
+	}
+
 	/// Set a timeout for the [`Querier`].
 	#[must_use]
 	pub const fn timeout(mut self, timeout: Option<Duration>) -> Self {
@@ -115,6 +124,7 @@ where
 			activation_state,
 			#[cfg(feature = "unstable")]
 			allowed_destination,
+			encoding,
 			timeout,
 			storage,
 			callback,
@@ -127,6 +137,7 @@ where
 			activation_state,
 			#[cfg(feature = "unstable")]
 			allowed_destination,
+			encoding,
 			timeout,
 			selector: Selector {
 				selector: selector.into(),
@@ -165,6 +176,7 @@ where
 			activation_state,
 			#[cfg(feature = "unstable")]
 			allowed_destination,
+			encoding,
 			timeout,
 			selector,
 			storage,
@@ -178,6 +190,7 @@ where
 			activation_state,
 			#[cfg(feature = "unstable")]
 			allowed_destination,
+			encoding,
 			timeout,
 			selector,
 			callback: Callback { callback },
@@ -203,6 +216,7 @@ where
 			activation_state,
 			#[cfg(feature = "unstable")]
 			allowed_destination,
+			encoding,
 			timeout,
 			selector,
 			callback,
@@ -215,6 +229,7 @@ where
 			activation_state,
 			#[cfg(feature = "unstable")]
 			allowed_destination,
+			encoding,
 			timeout,
 			selector,
 			callback,
@@ -238,6 +253,7 @@ where
 			activation_state,
 			#[cfg(feature = "unstable")]
 			allowed_destination,
+			encoding,
 			timeout,
 			selector,
 			callback: response,
@@ -254,6 +270,7 @@ where
 			mode,
 			#[cfg(feature = "unstable")]
 			allowed_destination,
+			encoding,
 			target,
 			timeout,
 		))

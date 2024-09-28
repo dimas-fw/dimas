@@ -14,7 +14,12 @@ use dimas_core::{
 	traits::{Capability, Context},
 };
 use tracing::{instrument, Level};
-use zenoh::{qos::CongestionControl, qos::Priority, Wait};
+#[cfg(feature = "unstable")]
+use zenoh::{qos::Reliability, sample::Locality};
+use zenoh::{
+	qos::{CongestionControl, Priority},
+	Wait,
+};
 // endregion:	--- modules
 
 // region:		--- Publisher
@@ -27,8 +32,14 @@ where
 	/// Context for the Publisher
 	context: Context<P>,
 	activation_state: OperationState,
-	priority: Priority,
+	#[cfg(feature = "unstable")]
+	allowed_destination: Locality,
 	congestion_control: CongestionControl,
+	encoding: String,
+	express: bool,
+	priority: Priority,
+	#[cfg(feature = "unstable")]
+	reliability: Reliability,
 	publisher: Option<zenoh::pubsub::Publisher<'static>>,
 }
 
@@ -63,20 +74,31 @@ where
 	P: Send + Sync + 'static,
 {
 	/// Constructor for a [`Publisher`]
+	#[allow(clippy::too_many_arguments)]
 	#[must_use]
 	pub const fn new(
 		selector: String,
 		context: Context<P>,
 		activation_state: OperationState,
-		priority: Priority,
+		#[cfg(feature = "unstable")] allowed_destination: Locality,
 		congestion_control: CongestionControl,
+		encoding: String,
+		express: bool,
+		priority: Priority,
+		#[cfg(feature = "unstable")] reliability: Reliability,
 	) -> Self {
 		Self {
 			selector,
 			context,
 			activation_state,
-			priority,
+			#[cfg(feature = "unstable")]
+			allowed_destination,
 			congestion_control,
+			encoding,
+			express,
+			priority,
+			#[cfg(feature = "unstable")]
+			reliability,
 			publisher: None,
 		}
 	}
@@ -94,13 +116,20 @@ where
 	where
 		P: Send + Sync + 'static,
 	{
-		let publ = self
-			.context
-			.session()
+		let session = self.context.session();
+		let publ = session
 			.declare_publisher(self.selector.clone())
 			.congestion_control(self.congestion_control)
-			.priority(self.priority)
-			.wait()?;
+			.encoding(self.encoding.as_str())
+			.express(self.express)
+			.priority(self.priority);
+
+		#[cfg(feature = "unstable")]
+		let publ = publ
+			.allowed_destination(self.allowed_destination)
+			.reliability(self.reliability);
+
+		let publ = publ.wait()?;
 		//.map_err(|_| DimasError::Put.into())?;
 		self.publisher.replace(publ);
 		Ok(())

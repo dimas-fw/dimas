@@ -159,11 +159,7 @@ where
 	Ok(())
 }
 
-fn state_handler<P>(
-	ctx: Context<P>,
-	request: QueryMsg,
-	state: Option<OperationState>,
-) -> Result<()>
+fn state_handler<P>(ctx: Context<P>, request: QueryMsg, state: Option<OperationState>) -> Result<()>
 where
 	P: Send + Sync + 'static,
 {

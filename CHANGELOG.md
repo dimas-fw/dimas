@@ -19,13 +19,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- re-export of `tokio::time::Duration` in `dimas::prelude`
 - feature `unstable`, which encapsulates zenoh unstable feature
+- additional settings in: `PublisherBuilder`, `SubscriberBuilder`,
+  `Querier`, `QueryableBuilder`
 
 ### Changed
 
-- minimum rust version 1.81
-- replaced `std::` with `core::` where  possible
-- re-export of `core::time::Duration` in `dimas::prelude`
+- bumped minimum rust version to 1.81
+- replaced `std::` with `core::` in some places
 - renamed `Query` to `Querier` `QueryBuilder` to `QuerierBuilder`
   to differentiate from data structure
 - callbacks get a `Context<P>` instead of a `&Context<P>`

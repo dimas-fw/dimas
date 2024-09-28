@@ -16,6 +16,8 @@ use dimas_core::{
 };
 use tokio::task::JoinHandle;
 use tracing::{error, info, instrument, warn, Level};
+#[cfg(feature = "unstable")]
+use zenoh::sample::Locality;
 use zenoh::sample::SampleKind;
 // endregion:	--- modules
 
@@ -31,6 +33,9 @@ where
 	context: Context<P>,
 	/// [`OperationState`] on which this subscriber is started
 	activation_state: OperationState,
+	#[cfg(feature = "unstable")]
+	allowed_origin: Locality,
+	undeclare_on_drop: bool,
 	put_callback: ArcPutCallback<P>,
 	delete_callback: Option<ArcDeleteCallback<P>>,
 	handle: Option<JoinHandle<()>>,
@@ -72,6 +77,8 @@ where
 		selector: String,
 		context: Context<P>,
 		activation_state: OperationState,
+		#[cfg(feature = "unstable")] allowed_origin: Locality,
+		undeclare_on_drop: bool,
 		put_callback: ArcPutCallback<P>,
 		delete_callback: Option<ArcDeleteCallback<P>>,
 	) -> Self {
@@ -79,6 +86,9 @@ where
 			selector,
 			context,
 			activation_state,
+			#[cfg(feature = "unstable")]
+			allowed_origin,
+			undeclare_on_drop,
 			put_callback,
 			delete_callback,
 			handle: None,
@@ -117,6 +127,9 @@ where
 		let d_cb = self.delete_callback.clone();
 		let ctx1 = self.context.clone();
 		let ctx2 = self.context.clone();
+		#[cfg(feature = "unstable")]
+		let allowed_origin = self.allowed_origin;
+		let undeclare_on_drop = self.undeclare_on_drop;
 
 		self.handle
 			.replace(tokio::task::spawn(async move {
@@ -132,7 +145,17 @@ where
 						info!("restarting subscriber!");
 					};
 				}));
-				if let Err(error) = run_subscriber(selector, p_cb, d_cb, ctx2.clone()).await {
+				if let Err(error) = run_subscriber(
+					selector,
+					#[cfg(feature = "unstable")]
+					allowed_origin,
+					undeclare_on_drop,
+					p_cb,
+					d_cb,
+					ctx2.clone(),
+				)
+				.await
+				{
 					error!("spawning subscriber failed with {error}");
 				};
 			}));
@@ -151,6 +174,8 @@ where
 #[instrument(name="subscriber", level = Level::ERROR, skip_all)]
 async fn run_subscriber<P>(
 	selector: String,
+	#[cfg(feature = "unstable")] allowed_origin: Locality,
+	undeclare_on_drop: bool,
 	p_cb: ArcPutCallback<P>,
 	d_cb: Option<ArcDeleteCallback<P>>,
 	ctx: Context<P>,
@@ -158,10 +183,15 @@ async fn run_subscriber<P>(
 where
 	P: Send + Sync + 'static,
 {
-	let subscriber = ctx
-		.session()
+	let session = ctx.session();
+	let subscriber = session
 		.declare_subscriber(&selector)
-		.await?;
+		.undeclare_on_drop(undeclare_on_drop);
+
+	#[cfg(feature = "unstable")]
+	let subscriber = subscriber.allowed_origin(allowed_origin);
+
+	let subscriber = subscriber.await?;
 
 	loop {
 		let sample = subscriber
