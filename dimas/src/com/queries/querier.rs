@@ -3,7 +3,7 @@
 //! Module `Querier` provides an information/compute requestor `Querier` which can be created using the `QuerierBuilder`.
 
 // region:		--- modules
-use super::ArcQuerierCallback;
+use crate::com::ArcQuerierCallback;
 use core::{fmt::Debug, time::Duration};
 use dimas_core::{
 	enums::OperationState,

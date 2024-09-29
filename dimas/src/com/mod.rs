@@ -4,6 +4,12 @@
 //!
 
 // region:    	--- modules
+#[cfg(feature = "unstable")]
+pub mod liveliness;
+pub mod observation;
+pub mod pubsub;
+pub mod queries;
+
 use dimas_core::{
 	error::Result,
 	message_types::{ControlResponse, Message, ObservableResponse, QueryMsg, QueryableMsg},
@@ -50,22 +56,6 @@ pub type ArcObservableFeedbackCallback<P> =
 pub type ArcObservableExecutionFunction<P> =
 	Arc<tokio::sync::Mutex<dyn FnMut(Context<P>) -> Result<Message> + Send + Sync + 'static>>;
 // endregion:	--- types
-
-/// `Liveliness`
-#[cfg(feature = "unstable")]
-pub mod liveliness;
-/// `Observable`
-pub mod observable;
-/// `Observer`
-pub mod observer;
-/// `Publisher`
-pub mod publisher;
-/// `Query`
-pub mod querier;
-/// `Queryable`
-pub mod queryable;
-/// `Subscriber`
-pub mod subscriber;
 
 #[cfg(test)]
 mod tests {}

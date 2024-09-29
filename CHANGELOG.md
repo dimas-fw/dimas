@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - renamed `Query` to `Querier` `QueryBuilder` to `QuerierBuilder`
   to differentiate from data structure
 - callbacks get a `Context<P>` instead of a `&Context<P>`
+- internal structure
 
 ### Fixed
 

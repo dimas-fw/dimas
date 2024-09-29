@@ -2,11 +2,11 @@
 
 // region:		--- modules
 use crate::{
-	builder::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage},
 	com::{
-		observable::Observable, ArcObservableControlCallback, ArcObservableExecutionFunction,
-		ArcObservableFeedbackCallback,
+		observation::observable::Observable, ArcObservableControlCallback,
+		ArcObservableExecutionFunction, ArcObservableFeedbackCallback,
 	},
+	{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage},
 };
 use dimas_core::{
 	enums::OperationState,

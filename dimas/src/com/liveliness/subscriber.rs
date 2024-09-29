@@ -17,7 +17,7 @@ use tracing::info;
 use tracing::{error, instrument, warn, Level};
 use zenoh::sample::SampleKind;
 
-use super::ArcLivelinessCallback;
+use crate::com::ArcLivelinessCallback;
 // endregion:	--- modules
 
 // region:		--- LivelinessSubscriber

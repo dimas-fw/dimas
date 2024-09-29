@@ -45,21 +45,15 @@
 //!
 
 // region:		--- modules
-use crate::builder::{
-	observable::ObservableBuilder, observer::ObserverBuilder, publisher::PublisherBuilder,
-	querier::QuerierBuilder, queryable::QueryableBuilder, subscriber::SubscriberBuilder,
-	timer::TimerBuilder,
-};
+#[cfg(feature = "unstable")]
+use crate::com::liveliness::{LivelinessSubscriber, LivelinessSubscriberBuilder};
 use crate::com::{
-	observable::Observable, observer::Observer, publisher::Publisher, querier::Querier,
-	queryable::Queryable, subscriber::Subscriber,
+	observation::{Observable, ObservableBuilder, Observer, ObserverBuilder},
+	pubsub::{Publisher, PublisherBuilder, Subscriber, SubscriberBuilder},
+	queries::{Querier, QuerierBuilder, Queryable, QueryableBuilder},
 };
 use crate::context::ContextImpl;
-use crate::timer::Timer;
-#[cfg(feature = "unstable")]
-use crate::{
-	builder::liveliness::LivelinessSubscriberBuilder, com::liveliness::LivelinessSubscriber,
-};
+use crate::time::{Timer, TimerBuilder};
 use chrono::Local;
 use core::fmt::Debug;
 use core::time::Duration;
@@ -331,11 +325,8 @@ where
 	#[must_use]
 	pub fn liveliness_subscriber(
 		&self,
-	) -> LivelinessSubscriberBuilder<
-		P,
-		crate::builder::NoCallback,
-		crate::builder::Storage<LivelinessSubscriber<P>>,
-	> {
+	) -> LivelinessSubscriberBuilder<P, crate::NoCallback, crate::Storage<LivelinessSubscriber<P>>>
+	{
 		LivelinessSubscriberBuilder::new(self.context.clone())
 			.storage(self.context.liveliness_subscribers().clone())
 	}
@@ -346,11 +337,11 @@ where
 		&self,
 	) -> ObservableBuilder<
 		P,
-		crate::builder::NoSelector,
-		crate::builder::NoCallback,
-		crate::builder::NoCallback,
-		crate::builder::NoCallback,
-		crate::builder::Storage<Observable<P>>,
+		crate::NoSelector,
+		crate::NoCallback,
+		crate::NoCallback,
+		crate::NoCallback,
+		crate::Storage<Observable<P>>,
 	> {
 		ObservableBuilder::new(self.context.clone()).storage(self.context.observables().clone())
 	}
@@ -361,10 +352,10 @@ where
 		&self,
 	) -> ObserverBuilder<
 		P,
-		crate::builder::NoSelector,
-		crate::builder::NoCallback,
-		crate::builder::NoCallback,
-		crate::builder::Storage<Observer<P>>,
+		crate::NoSelector,
+		crate::NoCallback,
+		crate::NoCallback,
+		crate::Storage<Observer<P>>,
 	> {
 		ObserverBuilder::new(self.context.clone()).storage(self.context.observers().clone())
 	}
@@ -373,7 +364,7 @@ where
 	#[must_use]
 	pub fn publisher(
 		&self,
-	) -> PublisherBuilder<P, crate::builder::NoSelector, crate::builder::Storage<Publisher<P>>> {
+	) -> PublisherBuilder<P, crate::NoSelector, crate::Storage<Publisher<P>>> {
 		PublisherBuilder::new(self.context.clone()).storage(self.context.publishers().clone())
 	}
 
@@ -381,12 +372,7 @@ where
 	#[must_use]
 	pub fn query(
 		&self,
-	) -> QuerierBuilder<
-		P,
-		crate::builder::NoSelector,
-		crate::builder::NoCallback,
-		crate::builder::Storage<Querier<P>>,
-	> {
+	) -> QuerierBuilder<P, crate::NoSelector, crate::NoCallback, crate::Storage<Querier<P>>> {
 		QuerierBuilder::new(self.context.clone()).storage(self.context.queries().clone())
 	}
 
@@ -394,12 +380,7 @@ where
 	#[must_use]
 	pub fn queryable(
 		&self,
-	) -> QueryableBuilder<
-		P,
-		crate::builder::NoSelector,
-		crate::builder::NoCallback,
-		crate::builder::Storage<Queryable<P>>,
-	> {
+	) -> QueryableBuilder<P, crate::NoSelector, crate::NoCallback, crate::Storage<Queryable<P>>> {
 		QueryableBuilder::new(self.context.clone()).storage(self.context.queryables().clone())
 	}
 
@@ -407,12 +388,8 @@ where
 	#[must_use]
 	pub fn subscriber(
 		&self,
-	) -> SubscriberBuilder<
-		P,
-		crate::builder::NoSelector,
-		crate::builder::NoCallback,
-		crate::builder::Storage<Subscriber<P>>,
-	> {
+	) -> SubscriberBuilder<P, crate::NoSelector, crate::NoCallback, crate::Storage<Subscriber<P>>>
+	{
 		SubscriberBuilder::new(self.context.clone()).storage(self.context.subscribers().clone())
 	}
 
@@ -422,10 +399,10 @@ where
 		&self,
 	) -> TimerBuilder<
 		P,
-		crate::builder::NoSelector,
-		crate::builder::NoInterval,
-		crate::builder::NoCallback,
-		crate::builder::Storage<Timer<P>>,
+		crate::NoSelector,
+		crate::NoInterval,
+		crate::NoCallback,
+		crate::Storage<Timer<P>>,
 	> {
 		TimerBuilder::new(self.context.clone()).storage(self.context.timers().clone())
 	}
@@ -576,7 +553,6 @@ where
 	/// Stop the agent
 	///
 	/// # Errors
-	/// Propagation of errors from [`Context::stop_registered_tasks()`].
 	#[tracing::instrument(skip_all)]
 	pub fn stop(self) -> Result<Agent<P>> {
 		self.context.set_state(OperationState::Created)?;

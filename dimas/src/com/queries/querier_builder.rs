@@ -12,12 +12,15 @@ use dimas_core::{
 	utils::selector_from,
 };
 use std::sync::{Arc, Mutex, RwLock};
-use zenoh::{bytes::Encoding, query::{ConsolidationMode, QueryTarget}};
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
+use zenoh::{
+	bytes::Encoding,
+	query::{ConsolidationMode, QueryTarget},
+};
 
-use crate::builder::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
-use crate::com::{querier::Querier, ArcQuerierCallback};
+use crate::com::{queries::querier::Querier, ArcQuerierCallback};
+use crate::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 // endregion:	--- modules
 
 // region:		--- QuerierBuilder

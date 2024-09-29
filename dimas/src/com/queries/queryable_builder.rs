@@ -1,67 +1,64 @@
 // Copyright © 2023 Stephan Kunz
 
-//! Module `subscriber` provides a message `Subscriber` which can be created using the `SubscriberBuilder`.
-//! A `Subscriber` can optional subscribe on a delete message.
+//! Module `queryable` provides an information/compute provider `Queryable` which can be created using the `QueryableBuilder`.
 
 // region:		--- modules
-// these ones are only for doc needed
-#[cfg(doc)]
-use crate::agent::Agent;
-use crate::builder::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
-use crate::com::{subscriber::Subscriber, ArcDeleteCallback, ArcPutCallback};
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
-	message_types::Message,
+	message_types::QueryMsg,
 	traits::Context,
 	utils::selector_from,
 };
 use std::sync::{Arc, Mutex, RwLock};
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
+
+use crate::com::{queries::queryable::Queryable, ArcQueryableCallback};
+use crate::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 // endregion:	--- modules
 
-// region:		--- SubscriberBuilder
-/// A builder for a subscriber
+// region:		--- QueryableBuilder
+/// The builder for a queryable.
 #[allow(clippy::module_name_repetitions)]
 #[derive(Clone)]
-pub struct SubscriberBuilder<P, K, C, S>
+pub struct QueryableBuilder<P, K, C, S>
 where
 	P: Send + Sync + 'static,
 {
 	context: Context<P>,
 	activation_state: OperationState,
+	completeness: bool,
 	#[cfg(feature = "unstable")]
 	allowed_origin: Locality,
 	undeclare_on_drop: bool,
 	selector: K,
-	put_callback: C,
+	callback: C,
 	storage: S,
-	delete_callback: Option<ArcDeleteCallback<P>>,
 }
 
-impl<P> SubscriberBuilder<P, NoSelector, NoCallback, NoStorage>
+impl<P> QueryableBuilder<P, NoSelector, NoCallback, NoStorage>
 where
 	P: Send + Sync + 'static,
 {
-	/// Construct a `SubscriberBuilder` in initial state
+	/// Construct a `QueryableBuilder` in initial state
 	#[must_use]
 	pub const fn new(context: Context<P>) -> Self {
 		Self {
 			context,
 			activation_state: OperationState::Standby,
+			completeness: true,
 			#[cfg(feature = "unstable")]
 			allowed_origin: Locality::Any,
 			undeclare_on_drop: true,
 			selector: NoSelector,
-			put_callback: NoCallback,
+			callback: NoCallback,
 			storage: NoStorage,
-			delete_callback: None,
 		}
 	}
 }
 
-impl<P, K, C, S> SubscriberBuilder<P, K, C, S>
+impl<P, K, C, S> QueryableBuilder<P, K, C, S>
 where
 	P: Send + Sync + 'static,
 {
@@ -72,7 +69,14 @@ where
 		self
 	}
 
-	/// Set the allowed origin.
+	/// Set the completeness of the [`Queryable`].
+	#[must_use]
+	pub const fn completeness(mut self, completeness: bool) -> Self {
+		self.completeness = completeness;
+		self
+	}
+
+	/// Set the allowed origin of the [`Queryable`].
 	#[cfg(feature = "unstable")]
 	#[must_use]
 	pub const fn allowed_origin(mut self, allowed_origin: Locality) -> Self {
@@ -86,188 +90,176 @@ where
 		self.undeclare_on_drop = undeclare_on_drop;
 		self
 	}
-
-	/// Set subscribers callback for `delete` messages
-	#[must_use]
-	pub fn delete_callback<F>(mut self, callback: F) -> Self
-	where
-		F: FnMut(Context<P>) -> Result<()> + Send + Sync + 'static,
-	{
-		self.delete_callback
-			.replace(Arc::new(Mutex::new(callback)));
-		self
-	}
 }
 
-impl<P, C, S> SubscriberBuilder<P, NoSelector, C, S>
+impl<P, C, S> QueryableBuilder<P, NoSelector, C, S>
 where
 	P: Send + Sync + 'static,
 {
-	/// Set the full key expression for the [`Subscriber`].
+	/// Set the full expression for the [`Queryable`].
 	#[must_use]
-	pub fn selector(self, selector: &str) -> SubscriberBuilder<P, Selector, C, S> {
+	pub fn selector(self, selector: &str) -> QueryableBuilder<P, Selector, C, S> {
 		let Self {
 			context,
 			activation_state,
+			completeness,
 			#[cfg(feature = "unstable")]
 			allowed_origin,
 			undeclare_on_drop,
 			storage,
-			put_callback,
-			delete_callback,
+			callback,
 			..
 		} = self;
-		SubscriberBuilder {
+		QueryableBuilder {
 			context,
 			activation_state,
+			completeness,
 			#[cfg(feature = "unstable")]
 			allowed_origin,
 			undeclare_on_drop,
 			selector: Selector {
 				selector: selector.into(),
 			},
-			put_callback,
+			callback,
 			storage,
-			delete_callback,
 		}
 	}
 
-	/// Set only the message qualifing part of the [`Subscriber`].
-	/// Will be prefixed with [`Agent`]s prefix.
+	/// Set only the topic of the [`Queryable`].
+	/// Will be prefixed with agents prefix.
 	#[must_use]
-	pub fn topic(self, topic: &str) -> SubscriberBuilder<P, Selector, C, S> {
+	pub fn topic(self, topic: &str) -> QueryableBuilder<P, Selector, C, S> {
 		let selector = selector_from(topic, self.context.prefix());
 		self.selector(&selector)
 	}
 }
 
-impl<P, K, S> SubscriberBuilder<P, K, NoCallback, S>
+impl<P, K, S> QueryableBuilder<P, K, NoCallback, S>
 where
 	P: Send + Sync + 'static,
 {
-	/// Set callback for put messages
+	/// Set callback for request messages
 	#[must_use]
-	pub fn put_callback<F>(
+	pub fn callback<F>(
 		self,
 		callback: F,
-	) -> SubscriberBuilder<P, K, Callback<ArcPutCallback<P>>, S>
+	) -> QueryableBuilder<P, K, Callback<ArcQueryableCallback<P>>, S>
 	where
-		F: FnMut(Context<P>, Message) -> Result<()> + Send + Sync + 'static,
+		F: FnMut(Context<P>, QueryMsg) -> Result<()> + Send + Sync + 'static,
 	{
 		let Self {
 			context,
 			activation_state,
+			completeness,
 			#[cfg(feature = "unstable")]
 			allowed_origin,
 			undeclare_on_drop,
 			selector,
 			storage,
-			delete_callback,
 			..
 		} = self;
-		let callback: ArcPutCallback<P> = Arc::new(Mutex::new(callback));
-		SubscriberBuilder {
+		let callback: ArcQueryableCallback<P> = Arc::new(Mutex::new(callback));
+		QueryableBuilder {
 			context,
 			activation_state,
+			completeness,
 			#[cfg(feature = "unstable")]
 			allowed_origin,
 			undeclare_on_drop,
 			selector,
-			put_callback: Callback { callback },
+			callback: Callback { callback },
 			storage,
-			delete_callback,
 		}
 	}
 }
 
-impl<P, K, C> SubscriberBuilder<P, K, C, NoStorage>
+impl<P, K, C> QueryableBuilder<P, K, C, NoStorage>
 where
 	P: Send + Sync + 'static,
 {
-	/// Provide agents storage for the subscriber
+	/// Provide agents storage for the queryable
 	#[must_use]
 	pub fn storage(
 		self,
-		storage: Arc<RwLock<std::collections::HashMap<String, Subscriber<P>>>>,
-	) -> SubscriberBuilder<P, K, C, Storage<Subscriber<P>>> {
+		storage: Arc<RwLock<std::collections::HashMap<String, Queryable<P>>>>,
+	) -> QueryableBuilder<P, K, C, Storage<Queryable<P>>> {
 		let Self {
 			context,
 			activation_state,
+			completeness,
 			#[cfg(feature = "unstable")]
 			allowed_origin,
 			undeclare_on_drop,
 			selector,
-			put_callback,
-			delete_callback,
+			callback,
 			..
 		} = self;
-		SubscriberBuilder {
+		QueryableBuilder {
 			context,
 			activation_state,
+			completeness,
 			#[cfg(feature = "unstable")]
 			allowed_origin,
 			undeclare_on_drop,
 			selector,
-			put_callback,
+			callback,
 			storage: Storage { storage },
-			delete_callback,
 		}
 	}
 }
 
-impl<P, S> SubscriberBuilder<P, Selector, Callback<ArcPutCallback<P>>, S>
+impl<P, S> QueryableBuilder<P, Selector, Callback<ArcQueryableCallback<P>>, S>
 where
 	P: Send + Sync + 'static,
 {
-	/// Build the [`Subscriber`].
-	///
+	/// Build the [`Queryable`]
 	/// # Errors
-	/// Currently none
-	pub fn build(self) -> Result<Subscriber<P>> {
+	///
+	pub fn build(self) -> Result<Queryable<P>> {
 		let Self {
+			context,
+			activation_state,
+			completeness,
+			#[cfg(feature = "unstable")]
+			allowed_origin,
+			undeclare_on_drop,
+			selector,
+			callback,
+			..
+		} = self;
+		let selector = selector.selector;
+		Ok(Queryable::new(
 			selector,
 			context,
 			activation_state,
+			callback.callback,
+			completeness,
 			#[cfg(feature = "unstable")]
 			allowed_origin,
 			undeclare_on_drop,
-			put_callback,
-			delete_callback,
-			..
-		} = self;
-		Ok(Subscriber::new(
-			selector.selector,
-			context,
-			activation_state,
-			#[cfg(feature = "unstable")]
-			allowed_origin,
-			undeclare_on_drop,
-			put_callback.callback,
-			delete_callback,
 		))
 	}
 }
 
-impl<P> SubscriberBuilder<P, Selector, Callback<ArcPutCallback<P>>, Storage<Subscriber<P>>>
+impl<P> QueryableBuilder<P, Selector, Callback<ArcQueryableCallback<P>>, Storage<Queryable<P>>>
 where
 	P: Send + Sync + 'static,
 {
-	/// Build and add the [`Subscriber`] to the [`Agent`].
-	///
+	/// Build and add the queryable to the agents context
 	/// # Errors
-	/// Currently none
-	pub fn add(self) -> Result<Option<Subscriber<P>>> {
-		let c = self.storage.storage.clone();
-		let s = self.build()?;
+	///
+	pub fn add(self) -> Result<Option<Queryable<P>>> {
+		let collection = self.storage.storage.clone();
+		let q = self.build()?;
 
-		let r = c
+		let r = collection
 			.write()
 			.map_err(|_| DimasError::ShouldNotHappen)?
-			.insert(s.selector().to_string(), s);
+			.insert(q.selector().to_string(), q);
 		Ok(r)
 	}
 }
-// endregion:	--- SubscriberBuilder
+// endregion:	--- QueryableBuilder
 
 #[cfg(test)]
 mod tests {
@@ -281,6 +273,6 @@ mod tests {
 
 	#[test]
 	const fn normal_types() {
-		is_normal::<SubscriberBuilder<Props, NoSelector, NoCallback, NoStorage>>();
+		is_normal::<QueryableBuilder<Props, NoSelector, NoCallback, NoStorage>>();
 	}
 }

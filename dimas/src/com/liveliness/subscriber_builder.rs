@@ -4,8 +4,7 @@
 //! A `LivelinessSubscriber` can optional subscribe on a delete message.
 
 // region:		--- modules
-use crate::builder::{Callback, NoCallback, NoStorage, Storage};
-use crate::com::{liveliness::LivelinessSubscriber, ArcLivelinessCallback};
+use crate::{com::ArcLivelinessCallback, Callback, NoCallback, NoStorage, Storage};
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
@@ -16,6 +15,8 @@ use std::{
 	collections::HashMap,
 	sync::{Arc, Mutex, RwLock},
 };
+
+use super::subscriber::LivelinessSubscriber;
 // endregion:	--- modules
 
 // region:		--- LivelinessSubscriberBuilder

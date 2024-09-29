@@ -4,12 +4,10 @@
 //! When fired, a `Timer` calls his assigned `TimerCallback`.
 
 // region:		--- modules
-use crate::builder::{
-	Callback, Interval, NoCallback, NoInterval, NoSelector, NoStorage, Selector, Storage,
-};
+use crate::{Callback, Interval, NoCallback, NoInterval, NoSelector, NoStorage, Selector, Storage};
 
-use crate::timer::timer::TimerCallback;
-use crate::timer::Timer;
+use crate::time::timer::Timer;
+use crate::time::timer::TimerCallback;
 
 use core::time::Duration;
 use dimas_core::{

@@ -2,10 +2,12 @@
 
 // region:		--- modules
 #[cfg(doc)]
-use crate::prelude::Agent;
+use crate::agent::Agent;
 use crate::{
-	builder::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage},
-	com::{observer::Observer, ArcObserverControlCallback, ArcObserverResponseCallback},
+	com::{
+		observation::observer::Observer, ArcObserverControlCallback, ArcObserverResponseCallback,
+	},
+	{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage},
 };
 use dimas_core::{
 	enums::OperationState,

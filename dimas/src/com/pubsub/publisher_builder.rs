@@ -6,8 +6,8 @@
 // these ones are only for doc needed
 #[cfg(doc)]
 use crate::agent::Agent;
-use crate::builder::{NoSelector, NoStorage, Selector, Storage};
-use crate::com::publisher::Publisher;
+use crate::com::pubsub::publisher::Publisher;
+use crate::{NoSelector, NoStorage, Selector, Storage};
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},

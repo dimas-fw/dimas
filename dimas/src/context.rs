@@ -1,8 +1,8 @@
 // Copyright © 2023 Stephan Kunz
 
-//! Implementation of an [`Agent`]'s internal and user defined properties [`Context`].
-//! Never use it directly but through the created [`Context`], which provides thread safe access.
-//! A reference to this wrapper is handed into every callback function.
+//! Implementation of an [`Agent`]'s internal and user defined properties [`ContextImpl`].
+//! Never use it directly but through the type [`Context`], which provides thread safe access.
+//! A [`Context`] is handed into every callback function.
 //!
 //! # Examples
 //! ```rust,no_run
@@ -32,14 +32,17 @@
 // only for doc needed
 #[cfg(doc)]
 use crate::agent::Agent;
+#[cfg(doc)]
+use dimas_core::traits::Context;
 #[cfg(feature = "unstable")]
 use crate::com::liveliness::LivelinessSubscriber;
 use crate::{
 	com::{
-		observable::Observable, observer::Observer, publisher::Publisher, querier::Querier,
-		queryable::Queryable, subscriber::Subscriber,
+		observation::{Observable, Observer},
+		pubsub::{Publisher, Subscriber},
+		queries::{Querier, Queryable},
 	},
-	timer::Timer,
+	time::Timer,
 };
 use core::fmt::Debug;
 use dimas_com::communicator::Communicator;
@@ -324,7 +327,8 @@ impl<P> ContextImpl<P>
 where
 	P: Send + Sync + 'static,
 {
-	/// Constructor for the [`ContextInner`]
+	/// Constructor for the [`ContextImpl`]
+	/// # Errors
 	pub fn new(
 		config: &Config,
 		props: P,

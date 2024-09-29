@@ -1,6 +1,7 @@
 // Copyright © 2023 Stephan Kunz
 
-//! Public interface of dimas. Typically it is sufficient to include the prelude with
+//! simplified interface of dimas. 
+//! Typically it is sufficient to include the prelude with
 //! ```use dimas::prelude::*;```
 
 pub extern crate bitcode;
@@ -25,23 +26,11 @@ pub use zenoh::sample::Locality;
 // dimas stuff
 pub use crate::agent::Agent;
 #[cfg(feature = "unstable")]
-pub use crate::builder::liveliness::LivelinessSubscriberBuilder;
-pub use crate::builder::observable::ObservableBuilder;
-pub use crate::builder::observer::ObserverBuilder;
-pub use crate::builder::publisher::PublisherBuilder;
-pub use crate::builder::querier::QuerierBuilder;
-pub use crate::builder::queryable::QueryableBuilder;
-pub use crate::builder::subscriber::SubscriberBuilder;
-pub use crate::builder::timer::TimerBuilder;
-#[cfg(feature = "unstable")]
-pub use crate::com::liveliness::LivelinessSubscriber;
-pub use crate::com::observable::Observable;
-pub use crate::com::observer::Observer;
-pub use crate::com::publisher::Publisher;
-pub use crate::com::querier::Querier;
-pub use crate::com::queryable::Queryable;
-pub use crate::com::subscriber::Subscriber;
-pub use crate::timer::Timer;
+pub use crate::com::liveliness::{LivelinessSubscriber, LivelinessSubscriberBuilder};
+pub use crate::com::observation::{Observable, ObservableBuilder, Observer, ObserverBuilder};
+pub use crate::com::pubsub::{Publisher, PublisherBuilder, Subscriber, SubscriberBuilder};
+pub use crate::com::queries::{Querier, QuerierBuilder, Queryable, QueryableBuilder};
+pub use crate::time::{Timer, TimerBuilder};
 
 pub use dimas_config::Config;
 pub use dimas_core::error::{DimasError, Result};
