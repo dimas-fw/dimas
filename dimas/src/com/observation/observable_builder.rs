@@ -35,7 +35,7 @@ where
 	selector: K,
 	control_callback: CC,
 	feedback_callback: FC,
-	execution_function: EF,
+	execution_callback: EF,
 	storage: S,
 }
 
@@ -53,7 +53,7 @@ where
 			selector: NoSelector,
 			control_callback: NoCallback,
 			feedback_callback: NoCallback,
-			execution_function: NoCallback,
+			execution_callback: NoCallback,
 			storage: NoStorage,
 		}
 	}
@@ -92,7 +92,7 @@ where
 			storage,
 			control_callback,
 			feedback_callback,
-			execution_function,
+			execution_callback,
 			..
 		} = self;
 		ObservableBuilder {
@@ -104,7 +104,7 @@ where
 			},
 			control_callback,
 			feedback_callback,
-			execution_function,
+			execution_callback,
 			storage,
 		}
 	}
@@ -138,7 +138,7 @@ where
 			selector,
 			storage,
 			feedback_callback,
-			execution_function,
+			execution_callback,
 			..
 		} = self;
 		let callback: ArcObservableControlCallback<P> = Arc::new(Mutex::new(callback));
@@ -149,7 +149,7 @@ where
 			selector,
 			control_callback: Callback { callback },
 			feedback_callback,
-			execution_function,
+			execution_callback,
 			storage,
 		}
 	}
@@ -175,7 +175,7 @@ where
 			selector,
 			storage,
 			control_callback,
-			execution_function,
+			execution_callback,
 			..
 		} = self;
 		let callback: ArcObservableFeedbackCallback<P> = Arc::new(Mutex::new(callback));
@@ -186,7 +186,7 @@ where
 			selector,
 			control_callback,
 			feedback_callback: Callback { callback },
-			execution_function,
+			execution_callback,
 			storage,
 		}
 	}
@@ -198,7 +198,7 @@ where
 {
 	/// Set execution function
 	#[must_use]
-	pub fn execution_function<F>(
+	pub fn execution_callback<F>(
 		self,
 		function: F,
 	) -> ObservableBuilder<P, K, CC, FC, Callback<ArcObservableExecutionFunction<P>>, S>
@@ -224,7 +224,7 @@ where
 			selector,
 			control_callback,
 			feedback_callback,
-			execution_function: Callback { callback: function },
+			execution_callback: Callback { callback: function },
 			storage,
 		}
 	}
@@ -247,7 +247,7 @@ where
 			selector,
 			control_callback,
 			feedback_callback,
-			execution_function,
+			execution_callback,
 			..
 		} = self;
 		ObservableBuilder {
@@ -257,7 +257,7 @@ where
 			selector,
 			control_callback,
 			feedback_callback,
-			execution_function,
+			execution_callback,
 			storage: Storage { storage },
 		}
 	}
@@ -286,7 +286,7 @@ where
 			selector,
 			control_callback,
 			feedback_callback,
-			execution_function,
+			execution_callback,
 			..
 		} = self;
 		Ok(Observable::new(
@@ -296,7 +296,7 @@ where
 			feedback_interval,
 			control_callback.callback,
 			feedback_callback.callback,
-			execution_function.callback,
+			execution_callback.callback,
 		))
 	}
 }

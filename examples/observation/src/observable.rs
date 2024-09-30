@@ -77,7 +77,7 @@ async fn main() -> Result<()> {
 			Ok(message)
 		})
 		.feedback_interval(Duration::from_secs(2))
-		.execution_function(fibonacci)
+		.execution_callback(fibonacci)
 		.add()?;
 	// activate liveliness
 	agent.liveliness(true);
