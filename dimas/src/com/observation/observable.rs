@@ -2,7 +2,7 @@
 
 // region:		--- modules
 use crate::com::{
-	ArcObservableControlCallback, ArcObservableExecutionFunction, ArcObservableFeedbackCallback,
+	ArcObservableControlCallback, ArcObservableExecutionCallback, ArcObservableFeedbackCallback,
 };
 use bitcode::encode;
 use core::time::Duration;
@@ -37,7 +37,7 @@ where
 	/// callback for observation feedback
 	feedback_callback: ArcObservableFeedbackCallback<P>,
 	/// function for observation execution
-	execution_function: ArcObservableExecutionFunction<P>,
+	execution_function: ArcObservableExecutionCallback<P>,
 	handle: Option<JoinHandle<()>>,
 }
 
@@ -79,7 +79,7 @@ where
 		feedback_interval: Duration,
 		control_callback: ArcObservableControlCallback<P>,
 		feedback_callback: ArcObservableFeedbackCallback<P>,
-		execution_function: ArcObservableExecutionFunction<P>,
+		execution_function: ArcObservableExecutionCallback<P>,
 	) -> Self {
 		Self {
 			selector,
@@ -174,7 +174,7 @@ async fn run_observable<P>(
 	feedback_interval: Duration,
 	control_callback: ArcObservableControlCallback<P>,
 	feedback_callback: ArcObservableFeedbackCallback<P>,
-	execution_function: ArcObservableExecutionFunction<P>,
+	execution_function: ArcObservableExecutionCallback<P>,
 	ctx: Context<P>,
 ) -> Result<()>
 where

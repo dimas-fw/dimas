@@ -3,10 +3,9 @@
 // region:		--- modules
 use crate::{
 	com::{
-		observation::observable::Observable, ArcObservableControlCallback,
-		ArcObservableExecutionFunction, ArcObservableFeedbackCallback,
+		observation::observable::Observable, ArcObservableControlCallback, ArcObservableExecutionCallback, ArcObservableFeedbackCallback
 	},
-	{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage},
+	Callback, NoCallback, NoSelector, NoStorage, Selector, Storage,
 };
 use dimas_core::{
 	enums::OperationState,
@@ -124,12 +123,12 @@ where
 {
 	/// Set callback for control messages
 	#[must_use]
-	pub fn control_callback<F>(
+	pub fn control_callback<C>(
 		self,
-		callback: F,
+		callback: C,
 	) -> ObservableBuilder<P, K, Callback<ArcObservableControlCallback<P>>, FC, EF, S>
 	where
-		F: FnMut(Context<P>, Message) -> Result<ControlResponse> + Send + Sync + 'static,
+		C: FnMut(Context<P>, Message) -> Result<ControlResponse> + Send + Sync + 'static,
 	{
 		let Self {
 			context,
@@ -161,12 +160,12 @@ where
 {
 	/// Set callback for feedback messages
 	#[must_use]
-	pub fn feedback_callback<F>(
+	pub fn feedback_callback<C>(
 		self,
-		callback: F,
+		callback: C,
 	) -> ObservableBuilder<P, K, CC, Callback<ArcObservableFeedbackCallback<P>>, EF, S>
 	where
-		F: FnMut(Context<P>) -> Result<Message> + Send + Sync + 'static,
+		C: FnMut(Context<P>) -> Result<Message> + Send + Sync + 'static,
 	{
 		let Self {
 			context,
@@ -198,12 +197,12 @@ where
 {
 	/// Set execution function
 	#[must_use]
-	pub fn execution_callback<F>(
+	pub fn execution_callback<C>(
 		self,
-		function: F,
-	) -> ObservableBuilder<P, K, CC, FC, Callback<ArcObservableExecutionFunction<P>>, S>
+		callback: C,
+	) -> ObservableBuilder<P, K, CC, FC, Callback<ArcObservableExecutionCallback<P>>, S>
 	where
-		F: FnMut(Context<P>) -> Result<Message> + Send + Sync + 'static,
+		C: FnMut(Context<P>) -> Result<Message> + Send + Sync + 'static,
 	{
 		let Self {
 			context,
@@ -215,8 +214,8 @@ where
 			feedback_callback,
 			..
 		} = self;
-		let function: ArcObservableExecutionFunction<P> =
-			Arc::new(tokio::sync::Mutex::new(function));
+		let function: ArcObservableExecutionCallback<P> =
+			Arc::new(tokio::sync::Mutex::new(callback));
 		ObservableBuilder {
 			context,
 			activation_state,
@@ -269,7 +268,7 @@ impl<P, S>
 		Selector,
 		Callback<ArcObservableControlCallback<P>>,
 		Callback<ArcObservableFeedbackCallback<P>>,
-		Callback<ArcObservableExecutionFunction<P>>,
+		Callback<ArcObservableExecutionCallback<P>>,
 		S,
 	>
 where
@@ -307,7 +306,7 @@ impl<P>
 		Selector,
 		Callback<ArcObservableControlCallback<P>>,
 		Callback<ArcObservableFeedbackCallback<P>>,
-		Callback<ArcObservableExecutionFunction<P>>,
+		Callback<ArcObservableExecutionCallback<P>>,
 		Storage<Observable<P>>,
 	>
 where

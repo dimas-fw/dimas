@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to differentiate from data structure
 - callbacks get a `Context<P>` instead of a `&Context<P>`
 - internal structure
+- renamed `ObservableBuilder::execution_function` to `execution_callback`
 
 ### Fixed
 

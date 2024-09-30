@@ -53,7 +53,7 @@ pub type ArcObservableControlCallback<P> =
 pub type ArcObservableFeedbackCallback<P> =
 	Arc<Mutex<dyn FnMut(Context<P>) -> Result<Message> + Send + Sync + 'static>>;
 /// Type definition for an observables atomic reference counted `execution` function
-pub type ArcObservableExecutionFunction<P> =
+pub type ArcObservableExecutionCallback<P> =
 	Arc<tokio::sync::Mutex<dyn FnMut(Context<P>) -> Result<Message> + Send + Sync + 'static>>;
 // endregion:	--- types
 
