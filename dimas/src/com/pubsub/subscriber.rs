@@ -107,21 +107,6 @@ where
 	fn start(&mut self) -> Result<()> {
 		self.stop();
 
-		// check Mutexes
-		{
-			if self.put_callback.lock().is_err() {
-				warn!("found poisoned put Mutex");
-				self.put_callback.clear_poison();
-			}
-
-			if let Some(dcb) = self.delete_callback.clone() {
-				if dcb.lock().is_err() {
-					warn!("found poisoned delete Mutex");
-					dcb.clear_poison();
-				}
-			}
-		}
-
 		let selector = self.selector.clone();
 		let p_cb = self.put_callback.clone();
 		let d_cb = self.delete_callback.clone();
@@ -203,30 +188,18 @@ where
 			SampleKind::Put => {
 				let content: Vec<u8> = sample.payload().into();
 				let msg = Message::new(content);
-				match p_cb.lock() {
-					Ok(mut lock) => {
-						let ctx = ctx.clone();
-						if let Err(error) = lock(ctx, msg) {
-							error!("subscriber put callback failed with {error}");
-						}
-					}
-					Err(err) => {
-						error!("subscriber put callback lock failed with {err}");
-					}
+				let mut lock = p_cb.lock().await;
+				let ctx = ctx.clone();
+				if let Err(error) = lock(ctx, msg).await {
+					error!("subscriber put callback failed with {error}");
 				}
 			}
 			SampleKind::Delete => {
 				if let Some(cb) = d_cb.clone() {
-					match cb.lock() {
-						Ok(mut lock) => {
-							let ctx = ctx.clone();
-							if let Err(error) = lock(ctx) {
-								error!("subscriber delete callback failed with {error}");
-							}
-						}
-						Err(err) => {
-							error!("subscriber delete callback lock failed with {err}");
-						}
+					let ctx = ctx.clone();
+					let mut lock = cb.lock().await;
+					if let Err(error) = lock(ctx).await {
+						error!("subscriber delete callback failed with {error}");
 					}
 				}
 			}

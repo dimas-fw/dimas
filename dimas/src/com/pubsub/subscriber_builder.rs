@@ -5,7 +5,6 @@
 
 // region:		--- modules
 // these ones are only for doc needed
-use super::{ArcDeleteCallback, ArcPutCallback};
 #[cfg(doc)]
 use crate::agent::Agent;
 use crate::com::pubsub::subscriber::Subscriber;
@@ -17,10 +16,24 @@ use dimas_core::{
 	traits::Context,
 	utils::selector_from,
 };
-use std::sync::{Arc, Mutex, RwLock};
+use futures::future::{BoxFuture, Future};
+use std::sync::{Arc, RwLock};
+use tokio::sync::Mutex;
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
 // endregion:	--- modules
+
+// region:    	--- types
+/// Type definition for a subscribers `put` callback
+type PutCallback<P> =
+	Box<dyn FnMut(Context<P>, Message) -> BoxFuture<'static, Result<()>> + Send + Sync>;
+/// Type definition for a subscribers atomic reference counted `put` callback
+pub type ArcPutCallback<P> = Arc<Mutex<PutCallback<P>>>;
+/// Type definition for a subscribers `delete` callback
+type DeleteCallback<P> = Box<dyn FnMut(Context<P>) -> BoxFuture<'static, Result<()>> + Send + Sync>;
+/// Type definition for a subscribers atomic reference counted `delete` callback
+pub type ArcDeleteCallback<P> = Arc<Mutex<DeleteCallback<P>>>;
+// endregion: 	--- types
 
 // region:		--- SubscriberBuilder
 /// A builder for a subscriber
@@ -90,10 +103,12 @@ where
 
 	/// Set subscribers callback for `delete` messages
 	#[must_use]
-	pub fn delete_callback<F>(mut self, callback: F) -> Self
+	pub fn delete_callback<CB, F>(mut self, mut callback: CB) -> Self
 	where
-		F: FnMut(Context<P>) -> Result<()> + Send + Sync + 'static,
+		CB: FnMut(Context<P>) -> F + Send + Sync + 'static,
+		F: Future<Output = Result<()>> + Send + Sync + 'static,
 	{
+		let callback: DeleteCallback<P> = Box::new(move |ctx| Box::pin(callback(ctx)));
 		self.delete_callback
 			.replace(Arc::new(Mutex::new(callback)));
 		self
@@ -148,12 +163,13 @@ where
 {
 	/// Set callback for put messages
 	#[must_use]
-	pub fn put_callback<F>(
+	pub fn put_callback<CB, F>(
 		self,
-		callback: F,
+		mut callback: CB,
 	) -> SubscriberBuilder<P, K, Callback<ArcPutCallback<P>>, S>
 	where
-		F: FnMut(Context<P>, Message) -> Result<()> + Send + Sync + 'static,
+		CB: FnMut(Context<P>, Message) -> F + Send + Sync + 'static,
+		F: Future<Output = Result<()>> + Send + Sync + 'static,
 	{
 		let Self {
 			context,
@@ -166,6 +182,7 @@ where
 			delete_callback,
 			..
 		} = self;
+		let callback: PutCallback<P> = Box::new(move |ctx, msg| Box::pin(callback(ctx, msg)));
 		let callback: ArcPutCallback<P> = Arc::new(Mutex::new(callback));
 		SubscriberBuilder {
 			context,
