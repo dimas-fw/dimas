@@ -156,7 +156,8 @@ where
 			execution_callback,
 			..
 		} = self;
-		let callback: ObservableControlCallback<P> = Box::new(move |ctx, msg| Box::pin(callback(ctx, msg)));
+		let callback: ObservableControlCallback<P> =
+			Box::new(move |ctx, msg| Box::pin(callback(ctx, msg)));
 		let callback: ArcObservableControlCallback<P> = Arc::new(Mutex::new(callback));
 		ObservableBuilder {
 			context,

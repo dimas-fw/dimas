@@ -94,22 +94,6 @@ where
 	fn start(&mut self) -> Result<()> {
 		self.stop();
 
-		// check Mutexes
-		{
-			if self.put_callback.lock().is_err() {
-				warn!("found poisoned put Mutex");
-				self.put_callback.clear_poison();
-			}
-		}
-		{
-			if let Some(dcb) = self.delete_callback.clone() {
-				if dcb.lock().is_err() {
-					warn!("found poisoned delete Mutex");
-					dcb.clear_poison();
-				}
-			}
-		}
-
 		// liveliness handling
 		let key = self.token.clone();
 		let token1 = self.token.clone();
@@ -182,29 +166,19 @@ async fn run_liveliness<P>(
 					continue;
 				};
 				match sample.kind() {
-					SampleKind::Put => match p_cb.lock() {
-						Ok(mut lock) => {
-							let ctx = ctx.clone();
-							if let Err(error) = lock(ctx, id) {
-								error!("liveliness put callback failed with {error}");
-							}
+					SampleKind::Put => {
+						let ctx = ctx.clone();
+						let mut lock = p_cb.lock().await;
+						if let Err(error) = lock(ctx, id.to_string()).await {
+							error!("liveliness put callback failed with {error}");
 						}
-						Err(err) => {
-							error!("liveliness put callback lock failed with {err}");
-						}
-					},
+					}
 					SampleKind::Delete => {
 						if let Some(cb) = d_cb.clone() {
-							match cb.lock() {
-								Ok(mut lock) => {
-									let ctx = ctx.clone();
-									if let Err(err) = lock(ctx, id) {
-										error!("liveliness delete callback failed with {err}");
-									}
-								}
-								Err(err) => {
-									error!("liveliness delete callback lock failed with {err}");
-								}
+							let ctx = ctx.clone();
+							let mut lock = cb.lock().await;
+							if let Err(err) = lock(ctx, id.to_string()).await {
+								error!("liveliness delete callback failed with {err}");
 							}
 						}
 					}
@@ -240,16 +214,10 @@ async fn run_initial<P>(
 						if id == ctx.uuid() {
 							continue;
 						};
-						match p_cb.lock() {
-							Ok(mut lock) => {
-								let ctx = ctx.clone();
-								if let Err(error) = lock(ctx, id) {
-									error!("lveliness put callback failed with {error}");
-								}
-							}
-							Err(err) => {
-								error!("liveliness put callback failed with {err}");
-							}
+						let ctx = ctx.clone();
+						let mut lock = p_cb.lock().await;
+						if let Err(error) = lock(ctx, id.to_string()).await {
+							error!("lveliness put callback failed with {error}");
 						}
 					}
 					Err(err) => error!(">> liveliness subscriber delete error: {:?})", err),

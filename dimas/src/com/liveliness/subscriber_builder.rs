@@ -4,7 +4,7 @@
 //! A `LivelinessSubscriber` can optional subscribe on a delete message.
 
 // region:		--- modules
-use super::ArcLivelinessCallback;
+use super::subscriber::LivelinessSubscriber;
 use crate::{Callback, NoCallback, NoStorage, Storage};
 use dimas_core::{
 	enums::OperationState,
@@ -12,13 +12,21 @@ use dimas_core::{
 	traits::Context,
 	utils::selector_from,
 };
+use futures::future::{BoxFuture, Future};
 use std::{
 	collections::HashMap,
-	sync::{Arc, Mutex, RwLock},
+	sync::{Arc, RwLock},
 };
-
-use super::subscriber::LivelinessSubscriber;
+use tokio::sync::Mutex;
 // endregion:	--- modules
+
+// region:    	--- types
+/// Type definition for a liveliness subscribers callback
+type LivelinessCallback<P> =
+	Box<dyn FnMut(Context<P>, String) -> BoxFuture<'static, Result<()>> + Send + Sync>;
+/// Type definition for a liveliness subscribers atomic reference counted callback
+pub type ArcLivelinessCallback<P> = Arc<Mutex<LivelinessCallback<P>>>;
+// endregion: 	--- types
 
 // region:		--- LivelinessSubscriberBuilder
 /// The builder for the liveliness subscriber
@@ -113,9 +121,10 @@ where
 
 	/// Set liveliness subscribers callback for `delete` messages
 	#[must_use]
-	pub fn delete_callback<F>(self, callback: F) -> Self
+	pub fn delete_callback<CB, F>(self, mut callback: CB) -> Self
 	where
-		F: FnMut(Context<P>, &str) -> Result<()> + Send + Sync + 'static,
+		CB: FnMut(Context<P>, String) -> F + Send + Sync + 'static,
+		F: Future<Output = Result<()>> + Send + Sync + 'static,
 	{
 		let Self {
 			token,
@@ -125,6 +134,9 @@ where
 			storage,
 			..
 		} = self;
+
+		let callback: LivelinessCallback<P> =
+			Box::new(move |ctx, txt| Box::pin(callback(ctx, txt)));
 		let delete_callback: Option<ArcLivelinessCallback<P>> =
 			Some(Arc::new(Mutex::new(callback)));
 		Self {
@@ -144,12 +156,13 @@ where
 {
 	/// Set liveliness subscribers callback for `put` messages
 	#[must_use]
-	pub fn put_callback<F>(
+	pub fn put_callback<CB, F>(
 		self,
-		callback: F,
+		mut callback: CB,
 	) -> LivelinessSubscriberBuilder<P, Callback<ArcLivelinessCallback<P>>, S>
 	where
-		F: FnMut(Context<P>, &str) -> Result<()> + Send + Sync + 'static,
+		CB: FnMut(Context<P>, String) -> F + Send + Sync + 'static,
+		F: Future<Output = Result<()>> + Send + Sync + 'static,
 	{
 		let Self {
 			token,
@@ -159,6 +172,8 @@ where
 			delete_callback,
 			..
 		} = self;
+		let callback: LivelinessCallback<P> =
+			Box::new(move |ctx, txt| Box::pin(callback(ctx, txt)));
 		let put_callback: ArcLivelinessCallback<P> = Arc::new(Mutex::new(callback));
 		LivelinessSubscriberBuilder {
 			token,

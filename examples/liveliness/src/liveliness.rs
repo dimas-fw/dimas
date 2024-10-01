@@ -10,7 +10,7 @@ struct AgentProps {
 	num: u32,
 }
 
-fn liveliness_subscription(ctx: Context<AgentProps>, id: &str) -> Result<()> {
+async fn put_callback(ctx: Context<AgentProps>, id: String) -> Result<()> {
 	println!("{id} is alive");
 	let mut val = ctx.read()?.num;
 	val += 1;
@@ -19,7 +19,7 @@ fn liveliness_subscription(ctx: Context<AgentProps>, id: &str) -> Result<()> {
 	Ok(())
 }
 
-fn delete_subscription(ctx: Context<AgentProps>, id: &str) -> Result<()> {
+async fn delete_callback(ctx: Context<AgentProps>, id: String) -> Result<()> {
 	println!("{id} died");
 	let mut val = ctx.read()?.num;
 	val -= 1;
@@ -45,8 +45,8 @@ async fn main() -> Result<()> {
 	// add a liveliness subscriber to listen for other agents
 	agent
 		.liveliness_subscriber()
-		.put_callback(liveliness_subscription)
-		.delete_callback(delete_subscription)
+		.put_callback(put_callback)
+		.delete_callback(delete_callback)
 		.add()?;
 
 	// activate sending liveliness signal
