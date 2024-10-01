@@ -32,8 +32,6 @@
 // only for doc needed
 #[cfg(doc)]
 use crate::agent::Agent;
-#[cfg(doc)]
-use dimas_core::traits::Context;
 #[cfg(feature = "unstable")]
 use crate::com::liveliness::LivelinessSubscriber;
 use crate::{
@@ -47,6 +45,8 @@ use crate::{
 use core::fmt::Debug;
 use dimas_com::communicator::Communicator;
 use dimas_config::Config;
+#[cfg(doc)]
+use dimas_core::traits::Context;
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
 	error::{DimasError, Result},

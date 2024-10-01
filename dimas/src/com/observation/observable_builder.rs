@@ -1,13 +1,11 @@
 // Copyright © 2024 Stephan Kunz
 
 // region:		--- modules
-use crate::{
-	com::{
-		observation::observable::Observable, ArcObservableControlCallback,
-		ArcObservableExecutionFunction, ArcObservableFeedbackCallback,
-	},
-	{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage},
+use super::{
+	observable::Observable, ArcObservableControlCallback, ArcObservableExecutionFunction,
+	ArcObservableFeedbackCallback,
 };
+use crate::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},

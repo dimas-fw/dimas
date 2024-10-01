@@ -5,9 +5,9 @@
 
 // region:		--- modules
 // these ones are only for doc needed
+use super::{ArcDeleteCallback, ArcPutCallback};
 #[cfg(doc)]
 use crate::agent::Agent;
-use crate::com::{ArcDeleteCallback, ArcPutCallback};
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
 	error::{DimasError, Result},

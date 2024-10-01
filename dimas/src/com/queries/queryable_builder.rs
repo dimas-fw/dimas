@@ -14,7 +14,8 @@ use std::sync::{Arc, Mutex, RwLock};
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
 
-use crate::com::{queries::queryable::Queryable, ArcQueryableCallback};
+use super::ArcQueryableCallback;
+use crate::com::queries::queryable::Queryable;
 use crate::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 // endregion:	--- modules
 

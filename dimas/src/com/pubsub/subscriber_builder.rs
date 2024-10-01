@@ -5,9 +5,10 @@
 
 // region:		--- modules
 // these ones are only for doc needed
+use super::{ArcDeleteCallback, ArcPutCallback};
 #[cfg(doc)]
 use crate::agent::Agent;
-use crate::com::{pubsub::subscriber::Subscriber, ArcDeleteCallback, ArcPutCallback};
+use crate::com::pubsub::subscriber::Subscriber;
 use crate::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use dimas_core::{
 	enums::OperationState,

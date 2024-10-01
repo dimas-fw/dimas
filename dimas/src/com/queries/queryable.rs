@@ -15,7 +15,7 @@ use tracing::{error, info, instrument, warn, Level};
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
 
-use crate::com::ArcQueryableCallback;
+use super::ArcQueryableCallback;
 // endregion:	--- modules
 
 // region:		--- Queryable

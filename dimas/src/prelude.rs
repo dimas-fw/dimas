@@ -1,6 +1,6 @@
 // Copyright © 2023 Stephan Kunz
 
-//! simplified interface of dimas. 
+//! simplified interface of dimas.
 //! Typically it is sufficient to include the prelude with
 //! ```use dimas::prelude::*;```
 
