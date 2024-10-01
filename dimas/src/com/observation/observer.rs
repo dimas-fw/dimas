@@ -1,7 +1,7 @@
 // Copyright © 2024 Stephan Kunz
 
 // region:		--- modules
-use crate::com::{ArcObserverControlCallback, ArcObserverResponseCallback};
+use super::{ArcObserverControlCallback, ArcObserverResponseCallback};
 use bitcode::decode;
 use dimas_core::{
 	enums::OperationState,

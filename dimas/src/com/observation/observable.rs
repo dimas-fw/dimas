@@ -1,7 +1,7 @@
 // Copyright © 2024 Stephan Kunz
 
 // region:		--- modules
-use crate::com::{
+use super::{
 	ArcObservableControlCallback, ArcObservableExecutionCallback, ArcObservableFeedbackCallback,
 };
 use bitcode::encode;

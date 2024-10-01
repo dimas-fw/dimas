@@ -1,14 +1,10 @@
 // Copyright © 2024 Stephan Kunz
 
 // region:		--- modules
+use super::{observer::Observer, ArcObserverControlCallback, ArcObserverResponseCallback};
 #[cfg(doc)]
 use crate::agent::Agent;
-use crate::{
-	com::{
-		observation::observer::Observer, ArcObserverControlCallback, ArcObserverResponseCallback,
-	},
-	{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage},
-};
+use crate::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},

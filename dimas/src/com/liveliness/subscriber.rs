@@ -4,6 +4,7 @@
 //! A `LivelinessSubscriber` can optional subscribe on a delete message.
 
 // region:		--- modules
+use super::ArcLivelinessCallback;
 use core::time::Duration;
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
@@ -16,8 +17,6 @@ use tokio::task::JoinHandle;
 use tracing::info;
 use tracing::{error, instrument, warn, Level};
 use zenoh::sample::SampleKind;
-
-use crate::com::ArcLivelinessCallback;
 // endregion:	--- modules
 
 // region:		--- LivelinessSubscriber

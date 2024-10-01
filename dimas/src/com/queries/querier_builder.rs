@@ -19,7 +19,8 @@ use zenoh::{
 	query::{ConsolidationMode, QueryTarget},
 };
 
-use crate::com::{queries::querier::Querier, ArcQuerierCallback};
+use super::ArcQuerierCallback;
+use crate::com::queries::querier::Querier;
 use crate::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 // endregion:	--- modules
 

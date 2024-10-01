@@ -102,7 +102,7 @@ pub fn scouting_list(config: &Config) -> Vec<ScoutingEntity> {
 	result
 }
 
-/// Set the [`OperationState`] of a `DiMAS` entities
+/// Set the [`OperationState`] of `DiMAS` entities
 /// # Panics
 /// if something goes wrong
 #[must_use]
@@ -129,7 +129,7 @@ pub fn set_state(
 	result
 }
 
-/// Set the [`OperationState`] of a `DiMAS` entities
+/// Shutdown of `DiMAS` entities
 /// # Panics
 /// if something goes wrong
 #[must_use]
