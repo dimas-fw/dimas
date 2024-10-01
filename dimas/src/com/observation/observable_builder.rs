@@ -1,10 +1,7 @@
 // Copyright © 2024 Stephan Kunz
 
 // region:		--- modules
-use super::{
-	observable::Observable, ArcObservableControlCallback, ArcObservableExecutionCallback,
-	ArcObservableFeedbackCallback,
-};
+use super::observable::Observable;
 use crate::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use dimas_core::{
 	enums::OperationState,
@@ -13,11 +10,30 @@ use dimas_core::{
 	traits::Context,
 	utils::selector_from,
 };
-use std::{
-	sync::{Arc, Mutex, RwLock},
-	time::Duration,
-};
+use futures::future::{BoxFuture, Future};
+use std::sync::{Arc, RwLock};
+use tokio::sync::Mutex;
+use tokio::time::Duration;
 // endregion:	--- modules
+
+// region:    	--- types
+/// Type definition for an observables `control` callback
+type ObservableControlCallback<P> = Box<
+	dyn FnMut(Context<P>, Message) -> BoxFuture<'static, Result<ControlResponse>> + Send + Sync,
+>;
+/// Type definition for an observables atomic reference counted `control` callback
+pub type ArcObservableControlCallback<P> = Arc<Mutex<ObservableControlCallback<P>>>;
+/// Type definition for an observables `feedback` callback
+type ObservableFeedbackCallback<P> =
+	Box<dyn FnMut(Context<P>) -> BoxFuture<'static, Result<Message>> + Send + Sync>;
+/// Type definition for an observables atomic reference counted `feedback` callback
+pub type ArcObservableFeedbackCallback<P> = Arc<Mutex<ObservableFeedbackCallback<P>>>;
+/// Type definition for an observables atomic reference counted `execution` callback
+type ObservableExecutionCallback<P> =
+	Box<dyn FnMut(Context<P>) -> BoxFuture<'static, Result<Message>> + Send + Sync>;
+/// Type definition for an observables atomic reference counted `execution` callback
+pub type ArcObservableExecutionCallback<P> = Arc<Mutex<ObservableExecutionCallback<P>>>;
+// endregion: 	--- types
 
 // region:		--- ObservableBuilder
 /// The builder for an [`Observable`]
@@ -122,12 +138,13 @@ where
 {
 	/// Set callback for control messages
 	#[must_use]
-	pub fn control_callback<C>(
+	pub fn control_callback<C, F>(
 		self,
-		callback: C,
+		mut callback: C,
 	) -> ObservableBuilder<P, K, Callback<ArcObservableControlCallback<P>>, FC, EF, S>
 	where
-		C: FnMut(Context<P>, Message) -> Result<ControlResponse> + Send + Sync + 'static,
+		C: FnMut(Context<P>, Message) -> F + Send + Sync + 'static,
+		F: Future<Output = Result<ControlResponse>> + Send + Sync + 'static,
 	{
 		let Self {
 			context,
@@ -139,6 +156,7 @@ where
 			execution_callback,
 			..
 		} = self;
+		let callback: ObservableControlCallback<P> = Box::new(move |ctx, msg| Box::pin(callback(ctx, msg)));
 		let callback: ArcObservableControlCallback<P> = Arc::new(Mutex::new(callback));
 		ObservableBuilder {
 			context,
@@ -159,12 +177,13 @@ where
 {
 	/// Set callback for feedback messages
 	#[must_use]
-	pub fn feedback_callback<C>(
+	pub fn feedback_callback<C, F>(
 		self,
-		callback: C,
+		mut callback: C,
 	) -> ObservableBuilder<P, K, CC, Callback<ArcObservableFeedbackCallback<P>>, EF, S>
 	where
-		C: FnMut(Context<P>) -> Result<Message> + Send + Sync + 'static,
+		C: FnMut(Context<P>) -> F + Send + Sync + 'static,
+		F: Future<Output = Result<Message>> + Send + Sync + 'static,
 	{
 		let Self {
 			context,
@@ -176,6 +195,7 @@ where
 			execution_callback,
 			..
 		} = self;
+		let callback: ObservableFeedbackCallback<P> = Box::new(move |ctx| Box::pin(callback(ctx)));
 		let callback: ArcObservableFeedbackCallback<P> = Arc::new(Mutex::new(callback));
 		ObservableBuilder {
 			context,
@@ -196,12 +216,13 @@ where
 {
 	/// Set execution function
 	#[must_use]
-	pub fn execution_callback<C>(
+	pub fn execution_callback<C, F>(
 		self,
-		callback: C,
+		mut callback: C,
 	) -> ObservableBuilder<P, K, CC, FC, Callback<ArcObservableExecutionCallback<P>>, S>
 	where
-		C: FnMut(Context<P>) -> Result<Message> + Send + Sync + 'static,
+		C: FnMut(Context<P>) -> F + Send + Sync + 'static,
+		F: Future<Output = Result<Message>> + Send + Sync + 'static,
 	{
 		let Self {
 			context,
@@ -213,8 +234,8 @@ where
 			feedback_callback,
 			..
 		} = self;
-		let function: ArcObservableExecutionCallback<P> =
-			Arc::new(tokio::sync::Mutex::new(callback));
+		let callback: ObservableExecutionCallback<P> = Box::new(move |ctx| Box::pin(callback(ctx)));
+		let callback = Arc::new(Mutex::new(callback));
 		ObservableBuilder {
 			context,
 			activation_state,
@@ -222,7 +243,7 @@ where
 			selector,
 			control_callback,
 			feedback_callback,
-			execution_callback: Callback { callback: function },
+			execution_callback: Callback { callback },
 			storage,
 		}
 	}
@@ -267,7 +288,13 @@ impl<P, S>
 		Selector,
 		Callback<ArcObservableControlCallback<P>>,
 		Callback<ArcObservableFeedbackCallback<P>>,
-		Callback<ArcObservableExecutionCallback<P>>,
+		Callback<
+			Arc<
+				Mutex<
+					Box<dyn FnMut(Context<P>) -> BoxFuture<'static, Result<Message>> + Send + Sync>,
+				>,
+			>,
+		>,
 		S,
 	>
 where

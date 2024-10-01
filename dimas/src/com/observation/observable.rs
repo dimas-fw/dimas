@@ -105,28 +105,6 @@ where
 	fn start(&mut self) -> Result<()> {
 		self.stop();
 
-		// check Mutexes
-		{
-			if self.control_callback.lock().is_err() {
-				warn!("found poisoned control Mutex");
-				self.control_callback.clear_poison();
-			}
-		}
-
-		{
-			if self.feedback_callback.lock().is_err() {
-				warn!("found poisoned feedback Mutex");
-				self.feedback_callback.clear_poison();
-			}
-		}
-
-		//{
-		//	if self.execution_function.lock().is_err() {
-		//		warn!("found poisoned execution Mutex");
-		//		self.execution_function.clear_poison();
-		//	}
-		//}
-
 		let selector = self.selector.clone();
 		let interval = self.feedback_interval;
 		let ccb = self.control_callback.clone();
@@ -241,48 +219,42 @@ where
 							},
 						);
 						let msg = Message::new(content);
-						// check whether request is possible using control callback
-						match control_callback.lock() {
-							Ok(mut lock) => {
-								let ctx_clone = ctx.clone();
-								let res = lock(ctx_clone, msg);
-								match res {
-									Ok(response) => {
-										if matches!(response, ControlResponse::Accepted ) {
-											// create feedback publisher
-											ctx.session()
-												.declare_publisher(publisher_selector.clone())
-												.congestion_control(CongestionControl::Block)
-												.priority(Priority::RealTime)
-												.wait()
-												.map_or_else(
-													|err| error!("could not create feedback publisher due to {err}"),
-													|publ| { feedback_publisher.replace(publ); }
-												);
+						let ctx_clone = ctx.clone();
+						let res = control_callback.lock().await(ctx_clone, msg).await;
+						match res {
+							Ok(response) => {
+								if matches!(response, ControlResponse::Accepted ) {
+									// create feedback publisher
+									ctx.session()
+										.declare_publisher(publisher_selector.clone())
+										.congestion_control(CongestionControl::Block)
+										.priority(Priority::RealTime)
+										.wait()
+										.map_or_else(
+											|err| error!("could not create feedback publisher due to {err}"),
+											|publ| { feedback_publisher.replace(publ); }
+										);
 
 
-											// spawn execution
-											let tx_clone = tx.clone();
-											let execution_function_clone = execution_function.clone();
-											let ctx_clone = ctx.clone();
-											execution_handle.replace(tokio::spawn( async move {
-												let res = execution_function_clone.lock().await(ctx_clone).unwrap_or_else(|_| { todo!() });
-												if !matches!(tx_clone.send(res).await, Ok(())) { error!("failed to send back execution result") };
-											}));
+									// spawn execution
+									let tx_clone = tx.clone();
+									let execution_function_clone = execution_function.clone();
+									let ctx_clone = ctx.clone();
+									execution_handle.replace(tokio::spawn( async move {
+										let res = execution_function_clone.lock().await(ctx_clone).await.unwrap_or_else(|_| { todo!() });
+										if !matches!(tx_clone.send(res).await, Ok(())) { error!("failed to send back execution result") };
+									}));
 
-											// start feedback timer
-											feedback_timer.set(tokio::time::sleep(feedback_interval));
-											is_running = true;
-										}
-										// send  response back to requestor
-										let encoded: Vec<u8> = encode(&response);
-										match query.reply(&key, encoded).wait() {
-											Ok(()) => {},
-											Err(err) => error!("failed to reply with {err}"),
-										};
-									}
-									Err(error) => error!("control callback failed with {error}"),
+									// start feedback timer
+									feedback_timer.set(tokio::time::sleep(feedback_interval));
+									is_running = true;
 								}
+								// send  response back to requestor
+								let encoded: Vec<u8> = encode(&response);
+								match query.reply(&key, encoded).wait() {
+									Ok(()) => {},
+									Err(err) => error!("failed to reply with {err}"),
+								};
 							}
 							Err(error) => error!("control callback failed with {error}"),
 						}
@@ -297,22 +269,16 @@ where
 							h.abort();
 							// wait for abortion
 							let _ = h.await;
-							// send cancelation feedback with last state
-							match feedback_callback.lock() {
-								Ok(mut fcb) => {
-									let Ok(msg) = fcb(ctx) else { todo!() };
-									let response =
-										ObservableResponse::Canceled(msg.value().clone());
-									if let Some(p) = publisher {
-										match p.put(Message::encode(&response).value().clone()).wait() {
-											Ok(()) => {},
-											Err(err) => error!("could not send result due to {err}"),
-										};
-									} else {
-										error!("missing publisher");
-									};
-								}
-								Err(_) => { todo!() },
+							let Ok(msg) = feedback_callback.lock().await(ctx).await else { todo!() };
+							let response =
+								ObservableResponse::Canceled(msg.value().clone());
+							if let Some(p) = publisher {
+								match p.put(Message::encode(&response).value().clone()).wait() {
+									Ok(()) => {},
+									Err(err) => error!("could not send result due to {err}"),
+								};
+							} else {
+								error!("missing publisher");
 							};
 						} else {
 							error!("unexpected absence of join handle");
@@ -349,24 +315,18 @@ where
 
 			// feedback timer expired and observable still is executing
 			() = &mut feedback_timer, if is_running => {
-				// send feedback
-				match feedback_callback.lock() {
-					Ok(mut fcb) => {
-						let Ok(msg) = fcb(ctx) else { todo!() };
-						let response =
-							ObservableResponse::Feedback(msg.value().clone());
+				let Ok(msg) = feedback_callback.lock().await(ctx).await else { todo!() };
+				let response =
+					ObservableResponse::Feedback(msg.value().clone());
 
-						let publisher = feedback_publisher.as_ref().map_or_else(
-							|| { todo!() },
-							|p| p
-						);
-						match publisher.put(Message::encode(&response).value().clone()).wait() {
-							Ok(()) => {},
-							Err(err) => error!("publishing feedback failed due to {err}"),
-						};
-					}
-					Err(_) => { todo!() },
-				}
+				let publisher = feedback_publisher.as_ref().map_or_else(
+					|| { todo!() },
+					|p| p
+				);
+				match publisher.put(Message::encode(&response).value().clone()).wait() {
+					Ok(()) => {},
+					Err(err) => error!("publishing feedback failed due to {err}"),
+				};
 
 				// restart timer
 				feedback_timer.set(tokio::time::sleep(feedback_interval));
