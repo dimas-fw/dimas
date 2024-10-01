@@ -77,7 +77,7 @@ use zenoh::Wait;
 // endregion:	--- modules
 
 // region:	   --- callbacks
-fn callback_dispatcher<P>(ctx: Context<P>, request: QueryMsg) -> Result<()>
+async fn callback_dispatcher<P>(ctx: Context<P>, request: QueryMsg) -> Result<()>
 where
 	P: Send + Sync + 'static,
 {
@@ -147,8 +147,12 @@ where
 
 	// shutdown agent after a short wait time to be able to send response
 	tokio::task::spawn(async move {
-		tokio::time::sleep(Duration::from_millis(2)).await;
-		let _ = ctx.sender().blocking_send(TaskSignal::Shutdown);
+		tokio::time::sleep(Duration::from_millis(10)).await;
+		// gracefully end agent
+		let _ = ctx.set_state(OperationState::Standby);
+		tokio::time::sleep(Duration::from_millis(100)).await;
+		let _ = ctx.set_state(OperationState::Created);
+		let _ = ctx.sender().send(TaskSignal::Shutdown).await;
 	});
 	Ok(())
 }

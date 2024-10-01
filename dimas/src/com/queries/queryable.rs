@@ -103,14 +103,6 @@ where
 	fn start(&mut self) -> Result<()> {
 		self.stop();
 
-		// check Mutexes
-		{
-			if self.callback.lock().is_err() {
-				warn!("found poisoned callback Mutex");
-				self.callback.clear_poison();
-			}
-		}
-
 		let completeness = self.completeness;
 		#[cfg(feature = "unstable")]
 		let allowed_origin = self.allowed_origin;
@@ -186,16 +178,10 @@ where
 		let query = queryable.recv_async().await?;
 		let request = QueryMsg(query);
 
-		match callback.lock() {
-			Ok(mut lock) => {
-				let ctx = ctx.clone();
-				if let Err(error) = lock(ctx, request) {
-					error!("queryable callback failed with {error}");
-				}
-			}
-			Err(err) => {
-				error!("queryable callback failed with {err}");
-			}
+		let ctx = ctx.clone();
+		let mut lock = callback.lock().await;
+		if let Err(error) = lock(ctx, request).await {
+			error!("queryable callback failed with {error}");
 		}
 	}
 }

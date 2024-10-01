@@ -10,7 +10,7 @@ use pingpong::PingPongMessage;
 #[derive(Debug)]
 struct AgentProps {}
 
-fn ping_received(_ctx: Context<AgentProps>, message: QueryMsg) -> Result<()> {
+async fn ping_received(_ctx: Context<AgentProps>, message: QueryMsg) -> Result<()> {
 	let mut query: PingPongMessage = message.decode()?;
 
 	// set receive-timestamp
