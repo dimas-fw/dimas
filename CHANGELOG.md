@@ -34,8 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - internal structure
 - renamed `ObservableBuilder::execution_function` to `execution_callback`
 - renamed `ObserverBuilder::response_callback` to `result_callback`
-- async callbacks for `LivelinessSubscriber`, `Observable`, `Observer`, `Querier`, `Queryable`, `Subscriber`
-  (this makes the usage of closures for those callbacks difficult until async closures are stable)
+- async callbacks for `LivelinessSubscriber`, `Observable`, `Observer`, `Querier`,
+  `Queryable`, `Subscriber`
+  (this makes the usage of closures for those callbacks difficult
+  until async closures are stable)
+- changed trait `ContextAbstraction` from generic to associated type
 
 ### Fixed
 

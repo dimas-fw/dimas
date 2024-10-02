@@ -17,10 +17,13 @@ use zenoh::Session;
 
 // region:		--- Context
 /// Typedef for simplified usage
-pub type Context<P> = Arc<dyn ContextAbstraction<P>>;
+pub type Context<P> = Arc<dyn ContextAbstraction<Props = P>>;
 
 /// Commonalities for the context
-pub trait ContextAbstraction<P>: Debug + Send + Sync {
+pub trait ContextAbstraction: Debug + Send + Sync {
+	/// The properties structure
+	type Props;
+
 	/// Get the name
 	#[must_use]
 	fn name(&self) -> Option<&String>;
@@ -62,12 +65,12 @@ pub trait ContextAbstraction<P>: Debug + Send + Sync {
 	/// Gives read access to the properties
 	///
 	/// # Errors
-	fn read(&self) -> Result<std::sync::RwLockReadGuard<'_, P>>;
+	fn read(&self) -> Result<std::sync::RwLockReadGuard<'_, Self::Props>>;
 
 	/// Gives write access to the properties
 	///
 	/// # Errors
-	fn write(&self) -> Result<std::sync::RwLockWriteGuard<'_, P>>;
+	fn write(&self) -> Result<std::sync::RwLockWriteGuard<'_, Self::Props>>;
 
 	/// Method to do a publishing for a `topic`
 	/// The `topic` will be enhanced with the prefix.

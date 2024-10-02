@@ -107,10 +107,11 @@ where
 	timers: Arc<RwLock<HashMap<String, Timer<P>>>>,
 }
 
-impl<P> ContextAbstraction<P> for ContextImpl<P>
+impl<P> ContextAbstraction for ContextImpl<P>
 where
 	P: Debug + Send + Sync + 'static,
 {
+	type Props = P;
 	/// Get the name
 	#[must_use]
 	fn name(&self) -> Option<&String> {
