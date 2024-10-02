@@ -11,8 +11,9 @@ use dimas_core::{
 	traits::Context,
 	utils::selector_from,
 };
-//use futures::future::BoxFuture;
-use std::sync::{Arc, Mutex, RwLock};
+use futures::future::BoxFuture;
+use std::{future::Future, sync::{Arc, RwLock}};
+use tokio::sync::Mutex;
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
 use zenoh::{
@@ -28,8 +29,7 @@ use crate::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 /// type definition for a queriers `response` callback
 #[allow(dead_code)]
 type QuerierCallback<P> =
-//	Box<dyn FnMut(Context<P>) -> BoxFuture<'static, Result<()>> + Send + Sync>;
-	dyn FnMut(Context<P>, QueryableMsg) -> Result<()> + Send + Sync + 'static;
+	Box<dyn FnMut(Context<P>, QueryableMsg) -> BoxFuture<'static, Result<()>> + Send + Sync>;
 /// type definition for a queriers atomic reference counted `response` callback
 pub type ArcQuerierCallback<P> =
 	Arc<Mutex<QuerierCallback<P>>>;
@@ -179,12 +179,13 @@ where
 {
 	/// Set query callback for response messages
 	#[must_use]
-	pub fn callback<F>(
+	pub fn callback<C, F>(
 		self,
-		callback: F,
+		mut callback: C,
 	) -> QuerierBuilder<P, K, Callback<ArcQuerierCallback<P>>, S>
 	where
-		F: FnMut(Context<P>, QueryableMsg) -> Result<()> + Send + Sync + 'static,
+		C: FnMut(Context<P>, QueryableMsg) -> F + Send + Sync + 'static,
+		F: Future<Output = Result<()>> + Send + Sync + 'static,
 	{
 		let Self {
 			context,
@@ -199,6 +200,7 @@ where
 			target,
 			..
 		} = self;
+		let callback: QuerierCallback<P> = Box::new(move |ctx, msg| Box::pin(callback(ctx, msg)));
 		let callback: ArcQuerierCallback<P> = Arc::new(Mutex::new(callback));
 		QuerierBuilder {
 			context,

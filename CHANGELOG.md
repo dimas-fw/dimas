@@ -33,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - callbacks get a `Context<P>` instead of a `&Context<P>`
 - internal structure
 - renamed `ObservableBuilder::execution_function` to `execution_callback`
-- async callbacks for `LivelinessSubscriber`, `Observable`, `Queryable`, `Subscriber`
+- async callbacks for `LivelinessSubscriber`, `Observable`, `Querier`, `Queryable`, `Subscriber`
   (this makes the usage of closures for those callbacks difficult until async closures are stable)
 
 ### Fixed

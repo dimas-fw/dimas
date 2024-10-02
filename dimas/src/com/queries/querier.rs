@@ -152,14 +152,6 @@ where
 		message: Option<Message>,
 		mut callback: Option<&dyn Fn(QueryableMsg) -> Result<()>>,
 	) -> Result<()> {
-		// check Mutex
-		{
-			if self.callback.lock().is_err() {
-				warn!("found poisoned Mutex");
-				self.callback.clear_poison();
-			}
-		}
-
 		let cb = self.callback.clone();
 		let session = self.context.session();
 		let mut querier = message
@@ -189,17 +181,14 @@ where
 						let content: Vec<u8> = sample.payload().into();
 						let msg = QueryableMsg(content);
 						if callback.is_none() {
-							let guard = cb.lock();
-							match guard {
-								Ok(mut lock) => {
-									if let Err(error) = lock(self.context.clone(), msg) {
-										error!("callback failed with {error}");
-									}
+							let cb = cb.clone();
+							let ctx = self.context.clone();
+							tokio::task::spawn(async move {
+								let mut lock = cb.lock().await;
+								if let Err(error) = lock(ctx, msg).await {
+									error!("querier callback failed with {error}");
 								}
-								Err(err) => {
-									error!("callback lock failed with {err}");
-								}
-							}
+							});
 						} else {
 							callback.as_mut().expect("snh")(msg)?;
 						}

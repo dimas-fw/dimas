@@ -8,7 +8,7 @@ use dimas::prelude::*;
 #[derive(Debug)]
 struct AgentProps {}
 
-fn query_callback(_ctx: Context<AgentProps>, response: QueryableMsg) -> Result<()> {
+async fn query_callback(_ctx: Context<AgentProps>, response: QueryableMsg) -> Result<()> {
 	let message: u128 = response.decode()?;
 	println!("Response 1 is '{message}'");
 	Ok(())
