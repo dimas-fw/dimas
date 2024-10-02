@@ -12,25 +12,22 @@ use dimas_core::{
 	traits::Context,
 	utils::selector_from,
 };
-use futures::future::BoxFuture;
-use std::sync::{Arc, Mutex, RwLock};
+use futures::future::{BoxFuture, Future};
+use std::sync::{Arc, RwLock};
+use tokio::sync::Mutex;
 // endregion:	--- modules
 
 // region:    	--- types
 /// Type definition for an observers `control` callback
-#[allow(dead_code)]
 type ObserverControlCallback<P> =
 	Box<dyn FnMut(Context<P>, ControlResponse) -> BoxFuture<'static, Result<()>> + Send + Sync>;
 /// Type definition for an observers atomic reference counted `control` callback
-pub type ArcObserverControlCallback<P> =
-	Arc<Mutex<dyn FnMut(Context<P>, ControlResponse) -> Result<()> + Send + Sync + 'static>>;
+pub type ArcObserverControlCallback<P> = Arc<Mutex<ObserverControlCallback<P>>>;
 /// Type definition for an observers `response` callback
-#[allow(dead_code)]
 type ObserverResponseCallback<P> =
 	Box<dyn FnMut(Context<P>, ObservableResponse) -> BoxFuture<'static, Result<()>> + Send + Sync>;
 /// Type definition for an observers atomic reference counted `response` callback
-pub type ArcObserverResponseCallback<P> =
-	Arc<Mutex<dyn FnMut(Context<P>, ObservableResponse) -> Result<()> + Send + Sync + 'static>>;
+pub type ArcObserverResponseCallback<P> = Arc<Mutex<ObserverResponseCallback<P>>>;
 // endregion: 	--- types
 
 // region:		--- ObserverBuilder
@@ -123,12 +120,13 @@ where
 {
 	/// Set callback for messages
 	#[must_use]
-	pub fn control_callback<F>(
+	pub fn control_callback<C, F>(
 		self,
-		callback: F,
+		mut callback: C,
 	) -> ObserverBuilder<P, K, Callback<ArcObserverControlCallback<P>>, RC, S>
 	where
-		F: FnMut(Context<P>, ControlResponse) -> Result<()> + Send + Sync + 'static,
+		C: FnMut(Context<P>, ControlResponse) -> F + Send + Sync + 'static,
+		F: Future<Output = Result<()>> + Send + Sync + 'static,
 	{
 		let Self {
 			context,
@@ -138,6 +136,8 @@ where
 			storage,
 			..
 		} = self;
+		let callback: ObserverControlCallback<P> =
+			Box::new(move |ctx, msg| Box::pin(callback(ctx, msg)));
 		let callback: ArcObserverControlCallback<P> = Arc::new(Mutex::new(callback));
 		ObserverBuilder {
 			context,
@@ -156,12 +156,13 @@ where
 {
 	/// Set callback for response messages
 	#[must_use]
-	pub fn response_callback<F>(
+	pub fn result_callback<C, F>(
 		self,
-		callback: F,
+		mut callback: C,
 	) -> ObserverBuilder<P, K, CC, Callback<ArcObserverResponseCallback<P>>, S>
 	where
-		F: FnMut(Context<P>, ObservableResponse) -> Result<()> + Send + Sync + 'static,
+		C: FnMut(Context<P>, ObservableResponse) -> F + Send + Sync + 'static,
+		F: Future<Output = Result<()>> + Send + Sync + 'static,
 	{
 		let Self {
 			context,
@@ -171,6 +172,8 @@ where
 			storage,
 			..
 		} = self;
+		let callback: ObserverResponseCallback<P> =
+			Box::new(move |ctx, msg| Box::pin(callback(ctx, msg)));
 		let callback: ArcObserverResponseCallback<P> = Arc::new(Mutex::new(callback));
 		ObserverBuilder {
 			context,

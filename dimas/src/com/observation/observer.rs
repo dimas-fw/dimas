@@ -121,15 +121,6 @@ where
 		#[cfg(feature = "unstable")]
 		let query = query.allowed_destination(Locality::Any);
 
-		//if let Some(timeout) = self.timeout {
-		//	query = query.timeout(timeout);
-		//};
-
-		//if let Some(message) = message {
-		//	let value = message.value().to_owned();
-		//	query = query.with_value(value);
-		//};
-
 		let replies = query
 			.wait()
 			.map_err(|_| DimasError::ShouldNotHappen)?;
@@ -145,16 +136,10 @@ where
 						if matches!(response, ControlResponse::Canceled) {
 							// without spawning possible deadlock when called inside an control response
 							tokio::spawn(async move {
-								match ccb.lock() {
-									Ok(mut lock) => {
-										if let Err(error) = lock(ctx.clone(), response) {
-											error!("callback failed with {error}");
-										}
-									}
-									Err(err) => {
-										error!("callback lock failed with {err}");
-									}
-								};
+								let mut lock = ccb.lock().await;
+								if let Err(error) = lock(ctx.clone(), response).await {
+									error!("callback failed with {error}");
+								}
 							});
 						} else {
 							error!("unexpected response on cancelation");
@@ -244,16 +229,14 @@ where
 									});
 								};
 								// call control callback
-								match self.control_callback.lock() {
-									Ok(mut lock) => {
-										if let Err(error) = lock(self.context.clone(), response) {
-											error!("control callback failed with {error}");
-										}
+								let ctx = self.context.clone();
+								let ccb = self.control_callback.clone();
+								tokio::task::spawn(async move {
+									let mut lock = ccb.lock().await;
+									if let Err(error) = lock(ctx, response).await {
+										error!("control callback failed with {error}");
 									}
-									Err(err) => {
-										error!("control callback lock failed with {err}");
-									}
-								};
+								});
 							},
 						);
 					}
@@ -270,6 +253,7 @@ where
 // endregion:	--- Observer
 
 // region:		--- functions
+#[allow(clippy::significant_drop_in_scrutinee)]
 #[instrument(name="observation", level = Level::ERROR, skip_all)]
 async fn run_observation<P>(
 	selector: String,
@@ -293,19 +277,14 @@ async fn run_observation<P>(
 							Ok(response) => {
 								// remember to stop loop on anything that is not feedback
 								let stop = !matches!(response, ObservableResponse::Feedback(_));
-								rcb.lock().map_or_else(
-									|_| todo!(),
-									|mut cb| {
-										let ctx = ctx.clone();
-										if let Err(error) = cb(ctx, response) {
-											error!("response callback failed with {error}");
-										};
-									},
-								);
+								let ctx = ctx.clone();
+								if let Err(error) = rcb.lock().await(ctx, response).await {
+									error!("response callback failed with {error}");
+								};
 								if stop {
 									break;
-								}
-							}
+								};
+							},
 							Err(_) => todo!(),
 						};
 					}

@@ -118,7 +118,7 @@ async fn main() -> Result<()> {
 			let message = Message::encode(&counter4);
 			// querying with stored query & closure
 			ctx.get(
-				"query1",
+				"query4",
 				Some(message),
 				Some(&|response| -> Result<()> {
 					let message: u128 = response.decode()?;
