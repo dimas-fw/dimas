@@ -11,7 +11,7 @@ use dimas_core::{
 	traits::Context,
 	utils::selector_from,
 };
-use futures::future::BoxFuture;
+//use futures::future::BoxFuture;
 use std::sync::{Arc, Mutex, RwLock};
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
@@ -28,10 +28,11 @@ use crate::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 /// type definition for a queriers `response` callback
 #[allow(dead_code)]
 type QuerierCallback<P> =
-	Box<dyn FnMut(Context<P>) -> BoxFuture<'static, Result<()>> + Send + Sync>;
+//	Box<dyn FnMut(Context<P>) -> BoxFuture<'static, Result<()>> + Send + Sync>;
+	dyn FnMut(Context<P>, QueryableMsg) -> Result<()> + Send + Sync + 'static;
 /// type definition for a queriers atomic reference counted `response` callback
 pub type ArcQuerierCallback<P> =
-	Arc<Mutex<dyn FnMut(Context<P>, QueryableMsg) -> Result<()> + Send + Sync + 'static>>;
+	Arc<Mutex<QuerierCallback<P>>>;
 // endregion: 	--- types
 
 // region:		--- QuerierBuilder
