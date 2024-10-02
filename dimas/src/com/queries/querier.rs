@@ -178,7 +178,7 @@ where
 			match reply.result() {
 				Ok(sample) => match sample.kind() {
 					SampleKind::Put => {
-						let content: Vec<u8> = sample.payload().into();
+						let content: Vec<u8> = sample.payload().to_bytes().into_owned();
 						let msg = QueryableMsg(content);
 						if callback.is_none() {
 							let cb = cb.clone();

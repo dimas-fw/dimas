@@ -214,7 +214,7 @@ where
 								content
 							},
 							|value| {
-								let content: Vec<u8> = value.into();
+								let content: Vec<u8> = value.to_bytes().into_owned();
 								content
 							},
 						);

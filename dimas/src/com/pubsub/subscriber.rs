@@ -186,7 +186,7 @@ where
 
 		match sample.kind() {
 			SampleKind::Put => {
-				let content: Vec<u8> = sample.payload().into();
+				let content: Vec<u8> = sample.payload().to_bytes().into_owned();
 				let msg = Message::new(content);
 				let mut lock = p_cb.lock().await;
 				let ctx = ctx.clone();

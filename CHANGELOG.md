@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - bumped minimum rust version to 1.81
+- bumped to zenoh 1.0.0-beta.4
 - replaced `std::` with `core::` in some places
 - renamed `Query` to `Querier` `QueryBuilder` to `QuerierBuilder`
   to differentiate from data structure

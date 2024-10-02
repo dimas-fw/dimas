@@ -116,7 +116,7 @@ impl QueryMsg {
 		T: for<'a> Decode<'a>,
 	{
 		if let Some(value) = self.0.payload() {
-			let content: Vec<u8> = value.into();
+			let content: Vec<u8> = value.to_bytes().into_owned();
 			return decode::<T>(content.as_slice()).map_err(|_| DimasError::Decoding.into());
 		}
 		Err(DimasError::NoMessage.into())

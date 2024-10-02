@@ -82,7 +82,7 @@ where
 	P: Send + Sync + 'static,
 {
 	if let Some(value) = request.payload() {
-		let content: Vec<u8> = value.into();
+		let content: Vec<u8> = value.to_bytes().into_owned();
 		let msg = Message::new(content);
 		let signal: Signal = Message::decode(msg)?;
 		match signal {

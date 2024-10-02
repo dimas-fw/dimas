@@ -116,7 +116,7 @@ impl Communicator {
 			match reply.result() {
 				Ok(sample) => match sample.kind() {
 					SampleKind::Put => {
-						let content: Vec<u8> = sample.payload().into();
+						let content: Vec<u8> = sample.payload().to_bytes().into_owned();
 						callback(QueryableMsg(content))?;
 					}
 					SampleKind::Delete => {
@@ -124,7 +124,7 @@ impl Communicator {
 					}
 				},
 				Err(err) => {
-					let content: Vec<u8> = err.payload().into();
+					let content: Vec<u8> = err.payload().to_bytes().into_owned();
 					println!(">> Received (ERROR: '{:?}' for {})", &content, &selector);
 				}
 			}

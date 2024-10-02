@@ -131,7 +131,7 @@ where
 					SampleKind::Put => {
 						let ccb = self.control_callback.clone();
 						let ctx = self.context.clone();
-						let content: Vec<u8> = sample.payload().into();
+						let content: Vec<u8> = sample.payload().to_bytes().into_owned();
 						let response: ControlResponse = decode(&content)?;
 						if matches!(response, ControlResponse::Canceled) {
 							// without spawning possible deadlock when called inside an control response
@@ -186,7 +186,7 @@ where
 			match reply.result() {
 				Ok(sample) => match sample.kind() {
 					SampleKind::Put => {
-						let content: Vec<u8> = sample.payload().into();
+						let content: Vec<u8> = sample.payload().to_bytes().into_owned();
 						decode::<ControlResponse>(&content).map_or_else(
 							|_| todo!(),
 							|response| {
@@ -272,7 +272,7 @@ async fn run_observation<P>(
 			Ok(sample) => {
 				match sample.kind() {
 					SampleKind::Put => {
-						let content: Vec<u8> = sample.payload().into();
+						let content: Vec<u8> = sample.payload().to_bytes().into_owned();
 						match decode::<ObservableResponse>(&content) {
 							Ok(response) => {
 								// remember to stop loop on anything that is not feedback
