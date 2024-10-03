@@ -74,7 +74,7 @@ async fn response(ctx: Context<AgentProps>, response: ObservableResponse) -> Res
 		}
 	}
 	Ok(())
-} 
+}
 #[tokio::main]
 async fn main() -> Result<()> {
 	// initialize tracing/logging

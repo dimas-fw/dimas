@@ -284,7 +284,7 @@ async fn run_observation<P>(
 								if stop {
 									break;
 								};
-							},
+							}
 							Err(_) => todo!(),
 						};
 					}

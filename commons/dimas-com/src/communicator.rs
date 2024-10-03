@@ -3,13 +3,21 @@
 //! Communicator implements the communication capabilities.
 //!
 
+#[doc(hidden)]
+extern crate alloc;
+
+#[cfg(feature = "std")]
+extern crate std;
+
 // region:		--- modules
+#[cfg(feature = "std")]
+use std::prelude::rust_2021::*;
 use core::fmt::Debug;
 use dimas_core::{
 	error::{DimasError, Result},
 	message_types::{Message, QueryableMsg},
 };
-use std::sync::Arc;
+use alloc::sync::Arc;
 #[cfg(feature = "unstable")]
 use zenoh::config::WhatAmI;
 #[cfg(feature = "unstable")]
@@ -120,12 +128,12 @@ impl Communicator {
 						callback(QueryableMsg(content))?;
 					}
 					SampleKind::Delete => {
-						println!("Delete in Query");
+						todo!("Delete in Query");
 					}
 				},
 				Err(err) => {
 					let content: Vec<u8> = err.payload().to_bytes().into_owned();
-					println!(">> Received (ERROR: '{:?}' for {})", &content, &selector);
+					todo!(">> Received (ERROR: '{:?}' for {})", &content, &selector);
 				}
 			}
 		}

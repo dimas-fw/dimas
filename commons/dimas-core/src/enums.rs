@@ -3,10 +3,15 @@
 //! Core enums of `DiMAS`
 //!
 
+#[cfg(feature = "std")]
+extern crate std;
+
 // region:		--- modules
 use crate::error::{DimasError, Result};
 use bitcode::{Decode, Encode};
 use core::fmt::{Debug, Display};
+#[cfg(feature = "std")]
+use std::prelude::rust_2021::*;
 // endregion:	--- modules
 
 // region:		--- OperationState

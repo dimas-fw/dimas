@@ -36,7 +36,10 @@ async fn main() -> Result<()> {
 		.callback(|ctx| -> Result<()> {
 			let count = ctx.read()?.count;
 			// create structure to send
-			let msg = PubSubMessage { count: count, text: String::from("hello world!")  };
+			let msg = PubSubMessage {
+				count: count,
+				text: String::from("hello world!"),
+			};
 			let message = Message::encode(&msg);
 			println!("Sending {} [{}]", msg.text, msg.count);
 			// publishing with stored publisher

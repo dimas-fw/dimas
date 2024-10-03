@@ -3,7 +3,12 @@
 //! Helper functions and structs
 //!
 
+#[cfg(feature = "std")]
+extern crate std;
+
 // region:		--- modules
+#[cfg(feature = "std")]
+use std::prelude::rust_2021::*;
 // endregion:	--- modules
 
 // region:    --- tracing
@@ -24,7 +29,15 @@ pub fn init_tracing() {
 // region:    --- helper
 /// create selector
 #[must_use]
-pub fn selector_from(topic: &str, prefix: Option<&String>) -> String {
-	prefix.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"))
+pub fn selector_from(topic: &str, mut prefix: Option<&String>) -> String {
+	prefix.take().map_or(
+		topic.to_string(),
+		|prefix| {
+			let mut result = String::from(prefix);
+			result.push('/');
+			result.push_str(topic);
+			result
+		}
+	)
 }
 // endregion: --- helper

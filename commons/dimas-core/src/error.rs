@@ -4,6 +4,14 @@
 //! type alias for [`core::result::Result`] to write only `Result<T>`.
 //!
 
+#[cfg(feature = "std")]
+extern crate std;
+
+// region:		--- modules
+#[cfg(feature = "std")]
+use std::prelude::rust_2021::*;
+// endregion:	--- modules
+
 // region:		--- types
 /// Type alias for `core::result::Result` to ease up implementation
 pub type Result<T> = core::result::Result<T, Box<dyn core::error::Error + Send + Sync + 'static>>;

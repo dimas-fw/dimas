@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - re-export of `tokio::time::Duration` in `dimas::prelude`
 - feature `unstable`, which encapsulates zenoh unstable feature
 - additional settings in: `PublisherBuilder`, `SubscriberBuilder`,
-  `Querier`, `QueryableBuilder`
+  `Querier`, `QueryableBuilder`. `ObserableBuilder`. `Observer`
 
 ### Changed
 

@@ -22,8 +22,8 @@ bitcode = { workspace = true }
 chrono = { workspace = true }
 dirs = { workspace = true }
 dimas-com = { workspace = true }
-dimas-config = { workspace = true }
-dimas-core = { workspace = true }
+dimas-config = { workspace = true, features = ["std"] }
+dimas-core = { workspace = true, features = ["std"] }
 futures = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["signal", "time"]}

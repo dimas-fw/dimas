@@ -15,7 +15,6 @@ use dimas_core::{
 	error::Result,
 	message_types::Message,
 };
-use itertools::Itertools;
 use std::collections::HashMap;
 use zenoh::{config::WhatAmI, Wait};
 // endregion:	--- modules
@@ -38,7 +37,7 @@ pub fn about_list(com: &Communicator, base_selector: &String) -> Vec<AboutEntity
 	})
 	.expect("querying 'about' failed");
 
-	let result: Vec<AboutEntity> = map.values().sorted().cloned().collect();
+	let result: Vec<AboutEntity> = map.values().cloned().collect();
 
 	result
 }
@@ -72,10 +71,11 @@ pub fn ping_list(com: &Communicator, base_selector: &String) -> Vec<(PingEntity,
 	})
 	.expect("querying 'about' failed");
 
-	let result: Vec<(PingEntity, i64)> = map.values().sorted().cloned().collect();
+	let result: Vec<(PingEntity, i64)> = map.values().cloned().collect();
 
 	result
 }
+
 
 /// Scout for `DiMAS` entities, sorted by zid of entity
 /// # Panics
@@ -90,14 +90,18 @@ pub fn scouting_list(config: &Config) -> Vec<ScoutingEntity> {
 
 	while let Ok(hello) = receiver.recv_timeout(Duration::from_millis(250)) {
 		let zid = hello.zid().to_string();
+		let locators: Vec<String> = hello.locators().iter().map(|locator| {
+			locator.to_string()
+		}).collect();
+		
 		let entry = ScoutingEntity::new(
 			zid.clone(),
 			hello.whatami().to_string(),
-			hello.locators().to_owned(),
+			locators,
 		);
 		map.entry(zid).or_insert(entry);
 	}
-	let result: Vec<ScoutingEntity> = map.values().sorted().cloned().collect();
+	let result: Vec<ScoutingEntity> = map.values().cloned().collect();
 
 	result
 }
@@ -124,7 +128,7 @@ pub fn set_state(
 	})
 	.expect("querying 'state' failed");
 
-	let result: Vec<AboutEntity> = map.values().sorted().cloned().collect();
+	let result: Vec<AboutEntity> = map.values().cloned().collect();
 
 	result
 }
@@ -147,7 +151,7 @@ pub fn shutdown(com: &Communicator, base_selector: &String) -> Vec<AboutEntity> 
 	})
 	.expect("querying 'state' failed");
 
-	let result: Vec<AboutEntity> = map.values().sorted().cloned().collect();
+	let result: Vec<AboutEntity> = map.values().cloned().collect();
 
 	result
 }

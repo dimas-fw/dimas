@@ -3,13 +3,18 @@
 //! Core traits of `DiMAS`
 //!
 
+#[cfg(feature = "std")]
+extern crate std;
+
 // region:		--- modules
 use crate::{
 	enums::{OperationState, TaskSignal},
 	error::Result,
-	message_types::{Message, QueryableMsg},
+	message_types::{Message, QueryableMsg}, utils::selector_from,
 };
 use core::fmt::Debug;
+#[cfg(feature = "std")]
+use std::prelude::rust_2021::*;
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
 use zenoh::Session;
@@ -79,11 +84,7 @@ pub trait ContextAbstraction: Debug + Send + Sync {
 	///
 	/// # Errors
 	fn put(&self, topic: &str, message: Message) -> Result<()> {
-		let selector = self
-			.prefix()
-			.clone()
-			.take()
-			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
+		let selector = selector_from(topic, self.prefix());
 		self.put_with(&selector, message)
 	}
 
@@ -101,11 +102,7 @@ pub trait ContextAbstraction: Debug + Send + Sync {
 	///
 	/// # Errors
 	fn delete(&self, topic: &str) -> Result<()> {
-		let selector = self
-			.prefix()
-			.clone()
-			.take()
-			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
+		let selector = selector_from(topic, self.prefix());
 		self.delete_with(&selector)
 	}
 
@@ -130,11 +127,7 @@ pub trait ContextAbstraction: Debug + Send + Sync {
 		message: Option<Message>,
 		callback: Option<&dyn Fn(QueryableMsg) -> Result<()>>,
 	) -> Result<()> {
-		let selector = self
-			.prefix()
-			.clone()
-			.take()
-			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
+		let selector = selector_from(topic, self.prefix());
 		self.get_with(&selector, message, callback)
 	}
 
@@ -158,11 +151,7 @@ pub trait ContextAbstraction: Debug + Send + Sync {
 	///
 	/// # Errors
 	fn observe(&self, topic: &str, message: Option<Message>) -> Result<()> {
-		let selector = self
-			.prefix()
-			.clone()
-			.take()
-			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
+		let selector = selector_from(topic, self.prefix());
 		self.observe_with(&selector, message)
 	}
 
@@ -176,11 +165,7 @@ pub trait ContextAbstraction: Debug + Send + Sync {
 	///
 	/// # Errors
 	fn cancel_observe(&self, topic: &str) -> Result<()> {
-		let selector = self
-			.prefix()
-			.clone()
-			.take()
-			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
+		let selector = selector_from(topic, self.prefix());
 		self.cancel_observe_with(&selector)
 	}
 
