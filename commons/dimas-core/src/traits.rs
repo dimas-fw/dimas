@@ -3,6 +3,9 @@
 //! Core traits of `DiMAS`
 //!
 
+#[doc(hidden)]
+extern crate alloc;
+
 #[cfg(feature = "std")]
 extern crate std;
 
@@ -15,7 +18,7 @@ use crate::{
 use core::fmt::Debug;
 #[cfg(feature = "std")]
 use std::prelude::rust_2021::*;
-use std::sync::Arc;
+use alloc::sync::Arc;
 use tokio::sync::mpsc::Sender;
 use zenoh::Session;
 // endregion:	--- modules
