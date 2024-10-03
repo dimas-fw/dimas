@@ -487,7 +487,6 @@ where
 			select! {
 				// `TaskSignal`s
 				Some(signal) = self.rx.recv() => {
-				//signal = wait_for_task_signals(&self.rx) => {
 					match signal {
 						#[cfg(feature = "unstable")]
 						TaskSignal::RestartLiveliness(selector) => {

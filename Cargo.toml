@@ -16,7 +16,6 @@ members = [
 	"examples/pingpong",
 	"examples/pubsub",
 	"examples/queries",
-	"examples/router",
 ]
 
 [workspace.lints.rust]
@@ -36,7 +35,7 @@ unwrap_used = "deny"
 [workspace.package]
 rust-version = "1.81.0"
 edition = "2021"
-version = "0.3.0"
+version = "0.3.1"
 authors = [
 	"stepkun <stephan.kunz@kabelbw.de>",
 ]
@@ -56,16 +55,16 @@ repository = "https://github.com/dimas-fw/dimas/"
 bitcode = "0.6.0"
 clap = { version = "4.1.0", features = ["derive"] }
 chrono = "0.4.34"
-#dimas = { path = "dimas" }
-dimas = "0.3.0"
-#dimas-com = { path = "commons/dimas-com" }
-dimas-com = "0.3.0"
-#dimas-commands = { path = "commons/dimas-commands" }
-dimas-commands = "0.3.0"
-#dimas-config = { path = "commons/dimas-config" }
-dimas-config = "0.3.0"
-#dimas-core = { path = "commons/dimas-core" }
-dimas-core = "0.3.0"
+dimas = { path = "dimas" }
+#dimas = "0.3.1"
+dimas-com = { path = "commons/dimas-com" }
+#dimas-com = "0.3.1"
+dimas-commands = { path = "commons/dimas-commands" }
+#dimas-commands = "0.3.1"
+dimas-config = { path = "commons/dimas-config" }
+#dimas-config = "0.3.1"
+dimas-core = { path = "commons/dimas-core" }
+#dimas-core = "0.3.1"
 dirs = "5.0.0"
 doc-comment = "0.3.0"
 futures = "0.3.30"
