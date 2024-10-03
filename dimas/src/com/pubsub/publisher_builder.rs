@@ -6,8 +6,8 @@
 // these ones are only for doc needed
 #[cfg(doc)]
 use crate::agent::Agent;
-use crate::builder::{NoSelector, NoStorage, Selector, Storage};
-use crate::com::publisher::Publisher;
+use crate::com::pubsub::publisher::Publisher;
+use crate::{NoSelector, NoStorage, Selector, Storage};
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
@@ -15,8 +15,11 @@ use dimas_core::{
 	utils::selector_from,
 };
 use std::sync::{Arc, RwLock};
+use zenoh::bytes::Encoding;
 use zenoh::qos::CongestionControl;
 use zenoh::qos::Priority;
+#[cfg(feature = "unstable")]
+use zenoh::{qos::Reliability, sample::Locality};
 // endregion:	--- modules
 
 // region:		--- PublisherBuilder
@@ -24,28 +27,40 @@ use zenoh::qos::Priority;
 #[allow(clippy::module_name_repetitions)]
 pub struct PublisherBuilder<P, K, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	context: Context<P>,
 	activation_state: OperationState,
-	priority: Priority,
+	#[cfg(feature = "unstable")]
+	allowed_destination: Locality,
 	congestion_control: CongestionControl,
+	encoding: String,
+	express: bool,
+	priority: Priority,
+	#[cfg(feature = "unstable")]
+	reliability: Reliability,
 	selector: K,
 	storage: S,
 }
 
 impl<P> PublisherBuilder<P, NoSelector, NoStorage>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Construct a [`PublisherBuilder`] in initial state
 	#[must_use]
-	pub const fn new(context: Context<P>) -> Self {
+	pub fn new(context: Context<P>) -> Self {
 		Self {
 			context,
 			activation_state: OperationState::Standby,
-			priority: Priority::Data,
+			#[cfg(feature = "unstable")]
+			allowed_destination: Locality::Any,
 			congestion_control: CongestionControl::Drop,
+			encoding: Encoding::default().to_string(),
+			express: false,
+			priority: Priority::Data,
+			#[cfg(feature = "unstable")]
+			reliability: Reliability::BestEffort,
 			selector: NoSelector,
 			storage: NoStorage,
 		}
@@ -54,12 +69,41 @@ where
 
 impl<P, K, S> PublisherBuilder<P, K, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set the activation state.
 	#[must_use]
 	pub const fn activation_state(mut self, state: OperationState) -> Self {
 		self.activation_state = state;
+		self
+	}
+
+	/// Set the publishers alllowed destinations
+	#[cfg(feature = "unstable")]
+	#[must_use]
+	pub const fn set_allowed_destination(mut self, allowed_destination: Locality) -> Self {
+		self.allowed_destination = allowed_destination;
+		self
+	}
+
+	/// Set the publishers congestion control
+	#[must_use]
+	pub const fn set_congestion_control(mut self, congestion_control: CongestionControl) -> Self {
+		self.congestion_control = congestion_control;
+		self
+	}
+
+	/// Set the publishers encoding
+	#[must_use]
+	pub fn set_encoding(mut self, encoding: String) -> Self {
+		self.encoding = encoding;
+		self
+	}
+
+	/// Set the publishers enexpress policy
+	#[must_use]
+	pub const fn set_express(mut self, express: bool) -> Self {
+		self.express = express;
 		self
 	}
 
@@ -70,17 +114,18 @@ where
 		self
 	}
 
-	/// Set the publishers congestion control
+	/// Set the publishers reliability
+	#[cfg(feature = "unstable")]
 	#[must_use]
-	pub const fn set_congestion_control(mut self, congestion_control: CongestionControl) -> Self {
-		self.congestion_control = congestion_control;
+	pub const fn set_reliability(mut self, reliability: Reliability) -> Self {
+		self.reliability = reliability;
 		self
 	}
 }
 
 impl<P, K> PublisherBuilder<P, K, NoStorage>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Provide agents storage for the publisher
 	#[must_use]
@@ -91,16 +136,28 @@ where
 		let Self {
 			context,
 			activation_state,
-			priority,
+			#[cfg(feature = "unstable")]
+			allowed_destination,
 			congestion_control,
+			encoding,
+			express,
+			priority,
+			#[cfg(feature = "unstable")]
+			reliability,
 			selector,
 			..
 		} = self;
 		PublisherBuilder {
 			context,
 			activation_state,
-			priority,
+			#[cfg(feature = "unstable")]
+			allowed_destination,
 			congestion_control,
+			encoding,
+			express,
+			priority,
+			#[cfg(feature = "unstable")]
+			reliability,
 			selector,
 			storage: Storage { storage },
 		}
@@ -109,7 +166,7 @@ where
 
 impl<P, S> PublisherBuilder<P, NoSelector, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set the full key expression for the [`Publisher`]
 	#[must_use]
@@ -117,16 +174,28 @@ where
 		let Self {
 			context,
 			activation_state,
-			priority,
+			#[cfg(feature = "unstable")]
+			allowed_destination,
 			congestion_control,
+			encoding,
+			express,
+			priority,
+			#[cfg(feature = "unstable")]
+			reliability,
 			storage,
 			..
 		} = self;
 		PublisherBuilder {
 			context,
 			activation_state,
-			priority,
+			#[cfg(feature = "unstable")]
+			allowed_destination,
 			congestion_control,
+			encoding,
+			express,
+			priority,
+			#[cfg(feature = "unstable")]
+			reliability,
 			selector: Selector {
 				selector: selector.into(),
 			},
@@ -145,7 +214,7 @@ where
 
 impl<P, S> PublisherBuilder<P, Selector, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Build the [`Publisher`]
 	///
@@ -156,15 +225,21 @@ where
 			self.selector.selector,
 			self.context,
 			self.activation_state,
-			self.priority,
+			#[cfg(feature = "unstable")]
+			self.allowed_destination,
 			self.congestion_control,
+			self.encoding,
+			self.express,
+			self.priority,
+			#[cfg(feature = "unstable")]
+			self.reliability,
 		))
 	}
 }
 
 impl<P> PublisherBuilder<P, Selector, Storage<Publisher<P>>>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Build and add the [Publisher] to the [`Agent`]s context
 	///
@@ -190,7 +265,7 @@ mod tests {
 	struct Props {}
 
 	// check, that the auto traits are available
-	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
 	#[test]
 	const fn normal_types() {

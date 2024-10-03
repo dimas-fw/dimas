@@ -1,8 +1,8 @@
 // Copyright © 2023 Stephan Kunz
 
-//! Implementation of an [`Agent`]'s internal and user defined properties [`Context`].
-//! Never use it directly but through the created [`Context`], which provides thread safe access.
-//! A reference to this wrapper is handed into every callback function.
+//! Implementation of an [`Agent`]'s internal and user defined properties [`ContextImpl`].
+//! Never use it directly but through the type [`Context`], which provides thread safe access.
+//! A [`Context`] is handed into every callback function.
 //!
 //! # Examples
 //! ```rust,no_run
@@ -13,7 +13,7 @@
 //!   counter: i32,
 //! }
 //! // A [`Timer`] callback
-//! fn timer_callback(context: &Context<AgentProps>) -> Result<()> {
+//! fn timer_callback(context: Context<AgentProps>) -> Result<()> {
 //!   // reading properties
 //!   let mut value = context.read()?.counter;
 //!   value +=1;
@@ -32,15 +32,21 @@
 // only for doc needed
 #[cfg(doc)]
 use crate::agent::Agent;
+#[cfg(feature = "unstable")]
+use crate::com::liveliness::LivelinessSubscriber;
 use crate::{
 	com::{
-		liveliness::LivelinessSubscriber, observable::Observable, observer::Observer,
-		publisher::Publisher, query::Query, queryable::Queryable, subscriber::Subscriber,
+		observation::{Observable, Observer},
+		pubsub::{Publisher, Subscriber},
+		queries::{Querier, Queryable},
 	},
-	timer::Timer,
+	time::Timer,
 };
+use core::fmt::Debug;
 use dimas_com::communicator::Communicator;
 use dimas_config::Config;
+#[cfg(doc)]
+use dimas_core::traits::Context;
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
 	error::{DimasError, Result},
@@ -49,7 +55,6 @@ use dimas_core::{
 };
 use std::{
 	collections::HashMap,
-	fmt::Debug,
 	sync::{Arc, RwLock},
 };
 use tokio::sync::mpsc::Sender;
@@ -68,7 +73,7 @@ const INITIAL_SIZE: usize = 9;
 #[allow(clippy::module_name_repetitions)]
 pub struct ContextImpl<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// The [`Agent`]s name.
 	/// Name must not, but should be unique.
@@ -84,6 +89,7 @@ where
 	/// The [`Agent`]s [`Communicator`]
 	communicator: Arc<Communicator>,
 	/// Registered [`LivelinessSubscriber`]
+	#[cfg(feature = "unstable")]
 	liveliness_subscribers: Arc<RwLock<HashMap<String, LivelinessSubscriber<P>>>>,
 	/// Registered [`Observable`]
 	observables: Arc<RwLock<HashMap<String, Observable<P>>>>,
@@ -92,7 +98,7 @@ where
 	/// Registered [`Publisher`]
 	publishers: Arc<RwLock<HashMap<String, Publisher<P>>>>,
 	/// Registered [`Query`]s
-	queries: Arc<RwLock<HashMap<String, Query<P>>>>,
+	queries: Arc<RwLock<HashMap<String, Querier<P>>>>,
 	/// Registered [`Queryable`]s
 	queryables: Arc<RwLock<HashMap<String, Queryable<P>>>>,
 	/// Registered [`Subscriber`]
@@ -101,10 +107,11 @@ where
 	timers: Arc<RwLock<HashMap<String, Timer<P>>>>,
 }
 
-impl<P> ContextAbstraction<P> for ContextImpl<P>
+impl<P> ContextAbstraction for ContextImpl<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + 'static,
 {
+	type Props = P;
 	/// Get the name
 	#[must_use]
 	fn name(&self) -> Option<&String> {
@@ -319,9 +326,10 @@ where
 
 impl<P> ContextImpl<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
-	/// Constructor for the [`ContextInner`]
+	/// Constructor for the [`ContextImpl`]
+	/// # Errors
 	pub fn new(
 		config: &Config,
 		props: P,
@@ -337,6 +345,7 @@ where
 			sender,
 			communicator: Arc::new(communicator),
 			props: Arc::new(RwLock::new(props)),
+			#[cfg(feature = "unstable")]
 			liveliness_subscribers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 			observables: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 			observers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
@@ -359,6 +368,7 @@ where
 	}
 
 	/// Get the liveliness subscribers
+	#[cfg(feature = "unstable")]
 	#[must_use]
 	pub const fn liveliness_subscribers(
 		&self,
@@ -385,7 +395,7 @@ where
 
 	/// Get the queries
 	#[must_use]
-	pub const fn queries(&self) -> &Arc<RwLock<HashMap<String, Query<P>>>> {
+	pub const fn queries(&self) -> &Arc<RwLock<HashMap<String, Querier<P>>>> {
 		&self.queries
 	}
 
@@ -414,6 +424,7 @@ where
 	/// - [`Observable`]s
 	/// - [`Subscriber`]s  and last
 	/// - [`Timer`]s
+	///
 	/// Beforehand of starting the [`Timer`]s there is the initialisation of the
 	/// - [`Publisher`]s the
 	/// - [`Observer`]s and the
@@ -424,6 +435,7 @@ where
 	#[allow(unused_variables)]
 	fn upgrade_registered_tasks(&self, new_state: OperationState) -> Result<()> {
 		// start liveliness subscriber
+		#[cfg(feature = "unstable")]
 		self.liveliness_subscribers
 			.write()
 			.map_err(|_| DimasError::ModifyContext("liveliness subscribers".into()))?
@@ -600,6 +612,7 @@ where
 			});
 
 		// stop all registered liveliness subscribers
+		#[cfg(feature = "unstable")]
 		self.liveliness_subscribers
 			.write()
 			.map_err(|_| DimasError::ModifyContext("liveliness subscribers".into()))?
@@ -619,7 +632,7 @@ mod tests {
 	use super::*;
 
 	// check, that the auto traits are available
-	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
 	#[derive(Debug)]
 	struct Props {}

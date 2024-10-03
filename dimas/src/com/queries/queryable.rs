@@ -3,15 +3,16 @@
 //! Module `queryable` provides an information/compute provider `Queryable` which can be created using the `QueryableBuilder`.
 
 // region:		--- modules
+use core::fmt::Debug;
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
 	error::Result,
 	message_types::QueryMsg,
 	traits::{Capability, Context},
 };
-use std::fmt::Debug;
 use tokio::task::JoinHandle;
 use tracing::{error, info, instrument, warn, Level};
+#[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
 
 use super::ArcQueryableCallback;
@@ -21,7 +22,7 @@ use super::ArcQueryableCallback;
 /// Queryable
 pub struct Queryable<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	selector: String,
 	/// Context for the Subscriber
@@ -29,15 +30,17 @@ where
 	activation_state: OperationState,
 	callback: ArcQueryableCallback<P>,
 	completeness: bool,
+	#[cfg(feature = "unstable")]
 	allowed_origin: Locality,
+	undeclare_on_drop: bool,
 	handle: Option<JoinHandle<()>>,
 }
 
 impl<P> Debug for Queryable<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		f.debug_struct("Queryable")
 			.field("selector", &self.selector)
 			.field("complete", &self.completeness)
@@ -47,7 +50,7 @@ where
 
 impl<P> Capability for Queryable<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()> {
 		if (state >= &self.activation_state) && self.handle.is_none() {
@@ -62,7 +65,7 @@ where
 
 impl<P> Queryable<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Constructor for a [`Queryable`]
 	#[must_use]
@@ -72,7 +75,8 @@ where
 		activation_state: OperationState,
 		request_callback: ArcQueryableCallback<P>,
 		completeness: bool,
-		allowed_origin: Locality,
+		#[cfg(feature = "unstable")] allowed_origin: Locality,
+		undeclare_on_drop: bool,
 	) -> Self {
 		Self {
 			selector,
@@ -80,7 +84,9 @@ where
 			activation_state,
 			callback: request_callback,
 			completeness,
+			#[cfg(feature = "unstable")]
 			allowed_origin,
+			undeclare_on_drop,
 			handle: None,
 		}
 	}
@@ -97,20 +103,14 @@ where
 	fn start(&mut self) -> Result<()> {
 		self.stop();
 
-		// check Mutexes
-		{
-			if self.callback.lock().is_err() {
-				warn!("found poisoned callback Mutex");
-				self.callback.clear_poison();
-			}
-		}
-
 		let completeness = self.completeness;
+		#[cfg(feature = "unstable")]
 		let allowed_origin = self.allowed_origin;
 		let selector = self.selector.clone();
 		let cb = self.callback.clone();
 		let ctx1 = self.context.clone();
 		let ctx2 = self.context.clone();
+		let undeclare_on_drop = self.undeclare_on_drop;
 
 		self.handle
 			.replace(tokio::task::spawn(async move {
@@ -126,8 +126,16 @@ where
 						info!("restarting queryable!");
 					};
 				}));
-				if let Err(error) =
-					run_queryable(selector, cb, completeness, allowed_origin, ctx2).await
+				if let Err(error) = run_queryable(
+					selector,
+					cb,
+					completeness,
+					#[cfg(feature = "unstable")]
+					allowed_origin,
+					undeclare_on_drop,
+					ctx2,
+				)
+				.await
 				{
 					error!("queryable failed with {error}");
 				};
@@ -149,32 +157,31 @@ async fn run_queryable<P>(
 	selector: String,
 	callback: ArcQueryableCallback<P>,
 	completeness: bool,
-	allowed_origin: Locality,
+	#[cfg(feature = "unstable")] allowed_origin: Locality,
+	undeclare_on_drop: bool,
 	ctx: Context<P>,
 ) -> Result<()>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
-	let queryable = ctx
-		.session()
+	let session = ctx.session();
+	let queryable = session
 		.declare_queryable(&selector)
-		.complete(completeness)
-		.allowed_origin(allowed_origin)
-		.await?;
+		.undeclare_on_drop(undeclare_on_drop)
+		.complete(completeness);
+	#[cfg(feature = "unstable")]
+	let queryable = queryable.allowed_origin(allowed_origin);
+
+	let queryable = queryable.await?;
 
 	loop {
 		let query = queryable.recv_async().await?;
 		let request = QueryMsg(query);
 
-		match callback.lock() {
-			Ok(mut lock) => {
-				if let Err(error) = lock(&ctx, request) {
-					error!("queryable callback failed with {error}");
-				}
-			}
-			Err(err) => {
-				error!("queryable callback failed with {err}");
-			}
+		let ctx = ctx.clone();
+		let mut lock = callback.lock().await;
+		if let Err(error) = lock(ctx, request).await {
+			error!("queryable callback failed with {error}");
 		}
 	}
 }
@@ -188,7 +195,7 @@ mod tests {
 	struct Props {}
 
 	// check, that the auto traits are available
-	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
 	#[test]
 	const fn normal_types() {

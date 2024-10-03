@@ -1,4 +1,5 @@
 // Copyright © 2024 Stephan Kunz
+#![no_std]
 
 //! The configuration data.
 //!
@@ -9,17 +10,21 @@
 //! # Examples
 //! ```rust,no_run
 //! # use dimas_config::Config;
-//! # fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
-//! // create a configuration from a file named `default.json5`
+//! # extern crate std;
+//! # fn main() -> Result<(), Box<dyn core::error::Error + Send + Sync + 'static>> {
+//! // in no-std environment:
+//! // creates a default configuration
+//! // in std environment:
+//! // creates a configuration from a file named `default.json5`
 //! // located in one of the directories listed below.
 //! // If that file does not exist, a default config will be created
 //! let config = Config::default();
 //!
-//! // use file named `filename.json5`
+//! // use file named `filename.json5` (needs std environment)
 //! // returns an error if file does not exist or is no valid configuration file
 //! let config = Config::from_file("filename.json5")?;
 //!
-//! // methods with predefined filenames working like Config::from_file(...)
+//! // methods with predefined filenames working like Config::from_file(...) (needs std environment)
 //! let config = Config::local()?;        // use file named `local.json5`
 //! let config = Config::peer()?;         // use file named `peer.json5`
 //! let config = Config::client()?;       // use file named `client.json5`
@@ -41,20 +46,33 @@
 //pub use Config;
 // endregion:	--- exports
 
+#[doc(hidden)]
+extern crate alloc;
+
+#[cfg(feature = "std")]
+extern crate std;
+
 // region:		--- types
-/// Type alias for `std::result::Result` to ease up implementation
-pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync + 'static>>;
+/// Type alias for `core::result::Result` to ease up implementation
+pub type Result<T> = core::result::Result<T, Box<dyn core::error::Error + Send + Sync + 'static>>;
 // endregion:	--- types
 
 // region:		--- modules
+#[cfg(feature = "std")]
 use dirs::{config_dir, config_local_dir, home_dir};
+#[cfg(feature = "std")]
 use std::env;
+#[cfg(feature = "std")]
 use std::io::{Error, ErrorKind};
+#[cfg(feature = "std")]
+use std::prelude::rust_2021::*;
+#[cfg(feature = "std")]
 use tracing::{debug, error, warn};
 // endregion:	--- modules
 
 // region:		--- utils
 /// find and read a config file given by name
+#[cfg(feature = "std")]
 fn _read_file(filename: &str) -> Result<String> {
 	// handle environment path current working directory `CWD`
 	let path = find_config_file(filename)?;
@@ -72,6 +90,18 @@ pub struct Config {
 	zenoh: zenoh::config::Config,
 }
 
+#[cfg(not(feature = "std"))]
+impl Default for Config {
+	/// Create a default configuration<br>
+	#[allow(clippy::cognitive_complexity)]
+	fn default() -> Self {
+		Self {
+			zenoh: zenoh::Config::default(),
+		}
+	}
+}
+
+#[cfg(feature = "std")]
 impl Default for Config {
 	/// Create a default configuration<br>
 	/// Will search for a configuration file with name "default.json5" in the directories mentioned in [`Examples`](index.html#examples).<br>
@@ -121,8 +151,10 @@ impl Config {
 	///
 	/// # Errors
 	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.
+	#[cfg(feature = "std")]
 	pub fn local() -> Result<Self> {
 		let path = find_config_file("local.json5")?;
+		#[cfg(feature = "std")]
 		debug!("using file {:?}", &path);
 		let content = std::fs::read_to_string(path)?;
 		let cfg = json5::from_str(&content)?;
@@ -135,6 +167,7 @@ impl Config {
 	///
 	/// # Errors
 	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.
+	#[cfg(feature = "std")]
 	pub fn client() -> Result<Self> {
 		let path = find_config_file("client.json5")?;
 		debug!("using file {:?}", &path);
@@ -149,6 +182,7 @@ impl Config {
 	///
 	/// # Errors
 	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.
+	#[cfg(feature = "std")]
 	pub fn peer() -> Result<Self> {
 		let path = find_config_file("peer.json5")?;
 		debug!("using file {:?}", &path);
@@ -163,6 +197,7 @@ impl Config {
 	///
 	/// # Errors
 	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.
+	#[cfg(feature = "std")]
 	pub fn router() -> Result<Self> {
 		let path = find_config_file("router.json5")?;
 		debug!("using file {:?}", &path);
@@ -177,6 +212,7 @@ impl Config {
 	///
 	/// # Errors
 	/// Returns a [`std::io::Error`], if file does not exist in any of the places or is not accessible.
+	#[cfg(feature = "std")]
 	pub fn from_file(filename: &str) -> Result<Self> {
 		let path = find_config_file(filename)?;
 		debug!("using file {:?}", &path);
@@ -203,6 +239,7 @@ impl Config {
 ///  - local config directory (`Linux`: `$XDG_CONFIG_HOME` or `$HOME/.config` | `Windows`: `{FOLDERID_LocalAppData}` | `MacOS`: `$HOME/Library/Application Support`)
 ///  - config directory (`Linux`: `$XDG_CONFIG_HOME` or `$HOME/.config` | `Windows`: `{FOLDERID_RoamingAppData}` | `MacOS`: `$HOME/Library/Application Support`)
 /// # Errors
+#[cfg(feature = "std")]
 pub fn find_config_file(filename: &str) -> Result<std::path::PathBuf> {
 	// handle environment path current working directory `CWD`
 	if let Ok(cwd) = env::current_dir() {
@@ -248,7 +285,7 @@ pub fn find_config_file(filename: &str) -> Result<std::path::PathBuf> {
 
 	Err(Box::new(Error::new(
 		ErrorKind::NotFound,
-		format!("file {filename} not found"),
+		"file {filename} not found",
 	)))
 }
 // endregion:	--- functions
@@ -258,7 +295,7 @@ mod tests {
 	use super::*;
 
 	// check, that the auto traits are available
-	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
 	#[test]
 	const fn normal_types() {
@@ -270,36 +307,42 @@ mod tests {
 		Config::default();
 	}
 
+	#[cfg(feature = "std")]
 	#[test]
 	fn config_local() -> Result<()> {
 		Config::local()?;
 		Ok(())
 	}
 
+	#[cfg(feature = "std")]
 	#[test]
 	fn config_router() -> Result<()> {
 		Config::router()?;
 		Ok(())
 	}
 
+	#[cfg(feature = "std")]
 	#[test]
 	fn config_peer() -> Result<()> {
 		Config::peer()?;
 		Ok(())
 	}
 
+	#[cfg(feature = "std")]
 	#[test]
 	fn config_client() -> Result<()> {
 		Config::client()?;
 		Ok(())
 	}
 
+	#[cfg(feature = "std")]
 	#[test]
 	fn config_from_file() -> Result<()> {
 		Config::from_file("default.json5")?;
 		Ok(())
 	}
 
+	#[cfg(feature = "std")]
 	#[test]
 	fn config_from_file_fails() {
 		let _ = Config::from_file("non_existent.json5").is_err();

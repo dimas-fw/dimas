@@ -2,10 +2,15 @@
 
 //! Module `message_types` provides the different types of `Message`s used in callbacks.
 
+#[cfg(feature = "std")]
+extern crate std;
+
 // region:		--- modules
 use crate::error::DimasError;
 use bitcode::{decode, encode, Decode, Encode};
-use std::ops::Deref;
+use core::ops::Deref;
+#[cfg(feature = "std")]
+use std::prelude::rust_2021::*;
 use zenoh::{query::Query, Wait};
 // endregion:	--- modules
 
@@ -116,7 +121,7 @@ impl QueryMsg {
 		T: for<'a> Decode<'a>,
 	{
 		if let Some(value) = self.0.payload() {
-			let content: Vec<u8> = value.into();
+			let content: Vec<u8> = value.to_bytes().into_owned();
 			return decode::<T>(content.as_slice()).map_err(|_| DimasError::Decoding.into());
 		}
 		Err(DimasError::NoMessage.into())
@@ -199,7 +204,7 @@ mod tests {
 	use super::*;
 
 	// check, that the auto traits are available
-	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
 	#[test]
 	const fn normal_types() {

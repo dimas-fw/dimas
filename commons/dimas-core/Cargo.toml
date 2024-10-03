@@ -27,3 +27,8 @@ tokio = { workspace = true}
 tracing = { workspace = true}
 tracing-subscriber = { workspace = true}
 zenoh = { workspace = true}
+
+[features]
+default = ["std"]
+std = []
+unstable = ["zenoh/unstable"]

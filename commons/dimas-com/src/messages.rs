@@ -3,19 +3,24 @@
 
 //! Module `messages` provides the different Message`s used with DiMAS.
 
-use bitcode::{Decode, Encode};
+#[doc(hidden)]
+extern crate alloc;
+
+#[cfg(feature = "std")]
+extern crate std;
+
 // region:		--- modules
-use derivative::Derivative;
+#[cfg(feature = "std")]
+use std::prelude::rust_2021::*;
+use bitcode::{Decode, Encode};
+use core::fmt::Display;
 use dimas_core::enums::OperationState;
-use std::fmt::Display;
-use zenoh::config::Locator;
 // endregion:	--- modules
 
 // region:		--- AboutEntity
 /// A `DiMAS` entity
 #[repr(C)]
-#[derive(Encode, Decode, Derivative)]
-#[derivative(Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
+#[derive(Encode, Clone, Decode)]
 pub struct AboutEntity {
 	name: String,
 	kind: String,
@@ -24,7 +29,7 @@ pub struct AboutEntity {
 }
 
 impl Display for AboutEntity {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		write!(
 			f,
 			"name: {} kind: {} state: {} zid: {}",
@@ -74,8 +79,7 @@ impl AboutEntity {
 // region:		--- PingEntity
 /// A `DiMAS` entity
 #[repr(C)]
-#[derive(Encode, Decode, Derivative)]
-#[derivative(Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
+#[derive(Encode, Clone, Decode)]
 pub struct PingEntity {
 	name: String,
 	zid: String,
@@ -83,7 +87,7 @@ pub struct PingEntity {
 }
 
 impl Display for PingEntity {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		write!(
 			f,
 			"name: {} zid: {} oneway: {}",
@@ -122,17 +126,15 @@ impl PingEntity {
 // region:		--- ScoutingEntity
 /// A `Zenoh` entity
 #[repr(C)]
-#[derive(Derivative)]
-#[derivative(Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
+#[derive(Encode, Clone, Decode)]
 pub struct ScoutingEntity {
 	zid: String,
 	kind: String,
-	#[derivative(PartialOrd = "ignore", Ord = "ignore")]
-	locators: Vec<Locator>,
+	locators: Vec<String>,
 }
 
 impl Display for ScoutingEntity {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		f.debug_struct("ScoutingEntity")
 			.field("zid", &self.zid)
 			.field("kind", &self.kind)
@@ -144,7 +146,7 @@ impl Display for ScoutingEntity {
 impl ScoutingEntity {
 	/// Constructor
 	#[must_use]
-	pub const fn new(zid: String, kind: String, locators: Vec<Locator>) -> Self {
+	pub const fn new(zid: String, kind: String, locators: Vec<String>) -> Self {
 		Self {
 			zid,
 			kind,
@@ -166,7 +168,7 @@ impl ScoutingEntity {
 
 	/// Get the Locators
 	#[must_use]
-	pub const fn locators(&self) -> &Vec<Locator> {
+	pub const fn locators(&self) -> &Vec<String> {
 		&self.locators
 	}
 }

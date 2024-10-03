@@ -47,7 +47,7 @@ end = "2025-03-03"
 
 [[trusted.async-std]]
 criteria = "safe-to-deploy"
-user-id = 4333
+user-id = 4333 # Josh Triplett (joshtriplett)
 start = "2022-06-18"
 end = "2025-03-03"
 
@@ -137,7 +137,7 @@ end = "2025-06-06"
 
 [[trusted.flate2]]
 criteria = "safe-to-deploy"
-user-id = 4333
+user-id = 4333 # Josh Triplett (joshtriplett)
 start = "2020-09-30"
 end = "2025-06-06"
 
@@ -203,7 +203,7 @@ end = "2025-06-06"
 
 [[trusted.libc]]
 criteria = "safe-to-deploy"
-user-id = 4333
+user-id = 4333 # Josh Triplett (joshtriplett)
 start = "2020-10-01"
 end = "2025-06-06"
 

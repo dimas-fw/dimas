@@ -3,13 +3,12 @@
 
 // region:		--- modules
 use dimas::prelude::*;
-use std::time::Duration;
 // endregion:	--- modules
 
 #[derive(Debug)]
 struct AgentProps {}
 
-fn query_callback(_ctx: &Context<AgentProps>, response: QueryableMsg) -> Result<()> {
+async fn query_callback(_ctx: Context<AgentProps>, response: QueryableMsg) -> Result<()> {
 	let message: u128 = response.decode()?;
 	println!("Response 1 is '{message}'");
 	Ok(())
@@ -119,7 +118,7 @@ async fn main() -> Result<()> {
 			let message = Message::encode(&counter4);
 			// querying with stored query & closure
 			ctx.get(
-				"query1",
+				"query4",
 				Some(message),
 				Some(&|response| -> Result<()> {
 					let message: u128 = response.decode()?;

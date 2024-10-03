@@ -1,8 +1,9 @@
 // Copyright © 2023 Stephan Kunz
 
-//! Module `query` provides an information/compute requestor `Query` which can be created using the `QueryBuilder`.
+//! Module `query` provides an information/compute requestor `Query` which can be created using the `QuerierBuilder`.
 
 // region:		--- modules
+use core::time::Duration;
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
@@ -10,30 +11,44 @@ use dimas_core::{
 	traits::Context,
 	utils::selector_from,
 };
+use futures::future::BoxFuture;
 use std::{
-	sync::{Arc, Mutex, RwLock},
-	time::Duration,
+	future::Future,
+	sync::{Arc, RwLock},
 };
+use tokio::sync::Mutex;
+#[cfg(feature = "unstable")]
+use zenoh::sample::Locality;
 use zenoh::{
+	bytes::Encoding,
 	query::{ConsolidationMode, QueryTarget},
-	sample::Locality,
 };
 
-use crate::builder::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
-use crate::com::{query::Query, ArcQueryCallback};
+use crate::com::queries::querier::Querier;
+use crate::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 // endregion:	--- modules
 
-// region:		--- QueryBuilder
+// region:    	--- types
+/// type definition for a queriers `response` callback
+type QuerierCallback<P> =
+	Box<dyn FnMut(Context<P>, QueryableMsg) -> BoxFuture<'static, Result<()>> + Send + Sync>;
+/// type definition for a queriers atomic reference counted `response` callback
+pub type ArcQuerierCallback<P> = Arc<Mutex<QuerierCallback<P>>>;
+// endregion: 	--- types
+
+// region:		--- QuerierBuilder
 /// The builder for a query
 #[allow(clippy::module_name_repetitions)]
 #[derive(Clone)]
-pub struct QueryBuilder<P, K, C, S>
+pub struct QuerierBuilder<P, K, C, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	context: Context<P>,
 	activation_state: OperationState,
+	#[cfg(feature = "unstable")]
 	allowed_destination: Locality,
+	encoding: String,
 	timeout: Option<Duration>,
 	selector: K,
 	callback: C,
@@ -42,17 +57,19 @@ where
 	target: QueryTarget,
 }
 
-impl<P> QueryBuilder<P, NoSelector, NoCallback, NoStorage>
+impl<P> QuerierBuilder<P, NoSelector, NoCallback, NoStorage>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
-	/// Construct a `QueryBuilder` in initial state
+	/// Construct a `QuerierBuilder` in initial state
 	#[must_use]
-	pub const fn new(context: Context<P>) -> Self {
+	pub fn new(context: Context<P>) -> Self {
 		Self {
 			context,
 			activation_state: OperationState::Standby,
+			#[cfg(feature = "unstable")]
 			allowed_destination: Locality::Any,
+			encoding: Encoding::default().to_string(),
 			timeout: None,
 			selector: NoSelector,
 			callback: NoCallback,
@@ -63,9 +80,9 @@ where
 	}
 }
 
-impl<P, K, C, S> QueryBuilder<P, K, C, S>
+impl<P, K, C, S> QuerierBuilder<P, K, C, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set the activation state.
 	#[must_use]
@@ -74,28 +91,36 @@ where
 		self
 	}
 
-	/// Set the [`ConsolidationMode`] of the [`Query`].
+	/// Set the [`ConsolidationMode`] of the [`Querier`].
 	#[must_use]
 	pub const fn mode(mut self, mode: ConsolidationMode) -> Self {
 		self.mode = mode;
 		self
 	}
 
-	/// Set the [`QueryTarget`] of the [`Query`].
+	/// Set the [`QueryTarget`] of the [`Querier`].
 	#[must_use]
 	pub const fn target(mut self, target: QueryTarget) -> Self {
 		self.target = target;
 		self
 	}
 
-	/// Set the allowed destination of the [`Query`].
+	/// Set the allowed destination of the [`Querier`].
+	#[cfg(feature = "unstable")]
 	#[must_use]
 	pub const fn allowed_destination(mut self, allowed_destination: Locality) -> Self {
 		self.allowed_destination = allowed_destination;
 		self
 	}
 
-	/// Set a timeout for the [`Query`].
+	/// Set the publishers encoding
+	#[must_use]
+	pub fn set_encoding(mut self, encoding: String) -> Self {
+		self.encoding = encoding;
+		self
+	}
+
+	/// Set a timeout for the [`Querier`].
 	#[must_use]
 	pub const fn timeout(mut self, timeout: Option<Duration>) -> Self {
 		self.timeout = timeout;
@@ -103,17 +128,19 @@ where
 	}
 }
 
-impl<P, C, S> QueryBuilder<P, NoSelector, C, S>
+impl<P, C, S> QuerierBuilder<P, NoSelector, C, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set the full expression for the query
 	#[must_use]
-	pub fn selector(self, selector: &str) -> QueryBuilder<P, Selector, C, S> {
+	pub fn selector(self, selector: &str) -> QuerierBuilder<P, Selector, C, S> {
 		let Self {
 			context,
 			activation_state,
+			#[cfg(feature = "unstable")]
 			allowed_destination,
+			encoding,
 			timeout,
 			storage,
 			callback,
@@ -121,10 +148,12 @@ where
 			target,
 			..
 		} = self;
-		QueryBuilder {
+		QuerierBuilder {
 			context,
 			activation_state,
+			#[cfg(feature = "unstable")]
 			allowed_destination,
+			encoding,
 			timeout,
 			selector: Selector {
 				selector: selector.into(),
@@ -139,26 +168,32 @@ where
 	/// Set only the message qualifing part of the query.
 	/// Will be prefixed with agents prefix.
 	#[must_use]
-	pub fn topic(self, topic: &str) -> QueryBuilder<P, Selector, C, S> {
+	pub fn topic(self, topic: &str) -> QuerierBuilder<P, Selector, C, S> {
 		let selector = selector_from(topic, self.context.prefix());
 		self.selector(&selector)
 	}
 }
 
-impl<P, K, S> QueryBuilder<P, K, NoCallback, S>
+impl<P, K, S> QuerierBuilder<P, K, NoCallback, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set query callback for response messages
 	#[must_use]
-	pub fn callback<F>(self, callback: F) -> QueryBuilder<P, K, Callback<ArcQueryCallback<P>>, S>
+	pub fn callback<C, F>(
+		self,
+		mut callback: C,
+	) -> QuerierBuilder<P, K, Callback<ArcQuerierCallback<P>>, S>
 	where
-		F: FnMut(&Context<P>, QueryableMsg) -> Result<()> + Send + Sync + Unpin + 'static,
+		C: FnMut(Context<P>, QueryableMsg) -> F + Send + Sync + 'static,
+		F: Future<Output = Result<()>> + Send + Sync + 'static,
 	{
 		let Self {
 			context,
 			activation_state,
+			#[cfg(feature = "unstable")]
 			allowed_destination,
+			encoding,
 			timeout,
 			selector,
 			storage,
@@ -166,11 +201,14 @@ where
 			target,
 			..
 		} = self;
-		let callback: ArcQueryCallback<P> = Arc::new(Mutex::new(callback));
-		QueryBuilder {
+		let callback: QuerierCallback<P> = Box::new(move |ctx, msg| Box::pin(callback(ctx, msg)));
+		let callback: ArcQuerierCallback<P> = Arc::new(Mutex::new(callback));
+		QuerierBuilder {
 			context,
 			activation_state,
+			#[cfg(feature = "unstable")]
 			allowed_destination,
+			encoding,
 			timeout,
 			selector,
 			callback: Callback { callback },
@@ -181,20 +219,22 @@ where
 	}
 }
 
-impl<P, K, C> QueryBuilder<P, K, C, NoStorage>
+impl<P, K, C> QuerierBuilder<P, K, C, NoStorage>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Provide agents storage for the query
 	#[must_use]
 	pub fn storage(
 		self,
-		storage: Arc<RwLock<std::collections::HashMap<String, Query<P>>>>,
-	) -> QueryBuilder<P, K, C, Storage<Query<P>>> {
+		storage: Arc<RwLock<std::collections::HashMap<String, Querier<P>>>>,
+	) -> QuerierBuilder<P, K, C, Storage<Querier<P>>> {
 		let Self {
 			context,
 			activation_state,
+			#[cfg(feature = "unstable")]
 			allowed_destination,
+			encoding,
 			timeout,
 			selector,
 			callback,
@@ -202,10 +242,12 @@ where
 			target,
 			..
 		} = self;
-		QueryBuilder {
+		QuerierBuilder {
 			context,
 			activation_state,
+			#[cfg(feature = "unstable")]
 			allowed_destination,
+			encoding,
 			timeout,
 			selector,
 			callback,
@@ -216,18 +258,20 @@ where
 	}
 }
 
-impl<P, S> QueryBuilder<P, Selector, Callback<ArcQueryCallback<P>>, S>
+impl<P, S> QuerierBuilder<P, Selector, Callback<ArcQuerierCallback<P>>, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
-	/// Build the [`Query`]
+	/// Build the [`Querier`]
 	/// # Errors
 	///
-	pub fn build(self) -> Result<Query<P>> {
+	pub fn build(self) -> Result<Querier<P>> {
 		let Self {
 			context,
 			activation_state,
+			#[cfg(feature = "unstable")]
 			allowed_destination,
+			encoding,
 			timeout,
 			selector,
 			callback: response,
@@ -236,26 +280,28 @@ where
 			..
 		} = self;
 		let selector = selector.selector;
-		Ok(Query::new(
+		Ok(Querier::new(
 			selector,
 			context,
 			activation_state,
 			response.callback,
 			mode,
+			#[cfg(feature = "unstable")]
 			allowed_destination,
+			encoding,
 			target,
 			timeout,
 		))
 	}
 }
 
-impl<P> QueryBuilder<P, Selector, Callback<ArcQueryCallback<P>>, Storage<Query<P>>>
+impl<P> QuerierBuilder<P, Selector, Callback<ArcQuerierCallback<P>>, Storage<Querier<P>>>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Build and add the query to the agents context
 	/// # Errors
-	pub fn add(self) -> Result<Option<Query<P>>> {
+	pub fn add(self) -> Result<Option<Querier<P>>> {
 		let collection = self.storage.storage.clone();
 		let q = self.build()?;
 
@@ -266,7 +312,7 @@ where
 		Ok(r)
 	}
 }
-// endregion:	--- QueryBuilder
+// endregion:	--- QuerierBuilder
 
 #[cfg(test)]
 mod tests {
@@ -276,10 +322,10 @@ mod tests {
 	struct Props {}
 
 	// check, that the auto traits are available
-	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
 	#[test]
 	const fn normal_types() {
-		is_normal::<QueryBuilder<Props, NoSelector, NoCallback, NoStorage>>();
+		is_normal::<QuerierBuilder<Props, NoSelector, NoCallback, NoStorage>>();
 	}
 }

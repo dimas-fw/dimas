@@ -1,14 +1,18 @@
 // Copyright © 2023 Stephan Kunz
 
-//! Public interface of dimas. Typically it is sufficient to include the prelude with
+//! simplified interface of dimas.
+//! Typically it is sufficient to include the prelude with
 //! ```use dimas::prelude::*;```
 
 pub extern crate bitcode;
 
 // region:    --- modules
 // re-exports
+// Duration for Timers
+pub use tokio::time::Duration;
 // used std synchronisation primitives
 pub use std::sync::{Arc, RwLock};
+
 // bitcode encoding/decoding
 pub use bitcode::{Decode, Encode};
 // zenoh stuff
@@ -16,26 +20,17 @@ pub use zenoh::qos::CongestionControl;
 pub use zenoh::qos::Priority;
 pub use zenoh::query::ConsolidationMode;
 pub use zenoh::query::QueryTarget;
+#[cfg(feature = "unstable")]
 pub use zenoh::sample::Locality;
 
 // dimas stuff
 pub use crate::agent::Agent;
-pub use crate::builder::liveliness::LivelinessSubscriberBuilder;
-pub use crate::builder::observable::ObservableBuilder;
-pub use crate::builder::observer::ObserverBuilder;
-pub use crate::builder::publisher::PublisherBuilder;
-pub use crate::builder::query::QueryBuilder;
-pub use crate::builder::queryable::QueryableBuilder;
-pub use crate::builder::subscriber::SubscriberBuilder;
-pub use crate::builder::timer::TimerBuilder;
-pub use crate::com::liveliness::LivelinessSubscriber;
-pub use crate::com::observable::Observable;
-pub use crate::com::observer::Observer;
-pub use crate::com::publisher::Publisher;
-pub use crate::com::query::Query;
-pub use crate::com::queryable::Queryable;
-pub use crate::com::subscriber::Subscriber;
-pub use crate::timer::Timer;
+#[cfg(feature = "unstable")]
+pub use crate::com::liveliness::{LivelinessSubscriber, LivelinessSubscriberBuilder};
+pub use crate::com::observation::{Observable, ObservableBuilder, Observer, ObserverBuilder};
+pub use crate::com::pubsub::{Publisher, PublisherBuilder, Subscriber, SubscriberBuilder};
+pub use crate::com::queries::{Querier, QuerierBuilder, Queryable, QueryableBuilder};
+pub use crate::time::{Timer, TimerBuilder};
 
 pub use dimas_config::Config;
 pub use dimas_core::error::{DimasError, Result};

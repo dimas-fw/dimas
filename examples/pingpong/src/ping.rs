@@ -5,7 +5,6 @@
 use chrono::Local;
 use dimas::prelude::*;
 use pingpong::PingPongMessage;
-use std::time::Duration;
 // endregion:	--- modules
 
 #[derive(Debug)]
@@ -14,7 +13,7 @@ struct AgentProps {
 }
 
 #[allow(clippy::cast_precision_loss)]
-fn pong_received(_ctx: &Context<AgentProps>, message: QueryableMsg) -> Result<()> {
+async fn pong_received(_ctx: Context<AgentProps>, message: QueryableMsg) -> Result<()> {
 	let message: PingPongMessage = message.decode()?;
 
 	// get current timestamp

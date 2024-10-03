@@ -1,4 +1,5 @@
 // Copyright © 2024 Stephan Kunz
+#![no_std]
 
 //! Core of `DiMAS`
 

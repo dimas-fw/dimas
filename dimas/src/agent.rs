@@ -18,7 +18,7 @@
 //! # Examples
 //! ```rust,no_run
 //! use dimas::prelude::*;
-//! use std::time::Duration;
+//! use core::time::Duration;
 //!
 //! #[derive(Debug)]
 //! struct AgentProps {}
@@ -45,18 +45,18 @@
 //!
 
 // region:		--- modules
-use crate::builder::{
-	liveliness::LivelinessSubscriberBuilder, observable::ObservableBuilder,
-	observer::ObserverBuilder, publisher::PublisherBuilder, query::QueryBuilder,
-	queryable::QueryableBuilder, subscriber::SubscriberBuilder, timer::TimerBuilder,
-};
+#[cfg(feature = "unstable")]
+use crate::com::liveliness::{LivelinessSubscriber, LivelinessSubscriberBuilder};
 use crate::com::{
-	liveliness::LivelinessSubscriber, observable::Observable, observer::Observer,
-	publisher::Publisher, query::Query, queryable::Queryable, subscriber::Subscriber,
+	observation::{Observable, ObservableBuilder, Observer, ObserverBuilder},
+	pubsub::{Publisher, PublisherBuilder, Subscriber, SubscriberBuilder},
+	queries::{Querier, QuerierBuilder, Queryable, QueryableBuilder},
 };
 use crate::context::ContextImpl;
-use crate::timer::Timer;
+use crate::time::{Timer, TimerBuilder};
 use chrono::Local;
+use core::fmt::Debug;
+use core::time::Duration;
 use dimas_com::messages::{AboutEntity, PingEntity};
 use dimas_config::Config;
 use dimas_core::{
@@ -66,21 +66,23 @@ use dimas_core::{
 	traits::{Capability, Context, ContextAbstraction},
 };
 use std::sync::Arc;
-use std::time::Duration;
-use std::{fmt::Debug, sync::RwLock};
+#[cfg(feature = "unstable")]
+use std::sync::RwLock;
 use tokio::{select, signal, sync::mpsc};
 use tracing::{error, info, warn};
+#[cfg(feature = "unstable")]
 use zenoh::liveliness::LivelinessToken;
+#[cfg(feature = "unstable")]
 use zenoh::Wait;
 // endregion:	--- modules
 
 // region:	   --- callbacks
-fn callback_dispatcher<P>(ctx: &Context<P>, request: QueryMsg) -> Result<()>
+async fn callback_dispatcher<P>(ctx: Context<P>, request: QueryMsg) -> Result<()>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	if let Some(value) = request.payload() {
-		let content: Vec<u8> = value.into();
+		let content: Vec<u8> = value.to_bytes().into_owned();
 		let msg = Message::new(content);
 		let signal: Signal = Message::decode(msg)?;
 		match signal {
@@ -93,9 +95,9 @@ where
 	Ok(())
 }
 
-fn about_handler<P>(ctx: &Context<P>, request: QueryMsg) -> Result<()>
+fn about_handler<P>(ctx: Context<P>, request: QueryMsg) -> Result<()>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	let name = ctx
 		.fq_name()
@@ -104,13 +106,14 @@ where
 	let zid = ctx.uuid();
 	let state = ctx.state();
 	let value = AboutEntity::new(name, mode, zid, state);
+	drop(ctx);
 	request.reply(value)?;
 	Ok(())
 }
 
-fn ping_handler<P>(ctx: &Context<P>, request: QueryMsg, sent: i64) -> Result<()>
+fn ping_handler<P>(ctx: Context<P>, request: QueryMsg, sent: i64) -> Result<()>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	let now = Local::now()
 		.naive_utc()
@@ -123,13 +126,14 @@ where
 		.unwrap_or_else(|| String::from("--"));
 	let zid = ctx.uuid();
 	let value = PingEntity::new(name, zid, now - sent);
+	drop(ctx);
 	request.reply(value)?;
 	Ok(())
 }
 
-fn shutdown_handler<P>(ctx: &Context<P>, request: QueryMsg) -> Result<()>
+fn shutdown_handler<P>(ctx: Context<P>, request: QueryMsg) -> Result<()>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	// send back current infos
 	let name = ctx
@@ -142,21 +146,20 @@ where
 	request.reply(value)?;
 
 	// shutdown agent after a short wait time to be able to send response
-	let ctx = ctx.clone();
 	tokio::task::spawn(async move {
-		tokio::time::sleep(Duration::from_millis(2)).await;
-		let _ = ctx.sender().blocking_send(TaskSignal::Shutdown);
+		tokio::time::sleep(Duration::from_millis(10)).await;
+		// gracefully end agent
+		let _ = ctx.set_state(OperationState::Standby);
+		tokio::time::sleep(Duration::from_millis(100)).await;
+		let _ = ctx.set_state(OperationState::Created);
+		let _ = ctx.sender().send(TaskSignal::Shutdown).await;
 	});
 	Ok(())
 }
 
-fn state_handler<P>(
-	ctx: &Context<P>,
-	request: QueryMsg,
-	state: Option<OperationState>,
-) -> Result<()>
+fn state_handler<P>(ctx: Context<P>, request: QueryMsg, state: Option<OperationState>) -> Result<()>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	// is a state value given?
 	if let Some(value) = state {
@@ -171,6 +174,7 @@ where
 	let zid = ctx.uuid();
 	let state = ctx.state();
 	let value = AboutEntity::new(name, mode, zid, state);
+	drop(ctx);
 	request.reply(value)?;
 	Ok(())
 }
@@ -182,7 +186,7 @@ where
 #[derive(Debug)]
 pub struct UnconfiguredAgent<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + 'static,
 {
 	name: Option<String>,
 	prefix: Option<String>,
@@ -191,7 +195,7 @@ where
 
 impl<P> UnconfiguredAgent<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + 'static,
 {
 	/// Constructor
 	const fn new(properties: P) -> Self {
@@ -236,7 +240,9 @@ where
 		let agent = Agent {
 			rx,
 			context,
+			#[cfg(feature = "unstable")]
 			liveliness: false,
+			#[cfg(feature = "unstable")]
 			liveliness_token: RwLock::new(None),
 		};
 
@@ -274,22 +280,24 @@ where
 #[allow(clippy::module_name_repetitions)]
 pub struct Agent<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + 'static,
 {
 	/// A reciever for signals from tasks
 	rx: mpsc::Receiver<TaskSignal>,
 	/// The agents context structure
 	context: Arc<ContextImpl<P>>,
 	/// Flag to control whether sending liveliness or not
+	#[cfg(feature = "unstable")]
 	liveliness: bool,
 	/// The liveliness token - typically the uuid sent to other participants<br>
 	/// Is available in the [`LivelinessSubscriber`] callback
+	#[cfg(feature = "unstable")]
 	liveliness_token: RwLock<Option<LivelinessToken>>,
 }
 
 impl<P> Debug for Agent<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + 'static,
 {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Agent")
@@ -302,7 +310,7 @@ where
 
 impl<P> Agent<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + 'static,
 {
 	/// Builder
 	#[allow(clippy::new_ret_no_self)]
@@ -311,19 +319,18 @@ where
 	}
 
 	/// Activate sending liveliness information
+	#[cfg(feature = "unstable")]
 	pub fn liveliness(&mut self, activate: bool) {
 		self.liveliness = activate;
 	}
 
 	/// Get a [`LivelinessSubscriberBuilder`], the builder for a [`LivelinessSubscriber`].
+	#[cfg(feature = "unstable")]
 	#[must_use]
 	pub fn liveliness_subscriber(
 		&self,
-	) -> LivelinessSubscriberBuilder<
-		P,
-		crate::builder::NoCallback,
-		crate::builder::Storage<LivelinessSubscriber<P>>,
-	> {
+	) -> LivelinessSubscriberBuilder<P, crate::NoCallback, crate::Storage<LivelinessSubscriber<P>>>
+	{
 		LivelinessSubscriberBuilder::new(self.context.clone())
 			.storage(self.context.liveliness_subscribers().clone())
 	}
@@ -334,11 +341,11 @@ where
 		&self,
 	) -> ObservableBuilder<
 		P,
-		crate::builder::NoSelector,
-		crate::builder::NoCallback,
-		crate::builder::NoCallback,
-		crate::builder::NoCallback,
-		crate::builder::Storage<Observable<P>>,
+		crate::NoSelector,
+		crate::NoCallback,
+		crate::NoCallback,
+		crate::NoCallback,
+		crate::Storage<Observable<P>>,
 	> {
 		ObservableBuilder::new(self.context.clone()).storage(self.context.observables().clone())
 	}
@@ -349,10 +356,10 @@ where
 		&self,
 	) -> ObserverBuilder<
 		P,
-		crate::builder::NoSelector,
-		crate::builder::NoCallback,
-		crate::builder::NoCallback,
-		crate::builder::Storage<Observer<P>>,
+		crate::NoSelector,
+		crate::NoCallback,
+		crate::NoCallback,
+		crate::Storage<Observer<P>>,
 	> {
 		ObserverBuilder::new(self.context.clone()).storage(self.context.observers().clone())
 	}
@@ -361,33 +368,23 @@ where
 	#[must_use]
 	pub fn publisher(
 		&self,
-	) -> PublisherBuilder<P, crate::builder::NoSelector, crate::builder::Storage<Publisher<P>>> {
+	) -> PublisherBuilder<P, crate::NoSelector, crate::Storage<Publisher<P>>> {
 		PublisherBuilder::new(self.context.clone()).storage(self.context.publishers().clone())
 	}
 
-	/// Get a [`QueryBuilder`], the builder for a [`Query`].
+	/// Get a [`QuerierBuilder`], the builder for a [`Querier`].
 	#[must_use]
 	pub fn query(
 		&self,
-	) -> QueryBuilder<
-		P,
-		crate::builder::NoSelector,
-		crate::builder::NoCallback,
-		crate::builder::Storage<Query<P>>,
-	> {
-		QueryBuilder::new(self.context.clone()).storage(self.context.queries().clone())
+	) -> QuerierBuilder<P, crate::NoSelector, crate::NoCallback, crate::Storage<Querier<P>>> {
+		QuerierBuilder::new(self.context.clone()).storage(self.context.queries().clone())
 	}
 
 	/// Get a [`QueryableBuilder`], the builder for a [`Queryable`].
 	#[must_use]
 	pub fn queryable(
 		&self,
-	) -> QueryableBuilder<
-		P,
-		crate::builder::NoSelector,
-		crate::builder::NoCallback,
-		crate::builder::Storage<Queryable<P>>,
-	> {
+	) -> QueryableBuilder<P, crate::NoSelector, crate::NoCallback, crate::Storage<Queryable<P>>> {
 		QueryableBuilder::new(self.context.clone()).storage(self.context.queryables().clone())
 	}
 
@@ -395,12 +392,8 @@ where
 	#[must_use]
 	pub fn subscriber(
 		&self,
-	) -> SubscriberBuilder<
-		P,
-		crate::builder::NoSelector,
-		crate::builder::NoCallback,
-		crate::builder::Storage<Subscriber<P>>,
-	> {
+	) -> SubscriberBuilder<P, crate::NoSelector, crate::NoCallback, crate::Storage<Subscriber<P>>>
+	{
 		SubscriberBuilder::new(self.context.clone()).storage(self.context.subscribers().clone())
 	}
 
@@ -410,10 +403,10 @@ where
 		&self,
 	) -> TimerBuilder<
 		P,
-		crate::builder::NoSelector,
-		crate::builder::NoInterval,
-		crate::builder::NoCallback,
-		crate::builder::Storage<Timer<P>>,
+		crate::NoSelector,
+		crate::NoInterval,
+		crate::NoCallback,
+		crate::Storage<Timer<P>>,
 	> {
 		TimerBuilder::new(self.context.clone()).storage(self.context.timers().clone())
 	}
@@ -424,10 +417,10 @@ where
 	/// # Errors
 	#[tracing::instrument(skip_all)]
 	pub async fn start(self) -> Result<Self> {
-		let session = self.context.session();
-
 		// activate sending liveliness
+		#[cfg(feature = "unstable")]
 		if self.liveliness {
+			let session = self.context.session();
 			let token_str = self
 				.context
 				.prefix()
@@ -452,7 +445,9 @@ where
 		RunningAgent {
 			rx: self.rx,
 			context: self.context,
+			#[cfg(feature = "unstable")]
 			liveliness: self.liveliness,
+			#[cfg(feature = "unstable")]
 			liveliness_token: self.liveliness_token,
 		}
 		.run()
@@ -466,22 +461,24 @@ where
 #[allow(clippy::module_name_repetitions)]
 pub struct RunningAgent<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + 'static,
 {
 	/// The receiver for signals from tasks
 	rx: mpsc::Receiver<TaskSignal>,
 	/// The agents context structure
 	context: Arc<ContextImpl<P>>,
 	/// Flag to control whether sending liveliness or not
+	#[cfg(feature = "unstable")]
 	liveliness: bool,
 	/// The liveliness token - typically the uuid sent to other participants<br>
 	/// Is available in the [`LivelinessSubscriber`] callback
+	#[cfg(feature = "unstable")]
 	liveliness_token: RwLock<Option<LivelinessToken>>,
 }
 
 impl<P> RunningAgent<P>
 where
-	P: Debug + Send + Sync + Unpin + 'static,
+	P: Debug + Send + Sync + 'static,
 {
 	/// run
 	async fn run(mut self) -> Result<Agent<P>> {
@@ -492,6 +489,7 @@ where
 				Some(signal) = self.rx.recv() => {
 				//signal = wait_for_task_signals(&self.rx) => {
 					match signal {
+						#[cfg(feature = "unstable")]
 						TaskSignal::RestartLiveliness(selector) => {
 							self.context.liveliness_subscribers()
 								.write()
@@ -559,12 +557,12 @@ where
 	/// Stop the agent
 	///
 	/// # Errors
-	/// Propagation of errors from [`Context::stop_registered_tasks()`].
 	#[tracing::instrument(skip_all)]
 	pub fn stop(self) -> Result<Agent<P>> {
 		self.context.set_state(OperationState::Created)?;
 
 		// stop liveliness
+		#[cfg(feature = "unstable")]
 		if self.liveliness {
 			self.liveliness_token
 				.write()
@@ -574,7 +572,9 @@ where
 		let r = Agent {
 			rx: self.rx,
 			context: self.context,
+			#[cfg(feature = "unstable")]
 			liveliness: self.liveliness,
+			#[cfg(feature = "unstable")]
 			liveliness_token: self.liveliness_token,
 		};
 		Ok(r)
@@ -587,7 +587,7 @@ mod tests {
 	use super::*;
 
 	// check, that the auto traits are available
-	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
 	#[derive(Debug)]
 	struct Props {}

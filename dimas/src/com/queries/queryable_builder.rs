@@ -10,12 +10,23 @@ use dimas_core::{
 	traits::Context,
 	utils::selector_from,
 };
-use std::sync::{Arc, Mutex, RwLock};
+use futures::future::{BoxFuture, Future};
+use std::sync::{Arc, RwLock};
+use tokio::sync::Mutex;
+#[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
 
-use crate::builder::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
-use crate::com::{queryable::Queryable, ArcQueryableCallback};
+use crate::com::queries::queryable::Queryable;
+use crate::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 // endregion:	--- modules
+
+// region:    	--- types
+/// type defnition for a queryables `request` callback
+pub type QueryableCallback<P> =
+	Box<dyn FnMut(Context<P>, QueryMsg) -> BoxFuture<'static, Result<()>> + Send + Sync>;
+/// type defnition for a queryables atomic reference counted `request` callback
+pub type ArcQueryableCallback<P> = Arc<Mutex<QueryableCallback<P>>>;
+// endregion: 	--- types
 
 // region:		--- QueryableBuilder
 /// The builder for a queryable.
@@ -23,12 +34,14 @@ use crate::com::{queryable::Queryable, ArcQueryableCallback};
 #[derive(Clone)]
 pub struct QueryableBuilder<P, K, C, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	context: Context<P>,
 	activation_state: OperationState,
 	completeness: bool,
+	#[cfg(feature = "unstable")]
 	allowed_origin: Locality,
+	undeclare_on_drop: bool,
 	selector: K,
 	callback: C,
 	storage: S,
@@ -36,7 +49,7 @@ where
 
 impl<P> QueryableBuilder<P, NoSelector, NoCallback, NoStorage>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Construct a `QueryableBuilder` in initial state
 	#[must_use]
@@ -45,7 +58,9 @@ where
 			context,
 			activation_state: OperationState::Standby,
 			completeness: true,
+			#[cfg(feature = "unstable")]
 			allowed_origin: Locality::Any,
+			undeclare_on_drop: true,
 			selector: NoSelector,
 			callback: NoCallback,
 			storage: NoStorage,
@@ -55,7 +70,7 @@ where
 
 impl<P, K, C, S> QueryableBuilder<P, K, C, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set the activation state.
 	#[must_use]
@@ -72,16 +87,24 @@ where
 	}
 
 	/// Set the allowed origin of the [`Queryable`].
+	#[cfg(feature = "unstable")]
 	#[must_use]
 	pub const fn allowed_origin(mut self, allowed_origin: Locality) -> Self {
 		self.allowed_origin = allowed_origin;
+		self
+	}
+
+	/// Set undeclare on drop.
+	#[must_use]
+	pub const fn undeclare_on_drop(mut self, undeclare_on_drop: bool) -> Self {
+		self.undeclare_on_drop = undeclare_on_drop;
 		self
 	}
 }
 
 impl<P, C, S> QueryableBuilder<P, NoSelector, C, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set the full expression for the [`Queryable`].
 	#[must_use]
@@ -90,7 +113,9 @@ where
 			context,
 			activation_state,
 			completeness,
+			#[cfg(feature = "unstable")]
 			allowed_origin,
+			undeclare_on_drop,
 			storage,
 			callback,
 			..
@@ -99,7 +124,9 @@ where
 			context,
 			activation_state,
 			completeness,
+			#[cfg(feature = "unstable")]
 			allowed_origin,
+			undeclare_on_drop,
 			selector: Selector {
 				selector: selector.into(),
 			},
@@ -119,32 +146,38 @@ where
 
 impl<P, K, S> QueryableBuilder<P, K, NoCallback, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set callback for request messages
 	#[must_use]
-	pub fn callback<F>(
+	pub fn callback<C, F>(
 		self,
-		callback: F,
+		mut callback: C,
 	) -> QueryableBuilder<P, K, Callback<ArcQueryableCallback<P>>, S>
 	where
-		F: FnMut(&Context<P>, QueryMsg) -> Result<()> + Send + Sync + Unpin + 'static,
+		C: FnMut(Context<P>, QueryMsg) -> F + Send + Sync + 'static,
+		F: Future<Output = Result<()>> + Send + Sync + 'static,
 	{
 		let Self {
 			context,
 			activation_state,
 			completeness,
+			#[cfg(feature = "unstable")]
 			allowed_origin,
+			undeclare_on_drop,
 			selector,
 			storage,
 			..
 		} = self;
+		let callback: QueryableCallback<P> = Box::new(move |ctx, msg| Box::pin(callback(ctx, msg)));
 		let callback: ArcQueryableCallback<P> = Arc::new(Mutex::new(callback));
 		QueryableBuilder {
 			context,
 			activation_state,
 			completeness,
+			#[cfg(feature = "unstable")]
 			allowed_origin,
+			undeclare_on_drop,
 			selector,
 			callback: Callback { callback },
 			storage,
@@ -154,7 +187,7 @@ where
 
 impl<P, K, C> QueryableBuilder<P, K, C, NoStorage>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Provide agents storage for the queryable
 	#[must_use]
@@ -166,7 +199,9 @@ where
 			context,
 			activation_state,
 			completeness,
+			#[cfg(feature = "unstable")]
 			allowed_origin,
+			undeclare_on_drop,
 			selector,
 			callback,
 			..
@@ -175,7 +210,9 @@ where
 			context,
 			activation_state,
 			completeness,
+			#[cfg(feature = "unstable")]
 			allowed_origin,
+			undeclare_on_drop,
 			selector,
 			callback,
 			storage: Storage { storage },
@@ -185,7 +222,7 @@ where
 
 impl<P, S> QueryableBuilder<P, Selector, Callback<ArcQueryableCallback<P>>, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Build the [`Queryable`]
 	/// # Errors
@@ -195,7 +232,9 @@ where
 			context,
 			activation_state,
 			completeness,
+			#[cfg(feature = "unstable")]
 			allowed_origin,
+			undeclare_on_drop,
 			selector,
 			callback,
 			..
@@ -207,14 +246,16 @@ where
 			activation_state,
 			callback.callback,
 			completeness,
+			#[cfg(feature = "unstable")]
 			allowed_origin,
+			undeclare_on_drop,
 		))
 	}
 }
 
 impl<P> QueryableBuilder<P, Selector, Callback<ArcQueryableCallback<P>>, Storage<Queryable<P>>>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Build and add the queryable to the agents context
 	/// # Errors
@@ -240,7 +281,7 @@ mod tests {
 	struct Props {}
 
 	// check, that the auto traits are available
-	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
 	#[test]
 	const fn normal_types() {

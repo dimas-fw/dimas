@@ -18,7 +18,7 @@ name = "router"
 path = "src/router.rs"
 
 [dependencies]
-dimas = { workspace = true }
+dimas = { workspace = true, features = ["unstable"] }
 tokio = { workspace = true, features = ["macros"] }
 
 [dev-dependencies]

@@ -6,37 +6,48 @@
 // these ones are only for doc needed
 #[cfg(doc)]
 use crate::agent::Agent;
+use core::fmt::Debug;
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
 	message_types::Message,
 	traits::{Capability, Context},
 };
-use std::fmt::Debug;
 use tracing::{instrument, Level};
-use zenoh::{qos::CongestionControl, qos::Priority, Wait};
+#[cfg(feature = "unstable")]
+use zenoh::{qos::Reliability, sample::Locality};
+use zenoh::{
+	qos::{CongestionControl, Priority},
+	Wait,
+};
 // endregion:	--- modules
 
 // region:		--- Publisher
 /// Publisher
 pub struct Publisher<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	selector: String,
 	/// Context for the Publisher
 	context: Context<P>,
 	activation_state: OperationState,
-	priority: Priority,
+	#[cfg(feature = "unstable")]
+	allowed_destination: Locality,
 	congestion_control: CongestionControl,
+	encoding: String,
+	express: bool,
+	priority: Priority,
+	#[cfg(feature = "unstable")]
+	reliability: Reliability,
 	publisher: Option<zenoh::pubsub::Publisher<'static>>,
 }
 
 impl<P> Debug for Publisher<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		f.debug_struct("Publisher")
 			.field("selector", &self.selector)
 			.field("initialized", &self.publisher.is_some())
@@ -46,7 +57,7 @@ where
 
 impl<P> Capability for Publisher<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()> {
 		if state >= &self.activation_state {
@@ -60,23 +71,34 @@ where
 
 impl<P> Publisher<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Constructor for a [`Publisher`]
+	#[allow(clippy::too_many_arguments)]
 	#[must_use]
 	pub const fn new(
 		selector: String,
 		context: Context<P>,
 		activation_state: OperationState,
-		priority: Priority,
+		#[cfg(feature = "unstable")] allowed_destination: Locality,
 		congestion_control: CongestionControl,
+		encoding: String,
+		express: bool,
+		priority: Priority,
+		#[cfg(feature = "unstable")] reliability: Reliability,
 	) -> Self {
 		Self {
 			selector,
 			context,
 			activation_state,
-			priority,
+			#[cfg(feature = "unstable")]
+			allowed_destination,
 			congestion_control,
+			encoding,
+			express,
+			priority,
+			#[cfg(feature = "unstable")]
+			reliability,
 			publisher: None,
 		}
 	}
@@ -92,15 +114,22 @@ where
 	///
 	fn init(&mut self) -> Result<()>
 	where
-		P: Send + Sync + Unpin + 'static,
+		P: Send + Sync + 'static,
 	{
-		let publ = self
-			.context
-			.session()
+		let session = self.context.session();
+		let publ = session
 			.declare_publisher(self.selector.clone())
 			.congestion_control(self.congestion_control)
-			.priority(self.priority)
-			.wait()?;
+			.encoding(self.encoding.as_str())
+			.express(self.express)
+			.priority(self.priority);
+
+		#[cfg(feature = "unstable")]
+		let publ = publ
+			.allowed_destination(self.allowed_destination)
+			.reliability(self.reliability);
+
+		let publ = publ.wait()?;
 		//.map_err(|_| DimasError::Put.into())?;
 		self.publisher.replace(publ);
 		Ok(())
@@ -159,7 +188,7 @@ mod tests {
 	struct Props {}
 
 	// check, that the auto traits are available
-	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
 	#[test]
 	const fn normal_types() {

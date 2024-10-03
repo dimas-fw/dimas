@@ -2,13 +2,13 @@
 
 //! Commandline tool for `DiMAS`
 
-use std::{thread, time::Duration};
-
 // region:		--- modules
 use clap::{Parser, Subcommand};
+use core::time::Duration;
 use dimas_com::Communicator;
 use dimas_config::Config;
 use dimas_core::{enums::OperationState, error::Result};
+use std::thread;
 // endregion:	--- modules
 
 // region:		--- Cli

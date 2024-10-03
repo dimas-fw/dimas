@@ -51,7 +51,7 @@ tmux send-keys "cargo run --bin subscriber $1" C-m
 
 # query & queryable
 tmux select-pane -t 3
-tmux send-keys "cargo run --bin query $1" C-m
+tmux send-keys "cargo run --bin querier $1" C-m
 tmux select-pane -t 4
 tmux send-keys "cargo run --bin queryable $1" C-m
 

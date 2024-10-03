@@ -1,6 +1,7 @@
 // Copyright © 2024 Stephan Kunz
 
 // region:		--- modules
+use super::{ArcObserverControlCallback, ArcObserverResponseCallback};
 use bitcode::decode;
 use dimas_core::{
 	enums::OperationState,
@@ -10,20 +11,20 @@ use dimas_core::{
 };
 use tokio::task::JoinHandle;
 use tracing::{error, instrument, warn, Level};
+#[cfg(feature = "unstable")]
+use zenoh::sample::Locality;
 use zenoh::{
 	query::{ConsolidationMode, QueryTarget},
-	sample::{Locality, SampleKind},
+	sample::SampleKind,
 	Wait,
 };
-
-use super::{ArcObserverControlCallback, ArcObserverResponseCallback};
 // endregion:	--- modules
 
 // region:		--- Observer
 /// Observer
 pub struct Observer<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// The observers key expression
 	selector: String,
@@ -37,18 +38,18 @@ where
 	handle: Option<JoinHandle<()>>,
 }
 
-impl<P> std::fmt::Debug for Observer<P>
+impl<P> core::fmt::Debug for Observer<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		f.debug_struct("Observer").finish_non_exhaustive()
 	}
 }
 
 impl<P> Capability for Observer<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()> {
 		if state >= &self.activation_state {
@@ -62,7 +63,7 @@ where
 
 impl<P> Observer<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Constructor for an [`Observer`]
 	#[must_use]
@@ -115,17 +116,10 @@ where
 		let query = session
 			.get(&selector)
 			.target(QueryTarget::All)
-			.consolidation(ConsolidationMode::None)
-			.allowed_destination(Locality::Any);
+			.consolidation(ConsolidationMode::None);
 
-		//if let Some(timeout) = self.timeout {
-		//	query = query.timeout(timeout);
-		//};
-
-		//if let Some(message) = message {
-		//	let value = message.value().to_owned();
-		//	query = query.with_value(value);
-		//};
+		#[cfg(feature = "unstable")]
+		let query = query.allowed_destination(Locality::Any);
 
 		let replies = query
 			.wait()
@@ -137,21 +131,15 @@ where
 					SampleKind::Put => {
 						let ccb = self.control_callback.clone();
 						let ctx = self.context.clone();
-						let content: Vec<u8> = sample.payload().into();
+						let content: Vec<u8> = sample.payload().to_bytes().into_owned();
 						let response: ControlResponse = decode(&content)?;
 						if matches!(response, ControlResponse::Canceled) {
 							// without spawning possible deadlock when called inside an control response
 							tokio::spawn(async move {
-								match ccb.lock() {
-									Ok(mut lock) => {
-										if let Err(error) = lock(&ctx.clone(), response) {
-											error!("callback failed with {error}");
-										}
-									}
-									Err(err) => {
-										error!("callback lock failed with {err}");
-									}
-								};
+								let mut lock = ccb.lock().await;
+								if let Err(error) = lock(ctx.clone(), response).await {
+									error!("callback failed with {error}");
+								}
 							});
 						} else {
 							error!("unexpected response on cancelation");
@@ -176,8 +164,7 @@ where
 		let mut query = session
 			.get(&selector)
 			.target(QueryTarget::All)
-			.consolidation(ConsolidationMode::None)
-			.allowed_destination(Locality::Any);
+			.consolidation(ConsolidationMode::None);
 
 		//if let Some(timeout) = self.timeout {
 		//	query = query.timeout(timeout);
@@ -188,6 +175,9 @@ where
 			query = query.payload(value);
 		};
 
+		#[cfg(feature = "unstable")]
+		let query = query.allowed_destination(Locality::Any);
+
 		let replies = query
 			.wait()
 			.map_err(|_| DimasError::ShouldNotHappen)?;
@@ -196,7 +186,7 @@ where
 			match reply.result() {
 				Ok(sample) => match sample.kind() {
 					SampleKind::Put => {
-						let content: Vec<u8> = sample.payload().into();
+						let content: Vec<u8> = sample.payload().to_bytes().into_owned();
 						decode::<ControlResponse>(&content).map_or_else(
 							|_| todo!(),
 							|response| {
@@ -204,6 +194,9 @@ where
 									let ctx = self.context.clone();
 									// use "<query_selector>/feedback/<source_id/replier_id>" as key
 									// in case there is no source_id/replier_id, listen on all id's
+									#[cfg(not(feature = "unstable"))]
+									let source_id = "*".to_string();
+									#[cfg(feature = "unstable")]
 									let source_id = reply.result().map_or_else(
 										|_| {
 											reply.replier_id().map_or_else(
@@ -236,16 +229,14 @@ where
 									});
 								};
 								// call control callback
-								match self.control_callback.lock() {
-									Ok(mut lock) => {
-										if let Err(error) = lock(&self.context.clone(), response) {
-											error!("control callback failed with {error}");
-										}
+								let ctx = self.context.clone();
+								let ccb = self.control_callback.clone();
+								tokio::task::spawn(async move {
+									let mut lock = ccb.lock().await;
+									if let Err(error) = lock(ctx, response).await {
+										error!("control callback failed with {error}");
 									}
-									Err(err) => {
-										error!("control callback lock failed with {err}");
-									}
-								};
+								});
 							},
 						);
 					}
@@ -262,6 +253,7 @@ where
 // endregion:	--- Observer
 
 // region:		--- functions
+#[allow(clippy::significant_drop_in_scrutinee)]
 #[instrument(name="observation", level = Level::ERROR, skip_all)]
 async fn run_observation<P>(
 	selector: String,
@@ -280,22 +272,18 @@ async fn run_observation<P>(
 			Ok(sample) => {
 				match sample.kind() {
 					SampleKind::Put => {
-						let content: Vec<u8> = sample.payload().into();
+						let content: Vec<u8> = sample.payload().to_bytes().into_owned();
 						match decode::<ObservableResponse>(&content) {
 							Ok(response) => {
 								// remember to stop loop on anything that is not feedback
 								let stop = !matches!(response, ObservableResponse::Feedback(_));
-								rcb.lock().map_or_else(
-									|_| todo!(),
-									|mut cb| {
-										if let Err(error) = cb(&ctx, response) {
-											error!("response callback failed with {error}");
-										};
-									},
-								);
+								let ctx = ctx.clone();
+								if let Err(error) = rcb.lock().await(ctx, response).await {
+									error!("response callback failed with {error}");
+								};
 								if stop {
 									break;
-								}
+								};
 							}
 							Err(_) => todo!(),
 						};
@@ -322,7 +310,7 @@ mod tests {
 	struct Props {}
 
 	// check, that the auto traits are available
-	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
 	#[test]
 	const fn normal_types() {

@@ -1,13 +1,8 @@
 // Copyright © 2024 Stephan Kunz
 
 // region:		--- modules
-use crate::{
-	builder::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage},
-	com::{
-		observable::Observable, ArcObservableControlCallback, ArcObservableExecutionFunction,
-		ArcObservableFeedbackCallback,
-	},
-};
+use super::observable::Observable;
+use crate::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
@@ -15,35 +10,54 @@ use dimas_core::{
 	traits::Context,
 	utils::selector_from,
 };
-use std::{
-	sync::{Arc, Mutex, RwLock},
-	time::Duration,
-};
+use futures::future::{BoxFuture, Future};
+use std::sync::{Arc, RwLock};
+use tokio::sync::Mutex;
+use tokio::time::Duration;
 // endregion:	--- modules
+
+// region:    	--- types
+/// Type definition for an observables `control` callback
+type ObservableControlCallback<P> = Box<
+	dyn FnMut(Context<P>, Message) -> BoxFuture<'static, Result<ControlResponse>> + Send + Sync,
+>;
+/// Type definition for an observables atomic reference counted `control` callback
+pub type ArcObservableControlCallback<P> = Arc<Mutex<ObservableControlCallback<P>>>;
+/// Type definition for an observables `feedback` callback
+type ObservableFeedbackCallback<P> =
+	Box<dyn FnMut(Context<P>) -> BoxFuture<'static, Result<Message>> + Send + Sync>;
+/// Type definition for an observables atomic reference counted `feedback` callback
+pub type ArcObservableFeedbackCallback<P> = Arc<Mutex<ObservableFeedbackCallback<P>>>;
+/// Type definition for an observables atomic reference counted `execution` callback
+type ObservableExecutionCallback<P> =
+	Box<dyn FnMut(Context<P>) -> BoxFuture<'static, Result<Message>> + Send + Sync>;
+/// Type definition for an observables atomic reference counted `execution` callback
+pub type ArcObservableExecutionCallback<P> = Arc<Mutex<ObservableExecutionCallback<P>>>;
+// endregion: 	--- types
 
 // region:		--- ObservableBuilder
 /// The builder for an [`Observable`]
 #[allow(clippy::module_name_repetitions)]
 pub struct ObservableBuilder<P, K, CC, FC, EF, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
-	/// Context for the ObservableBuilder
+	/// Context for the `ObservableBuilder`
 	context: Context<P>,
 	activation_state: OperationState,
 	feedback_interval: Duration,
 	selector: K,
 	control_callback: CC,
 	feedback_callback: FC,
-	execution_function: EF,
+	execution_callback: EF,
 	storage: S,
 }
 
 impl<P> ObservableBuilder<P, NoSelector, NoCallback, NoCallback, NoCallback, NoStorage>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
-	/// Construct a `QueryBuilder` in initial state
+	/// Construct a `ObservableBuilder` in initial state
 	#[must_use]
 	pub const fn new(context: Context<P>) -> Self {
 		Self {
@@ -53,7 +67,7 @@ where
 			selector: NoSelector,
 			control_callback: NoCallback,
 			feedback_callback: NoCallback,
-			execution_function: NoCallback,
+			execution_callback: NoCallback,
 			storage: NoStorage,
 		}
 	}
@@ -61,7 +75,7 @@ where
 
 impl<P, K, CC, FC, EC, S> ObservableBuilder<P, K, CC, FC, EC, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set the activation state.
 	#[must_use]
@@ -80,7 +94,7 @@ where
 
 impl<P, CC, FC, EF, S> ObservableBuilder<P, NoSelector, CC, FC, EF, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set the full expression for the [`Observable`].
 	#[must_use]
@@ -92,7 +106,7 @@ where
 			storage,
 			control_callback,
 			feedback_callback,
-			execution_function,
+			execution_callback,
 			..
 		} = self;
 		ObservableBuilder {
@@ -104,7 +118,7 @@ where
 			},
 			control_callback,
 			feedback_callback,
-			execution_function,
+			execution_callback,
 			storage,
 		}
 	}
@@ -120,16 +134,17 @@ where
 
 impl<P, K, FC, EF, S> ObservableBuilder<P, K, NoCallback, FC, EF, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set callback for control messages
 	#[must_use]
-	pub fn control_callback<F>(
+	pub fn control_callback<C, F>(
 		self,
-		callback: F,
+		mut callback: C,
 	) -> ObservableBuilder<P, K, Callback<ArcObservableControlCallback<P>>, FC, EF, S>
 	where
-		F: FnMut(&Context<P>, Message) -> Result<ControlResponse> + Send + Sync + Unpin + 'static,
+		C: FnMut(Context<P>, Message) -> F + Send + Sync + 'static,
+		F: Future<Output = Result<ControlResponse>> + Send + Sync + 'static,
 	{
 		let Self {
 			context,
@@ -138,9 +153,11 @@ where
 			selector,
 			storage,
 			feedback_callback,
-			execution_function,
+			execution_callback,
 			..
 		} = self;
+		let callback: ObservableControlCallback<P> =
+			Box::new(move |ctx, msg| Box::pin(callback(ctx, msg)));
 		let callback: ArcObservableControlCallback<P> = Arc::new(Mutex::new(callback));
 		ObservableBuilder {
 			context,
@@ -149,7 +166,7 @@ where
 			selector,
 			control_callback: Callback { callback },
 			feedback_callback,
-			execution_function,
+			execution_callback,
 			storage,
 		}
 	}
@@ -157,16 +174,17 @@ where
 
 impl<P, K, CC, EF, S> ObservableBuilder<P, K, CC, NoCallback, EF, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set callback for feedback messages
 	#[must_use]
-	pub fn feedback_callback<F>(
+	pub fn feedback_callback<C, F>(
 		self,
-		callback: F,
+		mut callback: C,
 	) -> ObservableBuilder<P, K, CC, Callback<ArcObservableFeedbackCallback<P>>, EF, S>
 	where
-		F: FnMut(&Context<P>) -> Result<Message> + Send + Sync + Unpin + 'static,
+		C: FnMut(Context<P>) -> F + Send + Sync + 'static,
+		F: Future<Output = Result<Message>> + Send + Sync + 'static,
 	{
 		let Self {
 			context,
@@ -175,9 +193,10 @@ where
 			selector,
 			storage,
 			control_callback,
-			execution_function,
+			execution_callback,
 			..
 		} = self;
+		let callback: ObservableFeedbackCallback<P> = Box::new(move |ctx| Box::pin(callback(ctx)));
 		let callback: ArcObservableFeedbackCallback<P> = Arc::new(Mutex::new(callback));
 		ObservableBuilder {
 			context,
@@ -186,7 +205,7 @@ where
 			selector,
 			control_callback,
 			feedback_callback: Callback { callback },
-			execution_function,
+			execution_callback,
 			storage,
 		}
 	}
@@ -194,16 +213,17 @@ where
 
 impl<P, K, CC, FC, S> ObservableBuilder<P, K, CC, FC, NoCallback, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set execution function
 	#[must_use]
-	pub fn execution_function<F>(
+	pub fn execution_callback<C, F>(
 		self,
-		function: F,
-	) -> ObservableBuilder<P, K, CC, FC, Callback<ArcObservableExecutionFunction<P>>, S>
+		mut callback: C,
+	) -> ObservableBuilder<P, K, CC, FC, Callback<ArcObservableExecutionCallback<P>>, S>
 	where
-		F: FnMut(&Context<P>) -> Result<Message> + Send + Sync + Unpin + 'static,
+		C: FnMut(Context<P>) -> F + Send + Sync + 'static,
+		F: Future<Output = Result<Message>> + Send + Sync + 'static,
 	{
 		let Self {
 			context,
@@ -215,8 +235,8 @@ where
 			feedback_callback,
 			..
 		} = self;
-		let function: ArcObservableExecutionFunction<P> =
-			Arc::new(tokio::sync::Mutex::new(function));
+		let callback: ObservableExecutionCallback<P> = Box::new(move |ctx| Box::pin(callback(ctx)));
+		let callback = Arc::new(Mutex::new(callback));
 		ObservableBuilder {
 			context,
 			activation_state,
@@ -224,7 +244,7 @@ where
 			selector,
 			control_callback,
 			feedback_callback,
-			execution_function: Callback { callback: function },
+			execution_callback: Callback { callback },
 			storage,
 		}
 	}
@@ -232,9 +252,9 @@ where
 
 impl<P, K, CC, FC, EF> ObservableBuilder<P, K, CC, FC, EF, NoStorage>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
-	/// Provide agents storage for the queryable
+	/// Provide agents storage for the observable
 	#[must_use]
 	pub fn storage(
 		self,
@@ -247,7 +267,7 @@ where
 			selector,
 			control_callback,
 			feedback_callback,
-			execution_function,
+			execution_callback,
 			..
 		} = self;
 		ObservableBuilder {
@@ -257,7 +277,7 @@ where
 			selector,
 			control_callback,
 			feedback_callback,
-			execution_function,
+			execution_callback,
 			storage: Storage { storage },
 		}
 	}
@@ -269,10 +289,17 @@ impl<P, S>
 		Selector,
 		Callback<ArcObservableControlCallback<P>>,
 		Callback<ArcObservableFeedbackCallback<P>>,
-		Callback<ArcObservableExecutionFunction<P>>,
+		Callback<
+			Arc<
+				Mutex<
+					Box<dyn FnMut(Context<P>) -> BoxFuture<'static, Result<Message>> + Send + Sync>,
+				>,
+			>,
+		>,
 		S,
-	> where
-	P: Send + Sync + Unpin + 'static,
+	>
+where
+	P: Send + Sync + 'static,
 {
 	/// Build the [`Observable`]
 	/// # Errors
@@ -285,7 +312,7 @@ impl<P, S>
 			selector,
 			control_callback,
 			feedback_callback,
-			execution_function,
+			execution_callback,
 			..
 		} = self;
 		Ok(Observable::new(
@@ -295,7 +322,7 @@ impl<P, S>
 			feedback_interval,
 			control_callback.callback,
 			feedback_callback.callback,
-			execution_function.callback,
+			execution_callback.callback,
 		))
 	}
 }
@@ -306,12 +333,13 @@ impl<P>
 		Selector,
 		Callback<ArcObservableControlCallback<P>>,
 		Callback<ArcObservableFeedbackCallback<P>>,
-		Callback<ArcObservableExecutionFunction<P>>,
+		Callback<ArcObservableExecutionCallback<P>>,
 		Storage<Observable<P>>,
-	> where
-	P: Send + Sync + Unpin + 'static,
+	>
+where
+	P: Send + Sync + 'static,
 {
-	/// Build and add the queryable to the agents context
+	/// Build and add the observable to the agents context
 	/// # Errors
 	///
 	pub fn add(self) -> Result<Option<Observable<P>>> {
@@ -335,7 +363,7 @@ mod tests {
 	struct Props {}
 
 	// check, that the auto traits are available
-	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
 	#[test]
 	const fn normal_types() {

@@ -15,6 +15,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+## [0.3.0] - 2024-10-03 _Has breaking changes!!_
+
+### Added
+
+- re-export of `tokio::time::Duration` in `dimas::prelude`
+- feature `unstable`, which encapsulates zenoh unstable feature
+- additional settings in: `PublisherBuilder`, `SubscriberBuilder`,
+  `Querier`, `QueryableBuilder`. `ObserableBuilder`. `Observer`
+
+### Changed
+
+- bumped minimum rust version to 1.81
+- replaced `std::` with `core::` in some places
+- renamed `Query` to `Querier` `QueryBuilder` to `QuerierBuilder`
+  to differentiate from data structure
+- callbacks get a `Context<P>` instead of a `&Context<P>`
+- internal structure
+- renamed `ObservableBuilder::execution_function` to `execution_callback`
+- renamed `ObserverBuilder::response_callback` to `result_callback`
+- async callbacks for `LivelinessSubscriber`, `Observable`, `Observer`, `Querier`,
+  `Queryable`, `Subscriber`
+  (this makes the usage of closures for those callbacks difficult
+  until async closures are stable)
+- changed trait `ContextAbstraction` from generic to associated type
+
+### Fixed
+
+- some clippy hints
+- changes in zenoh api
+
 ## [0.2.5] - 2024-09-21 _Has breaking changes!!_
 
 ### Changed
@@ -124,6 +154,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Additional features for Publisher, Subscriber, Query & Queryable
 
 ### Changed
+
+use core::time::Duration;
 
 - MSRV bumped to '1.77' due to Mutex::clear_poison()
 - Bumped version of 'zenoh' to '0.11.0-rc'

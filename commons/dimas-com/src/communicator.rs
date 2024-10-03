@@ -3,17 +3,28 @@
 //! Communicator implements the communication capabilities.
 //!
 
+#[doc(hidden)]
+extern crate alloc;
+
+#[cfg(feature = "std")]
+extern crate std;
+
 // region:		--- modules
+#[cfg(feature = "std")]
+use std::prelude::rust_2021::*;
+use core::fmt::Debug;
 use dimas_core::{
 	error::{DimasError, Result},
 	message_types::{Message, QueryableMsg},
 };
-use std::fmt::Debug;
-use std::sync::Arc;
+use alloc::sync::Arc;
+#[cfg(feature = "unstable")]
+use zenoh::config::WhatAmI;
+#[cfg(feature = "unstable")]
+use zenoh::sample::Locality;
 use zenoh::{
-	config::WhatAmI,
 	query::{ConsolidationMode, QueryTarget},
-	sample::{Locality, SampleKind},
+	sample::SampleKind,
 	Session, Wait,
 };
 // endregion:	--- modules
@@ -33,7 +44,10 @@ impl Communicator {
 	/// # Errors
 	pub fn new(config: &dimas_config::Config) -> Result<Self> {
 		let cfg = config.zenoh_config();
+		#[cfg(feature = "unstable")]
 		let kind = cfg.mode().unwrap_or(WhatAmI::Peer).to_string();
+		#[cfg(not(feature = "unstable"))]
+		let kind = String::from("unknown");
 		let session = Arc::new(
 			zenoh::open(cfg)
 				.wait()
@@ -96,8 +110,12 @@ impl Communicator {
 				|msg| self.session.get(selector).payload(msg.value()),
 			)
 			.consolidation(ConsolidationMode::None)
-			.target(QueryTarget::All)
-			.allowed_destination(Locality::Any)
+			.target(QueryTarget::All);
+
+		#[cfg(feature = "unstable")]
+		let replies = replies.allowed_destination(Locality::Any);
+
+		let replies = replies
 			//.timeout(Duration::from_millis(1000))
 			.wait()
 			.map_err(|_| DimasError::ShouldNotHappen)?;
@@ -106,16 +124,16 @@ impl Communicator {
 			match reply.result() {
 				Ok(sample) => match sample.kind() {
 					SampleKind::Put => {
-						let content: Vec<u8> = sample.payload().into();
+						let content: Vec<u8> = sample.payload().to_bytes().into_owned();
 						callback(QueryableMsg(content))?;
 					}
 					SampleKind::Delete => {
-						println!("Delete in Query");
+						todo!("Delete in Query");
 					}
 				},
 				Err(err) => {
-					let content: Vec<u8> = err.payload().into();
-					println!(">> Received (ERROR: '{:?}' for {})", &content, &selector);
+					let content: Vec<u8> = err.payload().to_bytes().into_owned();
+					todo!(">> Received (ERROR: '{:?}' for {})", &content, &selector);
 				}
 			}
 		}
@@ -130,7 +148,7 @@ mod tests {
 	//use serial_test::serial;
 
 	// check, that the auto traits are available
-	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
 	#[test]
 	const fn normal_types() {

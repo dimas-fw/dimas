@@ -3,10 +3,15 @@
 //! Core enums of `DiMAS`
 //!
 
+#[cfg(feature = "std")]
+extern crate std;
+
 // region:		--- modules
 use crate::error::{DimasError, Result};
 use bitcode::{Decode, Encode};
-use std::fmt::{Debug, Display};
+use core::fmt::{Debug, Display};
+#[cfg(feature = "std")]
+use std::prelude::rust_2021::*;
 // endregion:	--- modules
 
 // region:		--- OperationState
@@ -29,7 +34,7 @@ pub enum OperationState {
 }
 
 impl TryFrom<&str> for OperationState {
-	type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
+	type Error = Box<dyn core::error::Error + Send + Sync + 'static>;
 
 	fn try_from(value: &str) -> Result<Self> {
 		let v = value.to_lowercase();
@@ -45,7 +50,7 @@ impl TryFrom<&str> for OperationState {
 }
 
 impl Display for OperationState {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		match self {
 			Self::Error => write!(f, "Error"),
 			Self::Created => write!(f, "Created"),
@@ -85,6 +90,7 @@ pub enum Signal {
 #[allow(clippy::enum_variant_names)]
 pub enum TaskSignal {
 	/// Restart a certain liveliness subscriber, identified by its key expression
+	#[cfg(feature = "unstable")]
 	RestartLiveliness(String),
 	/// Restart a certain observable, identified by its key expression
 	RestartObservable(String),

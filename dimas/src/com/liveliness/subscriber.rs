@@ -4,6 +4,8 @@
 //! A `LivelinessSubscriber` can optional subscribe on a delete message.
 
 // region:		--- modules
+use super::ArcLivelinessCallback;
+use core::time::Duration;
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
 	error::Result,
@@ -11,13 +13,10 @@ use dimas_core::{
 };
 #[cfg(doc)]
 use std::collections::HashMap;
-use std::time::Duration;
 use tokio::task::JoinHandle;
 use tracing::info;
 use tracing::{error, instrument, warn, Level};
 use zenoh::sample::SampleKind;
-
-use super::ArcLivelinessCallback;
 // endregion:	--- modules
 
 // region:		--- LivelinessSubscriber
@@ -25,7 +24,7 @@ use super::ArcLivelinessCallback;
 #[allow(clippy::module_name_repetitions)]
 pub struct LivelinessSubscriber<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	token: String,
 	context: Context<P>,
@@ -35,11 +34,11 @@ where
 	handle: Option<JoinHandle<()>>,
 }
 
-impl<P> std::fmt::Debug for LivelinessSubscriber<P>
+impl<P> core::fmt::Debug for LivelinessSubscriber<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		f.debug_struct("LivelinessSubscriber")
 			.finish_non_exhaustive()
 	}
@@ -47,7 +46,7 @@ where
 
 impl<P> Capability for LivelinessSubscriber<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()> {
 		if (state >= &self.activation_state) && self.handle.is_none() {
@@ -62,7 +61,7 @@ where
 
 impl<P> LivelinessSubscriber<P>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Constructor for a [`LivelinessSubscriber`]
 	pub fn new(
@@ -95,22 +94,6 @@ where
 	fn start(&mut self) -> Result<()> {
 		self.stop();
 
-		// check Mutexes
-		{
-			if self.put_callback.lock().is_err() {
-				warn!("found poisoned put Mutex");
-				self.put_callback.clear_poison();
-			}
-		}
-		{
-			if let Some(dcb) = self.delete_callback.clone() {
-				if dcb.lock().is_err() {
-					warn!("found poisoned delete Mutex");
-					dcb.clear_poison();
-				}
-			}
-		}
-
 		// liveliness handling
 		let key = self.token.clone();
 		let token1 = self.token.clone();
@@ -141,7 +124,7 @@ where
 					error!("running initial liveliness failed with {error}");
 				};
 
-				tokio::time::sleep(Duration::from_nanos(1)).await;
+				tokio::time::sleep(Duration::from_millis(1)).await;
 
 				// the liveliness subscriber
 				if let Err(error) = run_liveliness(token2, p_cb2, d_cb, ctx2).await {
@@ -183,34 +166,26 @@ async fn run_liveliness<P>(
 					continue;
 				};
 				match sample.kind() {
-					SampleKind::Put => match p_cb.lock() {
-						Ok(mut lock) => {
-							if let Err(error) = lock(&ctx, id) {
-								error!("liveliness put callback failed with {error}");
-							}
+					SampleKind::Put => {
+						let ctx = ctx.clone();
+						let mut lock = p_cb.lock().await;
+						if let Err(error) = lock(ctx, id.to_string()).await {
+							error!("liveliness put callback failed with {error}");
 						}
-						Err(err) => {
-							error!("liveliness put callback lock failed with {err}");
-						}
-					},
+					}
 					SampleKind::Delete => {
 						if let Some(cb) = d_cb.clone() {
-							match cb.lock() {
-								Ok(mut lock) => {
-									if let Err(err) = lock(&ctx, id) {
-										error!("liveliness delete callback failed with {err}");
-									}
-								}
-								Err(err) => {
-									error!("liveliness delete callback lock failed with {err}");
-								}
+							let ctx = ctx.clone();
+							let mut lock = cb.lock().await;
+							if let Err(err) = lock(ctx, id.to_string()).await {
+								error!("liveliness delete callback failed with {err}");
 							}
 						}
 					}
 				}
 			}
 			Err(error) => {
-				error!("receive failed with {error}");
+				error!("liveliness receive failed with {error}");
 			}
 		}
 	}
@@ -239,23 +214,18 @@ async fn run_initial<P>(
 						if id == ctx.uuid() {
 							continue;
 						};
-						match p_cb.lock() {
-							Ok(mut lock) => {
-								if let Err(error) = lock(&ctx, id) {
-									error!("lveliness put callback failed with {error}");
-								}
-							}
-							Err(err) => {
-								error!("liveliness put callback failed with {err}");
-							}
+						let ctx = ctx.clone();
+						let mut lock = p_cb.lock().await;
+						if let Err(error) = lock(ctx, id.to_string()).await {
+							error!("lveliness initial query put callback failed with {error}");
 						}
 					}
-					Err(err) => error!(">> liveliness subscriber delete error: {:?})", err),
+					Err(err) => error!(">> liveliness initial query failed with {:?})", err),
 				}
 			}
 		}
 		Err(error) => {
-			error!("livelieness subscriber failed with {error}");
+			error!("livelieness initial query receive failed with {error}");
 		}
 	}
 	Ok(())
@@ -270,7 +240,7 @@ mod tests {
 	struct Props {}
 
 	// check, that the auto traits are available
-	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
 	#[test]
 	const fn normal_types() {

@@ -1,10 +1,10 @@
 // Copyright © 2024 Stephan Kunz
 
 // region:		--- modules
-use crate::{
-	builder::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage},
-	com::{observer::Observer, ArcObserverControlCallback, ArcObserverResponseCallback},
-};
+use super::observer::Observer;
+#[cfg(doc)]
+use crate::agent::Agent;
+use crate::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
@@ -12,17 +12,32 @@ use dimas_core::{
 	traits::Context,
 	utils::selector_from,
 };
-use std::sync::{Arc, Mutex, RwLock};
+use futures::future::{BoxFuture, Future};
+use std::sync::{Arc, RwLock};
+use tokio::sync::Mutex;
 // endregion:	--- modules
+
+// region:    	--- types
+/// Type definition for an observers `control` callback
+type ObserverControlCallback<P> =
+	Box<dyn FnMut(Context<P>, ControlResponse) -> BoxFuture<'static, Result<()>> + Send + Sync>;
+/// Type definition for an observers atomic reference counted `control` callback
+pub type ArcObserverControlCallback<P> = Arc<Mutex<ObserverControlCallback<P>>>;
+/// Type definition for an observers `response` callback
+type ObserverResponseCallback<P> =
+	Box<dyn FnMut(Context<P>, ObservableResponse) -> BoxFuture<'static, Result<()>> + Send + Sync>;
+/// Type definition for an observers atomic reference counted `response` callback
+pub type ArcObserverResponseCallback<P> = Arc<Mutex<ObserverResponseCallback<P>>>;
+// endregion: 	--- types
 
 // region:		--- ObserverBuilder
 /// The builder for an [`Observer`]
 #[allow(clippy::module_name_repetitions)]
 pub struct ObserverBuilder<P, K, CC, RC, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
-	/// Context for the ObserverBuilder
+	/// Context for the `ObserverBuilder`
 	context: Context<P>,
 	activation_state: OperationState,
 	selector: K,
@@ -35,7 +50,7 @@ where
 
 impl<P> ObserverBuilder<P, NoSelector, NoCallback, NoCallback, NoStorage>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Construct an `ObserverBuilder` in initial state
 	#[must_use]
@@ -53,7 +68,7 @@ where
 
 impl<P, K, CC, RC, S> ObserverBuilder<P, K, CC, RC, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set the activation state.
 	#[must_use]
@@ -65,7 +80,7 @@ where
 
 impl<P, CC, RC, S> ObserverBuilder<P, NoSelector, CC, RC, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set the full key expression for the [`Observer`].
 	#[must_use]
@@ -101,16 +116,17 @@ where
 
 impl<P, K, RC, S> ObserverBuilder<P, K, NoCallback, RC, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set callback for messages
 	#[must_use]
-	pub fn control_callback<F>(
+	pub fn control_callback<C, F>(
 		self,
-		callback: F,
+		mut callback: C,
 	) -> ObserverBuilder<P, K, Callback<ArcObserverControlCallback<P>>, RC, S>
 	where
-		F: FnMut(&Context<P>, ControlResponse) -> Result<()> + Send + Sync + Unpin + 'static,
+		C: FnMut(Context<P>, ControlResponse) -> F + Send + Sync + 'static,
+		F: Future<Output = Result<()>> + Send + Sync + 'static,
 	{
 		let Self {
 			context,
@@ -120,6 +136,8 @@ where
 			storage,
 			..
 		} = self;
+		let callback: ObserverControlCallback<P> =
+			Box::new(move |ctx, msg| Box::pin(callback(ctx, msg)));
 		let callback: ArcObserverControlCallback<P> = Arc::new(Mutex::new(callback));
 		ObserverBuilder {
 			context,
@@ -134,16 +152,17 @@ where
 
 impl<P, K, CC, S> ObserverBuilder<P, K, CC, NoCallback, S>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Set callback for response messages
 	#[must_use]
-	pub fn response_callback<F>(
+	pub fn result_callback<C, F>(
 		self,
-		callback: F,
+		mut callback: C,
 	) -> ObserverBuilder<P, K, CC, Callback<ArcObserverResponseCallback<P>>, S>
 	where
-		F: FnMut(&Context<P>, ObservableResponse) -> Result<()> + Send + Sync + Unpin + 'static,
+		C: FnMut(Context<P>, ObservableResponse) -> F + Send + Sync + 'static,
+		F: Future<Output = Result<()>> + Send + Sync + 'static,
 	{
 		let Self {
 			context,
@@ -153,6 +172,8 @@ where
 			storage,
 			..
 		} = self;
+		let callback: ObserverResponseCallback<P> =
+			Box::new(move |ctx, msg| Box::pin(callback(ctx, msg)));
 		let callback: ArcObserverResponseCallback<P> = Arc::new(Mutex::new(callback));
 		ObserverBuilder {
 			context,
@@ -167,7 +188,7 @@ where
 
 impl<P, K, CC, RC> ObserverBuilder<P, K, CC, RC, NoStorage>
 where
-	P: Send + Sync + Unpin + 'static,
+	P: Send + Sync + 'static,
 {
 	/// Provide agents storage for the subscriber
 	#[must_use]
@@ -201,10 +222,11 @@ impl<P, S>
 		Callback<ArcObserverControlCallback<P>>,
 		Callback<ArcObserverResponseCallback<P>>,
 		S,
-	> where
-	P: Send + Sync + Unpin + 'static,
+	>
+where
+	P: Send + Sync + 'static,
 {
-	/// Build the [`Subscriber`].
+	/// Build the [`Observer`].
 	///
 	/// # Errors
 	/// Currently none
@@ -235,8 +257,9 @@ impl<P>
 		Callback<ArcObserverControlCallback<P>>,
 		Callback<ArcObserverResponseCallback<P>>,
 		Storage<Observer<P>>,
-	> where
-	P: Send + Sync + Unpin + 'static,
+	>
+where
+	P: Send + Sync + 'static,
 {
 	/// Build and add the [`Observer`] to the [`Agent`].
 	///
@@ -263,7 +286,7 @@ mod tests {
 	struct Props {}
 
 	// check, that the auto traits are available
-	const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
 	#[test]
 	const fn normal_types() {

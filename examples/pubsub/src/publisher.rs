@@ -3,12 +3,12 @@
 
 // region:		--- modules
 use dimas::prelude::*;
-use std::time::Duration;
+use pubsub::PubSubMessage;
 // endregion:	--- modules
 
 #[derive(Debug)]
 struct AgentProps {
-	counter: u128,
+	count: u128,
 }
 
 #[tokio::main]
@@ -17,7 +17,7 @@ async fn main() -> Result<()> {
 	init_tracing();
 
 	// create & initialize agents properties
-	let properties = AgentProps { counter: 0 };
+	let properties = AgentProps { count: 0 };
 
 	// create an agent with the properties and the prefix 'examples'
 	let mut agent = Agent::new(properties)
@@ -34,14 +34,17 @@ async fn main() -> Result<()> {
 		.name("timer1")
 		.interval(Duration::from_secs(1))
 		.callback(|ctx| -> Result<()> {
-			let counter = ctx.read()?.counter;
-
-			let text = format!("Hello World! [{counter}]");
-			println!("Sending '{}'", &text);
+			let count = ctx.read()?.count;
+			// create structure to send
+			let msg = PubSubMessage {
+				count: count,
+				text: String::from("hello world!"),
+			};
+			let message = Message::encode(&msg);
+			println!("Sending {} [{}]", msg.text, msg.count);
 			// publishing with stored publisher
-			let message = Message::encode(&text);
 			let _ = ctx.put("hello", message);
-			ctx.write()?.counter += 1;
+			ctx.write()?.count += 1;
 			Ok(())
 		})
 		.add()?;
