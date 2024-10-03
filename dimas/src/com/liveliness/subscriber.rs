@@ -124,7 +124,7 @@ where
 					error!("running initial liveliness failed with {error}");
 				};
 
-				tokio::time::sleep(Duration::from_nanos(1)).await;
+				tokio::time::sleep(Duration::from_millis(1)).await;
 
 				// the liveliness subscriber
 				if let Err(error) = run_liveliness(token2, p_cb2, d_cb, ctx2).await {
@@ -185,7 +185,7 @@ async fn run_liveliness<P>(
 				}
 			}
 			Err(error) => {
-				error!("receive failed with {error}");
+				error!("liveliness receive failed with {error}");
 			}
 		}
 	}
@@ -217,15 +217,15 @@ async fn run_initial<P>(
 						let ctx = ctx.clone();
 						let mut lock = p_cb.lock().await;
 						if let Err(error) = lock(ctx, id.to_string()).await {
-							error!("lveliness put callback failed with {error}");
+							error!("lveliness initial query put callback failed with {error}");
 						}
 					}
-					Err(err) => error!(">> liveliness subscriber delete error: {:?})", err),
+					Err(err) => error!(">> liveliness initial query failed with {:?})", err),
 				}
 			}
 		}
 		Err(error) => {
-			error!("livelieness subscriber failed with {error}");
+			error!("livelieness initial query receive failed with {error}");
 		}
 	}
 	Ok(())
