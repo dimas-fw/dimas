@@ -6,6 +6,7 @@ use super::{
 };
 use bitcode::encode;
 use core::time::Duration;
+use std::sync::Arc;
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
 	error::Result,
@@ -13,6 +14,7 @@ use dimas_core::{
 	traits::{Capability, Context},
 };
 use tokio::task::JoinHandle;
+use tokio::sync::Mutex;
 use tracing::{error, info, instrument, warn, Level};
 use zenoh::qos::{CongestionControl, Priority};
 #[cfg(feature = "unstable")]
@@ -36,8 +38,10 @@ where
 	control_callback: ArcObservableControlCallback<P>,
 	/// callback for observation feedback
 	feedback_callback: ArcObservableFeedbackCallback<P>,
+	feedback_publisher: Arc<Mutex<Option<zenoh::pubsub::Publisher<'static>>>>,
 	/// function for observation execution
 	execution_function: ArcObservableExecutionCallback<P>,
+	execution_handle: Arc<Mutex<Option<JoinHandle<()>>>>,
 	handle: Option<JoinHandle<()>>,
 }
 
@@ -88,7 +92,9 @@ where
 			feedback_interval,
 			control_callback,
 			feedback_callback,
+			feedback_publisher: Arc::new(Mutex::new(None)),
 			execution_function,
+			execution_handle: Arc::new(Mutex::new(None)),
 			handle: None,
 		}
 	}
@@ -109,7 +115,9 @@ where
 		let interval = self.feedback_interval;
 		let ccb = self.control_callback.clone();
 		let fcb = self.feedback_callback.clone();
+		let fcbp = self.feedback_publisher.clone();
 		let efc = self.execution_function.clone();
+		let efch = self.execution_handle.clone();
 		let ctx1 = self.context.clone();
 		let ctx2 = self.context.clone();
 
@@ -127,7 +135,7 @@ where
 						info!("restarting observable!");
 					};
 				}));
-				if let Err(error) = run_observable(selector, interval, ccb, fcb, efc, ctx2).await {
+				if let Err(error) = run_observable(selector, interval, ccb, fcb, fcbp, efc, efch, ctx2).await {
 					error!("observable failed with {error}");
 				};
 			}));
@@ -137,22 +145,47 @@ where
 
 	/// Stop a running Observable
 	#[instrument(level = Level::TRACE, skip_all)]
+	#[allow(clippy::significant_drop_in_scrutinee)]
 	fn stop(&mut self) {
 		if let Some(handle) = self.handle.take() {
-			handle.abort();
+			let feedback_publisher = self.feedback_publisher.clone();
+			let feedback_callback = self.feedback_callback.clone();
+			let execution_handle = self.execution_handle.clone();
+			let ctx = self.context.clone();
+			tokio::spawn(async move {
+				// stop execution if running
+				if let Some(execution_handle) = execution_handle.lock().await.take() {
+					execution_handle.abort();
+					// send back cancelation message
+					if let Some(publisher) = feedback_publisher.lock().await.take() {
+						let Ok(msg) = feedback_callback.lock().await(ctx).await else { todo!() };
+						let response =
+							ObservableResponse::Canceled(msg.value().clone());
+						match publisher.put(Message::encode(&response).value().clone()).wait() {
+							Ok(()) => {},
+							Err(err) => error!("could not send cancel state due to {err}"),
+						};
+					};
+				};
+				handle.abort();
+			});
 		}
 	}
 }
 // endregion:	--- Observable
 
 // region:		--- functions
+#[allow(clippy::significant_drop_tightening)]
+#[allow(clippy::too_many_arguments)]
 #[instrument(name="observable", level = Level::ERROR, skip_all)]
 async fn run_observable<P>(
 	selector: String,
 	feedback_interval: Duration,
 	control_callback: ArcObservableControlCallback<P>,
 	feedback_callback: ArcObservableFeedbackCallback<P>,
+	feedback_publisher: Arc<Mutex<Option<zenoh::pubsub::Publisher<'static>>>>,
 	execution_function: ArcObservableExecutionCallback<P>,
+	execution_handle: Arc<Mutex<Option<JoinHandle<()>>>>,
 	ctx: Context<P>,
 ) -> Result<()>
 where
@@ -181,8 +214,6 @@ where
 	// variables to manage control loop
 	let mut is_running = false;
 	let (tx, mut rx) = tokio::sync::mpsc::channel(8);
-	let mut execution_handle: Option<JoinHandle<()>> = None;
-	let mut feedback_publisher: Option<zenoh::pubsub::Publisher> = None;
 
 	// main control loop of the observable
 	// started and terminated by state management
@@ -225,6 +256,7 @@ where
 							Ok(response) => {
 								if matches!(response, ControlResponse::Accepted ) {
 									// create feedback publisher
+									let mut fp = feedback_publisher.lock().await;
 									ctx.session()
 										.declare_publisher(publisher_selector.clone())
 										.congestion_control(CongestionControl::Block)
@@ -232,7 +264,7 @@ where
 										.wait()
 										.map_or_else(
 											|err| error!("could not create feedback publisher due to {err}"),
-											|publ| { feedback_publisher.replace(publ); }
+											|publ| { fp.replace(publ); }
 										);
 
 
@@ -240,7 +272,7 @@ where
 									let tx_clone = tx.clone();
 									let execution_function_clone = execution_function.clone();
 									let ctx_clone = ctx.clone();
-									execution_handle.replace(tokio::spawn( async move {
+									execution_handle.lock().await.replace(tokio::spawn( async move {
 										let res = execution_function_clone.lock().await(ctx_clone).await.unwrap_or_else(|_| { todo!() });
 										if !matches!(tx_clone.send(res).await, Ok(())) { error!("failed to send back execution result") };
 									}));
@@ -263,8 +295,8 @@ where
 					// received cancel => abort a running execution
 					if is_running {
 						is_running = false;
-						let publisher = feedback_publisher.take();
-						let handle = execution_handle.take();
+						let publisher = feedback_publisher.lock().await.take();
+						let handle = execution_handle.lock().await.take();
 						if let Some(h) = handle {
 							h.abort();
 							// wait for abortion
@@ -275,13 +307,13 @@ where
 							if let Some(p) = publisher {
 								match p.put(Message::encode(&response).value().clone()).wait() {
 									Ok(()) => {},
-									Err(err) => error!("could not send result due to {err}"),
+									Err(err) => error!("could not send cancel state due to {err}"),
 								};
 							} else {
 								error!("missing publisher");
 							};
 						} else {
-							error!("unexpected absence of join handle");
+							error!("unexpected absence of execution handle");
 						};
 					}
 					// acknowledge cancel request
@@ -299,9 +331,9 @@ where
 			Some(result) = rx.recv() => {
 				if is_running {
 					is_running = false;
-					execution_handle.take();
+					execution_handle.lock().await.take();
 					let response = ObservableResponse::Finished(result.value().clone());
-					feedback_publisher.take().map_or_else(
+					feedback_publisher.lock().await.take().map_or_else(
 						|| error!("could not publish result"),
 						|p| {
 							match p.put(Message::encode(&response).value()).wait() {
@@ -319,7 +351,8 @@ where
 				let response =
 					ObservableResponse::Feedback(msg.value().clone());
 
-				let publisher = feedback_publisher.as_ref().map_or_else(
+				let lock = feedback_publisher.lock().await;
+				let publisher = lock.as_ref().map_or_else(
 					|| { todo!() },
 					|p| p
 				);

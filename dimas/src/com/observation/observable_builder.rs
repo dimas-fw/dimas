@@ -62,7 +62,7 @@ where
 	pub const fn new(context: Context<P>) -> Self {
 		Self {
 			context,
-			activation_state: OperationState::Standby,
+			activation_state: OperationState::Active,
 			feedback_interval: Duration::from_millis(1000),
 			selector: NoSelector,
 			control_callback: NoCallback,

@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `Observable`s operation states management
+
 ### Removed
 
 - example for router (is now in repository [examples](https://github.com/dimas-fw/examples/tree/main/router))
