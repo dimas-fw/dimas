@@ -57,7 +57,7 @@ where
 		Self {
 			token,
 			context,
-			activation_state: OperationState::Configured,
+			activation_state: OperationState::Created,
 			put_callback: NoCallback,
 			storage: NoStorage,
 			delete_callback: None,
