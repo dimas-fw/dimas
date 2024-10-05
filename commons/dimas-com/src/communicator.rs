@@ -10,14 +10,14 @@ extern crate alloc;
 extern crate std;
 
 // region:		--- modules
-#[cfg(feature = "std")]
-use std::prelude::rust_2021::*;
+use alloc::sync::Arc;
 use core::fmt::Debug;
 use dimas_core::{
 	error::{DimasError, Result},
 	message_types::{Message, QueryableMsg},
 };
-use alloc::sync::Arc;
+#[cfg(feature = "std")]
+use std::prelude::rust_2021::*;
 #[cfg(feature = "unstable")]
 use zenoh::config::WhatAmI;
 #[cfg(feature = "unstable")]

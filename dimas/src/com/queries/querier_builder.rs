@@ -38,7 +38,6 @@ pub type ArcQuerierCallback<P> = Arc<Mutex<QuerierCallback<P>>>;
 
 // region:		--- QuerierBuilder
 /// The builder for a query
-#[allow(clippy::module_name_repetitions)]
 #[derive(Clone)]
 pub struct QuerierBuilder<P, K, C, S>
 where

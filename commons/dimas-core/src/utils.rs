@@ -30,14 +30,11 @@ pub fn init_tracing() {
 /// create selector
 #[must_use]
 pub fn selector_from(topic: &str, mut prefix: Option<&String>) -> String {
-	prefix.take().map_or(
-		topic.to_string(),
-		|prefix| {
-			let mut result = String::from(prefix);
-			result.push('/');
-			result.push_str(topic);
-			result
-		}
-	)
+	prefix.take().map_or(topic.to_string(), |prefix| {
+		let mut result = String::from(prefix);
+		result.push('/');
+		result.push_str(topic);
+		result
+	})
 }
 // endregion: --- helper

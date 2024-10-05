@@ -15,6 +15,7 @@ use tracing::{error, instrument, warn, Level};
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
 use zenoh::{
+	key_expr::KeyExpr,
 	query::{ConsolidationMode, QueryTarget},
 	sample::SampleKind,
 	Wait,
@@ -118,8 +119,6 @@ where
 
 	/// Initialize
 	/// # Errors
-	#[allow(clippy::unused_self)]
-	#[allow(clippy::unnecessary_wraps)]
 	fn init(&mut self) -> Result<()>
 	where
 		P: Send + Sync + 'static,
@@ -135,7 +134,6 @@ where
 
 	/// De-Initialize
 	/// # Errors
-	#[allow(clippy::unused_self)]
 	#[allow(clippy::unnecessary_wraps)]
 	fn de_init(&mut self) -> Result<()>
 	where
@@ -154,9 +152,13 @@ where
 	) -> Result<()> {
 		let cb = self.callback.clone();
 		let session = self.context.session();
+		let key_expr = self
+			.key_expr
+			.clone()
+			.unwrap_or_else(|| KeyExpr::new(&self.selector).expect("snh"));
 		let mut querier = message
 			.map_or_else(
-				|| session.get(&self.selector),
+				|| session.get(key_expr),
 				|msg| session.get(&self.selector).payload(msg.value()),
 			)
 			.encoding(self.encoding.as_str())

@@ -94,7 +94,6 @@ async fn main() -> Result<()> {
 		.config(&Config::default())?;
 
 	// create the observer for fibonacci
-	#[allow(clippy::cognitive_complexity)]
 	agent
 		.observer()
 		.topic("fibonacci")

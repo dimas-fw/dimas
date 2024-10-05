@@ -93,7 +93,6 @@ pub struct Config {
 #[cfg(not(feature = "std"))]
 impl Default for Config {
 	/// Create a default configuration<br>
-	#[allow(clippy::cognitive_complexity)]
 	fn default() -> Self {
 		Self {
 			zenoh: zenoh::Config::default(),

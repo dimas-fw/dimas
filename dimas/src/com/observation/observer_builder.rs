@@ -32,7 +32,6 @@ pub type ArcObserverResponseCallback<P> = Arc<Mutex<ObserverResponseCallback<P>>
 
 // region:		--- ObserverBuilder
 /// The builder for an [`Observer`]
-#[allow(clippy::module_name_repetitions)]
 pub struct ObserverBuilder<P, K, CC, RC, S>
 where
 	P: Send + Sync + 'static,

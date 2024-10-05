@@ -7,7 +7,6 @@
 use crate::{Callback, Interval, NoCallback, NoInterval, NoSelector, NoStorage, Selector, Storage};
 
 use crate::time::timer::Timer;
-use crate::time::timer::TimerCallback;
 
 use core::time::Duration;
 use dimas_core::{
@@ -18,9 +17,13 @@ use dimas_core::{
 use std::sync::{Arc, Mutex, RwLock};
 // endregion:	--- modules
 
+// region:		--- types
+/// type definition for the functions called by a timer
+pub type ArcTimerCallback<P> = Arc<Mutex<dyn FnMut(Context<P>) -> Result<()> + Send + Sync + 'static>>;
+// endregion:	--- types
+
 // region:		--- TimerBuilder
 /// A builder for a timer
-#[allow(clippy::module_name_repetitions)]
 #[derive(Clone)]
 pub struct TimerBuilder<P, K, I, C, S>
 where
@@ -165,7 +168,7 @@ where
 {
 	/// Set interval callback for timer
 	#[must_use]
-	pub fn callback<F>(self, callback: F) -> TimerBuilder<P, K, I, Callback<TimerCallback<P>>, S>
+	pub fn callback<F>(self, callback: F) -> TimerBuilder<P, K, I, Callback<ArcTimerCallback<P>>, S>
 	where
 		F: FnMut(Context<P>) -> Result<()> + Send + Sync + 'static,
 	{
@@ -178,7 +181,7 @@ where
 			delay,
 			..
 		} = self;
-		let callback: TimerCallback<P> = Arc::new(Mutex::new(callback));
+		let callback: ArcTimerCallback<P> = Arc::new(Mutex::new(callback));
 		TimerBuilder {
 			context,
 			activation_state,
@@ -222,7 +225,7 @@ where
 	}
 }
 
-impl<P, S> TimerBuilder<P, Selector, Interval, Callback<TimerCallback<P>>, S>
+impl<P, S> TimerBuilder<P, Selector, Interval, Callback<ArcTimerCallback<P>>, S>
 where
 	P: Send + Sync + 'static,
 {
@@ -251,7 +254,7 @@ where
 	}
 }
 
-impl<P> TimerBuilder<P, Selector, Interval, Callback<TimerCallback<P>>, Storage<Timer<P>>>
+impl<P> TimerBuilder<P, Selector, Interval, Callback<ArcTimerCallback<P>>, Storage<Timer<P>>>
 where
 	P: Send + Sync + 'static,
 {

@@ -121,10 +121,8 @@ where
 
 				// the initial liveliness query
 				if let Err(error) = run_initial(token1, p_cb1, ctx1).await {
-					error!("running initial liveliness failed with {error}");
+					error!("running initial liveliness query failed with {error}");
 				};
-
-				tokio::time::sleep(Duration::from_millis(1)).await;
 
 				// the liveliness subscriber
 				if let Err(error) = run_liveliness(token2, p_cb2, d_cb, ctx2).await {

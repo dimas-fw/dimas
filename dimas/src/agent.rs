@@ -277,7 +277,6 @@ where
 
 // region:	   --- Agent
 /// An Agent with the basic configuration decisions fixed, but not running
-#[allow(clippy::module_name_repetitions)]
 pub struct Agent<P>
 where
 	P: Debug + Send + Sync + 'static,

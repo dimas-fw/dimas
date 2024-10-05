@@ -55,8 +55,8 @@ user-login = "dtolnay"
 user-name = "David Tolnay"
 
 [[publisher.async-trait]]
-version = "0.1.82"
-when = "2024-09-02"
+version = "0.1.83"
+when = "2024-09-24"
 user-id = 3618
 user-login = "dtolnay"
 user-name = "David Tolnay"
@@ -104,15 +104,15 @@ user-login = "emilio"
 user-name = "Emilio Cobos Álvarez"
 
 [[publisher.clap]]
-version = "4.5.18"
-when = "2024-09-20"
+version = "4.5.19"
+when = "2024-10-01"
 user-id = 6743
 user-login = "epage"
 user-name = "Ed Page"
 
 [[publisher.clap_builder]]
-version = "4.5.18"
-when = "2024-09-20"
+version = "4.5.19"
+when = "2024-10-01"
 user-id = 6743
 user-login = "epage"
 user-name = "Ed Page"
@@ -201,6 +201,13 @@ user-id = 2915
 user-login = "Amanieu"
 user-name = "Amanieu d'Antras"
 
+[[publisher.hashbrown]]
+version = "0.15.0"
+when = "2024-10-01"
+user-id = 2915
+user-login = "Amanieu"
+user-name = "Amanieu d'Antras"
+
 [[publisher.http]]
 version = "1.1.0"
 when = "2024-03-04"
@@ -209,15 +216,15 @@ user-login = "seanmonstar"
 user-name = "Sean McArthur"
 
 [[publisher.httparse]]
-version = "1.9.4"
-when = "2024-06-17"
+version = "1.9.5"
+when = "2024-09-30"
 user-id = 359
 user-login = "seanmonstar"
 user-name = "Sean McArthur"
 
 [[publisher.indexmap]]
-version = "2.5.0"
-when = "2024-08-30"
+version = "2.6.0"
+when = "2024-10-01"
 user-id = 539
 user-login = "cuviper"
 user-name = "Josh Stone"
@@ -278,6 +285,13 @@ user-id = 6825
 user-login = "sunfishcode"
 user-name = "Dan Gohman"
 
+[[publisher.linux-raw-sys]]
+version = "0.6.5"
+when = "2024-08-16"
+user-id = 6825
+user-login = "sunfishcode"
+user-name = "Dan Gohman"
+
 [[publisher.lock_api]]
 version = "0.4.12"
 when = "2024-04-25"
@@ -321,8 +335,8 @@ user-login = "dtolnay"
 user-name = "David Tolnay"
 
 [[publisher.regex]]
-version = "1.10.6"
-when = "2024-08-02"
+version = "1.11.0"
+when = "2024-09-29"
 user-id = 189
 user-login = "BurntSushi"
 user-name = "Andrew Gallant"
@@ -335,8 +349,8 @@ user-login = "BurntSushi"
 user-name = "Andrew Gallant"
 
 [[publisher.regex-automata]]
-version = "0.4.7"
-when = "2024-06-09"
+version = "0.4.8"
+when = "2024-09-29"
 user-id = 189
 user-login = "BurntSushi"
 user-name = "Andrew Gallant"
@@ -349,8 +363,8 @@ user-login = "BurntSushi"
 user-name = "Andrew Gallant"
 
 [[publisher.regex-syntax]]
-version = "0.8.4"
-when = "2024-06-09"
+version = "0.8.5"
+when = "2024-09-29"
 user-id = 189
 user-login = "BurntSushi"
 user-name = "Andrew Gallant"
@@ -440,8 +454,8 @@ user-login = "dtolnay"
 user-name = "David Tolnay"
 
 [[publisher.serde_spanned]]
-version = "0.6.7"
-when = "2024-07-25"
+version = "0.6.8"
+when = "2024-09-25"
 user-id = 6743
 user-login = "epage"
 user-name = "Ed Page"
@@ -475,15 +489,15 @@ user-login = "dtolnay"
 user-name = "David Tolnay"
 
 [[publisher.syn]]
-version = "2.0.77"
-when = "2024-08-31"
+version = "2.0.79"
+when = "2024-09-27"
 user-id = 3618
 user-login = "dtolnay"
 user-name = "David Tolnay"
 
 [[publisher.tar]]
-version = "0.4.41"
-when = "2024-06-04"
+version = "0.4.42"
+when = "2024-09-25"
 user-id = 1
 user-login = "alexcrichton"
 user-name = "Alex Crichton"
@@ -496,15 +510,15 @@ user-login = "BurntSushi"
 user-name = "Andrew Gallant"
 
 [[publisher.thiserror]]
-version = "1.0.63"
-when = "2024-07-17"
+version = "1.0.64"
+when = "2024-09-22"
 user-id = 3618
 user-login = "dtolnay"
 user-name = "David Tolnay"
 
 [[publisher.thiserror-impl]]
-version = "1.0.63"
-when = "2024-07-17"
+version = "1.0.64"
+when = "2024-09-22"
 user-id = 3618
 user-login = "dtolnay"
 user-name = "David Tolnay"
@@ -559,15 +573,15 @@ user-login = "epage"
 user-name = "Ed Page"
 
 [[publisher.toml_edit]]
-version = "0.22.21"
-when = "2024-09-17"
+version = "0.22.22"
+when = "2024-09-24"
 user-id = 6743
 user-login = "epage"
 user-name = "Ed Page"
 
 [[publisher.ucd-trie]]
-version = "0.1.6"
-when = "2023-07-07"
+version = "0.1.7"
+when = "2024-09-29"
 user-id = 189
 user-login = "BurntSushi"
 user-name = "Andrew Gallant"
@@ -657,15 +671,8 @@ user-login = "kennykerr"
 user-name = "Kenny Kerr"
 
 [[publisher.windows]]
-version = "0.54.0"
-when = "2024-02-27"
-user-id = 64539
-user-login = "kennykerr"
-user-name = "Kenny Kerr"
-
-[[publisher.windows]]
-version = "0.56.0"
-when = "2024-04-12"
+version = "0.58.0"
+when = "2024-07-03"
 user-id = 64539
 user-login = "kennykerr"
 user-name = "Kenny Kerr"
@@ -678,50 +685,29 @@ user-login = "kennykerr"
 user-name = "Kenny Kerr"
 
 [[publisher.windows-core]]
-version = "0.54.0"
-when = "2024-02-27"
-user-id = 64539
-user-login = "kennykerr"
-user-name = "Kenny Kerr"
-
-[[publisher.windows-core]]
-version = "0.56.0"
-when = "2024-04-12"
+version = "0.58.0"
+when = "2024-07-03"
 user-id = 64539
 user-login = "kennykerr"
 user-name = "Kenny Kerr"
 
 [[publisher.windows-implement]]
-version = "0.53.0"
-when = "2024-02-22"
-user-id = 64539
-user-login = "kennykerr"
-user-name = "Kenny Kerr"
-
-[[publisher.windows-implement]]
-version = "0.56.0"
-when = "2024-04-12"
+version = "0.58.0"
+when = "2024-07-03"
 user-id = 64539
 user-login = "kennykerr"
 user-name = "Kenny Kerr"
 
 [[publisher.windows-interface]]
-version = "0.53.0"
-when = "2024-02-22"
-user-id = 64539
-user-login = "kennykerr"
-user-name = "Kenny Kerr"
-
-[[publisher.windows-interface]]
-version = "0.56.0"
-when = "2024-04-12"
+version = "0.58.0"
+when = "2024-07-03"
 user-id = 64539
 user-login = "kennykerr"
 user-name = "Kenny Kerr"
 
 [[publisher.windows-result]]
-version = "0.1.2"
-when = "2024-06-07"
+version = "0.2.0"
+when = "2024-07-03"
 user-id = 64539
 user-login = "kennykerr"
 user-name = "Kenny Kerr"
@@ -937,8 +923,8 @@ user-login = "epage"
 user-name = "Ed Page"
 
 [[publisher.winnow]]
-version = "0.6.18"
-when = "2024-07-31"
+version = "0.6.20"
+when = "2024-09-25"
 user-id = 6743
 user-login = "epage"
 user-name = "Ed Page"
@@ -980,6 +966,15 @@ version = "0.3.6"
 notes = """
 Unsafe code, but its logic looks good to me. Necessary given what it is
 doing. Well tested, has quickchecks.
+"""
+
+[[audits.bytecode-alliance.audits.arrayvec]]
+who = "Nick Fitzgerald <fitzgen@gmail.com>"
+criteria = "safe-to-deploy"
+version = "0.7.2"
+notes = """
+Well documented invariants, good assertions for those invariants in unsafe code,
+and tested with MIRI to boot. LGTM.
 """
 
 [[audits.bytecode-alliance.audits.base64]]
@@ -1591,6 +1586,12 @@ can be found at go/image-crate-chromium-security-review.
 '''
 aggregated-from = "https://chromium.googlesource.com/chromium/src/+/main/third_party/rust/chromium_crates_io/supply-chain/audits.toml?format=TEXT"
 
+[[audits.google.audits.fdeflate]]
+who = "Lukasz Anforowicz <lukasza@chromium.org>"
+criteria = "safe-to-deploy"
+delta = "0.3.4 -> 0.3.5"
+aggregated-from = "https://chromium.googlesource.com/chromium/src/+/main/third_party/rust/chromium_crates_io/supply-chain/audits.toml?format=TEXT"
+
 [[audits.google.audits.flate2]]
 who = "Lukasz Anforowicz <lukasza@chromium.org>"
 criteria = "safe-to-deploy"
@@ -1656,6 +1657,23 @@ more details.
 This delta audit has been reviewed in https://crrev.com/c/5811890
 The delta can be seen at https://diff.rs/flate2/1.0.31/1.0.33
 The delta bumps up `miniz_oxide` dependency to `0.8.0`
+The delta also contains some changes to `src/ffi/c.rs` which is *NOT* used by Chromium
+and therefore hasn't been covered by this partial audit.
+"""
+aggregated-from = "https://chromium.googlesource.com/chromium/src/+/main/third_party/rust/chromium_crates_io/supply-chain/audits.toml?format=TEXT"
+
+[[audits.google.audits.flate2]]
+who = "Lukasz Anforowicz <lukasza@chromium.org>"
+criteria = "safe-to-deploy"
+delta = "1.0.33 -> 1.0.34"
+notes = """
+WARNING: This certification is a result of a **partial** audit.  The
+`any_zlib` code has **not** been audited.  See the audit of 1.0.30 for
+more details.
+
+The delta can be seen at https://diff.rs/flate2/1.0.33/1.0.34
+The delta bumps up `libz-rs-sys` dependency from `0.2.1` to `0.3.0`
+The delta in `lib.rs` only tweaks comments and has no code changes.
 The delta also contains some changes to `src/ffi/c.rs` which is *NOT* used by Chromium
 and therefore hasn't been covered by this partial audit.
 """
@@ -1769,6 +1787,12 @@ and in some example code.
 Note that some additional, internal notes about an older version of this crate
 can be found at go/image-crate-chromium-security-review.
 '''
+aggregated-from = "https://chromium.googlesource.com/chromium/src/+/main/third_party/rust/chromium_crates_io/supply-chain/audits.toml?format=TEXT"
+
+[[audits.google.audits.png]]
+who = "Lukasz Anforowicz <lukasza@chromium.org>"
+criteria = "safe-to-deploy"
+delta = "0.17.13 -> 0.17.14"
 aggregated-from = "https://chromium.googlesource.com/chromium/src/+/main/third_party/rust/chromium_crates_io/supply-chain/audits.toml?format=TEXT"
 
 [[audits.google.audits.quote]]
@@ -2020,6 +2044,11 @@ who = "David Cook <dcook@divviup.org>"
 criteria = "safe-to-deploy"
 delta = "0.2.18 -> 0.2.19"
 
+[[audits.isrg.audits.once_cell]]
+who = "David Cook <dcook@divviup.org>"
+criteria = "safe-to-deploy"
+delta = "1.19.0 -> 1.20.1"
+
 [[audits.isrg.audits.rand_chacha]]
 who = "David Cook <dcook@divviup.org>"
 criteria = "safe-to-deploy"
@@ -2186,6 +2215,13 @@ criteria = "safe-to-deploy"
 delta = "0.1.4 -> 0.1.5"
 aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
 
+[[audits.mozilla.audits.arrayvec]]
+who = "Alex Franchuk <afranchuk@mozilla.com>"
+criteria = "safe-to-deploy"
+delta = "0.7.2 -> 0.7.6"
+notes = "Manually verified new unsafe pointer arithmetic."
+aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
+
 [[audits.mozilla.audits.bindgen]]
 who = "Emilio Cobos Álvarez <emilio@crisal.io>"
 criteria = "safe-to-deploy"
@@ -2333,6 +2369,12 @@ aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-ch
 who = "Mike Hommey <mh+mozilla@glandium.org>"
 criteria = "safe-to-deploy"
 delta = "1.9.0 -> 2.0.0"
+aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
+
+[[audits.mozilla.audits.fastrand]]
+who = "Mike Hommey <mh+mozilla@glandium.org>"
+criteria = "safe-to-deploy"
+delta = "2.0.1 -> 2.1.0"
 aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
 
 [[audits.mozilla.audits.fnv]]
@@ -2643,6 +2685,17 @@ criteria = "safe-to-deploy"
 delta = "0.2.10 -> 0.2.18"
 aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
 
+[[audits.mozilla.audits.tracing-core]]
+who = "Alex Franchuk <afranchuk@mozilla.com>"
+criteria = "safe-to-deploy"
+version = "0.1.30"
+notes = """
+Most unsafe code is in implementing non-std sync primitives. Unsafe impls are
+logically correct and justified in comments, and unsafe code is sound and
+justified in comments.
+"""
+aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
+
 [[audits.mozilla.audits.unicode-bidi]]
 who = "Makoto Kato <m_kato@ga2.so-net.ne.jp>"
 criteria = "safe-to-deploy"
@@ -2701,9 +2754,16 @@ notes = "Clean, safe macros for zerocopy."
 aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
 
 [[audits.zcash.audits.arrayref]]
-who = "Sean Bowe <ewillbefull@gmail.com>"
+who = "Daira-Emma Hopwood <daira@jacaranda.org>"
 criteria = "safe-to-deploy"
-delta = "0.3.6 -> 0.3.7"
+delta = "0.3.6 -> 0.3.8"
+aggregated-from = "https://raw.githubusercontent.com/zcash/zcash/master/qa/supply-chain/audits.toml"
+
+[[audits.zcash.audits.arrayref]]
+who = "Jack Grigg <jack@electriccoin.co>"
+criteria = "safe-to-deploy"
+delta = "0.3.8 -> 0.3.9"
+notes = "Changes to `unsafe` lines are to make some existing `unsafe fn`s `const`."
 aggregated-from = "https://raw.githubusercontent.com/zcash/zcash/master/qa/supply-chain/audits.toml"
 
 [[audits.zcash.audits.autocfg]]
@@ -2764,25 +2824,10 @@ delta = "0.3.8 -> 0.3.9"
 aggregated-from = "https://raw.githubusercontent.com/zcash/librustzcash/main/supply-chain/audits.toml"
 
 [[audits.zcash.audits.fastrand]]
-who = "Daira-Emma Hopwood <daira@jacaranda.org>"
+who = "Jack Grigg <jack@electriccoin.co>"
 criteria = "safe-to-deploy"
-delta = "2.0.1 -> 2.0.2"
+delta = "2.1.0 -> 2.1.1"
 aggregated-from = "https://raw.githubusercontent.com/zcash/zcash/master/qa/supply-chain/audits.toml"
-
-[[audits.zcash.audits.fastrand]]
-who = "Daira-Emma Hopwood <daira@jacaranda.org>"
-criteria = "safe-to-deploy"
-delta = "2.0.2 -> 2.1.0"
-notes = """
-As noted in the changelog, this version produces different output for a given seed.
-The documentation did not mention stability. It is possible that some uses relying on
-determinism across the update would be broken.
-
-The new constants do appear to match WyRand v4.2 (modulo ordering issues that I have not checked):
-https://github.com/wangyi-fudan/wyhash/blob/408620b6d12b7d667b3dd6ae39b7929a39e8fa05/wyhash.h#L145
-I have no way to check whether these constants are an improvement or not.
-"""
-aggregated-from = "https://raw.githubusercontent.com/zcash/librustzcash/main/supply-chain/audits.toml"
 
 [[audits.zcash.audits.futures]]
 who = "Jack Grigg <jack@electriccoin.co>"
@@ -2916,6 +2961,13 @@ be set correctly by `cargo`.
 """
 aggregated-from = "https://raw.githubusercontent.com/zcash/zcash/master/qa/supply-chain/audits.toml"
 
+[[audits.zcash.audits.rustc_version]]
+who = "Jack Grigg <jack@electriccoin.co>"
+criteria = "safe-to-deploy"
+delta = "0.4.0 -> 0.4.1"
+notes = "Changes to `Command` usage are to add support for `RUSTC_WRAPPER`."
+aggregated-from = "https://raw.githubusercontent.com/zcash/zcash/master/qa/supply-chain/audits.toml"
+
 [[audits.zcash.audits.rustversion]]
 who = "Daira-Emma Hopwood <daira@jacaranda.org>"
 criteria = "safe-to-deploy"
@@ -2957,6 +3009,23 @@ who = "Jack Grigg <jack@z.cash>"
 criteria = "safe-to-deploy"
 delta = "0.1.0 -> 0.1.1"
 notes = "Adds `#![forbid(unsafe_code)]` and license files."
+aggregated-from = "https://raw.githubusercontent.com/zcash/zcash/master/qa/supply-chain/audits.toml"
+
+[[audits.zcash.audits.tracing-core]]
+who = "Jack Grigg <jack@electriccoin.co>"
+criteria = "safe-to-deploy"
+delta = "0.1.30 -> 0.1.31"
+notes = """
+The only new `unsafe` block is to intentionally leak a scoped subscriber onto
+the heap when setting it as the global default dispatcher. I checked that the
+global default can only be set once and is never dropped.
+"""
+aggregated-from = "https://raw.githubusercontent.com/zcash/zcash/master/qa/supply-chain/audits.toml"
+
+[[audits.zcash.audits.tracing-core]]
+who = "Jack Grigg <jack@electriccoin.co>"
+criteria = "safe-to-deploy"
+delta = "0.1.31 -> 0.1.32"
 aggregated-from = "https://raw.githubusercontent.com/zcash/zcash/master/qa/supply-chain/audits.toml"
 
 [[audits.zcash.audits.tracing-subscriber]]

@@ -30,7 +30,6 @@ pub type ArcQueryableCallback<P> = Arc<Mutex<QueryableCallback<P>>>;
 
 // region:		--- QueryableBuilder
 /// The builder for a queryable.
-#[allow(clippy::module_name_repetitions)]
 #[derive(Clone)]
 pub struct QueryableBuilder<P, K, C, S>
 where

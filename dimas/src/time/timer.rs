@@ -10,16 +10,11 @@ use dimas_core::{
 	error::Result,
 	traits::{Capability, Context},
 };
-use std::sync::{Arc, Mutex};
 use tokio::{task::JoinHandle, time};
 use tracing::{error, info, instrument, warn, Level};
-// endregion:	--- modules
 
-// region:		--- types
-/// type definition for the functions called by a timer
-#[allow(clippy::module_name_repetitions)]
-pub type TimerCallback<P> = Arc<Mutex<dyn FnMut(Context<P>) -> Result<()> + Send + Sync + 'static>>;
-// endregion:	--- types
+use super::ArcTimerCallback;
+// endregion:	--- modules
 
 // region:		--- Timer
 /// Timer
@@ -36,7 +31,7 @@ where
 		/// [`OperationState`] on which this timer is started
 		activation_state: OperationState,
 		/// Timers Callback function called, when Timer is fired
-		callback: TimerCallback<P>,
+		callback: ArcTimerCallback<P>,
 		/// The interval in which the Timer is fired
 		interval: Duration,
 		/// The handle to stop the Timer
@@ -51,7 +46,7 @@ where
 		/// [`OperationState`] on which this timer is started
 		activation_state: OperationState,
 		/// Timers Callback function called, when Timer is fired
-		callback: TimerCallback<P>,
+		callback: ArcTimerCallback<P>,
 		/// The interval in which the Timer is fired
 		interval: Duration,
 		/// The delay after which the first firing of the Timer happenes
@@ -127,7 +122,7 @@ where
 		name: String,
 		context: Context<P>,
 		activation_state: OperationState,
-		callback: TimerCallback<P>,
+		callback: ArcTimerCallback<P>,
 		interval: Duration,
 		delay: Option<Duration>,
 	) -> Self {
@@ -271,7 +266,7 @@ where
 }
 
 #[instrument(name="timer", level = Level::ERROR, skip_all)]
-async fn run_timer<P>(interval: Duration, cb: TimerCallback<P>, ctx: Context<P>)
+async fn run_timer<P>(interval: Duration, cb: ArcTimerCallback<P>, ctx: Context<P>)
 where
 	P: Send + Sync + 'static,
 {

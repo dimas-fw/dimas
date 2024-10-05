@@ -5,11 +5,11 @@
 
 // region:    	--- modules
 /// `LivelinessSubscriber`
-mod subscriber;
+mod liveliness_subscriber;
 /// `LivelinessSubscriberBuilder`
-mod subscriber_builder;
+mod liveliness_subscriber_builder;
 
 // flatten
-pub use subscriber::*;
-pub use subscriber_builder::*;
+pub use liveliness_subscriber::*;
+pub use liveliness_subscriber_builder::*;
 // endregion: 	--- modules

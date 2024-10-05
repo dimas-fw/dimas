@@ -87,7 +87,6 @@ pub enum Signal {
 // region:		--- TaskSignal
 /// Internal signals, used by panic hooks to inform that someting has happened.
 #[derive(Debug, Clone)]
-#[allow(clippy::enum_variant_names)]
 pub enum TaskSignal {
 	/// Restart a certain liveliness subscriber, identified by its key expression
 	#[cfg(feature = "unstable")]

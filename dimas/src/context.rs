@@ -432,7 +432,6 @@ where
 	///
 	/// # Errors
 	/// Currently none
-	#[allow(unused_variables)]
 	fn upgrade_registered_tasks(&self, new_state: OperationState) -> Result<()> {
 		// start liveliness subscriber
 		#[cfg(feature = "unstable")]

@@ -4,7 +4,7 @@
 //! A `LivelinessSubscriber` can optional subscribe on a delete message.
 
 // region:		--- modules
-use super::subscriber::LivelinessSubscriber;
+use super::liveliness_subscriber::LivelinessSubscriber;
 use crate::{Callback, NoCallback, NoStorage, Storage};
 use dimas_core::{
 	enums::OperationState,

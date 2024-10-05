@@ -6,15 +6,15 @@ use super::{
 };
 use bitcode::encode;
 use core::time::Duration;
-use std::sync::Arc;
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
 	error::Result,
 	message_types::{ControlResponse, Message, ObservableResponse},
 	traits::{Capability, Context},
 };
-use tokio::task::JoinHandle;
+use std::sync::Arc;
 use tokio::sync::Mutex;
+use tokio::task::JoinHandle;
 use tracing::{error, info, instrument, warn, Level};
 use zenoh::qos::{CongestionControl, Priority};
 #[cfg(feature = "unstable")]
@@ -135,7 +135,9 @@ where
 						info!("restarting observable!");
 					};
 				}));
-				if let Err(error) = run_observable(selector, interval, ccb, fcb, fcbp, efc, efch, ctx2).await {
+				if let Err(error) =
+					run_observable(selector, interval, ccb, fcb, fcbp, efc, efch, ctx2).await
+				{
 					error!("observable failed with {error}");
 				};
 			}));
@@ -158,11 +160,15 @@ where
 					execution_handle.abort();
 					// send back cancelation message
 					if let Some(publisher) = feedback_publisher.lock().await.take() {
-						let Ok(msg) = feedback_callback.lock().await(ctx).await else { todo!() };
-						let response =
-							ObservableResponse::Canceled(msg.value().clone());
-						match publisher.put(Message::encode(&response).value().clone()).wait() {
-							Ok(()) => {},
+						let Ok(msg) = feedback_callback.lock().await(ctx).await else {
+							todo!()
+						};
+						let response = ObservableResponse::Canceled(msg.value().clone());
+						match publisher
+							.put(Message::encode(&response).value().clone())
+							.wait()
+						{
+							Ok(()) => {}
 							Err(err) => error!("could not send cancel state due to {err}"),
 						};
 					};

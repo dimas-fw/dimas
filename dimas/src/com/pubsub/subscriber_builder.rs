@@ -37,7 +37,6 @@ pub type ArcDeleteCallback<P> = Arc<Mutex<DeleteCallback<P>>>;
 
 // region:		--- SubscriberBuilder
 /// A builder for a subscriber
-#[allow(clippy::module_name_repetitions)]
 #[derive(Clone)]
 pub struct SubscriberBuilder<P, K, C, S>
 where

@@ -16,7 +16,7 @@ use dimas_core::{
 	message_types::Message,
 };
 use std::collections::HashMap;
-use zenoh::{config::WhatAmI, Wait};
+use zenoh::{config::{Locator, WhatAmI}, Wait};
 // endregion:	--- modules
 
 // region:		--- command functions
@@ -76,7 +76,6 @@ pub fn ping_list(com: &Communicator, base_selector: &String) -> Vec<(PingEntity,
 	result
 }
 
-
 /// Scout for `DiMAS` entities, sorted by zid of entity
 /// # Panics
 /// if something goes wrong
@@ -90,15 +89,13 @@ pub fn scouting_list(config: &Config) -> Vec<ScoutingEntity> {
 
 	while let Ok(hello) = receiver.recv_timeout(Duration::from_millis(250)) {
 		let zid = hello.zid().to_string();
-		let locators: Vec<String> = hello.locators().iter().map(|locator| {
-			locator.to_string()
-		}).collect();
-		
-		let entry = ScoutingEntity::new(
-			zid.clone(),
-			hello.whatami().to_string(),
-			locators,
-		);
+		let locators: Vec<String> = hello
+			.locators()
+			.iter()
+			.map(Locator::to_string)
+			.collect();
+
+		let entry = ScoutingEntity::new(zid.clone(), hello.whatami().to_string(), locators);
 		map.entry(zid).or_insert(entry);
 	}
 	let result: Vec<ScoutingEntity> = map.values().cloned().collect();

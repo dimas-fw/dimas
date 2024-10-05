@@ -24,7 +24,6 @@ use zenoh::{qos::Reliability, sample::Locality};
 
 // region:		--- PublisherBuilder
 /// The builder for a [`Publisher`]
-#[allow(clippy::module_name_repetitions)]
 pub struct PublisherBuilder<P, K, S>
 where
 	P: Send + Sync + 'static,

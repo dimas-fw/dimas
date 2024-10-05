@@ -37,7 +37,6 @@ pub type ArcObservableExecutionCallback<P> = Arc<Mutex<ObservableExecutionCallba
 
 // region:		--- ObservableBuilder
 /// The builder for an [`Observable`]
-#[allow(clippy::module_name_repetitions)]
 pub struct ObservableBuilder<P, K, CC, FC, EF, S>
 where
 	P: Send + Sync + 'static,
