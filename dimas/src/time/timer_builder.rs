@@ -19,7 +19,8 @@ use std::sync::{Arc, Mutex, RwLock};
 
 // region:		--- types
 /// type definition for the functions called by a timer
-pub type ArcTimerCallback<P> = Arc<Mutex<dyn FnMut(Context<P>) -> Result<()> + Send + Sync + 'static>>;
+pub type ArcTimerCallback<P> =
+	Arc<Mutex<dyn FnMut(Context<P>) -> Result<()> + Send + Sync + 'static>>;
 // endregion:	--- types
 
 // region:		--- TimerBuilder

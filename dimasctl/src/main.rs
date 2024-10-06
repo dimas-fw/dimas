@@ -61,7 +61,10 @@ enum DimasctlCommand {
 fn main() {
 	let args = DimasctlArgs::parse();
 	let config = Config::default();
-	let header = "ZenohId                           Kind    State       Prefix/Name";
+	let h_zid = "ZenohId";
+	let h_kind = "Kind";
+	let h_state = "State";
+	let h_name = "Prefix/Name";
 
 	let base_selector = args
 		.selector
@@ -72,13 +75,13 @@ fn main() {
 		DimasctlCommand::List => {
 			let com = Communicator::new(&config).expect("failed to create 'Communicator'");
 			println!("List of found DiMAS entities:");
-			println!("{header}");
+			println!("{h_zid:32}  {h_kind:6}  {h_state:10}  {h_name}");
 			for item in dimas_commands::about_list(&com, &base_selector) {
 				println!(
 					"{:32}  {:6}  {:10}  {}",
 					item.zid(),
 					item.kind(),
-					item.state(),
+					item.state().to_string(),
 					item.name()
 				);
 			}
@@ -115,13 +118,13 @@ fn main() {
 		DimasctlCommand::SetState { state } => {
 			let com = Communicator::new(&config).expect("failed to create 'Communicator'");
 			println!("List of current states of DiMAS entities:");
-			println!("{header}");
+			println!("{h_zid:32}  {h_kind:6}  {h_state:10}  {h_name}");
 			for item in dimas_commands::set_state(&com, &base_selector, state.to_owned()) {
 				println!(
 					"{:32}  {:6}  {:10}  {}",
 					item.zid(),
 					item.kind(),
-					item.state(),
+					item.state().to_string(),
 					item.name()
 				);
 			}
@@ -132,13 +135,13 @@ fn main() {
 				.map_or_else(|| target.to_owned(), |value| format!("{value}/{target}"));
 			let com = Communicator::new(&config).expect("failed to create 'Communicator'");
 			println!("List of shut down DiMAS entities:");
-			println!("{header}");
+			println!("{h_zid:32}  {h_kind:6}  {h_state:10}  {h_name}");
 			for item in dimas_commands::shutdown(&com, &target) {
 				println!(
 					"{:32}  {:6}  {:10}  {}",
 					item.zid(),
 					item.kind(),
-					item.state(),
+					item.state().to_string(),
 					item.name()
 				);
 			}

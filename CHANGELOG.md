@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `Observable`s operation states management
 - `Liveliness`s operation states management
+- console output of `dimasctl`
 
 ### Removed
 

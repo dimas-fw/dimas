@@ -16,7 +16,10 @@ use dimas_core::{
 	message_types::Message,
 };
 use std::collections::HashMap;
-use zenoh::{config::{Locator, WhatAmI}, Wait};
+use zenoh::{
+	config::{Locator, WhatAmI},
+	Wait,
+};
 // endregion:	--- modules
 
 // region:		--- command functions
