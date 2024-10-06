@@ -65,7 +65,7 @@ where
 	pub fn new(context: Context<P>) -> Self {
 		Self {
 			context,
-			activation_state: OperationState::Standby,
+			activation_state: OperationState::Active,
 			#[cfg(feature = "unstable")]
 			allowed_destination: Locality::Any,
 			encoding: Encoding::default().to_string(),

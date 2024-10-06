@@ -62,7 +62,7 @@ where
 	pub const fn new(context: Context<P>) -> Self {
 		Self {
 			context,
-			activation_state: OperationState::Standby,
+			activation_state: OperationState::Active,
 			#[cfg(feature = "unstable")]
 			allowed_origin: Locality::Any,
 			undeclare_on_drop: true,

@@ -103,6 +103,8 @@ where
 	///
 	#[allow(clippy::unnecessary_wraps)]
 	fn de_init(&mut self) -> Result<()> {
+		// cancel current request before stopping
+		let _ = self.cancel();
 		self.handle.take();
 		Ok(())
 	}
