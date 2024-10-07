@@ -86,8 +86,8 @@ fn _read_file(filename: &str) -> Result<String> {
 #[repr(transparent)]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Config {
-	#[serde(deserialize_with = "zenoh::config::Config::deserialize")]
-	zenoh: zenoh::config::Config,
+	#[serde(deserialize_with = "zenoh::Config::deserialize")]
+	zenoh: zenoh::Config,
 }
 
 #[cfg(not(feature = "std"))]
@@ -223,7 +223,7 @@ impl Config {
 	/// Method to extract the zenoh configuration from [`Config`].<br>
 	/// Can be passed to `zenoh::open()`.
 	#[must_use]
-	pub fn zenoh_config(&self) -> zenoh::config::Config {
+	pub fn zenoh_config(&self) -> zenoh::Config {
 		self.zenoh.clone()
 	}
 }

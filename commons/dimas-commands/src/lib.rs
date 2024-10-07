@@ -1,9 +1,19 @@
 // Copyright © 2024 Stephan Kunz
+#![no_std]
 
 //! Commands for `DiMAS` control & monitoring programs
 
-use chrono::Local;
+#[doc(hidden)]
+extern crate alloc;
+
+#[cfg(feature = "std")]
+extern crate std;
+
 // region:		--- modules
+#[cfg(feature = "std")]
+use std::prelude::rust_2021::*;
+use alloc::vec::Vec;
+use chrono::Local;
 use core::time::Duration;
 use dimas_com::{
 	messages::{AboutEntity, PingEntity, ScoutingEntity},
@@ -14,7 +24,9 @@ use dimas_core::{
 	enums::{OperationState, Signal},
 	error::Result,
 	message_types::Message,
+    utils::selector_from,
 };
+#[cfg(feature = "std")]
 use std::collections::HashMap;
 use zenoh::{
 	config::{Locator, WhatAmI},
@@ -25,11 +37,12 @@ use zenoh::{
 // region:		--- command functions
 /// Fetch a list of about messages from all reachable `DiMAS` entities
 /// # Panics
+#[cfg(feature = "std")]
 #[must_use]
 pub fn about_list(com: &Communicator, base_selector: &String) -> Vec<AboutEntity> {
 	let mut map: HashMap<String, AboutEntity> = HashMap::new();
 
-	let selector = format!("{base_selector}/signal");
+	let selector = selector_from("signal", Some(base_selector));
 	let message = Message::encode(&Signal::About);
 	// set state for entities matching the selector
 	com.get(&selector, Some(message), |response| -> Result<()> {
@@ -47,11 +60,12 @@ pub fn about_list(com: &Communicator, base_selector: &String) -> Vec<AboutEntity
 
 /// Fetch a list of about messages from all reachable `DiMAS` entities
 /// # Panics
+#[cfg(feature = "std")]
 #[must_use]
 pub fn ping_list(com: &Communicator, base_selector: &String) -> Vec<(PingEntity, i64)> {
 	let mut map: HashMap<String, (PingEntity, i64)> = HashMap::new();
 
-	let selector = format!("{base_selector}/signal");
+	let selector = selector_from("signal", Some(base_selector));
 	let sent = Local::now()
 		.naive_utc()
 		.and_utc()
@@ -82,6 +96,7 @@ pub fn ping_list(com: &Communicator, base_selector: &String) -> Vec<(PingEntity,
 /// Scout for `DiMAS` entities, sorted by zid of entity
 /// # Panics
 /// if something goes wrong
+#[cfg(feature = "std")]
 #[must_use]
 pub fn scouting_list(config: &Config) -> Vec<ScoutingEntity> {
 	let mut map: HashMap<String, ScoutingEntity> = HashMap::new();
@@ -109,6 +124,7 @@ pub fn scouting_list(config: &Config) -> Vec<ScoutingEntity> {
 /// Set the [`OperationState`] of `DiMAS` entities
 /// # Panics
 /// if something goes wrong
+#[cfg(feature = "std")]
 #[must_use]
 pub fn set_state(
 	com: &Communicator,
@@ -117,7 +133,7 @@ pub fn set_state(
 ) -> Vec<AboutEntity> {
 	let mut map: HashMap<String, AboutEntity> = HashMap::new();
 
-	let selector = format!("{base_selector}/signal");
+	let selector = selector_from("signal", Some(base_selector));
 	let message = Message::encode(&Signal::State { state });
 	// set state for entities matching the selector
 	com.get(&selector, Some(message), |response| -> Result<()> {
@@ -136,11 +152,12 @@ pub fn set_state(
 /// Shutdown of `DiMAS` entities
 /// # Panics
 /// if something goes wrong
+#[cfg(feature = "std")]
 #[must_use]
 pub fn shutdown(com: &Communicator, base_selector: &String) -> Vec<AboutEntity> {
 	let mut map: HashMap<String, AboutEntity> = HashMap::new();
 
-	let selector = format!("{base_selector}/signal");
+	let selector = selector_from("signal", Some(base_selector));
 	let message = Message::encode(&Signal::Shutdown);
 	// set state for entities matching the selector
 	com.get(&selector, Some(message), |response| -> Result<()> {

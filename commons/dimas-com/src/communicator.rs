@@ -18,7 +18,6 @@ use dimas_core::{
 };
 #[cfg(feature = "std")]
 use std::prelude::rust_2021::*;
-#[cfg(feature = "unstable")]
 use zenoh::config::WhatAmI;
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
@@ -47,7 +46,7 @@ impl Communicator {
 		#[cfg(feature = "unstable")]
 		let kind = cfg.mode().unwrap_or(WhatAmI::Peer).to_string();
 		#[cfg(not(feature = "unstable"))]
-		let kind = String::from("unknown");
+		let kind = WhatAmI::Peer.to_string();
 		let session = Arc::new(
 			zenoh::open(cfg)
 				.wait()

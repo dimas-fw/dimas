@@ -33,4 +33,4 @@ zenoh = { workspace = true}
 [features]
 default = ["std"]
 std = []
-unstable = ["zenoh/unstable"]
+unstable = ["zenoh/unstable", "dimas-core/unstable"]
