@@ -30,7 +30,7 @@ unsafe_code = "allow"
 private_intra_doc_links = "allow"
 
 [dependencies]
-clap = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
 slint = { workspace = true }
 
 [build-dependencies]

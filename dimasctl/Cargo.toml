@@ -20,7 +20,7 @@ workspace = true
 
 [dependencies]
 chrono = { workspace = true }
-clap = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
 dimas-com = { workspace = true }
 dimas-commands = { workspace = true }
 dimas-config = { workspace = true }
