@@ -119,8 +119,9 @@ where
 					};
 				}));
 
+				let timeout = Duration::from_millis(250);
 				// the initial liveliness query
-				if let Err(error) = run_initial(token1, p_cb1, ctx1).await {
+				if let Err(error) = run_initial(token1, p_cb1, ctx1, timeout).await {
 					error!("running initial liveliness query failed with {error}");
 				};
 
@@ -194,12 +195,13 @@ async fn run_initial<P>(
 	token: String,
 	p_cb: ArcLivelinessCallback<P>,
 	ctx: Context<P>,
+	timeout: Duration,
 ) -> Result<()> {
 	let result = ctx
 		.session()
 		.liveliness()
 		.get(&token)
-		.timeout(Duration::from_millis(100))
+		.timeout(timeout)
 		.await;
 
 	match result {

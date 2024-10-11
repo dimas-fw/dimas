@@ -38,7 +38,7 @@ where
 	allowed_destination: Locality,
 	encoding: String,
 	target: QueryTarget,
-	timeout: Option<Duration>,
+	timeout: Duration,
 	key_expr: Option<zenoh::key_expr::KeyExpr<'static>>,
 }
 
@@ -94,7 +94,7 @@ where
 		#[cfg(feature = "unstable")] allowed_destination: Locality,
 		encoding: String,
 		target: QueryTarget,
-		timeout: Option<Duration>,
+		timeout: Duration,
 	) -> Self {
 		Self {
 			selector,
@@ -156,23 +156,20 @@ where
 			.key_expr
 			.clone()
 			.unwrap_or_else(|| KeyExpr::new(&self.selector).expect("snh"));
-		let mut querier = message
+		let builder = message
 			.map_or_else(
 				|| session.get(key_expr),
 				|msg| session.get(&self.selector).payload(msg.value()),
 			)
 			.encoding(self.encoding.as_str())
 			.target(self.target)
-			.consolidation(self.mode);
-
-		if let Some(timeout) = self.timeout {
-			querier = querier.timeout(timeout);
-		};
+			.consolidation(self.mode)
+			.timeout(self.timeout);
 
 		#[cfg(feature = "unstable")]
-		let querier = querier.allowed_destination(self.allowed_destination);
+		let builder = builder.allowed_destination(self.allowed_destination);
 
-		let replies = querier
+		let replies = builder
 			.wait()
 			.map_err(|_| DimasError::ShouldNotHappen)?;
 

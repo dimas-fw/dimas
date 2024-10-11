@@ -5,6 +5,7 @@ use super::observer::Observer;
 #[cfg(doc)]
 use crate::agent::Agent;
 use crate::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
+use core::time::Duration;
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
@@ -39,6 +40,7 @@ where
 	/// Context for the `ObserverBuilder`
 	context: Context<P>,
 	activation_state: OperationState,
+	timeout: Duration,
 	selector: K,
 	/// callback for observer request and cancelation
 	control_callback: CC,
@@ -57,6 +59,7 @@ where
 		Self {
 			context,
 			activation_state: OperationState::Active,
+			timeout: Duration::from_millis(500),
 			selector: NoSelector,
 			control_callback: NoCallback,
 			response_callback: NoCallback,
@@ -87,6 +90,7 @@ where
 		let Self {
 			context,
 			activation_state,
+			timeout,
 			control_callback,
 			response_callback,
 			storage,
@@ -95,6 +99,7 @@ where
 		ObserverBuilder {
 			context,
 			activation_state,
+			timeout,
 			selector: Selector {
 				selector: selector.into(),
 			},
@@ -102,6 +107,14 @@ where
 			response_callback,
 			storage,
 		}
+	}
+
+	/// Set a timeout for the [`Observer`].
+	/// Default is 500ms
+	#[must_use]
+	pub const fn timeout(mut self, timeout: Duration) -> Self {
+		self.timeout = timeout;
+		self
 	}
 
 	/// Set only the message qualifing part of the [`Observer`].
@@ -130,6 +143,7 @@ where
 		let Self {
 			context,
 			activation_state,
+			timeout,
 			selector,
 			response_callback,
 			storage,
@@ -141,6 +155,7 @@ where
 		ObserverBuilder {
 			context,
 			activation_state,
+			timeout,
 			selector,
 			control_callback: Callback { callback },
 			response_callback,
@@ -166,6 +181,7 @@ where
 		let Self {
 			context,
 			activation_state,
+			timeout,
 			selector,
 			control_callback,
 			storage,
@@ -177,6 +193,7 @@ where
 		ObserverBuilder {
 			context,
 			activation_state,
+			timeout,
 			selector,
 			control_callback,
 			response_callback: Callback { callback },
@@ -198,6 +215,7 @@ where
 		let Self {
 			context,
 			activation_state,
+			timeout,
 			selector,
 			control_callback,
 			response_callback,
@@ -206,6 +224,7 @@ where
 		ObserverBuilder {
 			context,
 			activation_state,
+			timeout,
 			selector,
 			control_callback,
 			response_callback,
@@ -232,6 +251,7 @@ where
 	pub fn build(self) -> Result<Observer<P>> {
 		let Self {
 			context,
+			timeout,
 			selector,
 			activation_state,
 			control_callback,
@@ -245,6 +265,7 @@ where
 			activation_state,
 			control_callback.callback,
 			response_callback.callback,
+			timeout,
 		))
 	}
 }

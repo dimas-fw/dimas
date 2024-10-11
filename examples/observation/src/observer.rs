@@ -101,15 +101,17 @@ async fn main() -> Result<()> {
 		.result_callback(response)
 		.add()?;
 
-	// timer for regular querying
+	// timer for next observation
 	let interval = Duration::from_secs(5);
 	agent
 		.timer()
 		.name("timer")
 		.interval(interval)
 		.callback(move |ctx| -> Result<()> {
+			let limit = ctx.read()?.new_limit;
+			println!("request fibonacci up to {limit}");
 			let msg = FibonacciRequest {
-				limit: ctx.read()?.new_limit,
+				limit,
 			};
 			let message = Message::encode(&msg);
 			ctx.observe("fibonacci", Some(message))?;

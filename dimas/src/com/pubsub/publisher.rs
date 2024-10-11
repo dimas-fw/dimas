@@ -117,7 +117,7 @@ where
 		P: Send + Sync + 'static,
 	{
 		let session = self.context.session();
-		let publ = session
+		let builder = session
 			.declare_publisher(self.selector.clone())
 			.congestion_control(self.congestion_control)
 			.encoding(self.encoding.as_str())
@@ -125,11 +125,11 @@ where
 			.priority(self.priority);
 
 		#[cfg(feature = "unstable")]
-		let publ = publ
+		let builder = builder
 			.allowed_destination(self.allowed_destination)
 			.reliability(self.reliability);
 
-		let publ = publ.wait()?;
+		let publ = builder.wait()?;
 		//.map_err(|_| DimasError::Put.into())?;
 		self.publisher.replace(publ);
 		Ok(())

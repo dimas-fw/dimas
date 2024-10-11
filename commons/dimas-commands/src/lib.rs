@@ -105,7 +105,7 @@ pub fn scouting_list(config: &Config) -> Vec<ScoutingEntity> {
 		.wait()
 		.expect("scouting failed");
 
-	while let Ok(hello) = receiver.recv_timeout(Duration::from_millis(250)) {
+	while let Ok(Some(hello)) = receiver.recv_timeout(Duration::from_millis(250)) {
 		let zid = hello.zid().to_string();
 		let locators: Vec<String> = hello
 			.locators()

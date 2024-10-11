@@ -3,6 +3,7 @@
 // region:		--- modules
 use super::{ArcObserverControlCallback, ArcObserverResponseCallback};
 use bitcode::decode;
+use core::time::Duration;
 use dimas_core::{
 	enums::OperationState,
 	error::{DimasError, Result},
@@ -35,6 +36,8 @@ where
 	control_callback: ArcObserverControlCallback<P>,
 	/// callback for responses
 	response_callback: ArcObserverResponseCallback<P>,
+	/// timeout value
+	timeout: Duration,
 	handle: Option<JoinHandle<()>>,
 }
 
@@ -73,6 +76,8 @@ where
 		activation_state: OperationState,
 		control_callback: ArcObserverControlCallback<P>,
 		response_callback: ArcObserverResponseCallback<P>,
+		timeout: Duration,
+
 	) -> Self {
 		Self {
 			selector,
@@ -80,6 +85,7 @@ where
 			activation_state,
 			control_callback,
 			response_callback,
+			timeout,
 			handle: None,
 		}
 	}
@@ -166,11 +172,8 @@ where
 		let mut query = session
 			.get(&selector)
 			.target(QueryTarget::All)
-			.consolidation(ConsolidationMode::None);
-
-		//if let Some(timeout) = self.timeout {
-		//	query = query.timeout(timeout);
-		//};
+			.consolidation(ConsolidationMode::None)
+			.timeout(self.timeout);
 
 		if let Some(message) = message {
 			let value = message.value().to_owned();

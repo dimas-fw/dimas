@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-## [0.3.1] - 2024-??-??
+## [0.4.0] - 2024-??-??
 
 ### Added
 
@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - example for router (is now in repository [examples](https://github.com/dimas-fw/examples/tree/main/router))
 - no longer needed clippy allows
+- setting `undeclare_on_drop`
 
 ## [0.3.0] - 2024-10-03 _Has breaking changes!!_
 

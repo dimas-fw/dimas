@@ -48,7 +48,7 @@ where
 	#[cfg(feature = "unstable")]
 	allowed_destination: Locality,
 	encoding: String,
-	timeout: Option<Duration>,
+	timeout: Duration,
 	selector: K,
 	callback: C,
 	storage: S,
@@ -69,7 +69,7 @@ where
 			#[cfg(feature = "unstable")]
 			allowed_destination: Locality::Any,
 			encoding: Encoding::default().to_string(),
-			timeout: None,
+			timeout: Duration::from_millis(500),
 			selector: NoSelector,
 			callback: NoCallback,
 			storage: NoStorage,
@@ -112,16 +112,17 @@ where
 		self
 	}
 
-	/// Set the publishers encoding
+	/// Set the [`Querier`]s encoding
 	#[must_use]
-	pub fn set_encoding(mut self, encoding: String) -> Self {
+	pub fn encoding(mut self, encoding: String) -> Self {
 		self.encoding = encoding;
 		self
 	}
 
 	/// Set a timeout for the [`Querier`].
+	/// Default is 500ms
 	#[must_use]
-	pub const fn timeout(mut self, timeout: Option<Duration>) -> Self {
+	pub const fn timeout(mut self, timeout: Duration) -> Self {
 		self.timeout = timeout;
 		self
 	}

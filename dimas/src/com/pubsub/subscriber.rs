@@ -35,7 +35,6 @@ where
 	activation_state: OperationState,
 	#[cfg(feature = "unstable")]
 	allowed_origin: Locality,
-	undeclare_on_drop: bool,
 	put_callback: ArcPutCallback<P>,
 	delete_callback: Option<ArcDeleteCallback<P>>,
 	handle: Option<JoinHandle<()>>,
@@ -78,7 +77,6 @@ where
 		context: Context<P>,
 		activation_state: OperationState,
 		#[cfg(feature = "unstable")] allowed_origin: Locality,
-		undeclare_on_drop: bool,
 		put_callback: ArcPutCallback<P>,
 		delete_callback: Option<ArcDeleteCallback<P>>,
 	) -> Self {
@@ -88,7 +86,6 @@ where
 			activation_state,
 			#[cfg(feature = "unstable")]
 			allowed_origin,
-			undeclare_on_drop,
 			put_callback,
 			delete_callback,
 			handle: None,
@@ -114,7 +111,6 @@ where
 		let ctx2 = self.context.clone();
 		#[cfg(feature = "unstable")]
 		let allowed_origin = self.allowed_origin;
-		let undeclare_on_drop = self.undeclare_on_drop;
 
 		self.handle
 			.replace(tokio::task::spawn(async move {
@@ -134,7 +130,6 @@ where
 					selector,
 					#[cfg(feature = "unstable")]
 					allowed_origin,
-					undeclare_on_drop,
 					p_cb,
 					d_cb,
 					ctx2.clone(),
@@ -160,7 +155,6 @@ where
 async fn run_subscriber<P>(
 	selector: String,
 	#[cfg(feature = "unstable")] allowed_origin: Locality,
-	undeclare_on_drop: bool,
 	p_cb: ArcPutCallback<P>,
 	d_cb: Option<ArcDeleteCallback<P>>,
 	ctx: Context<P>,
@@ -169,14 +163,13 @@ where
 	P: Send + Sync + 'static,
 {
 	let session = ctx.session();
-	let subscriber = session
-		.declare_subscriber(&selector)
-		.undeclare_on_drop(undeclare_on_drop);
+	let builder = session
+		.declare_subscriber(&selector);
 
 	#[cfg(feature = "unstable")]
-	let subscriber = subscriber.allowed_origin(allowed_origin);
+	let builder = builder.allowed_origin(allowed_origin);
 
-	let subscriber = subscriber.await?;
+	let subscriber = builder.await?;
 
 	loop {
 		let sample = subscriber

@@ -35,7 +35,7 @@ unwrap_used = "deny"
 [workspace.package]
 rust-version = "1.81.0"
 edition = "2021"
-version = "0.3.1"
+version = "0.4.0"
 authors = [
 	"stepkun <stephan.kunz@kabelbw.de>",
 ]
@@ -56,15 +56,15 @@ bitcode = "0.6.0"
 clap = "4.1.0"
 chrono = "0.4.34"
 dimas = { path = "dimas" }
-#dimas = "0.3.1"
+#dimas = "0.4.0"
 dimas-com = { path = "commons/dimas-com" }
-#dimas-com = "0.3.1"
+#dimas-com = "0.4.0"
 dimas-commands = { path = "commons/dimas-commands" }
-#dimas-commands = "0.3.1"
+#dimas-commands = "0.4.0"
 dimas-config = { path = "commons/dimas-config" }
-#dimas-config = "0.3.1"
+#dimas-config = "0.4.0"
 dimas-core = { path = "commons/dimas-core" }
-#dimas-core = "0.3.1"
+#dimas-core = "0.4.0"
 dirs = "5.0.0"
 doc-comment = "0.3.0"
 futures = "0.3.30"
@@ -78,9 +78,9 @@ thiserror = "1.0.37"
 tokio = "1.40.0"
 tracing = "0.1.37"
 tracing-subscriber = "0.3.0"
-#zenoh = { version = "=1.0.0-beta.3", features = [transport_serial"] } 
-zenoh = "=1.0.0-beta.4"
 #zenoh = { path = "../../zenoh/zenoh" }
+#zenoh = { version = "1.0.0", features = [transport_serial"] } 
+zenoh = "1.0.0-rc.1"
 
 [profile.release]
 opt-level = 'z'   # Optimize for size.

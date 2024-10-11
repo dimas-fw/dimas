@@ -94,7 +94,7 @@ where
 
 	/// Set the publishers encoding
 	#[must_use]
-	pub fn set_encoding(mut self, encoding: String) -> Self {
+	pub fn encoding(mut self, encoding: String) -> Self {
 		self.encoding = encoding;
 		self
 	}

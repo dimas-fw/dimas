@@ -46,7 +46,6 @@ where
 	activation_state: OperationState,
 	#[cfg(feature = "unstable")]
 	allowed_origin: Locality,
-	undeclare_on_drop: bool,
 	selector: K,
 	put_callback: C,
 	storage: S,
@@ -65,7 +64,6 @@ where
 			activation_state: OperationState::Active,
 			#[cfg(feature = "unstable")]
 			allowed_origin: Locality::Any,
-			undeclare_on_drop: true,
 			selector: NoSelector,
 			put_callback: NoCallback,
 			storage: NoStorage,
@@ -90,13 +88,6 @@ where
 	#[must_use]
 	pub const fn allowed_origin(mut self, allowed_origin: Locality) -> Self {
 		self.allowed_origin = allowed_origin;
-		self
-	}
-
-	/// Set undeclare on drop.
-	#[must_use]
-	pub const fn undeclare_on_drop(mut self, undeclare_on_drop: bool) -> Self {
-		self.undeclare_on_drop = undeclare_on_drop;
 		self
 	}
 
@@ -126,7 +117,6 @@ where
 			activation_state,
 			#[cfg(feature = "unstable")]
 			allowed_origin,
-			undeclare_on_drop,
 			storage,
 			put_callback,
 			delete_callback,
@@ -137,7 +127,6 @@ where
 			activation_state,
 			#[cfg(feature = "unstable")]
 			allowed_origin,
-			undeclare_on_drop,
 			selector: Selector {
 				selector: selector.into(),
 			},
@@ -175,7 +164,6 @@ where
 			activation_state,
 			#[cfg(feature = "unstable")]
 			allowed_origin,
-			undeclare_on_drop,
 			selector,
 			storage,
 			delete_callback,
@@ -188,7 +176,6 @@ where
 			activation_state,
 			#[cfg(feature = "unstable")]
 			allowed_origin,
-			undeclare_on_drop,
 			selector,
 			put_callback: Callback { callback },
 			storage,
@@ -212,7 +199,6 @@ where
 			activation_state,
 			#[cfg(feature = "unstable")]
 			allowed_origin,
-			undeclare_on_drop,
 			selector,
 			put_callback,
 			delete_callback,
@@ -223,7 +209,6 @@ where
 			activation_state,
 			#[cfg(feature = "unstable")]
 			allowed_origin,
-			undeclare_on_drop,
 			selector,
 			put_callback,
 			storage: Storage { storage },
@@ -247,7 +232,6 @@ where
 			activation_state,
 			#[cfg(feature = "unstable")]
 			allowed_origin,
-			undeclare_on_drop,
 			put_callback,
 			delete_callback,
 			..
@@ -258,7 +242,6 @@ where
 			activation_state,
 			#[cfg(feature = "unstable")]
 			allowed_origin,
-			undeclare_on_drop,
 			put_callback.callback,
 			delete_callback,
 		))

@@ -11,7 +11,7 @@ extern crate std;
 
 // region:		--- modules
 use alloc::sync::Arc;
-use core::fmt::Debug;
+use core::{fmt::Debug, time::Duration};
 use dimas_core::{
 	error::{DimasError, Result},
 	message_types::{Message, QueryableMsg},
@@ -115,7 +115,7 @@ impl Communicator {
 		let replies = replies.allowed_destination(Locality::Any);
 
 		let replies = replies
-			//.timeout(Duration::from_millis(1000))
+			.timeout(Duration::from_millis(500))
 			.wait()
 			.map_err(|_| DimasError::ShouldNotHappen)?;
 

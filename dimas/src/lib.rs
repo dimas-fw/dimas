@@ -28,8 +28,10 @@ use tokio::time::Duration;
 
 // region:		--- builder_states
 /// State signaling that the builder has no storage value set
+#[doc(hidden)]
 pub struct NoStorage;
-/// State signaling that the builderhas the storage value set
+/// State signaling that the builder has the storage value set
+#[doc(hidden)]
 pub struct Storage<S>
 where
 	S: Send + Sync + 'static,
@@ -39,24 +41,30 @@ where
 }
 
 /// State signaling that the builder has no selector set
+#[doc(hidden)]
 pub struct NoSelector;
 /// State signaling that the builder has the selector set
+#[doc(hidden)]
 pub struct Selector {
 	/// The selector
 	pub selector: String,
 }
 
 /// State signaling that the builder has no interval set
+#[doc(hidden)]
 pub struct NoInterval;
 /// State signaling that the builder has the interval set
+#[doc(hidden)]
 pub struct Interval {
 	/// The [`Duration`] of the interval
 	pub interval: Duration,
 }
 
 /// State signaling that the builder has a callback not set
+#[doc(hidden)]
 pub struct NoCallback;
 /// State signaling that the builder has a callback set
+#[doc(hidden)]
 pub struct Callback<C>
 where
 	C: Send + Sync + 'static,

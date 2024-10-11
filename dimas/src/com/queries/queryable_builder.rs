@@ -40,7 +40,6 @@ where
 	completeness: bool,
 	#[cfg(feature = "unstable")]
 	allowed_origin: Locality,
-	undeclare_on_drop: bool,
 	selector: K,
 	callback: C,
 	storage: S,
@@ -59,7 +58,6 @@ where
 			completeness: true,
 			#[cfg(feature = "unstable")]
 			allowed_origin: Locality::Any,
-			undeclare_on_drop: true,
 			selector: NoSelector,
 			callback: NoCallback,
 			storage: NoStorage,
@@ -92,13 +90,6 @@ where
 		self.allowed_origin = allowed_origin;
 		self
 	}
-
-	/// Set undeclare on drop.
-	#[must_use]
-	pub const fn undeclare_on_drop(mut self, undeclare_on_drop: bool) -> Self {
-		self.undeclare_on_drop = undeclare_on_drop;
-		self
-	}
 }
 
 impl<P, C, S> QueryableBuilder<P, NoSelector, C, S>
@@ -114,7 +105,6 @@ where
 			completeness,
 			#[cfg(feature = "unstable")]
 			allowed_origin,
-			undeclare_on_drop,
 			storage,
 			callback,
 			..
@@ -125,7 +115,6 @@ where
 			completeness,
 			#[cfg(feature = "unstable")]
 			allowed_origin,
-			undeclare_on_drop,
 			selector: Selector {
 				selector: selector.into(),
 			},
@@ -163,7 +152,6 @@ where
 			completeness,
 			#[cfg(feature = "unstable")]
 			allowed_origin,
-			undeclare_on_drop,
 			selector,
 			storage,
 			..
@@ -176,7 +164,6 @@ where
 			completeness,
 			#[cfg(feature = "unstable")]
 			allowed_origin,
-			undeclare_on_drop,
 			selector,
 			callback: Callback { callback },
 			storage,
@@ -200,7 +187,6 @@ where
 			completeness,
 			#[cfg(feature = "unstable")]
 			allowed_origin,
-			undeclare_on_drop,
 			selector,
 			callback,
 			..
@@ -211,7 +197,6 @@ where
 			completeness,
 			#[cfg(feature = "unstable")]
 			allowed_origin,
-			undeclare_on_drop,
 			selector,
 			callback,
 			storage: Storage { storage },
@@ -233,7 +218,6 @@ where
 			completeness,
 			#[cfg(feature = "unstable")]
 			allowed_origin,
-			undeclare_on_drop,
 			selector,
 			callback,
 			..
@@ -247,7 +231,6 @@ where
 			completeness,
 			#[cfg(feature = "unstable")]
 			allowed_origin,
-			undeclare_on_drop,
 		))
 	}
 }
