@@ -4,7 +4,9 @@
 //! A `LivelinessSubscriber` can optional subscribe on a delete message.
 
 // region:		--- modules
-use super::liveliness_subscriber::LivelinessSubscriber;
+use super::{
+	liveliness_subscriber::LivelinessSubscriber, ArcLivelinessCallback, LivelinessCallback,
+};
 use crate::{Callback, NoCallback, NoStorage, Storage};
 use dimas_core::{
 	enums::OperationState,
@@ -12,7 +14,7 @@ use dimas_core::{
 	traits::Context,
 	utils::selector_from,
 };
-use futures::future::{BoxFuture, Future};
+use futures::future::Future;
 use std::{
 	collections::HashMap,
 	sync::{Arc, RwLock},
@@ -21,11 +23,6 @@ use tokio::sync::Mutex;
 // endregion:	--- modules
 
 // region:    	--- types
-/// Type definition for a liveliness subscribers callback
-type LivelinessCallback<P> =
-	Box<dyn FnMut(Context<P>, String) -> BoxFuture<'static, Result<()>> + Send + Sync>;
-/// Type definition for a liveliness subscribers atomic reference counted callback
-pub type ArcLivelinessCallback<P> = Arc<Mutex<LivelinessCallback<P>>>;
 // endregion: 	--- types
 
 // region:		--- LivelinessSubscriberBuilder

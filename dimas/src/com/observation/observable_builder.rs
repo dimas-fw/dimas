@@ -1,7 +1,11 @@
 // Copyright © 2024 Stephan Kunz
 
 // region:		--- modules
-use super::observable::Observable;
+use super::{
+	observable::Observable, ArcObservableControlCallback, ArcObservableExecutionCallback,
+	ArcObservableFeedbackCallback, ObservableControlCallback, ObservableExecutionCallback,
+	ObservableFeedbackCallback,
+};
 use crate::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use dimas_core::{
 	enums::OperationState,
@@ -17,22 +21,6 @@ use tokio::time::Duration;
 // endregion:	--- modules
 
 // region:    	--- types
-/// Type definition for an observables `control` callback
-type ObservableControlCallback<P> = Box<
-	dyn FnMut(Context<P>, Message) -> BoxFuture<'static, Result<ControlResponse>> + Send + Sync,
->;
-/// Type definition for an observables atomic reference counted `control` callback
-pub type ArcObservableControlCallback<P> = Arc<Mutex<ObservableControlCallback<P>>>;
-/// Type definition for an observables `feedback` callback
-type ObservableFeedbackCallback<P> =
-	Box<dyn FnMut(Context<P>) -> BoxFuture<'static, Result<Message>> + Send + Sync>;
-/// Type definition for an observables atomic reference counted `feedback` callback
-pub type ArcObservableFeedbackCallback<P> = Arc<Mutex<ObservableFeedbackCallback<P>>>;
-/// Type definition for an observables atomic reference counted `execution` callback
-type ObservableExecutionCallback<P> =
-	Box<dyn FnMut(Context<P>) -> BoxFuture<'static, Result<Message>> + Send + Sync>;
-/// Type definition for an observables atomic reference counted `execution` callback
-pub type ArcObservableExecutionCallback<P> = Arc<Mutex<ObservableExecutionCallback<P>>>;
 // endregion: 	--- types
 
 // region:		--- ObservableBuilder

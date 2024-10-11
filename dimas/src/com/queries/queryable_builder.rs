@@ -10,7 +10,7 @@ use dimas_core::{
 	traits::Context,
 	utils::selector_from,
 };
-use futures::future::{BoxFuture, Future};
+use futures::future::Future;
 use std::sync::{Arc, RwLock};
 use tokio::sync::Mutex;
 #[cfg(feature = "unstable")]
@@ -18,14 +18,11 @@ use zenoh::sample::Locality;
 
 use crate::com::queries::queryable::Queryable;
 use crate::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
+
+use super::{ArcQueryableCallback, QueryableCallback};
 // endregion:	--- modules
 
 // region:    	--- types
-/// type defnition for a queryables `request` callback
-pub type QueryableCallback<P> =
-	Box<dyn FnMut(Context<P>, QueryMsg) -> BoxFuture<'static, Result<()>> + Send + Sync>;
-/// type defnition for a queryables atomic reference counted `request` callback
-pub type ArcQueryableCallback<P> = Arc<Mutex<QueryableCallback<P>>>;
 // endregion: 	--- types
 
 // region:		--- QueryableBuilder

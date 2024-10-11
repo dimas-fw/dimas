@@ -1,7 +1,10 @@
 // Copyright © 2024 Stephan Kunz
 
 // region:		--- modules
-use super::observer::Observer;
+use super::{
+	observer::Observer, ArcObserverControlCallback, ArcObserverResponseCallback,
+	ObserverControlCallback, ObserverResponseCallback,
+};
 #[cfg(doc)]
 use crate::agent::Agent;
 use crate::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
@@ -13,22 +16,12 @@ use dimas_core::{
 	traits::Context,
 	utils::selector_from,
 };
-use futures::future::{BoxFuture, Future};
+use futures::future::Future;
 use std::sync::{Arc, RwLock};
 use tokio::sync::Mutex;
 // endregion:	--- modules
 
 // region:    	--- types
-/// Type definition for an observers `control` callback
-type ObserverControlCallback<P> =
-	Box<dyn FnMut(Context<P>, ControlResponse) -> BoxFuture<'static, Result<()>> + Send + Sync>;
-/// Type definition for an observers atomic reference counted `control` callback
-pub type ArcObserverControlCallback<P> = Arc<Mutex<ObserverControlCallback<P>>>;
-/// Type definition for an observers `response` callback
-type ObserverResponseCallback<P> =
-	Box<dyn FnMut(Context<P>, ObservableResponse) -> BoxFuture<'static, Result<()>> + Send + Sync>;
-/// Type definition for an observers atomic reference counted `response` callback
-pub type ArcObserverResponseCallback<P> = Arc<Mutex<ObserverResponseCallback<P>>>;
 // endregion: 	--- types
 
 // region:		--- ObserverBuilder

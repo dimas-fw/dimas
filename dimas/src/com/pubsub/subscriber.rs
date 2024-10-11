@@ -5,7 +5,7 @@
 
 // region:		--- modules
 // these ones are only for doc needed
-use super::{ArcDeleteCallback, ArcPutCallback};
+use super::{ArcSubscriberDeleteCallback, ArcSubscriberPutCallback};
 #[cfg(doc)]
 use crate::agent::Agent;
 use dimas_core::{
@@ -35,8 +35,8 @@ where
 	activation_state: OperationState,
 	#[cfg(feature = "unstable")]
 	allowed_origin: Locality,
-	put_callback: ArcPutCallback<P>,
-	delete_callback: Option<ArcDeleteCallback<P>>,
+	put_callback: ArcSubscriberPutCallback<P>,
+	delete_callback: Option<ArcSubscriberDeleteCallback<P>>,
 	handle: Option<JoinHandle<()>>,
 }
 
@@ -77,8 +77,8 @@ where
 		context: Context<P>,
 		activation_state: OperationState,
 		#[cfg(feature = "unstable")] allowed_origin: Locality,
-		put_callback: ArcPutCallback<P>,
-		delete_callback: Option<ArcDeleteCallback<P>>,
+		put_callback: ArcSubscriberPutCallback<P>,
+		delete_callback: Option<ArcSubscriberDeleteCallback<P>>,
 	) -> Self {
 		Self {
 			selector,
@@ -155,16 +155,15 @@ where
 async fn run_subscriber<P>(
 	selector: String,
 	#[cfg(feature = "unstable")] allowed_origin: Locality,
-	p_cb: ArcPutCallback<P>,
-	d_cb: Option<ArcDeleteCallback<P>>,
+	p_cb: ArcSubscriberPutCallback<P>,
+	d_cb: Option<ArcSubscriberDeleteCallback<P>>,
 	ctx: Context<P>,
 ) -> Result<()>
 where
 	P: Send + Sync + 'static,
 {
 	let session = ctx.session();
-	let builder = session
-		.declare_subscriber(&selector);
+	let builder = session.declare_subscriber(&selector);
 
 	#[cfg(feature = "unstable")]
 	let builder = builder.allowed_origin(allowed_origin);

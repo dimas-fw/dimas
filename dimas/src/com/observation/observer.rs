@@ -77,7 +77,6 @@ where
 		control_callback: ArcObserverControlCallback<P>,
 		response_callback: ArcObserverResponseCallback<P>,
 		timeout: Duration,
-
 	) -> Self {
 		Self {
 			selector,

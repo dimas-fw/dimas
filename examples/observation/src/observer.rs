@@ -110,9 +110,7 @@ async fn main() -> Result<()> {
 		.callback(move |ctx| -> Result<()> {
 			let limit = ctx.read()?.new_limit;
 			println!("request fibonacci up to {limit}");
-			let msg = FibonacciRequest {
-				limit,
-			};
+			let msg = FibonacciRequest { limit };
 			let message = Message::encode(&msg);
 			ctx.observe("fibonacci", Some(message))?;
 			Ok(())
