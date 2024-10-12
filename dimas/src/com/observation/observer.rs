@@ -132,31 +132,45 @@ where
 			.wait()
 			.map_err(|_| DimasError::ShouldNotHappen)?;
 
-		while let Ok(reply) = replies.recv() {
-			match reply.result() {
-				Ok(sample) => match sample.kind() {
-					SampleKind::Put => {
-						let ccb = self.control_callback.clone();
-						let ctx = self.context.clone();
-						let content: Vec<u8> = sample.payload().to_bytes().into_owned();
-						let response: ControlResponse = decode(&content)?;
-						if matches!(response, ControlResponse::Canceled) {
-							// without spawning possible deadlock when called inside an control response
-							tokio::spawn(async move {
-								let mut lock = ccb.lock().await;
-								if let Err(error) = lock(ctx.clone(), response).await {
-									error!("callback failed with {error}");
-								}
-							});
-						} else {
-							error!("unexpected response on cancelation");
-						};
-					}
-					SampleKind::Delete => {
-						error!("Delete in cancel");
-					}
-				},
-				Err(err) => error!("receive error: {:?})", err),
+		let mut unreached = true;
+		let mut retry_count = 0u8;
+	
+		while unreached && retry_count <= 5 {
+			retry_count += 1;
+			while let Ok(reply) = replies.recv() {
+				match reply.result() {
+					Ok(sample) => match sample.kind() {
+						SampleKind::Put => {
+							let ccb = self.control_callback.clone();
+							let ctx = self.context.clone();
+							let content: Vec<u8> = sample.payload().to_bytes().into_owned();
+							let response: ControlResponse = decode(&content)?;
+							if matches!(response, ControlResponse::Canceled) {
+								// without spawning possible deadlock when called inside an control response
+								tokio::spawn(async move {
+									let mut lock = ccb.lock().await;
+									if let Err(error) = lock(ctx.clone(), response).await {
+										error!("callback failed with {error}");
+									}
+								});
+							} else {
+								error!("unexpected response on cancelation");
+							};
+						}
+						SampleKind::Delete => {
+							error!("Delete in cancel");
+						}
+					},
+					Err(err) => error!("receive error: {:?})", err),
+				}
+				unreached = false;
+			}
+			if unreached  {
+				if retry_count < 5 {
+					std::thread::sleep(self.timeout);
+				} else {
+					return Err(DimasError::AccessService(self.selector.to_string()).into());
+				}
 			}
 		}
 		Ok(())
@@ -186,70 +200,84 @@ where
 			.wait()
 			.map_err(|_| DimasError::ShouldNotHappen)?;
 
-		while let Ok(reply) = replies.recv() {
-			match reply.result() {
-				Ok(sample) => match sample.kind() {
-					SampleKind::Put => {
-						let content: Vec<u8> = sample.payload().to_bytes().into_owned();
-						decode::<ControlResponse>(&content).map_or_else(
-							|_| todo!(),
-							|response| {
-								if matches!(response, ControlResponse::Accepted) {
-									let ctx = self.context.clone();
-									// use "<query_selector>/feedback/<source_id/replier_id>" as key
-									// in case there is no source_id/replier_id, listen on all id's
-									#[cfg(not(feature = "unstable"))]
-									let source_id = "*".to_string();
-									#[cfg(feature = "unstable")]
-									let source_id = reply.result().map_or_else(
-										|_| {
-											reply.replier_id().map_or_else(
-												|| "*".to_string(),
-												|id| id.to_string(),
-											)
-										},
-										|sample| {
-											sample.source_info().source_id().map_or_else(
-												|| {
-													reply.replier_id().map_or_else(
-														|| "*".to_string(),
-														|id| id.to_string(),
-													)
-												},
-												|id| id.zid().to_string(),
-											)
-										},
-									);
-									let selector =
-										format!("{}/feedback/{}", &self.selector, &source_id);
+		let mut unreached = true;
+		let mut retry_count = 0u8;
+	
+		while unreached && retry_count <= 5 {
+			retry_count += 1;
+			while let Ok(reply) = replies.recv() {
+				match reply.result() {
+					Ok(sample) => match sample.kind() {
+						SampleKind::Put => {
+							let content: Vec<u8> = sample.payload().to_bytes().into_owned();
+							decode::<ControlResponse>(&content).map_or_else(
+								|_| todo!(),
+								|response| {
+									if matches!(response, ControlResponse::Accepted) {
+										let ctx = self.context.clone();
+										// use "<query_selector>/feedback/<source_id/replier_id>" as key
+										// in case there is no source_id/replier_id, listen on all id's
+										#[cfg(not(feature = "unstable"))]
+										let source_id = "*".to_string();
+										#[cfg(feature = "unstable")]
+										let source_id = reply.result().map_or_else(
+											|_| {
+												reply.replier_id().map_or_else(
+													|| "*".to_string(),
+													|id| id.to_string(),
+												)
+											},
+											|sample| {
+												sample.source_info().source_id().map_or_else(
+													|| {
+														reply.replier_id().map_or_else(
+															|| "*".to_string(),
+															|id| id.to_string(),
+														)
+													},
+													|id| id.zid().to_string(),
+												)
+											},
+										);
+										let selector =
+											format!("{}/feedback/{}", &self.selector, &source_id);
 
-									let rcb = self.response_callback.clone();
+										let rcb = self.response_callback.clone();
+										tokio::task::spawn(async move {
+											if let Err(error) =
+												run_observation(selector, ctx, rcb).await
+											{
+												error!("observation failed with {error}");
+											};
+										});
+									};
+									// call control callback
+									let ctx = self.context.clone();
+									let ccb = self.control_callback.clone();
 									tokio::task::spawn(async move {
-										if let Err(error) =
-											run_observation(selector, ctx, rcb).await
-										{
-											error!("observation failed with {error}");
-										};
+										let mut lock = ccb.lock().await;
+										if let Err(error) = lock(ctx, response).await {
+											error!("control callback failed with {error}");
+										}
 									});
-								};
-								// call control callback
-								let ctx = self.context.clone();
-								let ccb = self.control_callback.clone();
-								tokio::task::spawn(async move {
-									let mut lock = ccb.lock().await;
-									if let Err(error) = lock(ctx, response).await {
-										error!("control callback failed with {error}");
-									}
-								});
-							},
-						);
-					}
-					SampleKind::Delete => {
-						error!("Delete in request response");
-					}
-				},
-				Err(err) => error!("request response error: {:?})", err),
-			};
+								},
+							);
+						}
+						SampleKind::Delete => {
+							error!("Delete in request response");
+						}
+					},
+					Err(err) => error!("request response error: {:?})", err),
+				};
+				unreached = false;
+			}
+			if unreached  {
+				if retry_count < 5 {
+					std::thread::sleep(self.timeout);
+				} else {
+					return Err(DimasError::AccessService(self.selector.to_string()).into());
+				}
+			}
 		}
 		Ok(())
 	}

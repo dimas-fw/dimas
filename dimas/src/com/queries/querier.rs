@@ -173,32 +173,47 @@ where
 			.wait()
 			.map_err(|_| DimasError::ShouldNotHappen)?;
 
-		while let Ok(reply) = replies.recv() {
-			match reply.result() {
-				Ok(sample) => match sample.kind() {
-					SampleKind::Put => {
-						let content: Vec<u8> = sample.payload().to_bytes().into_owned();
-						let msg = QueryableMsg(content);
-						if callback.is_none() {
-							let cb = cb.clone();
-							let ctx = self.context.clone();
-							tokio::task::spawn(async move {
-								let mut lock = cb.lock().await;
-								if let Err(error) = lock(ctx, msg).await {
-									error!("querier callback failed with {error}");
-								}
-							});
-						} else {
-							callback.as_mut().expect("snh")(msg)?;
+		let mut unreached = true;
+		let mut retry_count = 0u8;
+
+		while unreached && retry_count <= 5 {
+			retry_count += 1;
+			while let Ok(reply) = replies.recv() {
+				match reply.result() {
+					Ok(sample) => match sample.kind() {
+						SampleKind::Put => {
+							let content: Vec<u8> = sample.payload().to_bytes().into_owned();
+							let msg = QueryableMsg(content);
+							if callback.is_none() {
+								let cb = cb.clone();
+								let ctx = self.context.clone();
+								tokio::task::spawn(async move {
+									let mut lock = cb.lock().await;
+									if let Err(error) = lock(ctx, msg).await {
+										error!("querier callback failed with {error}");
+									}
+								});
+							} else {
+								callback.as_mut().expect("snh")(msg)?;
+							}
 						}
-					}
-					SampleKind::Delete => {
-						error!("Delete in Querier");
-					}
-				},
-				Err(err) => error!("receive error: {:?})", err),
+						SampleKind::Delete => {
+							error!("Delete in Querier");
+						}
+					},
+					Err(err) => error!("receive error: {:?})", err),
+				}
+				unreached = false;
+			}
+			if unreached  {
+				if retry_count < 5 {
+					std::thread::sleep(self.timeout);
+				} else {
+					return Err(DimasError::AccessService(self.selector.to_string()).into());
+				}
 			}
 		}
+
 		Ok(())
 	}
 }

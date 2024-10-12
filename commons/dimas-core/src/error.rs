@@ -73,6 +73,10 @@ pub enum DimasError {
 	#[error("reading context for {0} failed")]
 	ReadContext(String),
 
+	/// reaching a service (queryable/observable)
+	#[error("{0} is not accessible")]
+	AccessService(String),
+
 	/// `zenoh` session creation failed
 	#[error("creation of zenoh session failed with {0}")]
 	CreateSession(#[source] Box<dyn core::error::Error + Send + Sync + 'static>),

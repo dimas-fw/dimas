@@ -52,7 +52,7 @@ where
 		Self {
 			context,
 			activation_state: OperationState::Active,
-			timeout: Duration::from_millis(500),
+			timeout: Duration::from_millis(1000),
 			selector: NoSelector,
 			control_callback: NoCallback,
 			response_callback: NoCallback,
@@ -103,7 +103,7 @@ where
 	}
 
 	/// Set a timeout for the [`Observer`].
-	/// Default is 500ms
+	/// Default is 1000ms
 	#[must_use]
 	pub const fn timeout(mut self, timeout: Duration) -> Self {
 		self.timeout = timeout;

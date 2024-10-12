@@ -115,24 +115,38 @@ impl Communicator {
 		let replies = replies.allowed_destination(Locality::Any);
 
 		let replies = replies
-			.timeout(Duration::from_millis(500))
+			.timeout(Duration::from_millis(250))
 			.wait()
 			.map_err(|_| DimasError::ShouldNotHappen)?;
 
-		while let Ok(reply) = replies.recv() {
-			match reply.result() {
-				Ok(sample) => match sample.kind() {
-					SampleKind::Put => {
-						let content: Vec<u8> = sample.payload().to_bytes().into_owned();
-						callback(QueryableMsg(content))?;
+			let mut unreached = true;
+			let mut retry_count = 0u8;
+	
+		while unreached && retry_count <= 5 {
+			retry_count += 1;
+			while let Ok(reply) = replies.recv() {
+				match reply.result() {
+					Ok(sample) => match sample.kind() {
+						SampleKind::Put => {
+							let content: Vec<u8> = sample.payload().to_bytes().into_owned();
+							callback(QueryableMsg(content))?;
+						}
+						SampleKind::Delete => {
+							todo!("Delete in Query");
+						}
+					},
+					Err(err) => {
+						let content: Vec<u8> = err.payload().to_bytes().into_owned();
+						todo!(">> Received (ERROR: '{:?}' for {})", &content, &selector);
 					}
-					SampleKind::Delete => {
-						todo!("Delete in Query");
-					}
-				},
-				Err(err) => {
-					let content: Vec<u8> = err.payload().to_bytes().into_owned();
-					todo!(">> Received (ERROR: '{:?}' for {})", &content, &selector);
+				}
+				unreached = false;
+			}
+			if unreached  {
+				if retry_count < 5 {
+					std::thread::sleep(Duration::from_millis(1000));
+				} else {
+					return Err(DimasError::AccessService(selector.to_string()).into());
 				}
 			}
 		}

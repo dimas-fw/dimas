@@ -373,7 +373,7 @@ where
 
 	/// Get a [`QuerierBuilder`], the builder for a [`Querier`].
 	#[must_use]
-	pub fn query(
+	pub fn querier(
 		&self,
 	) -> QuerierBuilder<P, crate::NoSelector, crate::NoCallback, crate::Storage<Querier<P>>> {
 		QuerierBuilder::new(self.context.clone()).storage(self.context.queries().clone())

@@ -34,9 +34,9 @@ async fn main() -> Result<()> {
 		.name("query")
 		.config(&Config::default())?;
 
-	// create query for topic "query/1"
+	// create querier for topic "query/1"
 	agent
-		.query()
+		.querier()
 		.topic("query1")
 		.callback(query_callback)
 		.add()?;

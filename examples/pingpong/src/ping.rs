@@ -53,7 +53,7 @@ async fn main() -> Result<()> {
 
 	// create query for topic "pingpong"
 	agent
-		.query()
+		.querier()
 		.topic("pingpong")
 		.callback(pong_received)
 		.add()?;

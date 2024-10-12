@@ -19,9 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- timeout handling to `Querier` and `Observer`
+
 ### Changed
 
 - filenames of module `liveliness`
+- method for getting a `QuerierBuilder` from an `Agent` to `querier()`
 
 ### Fixed
 
