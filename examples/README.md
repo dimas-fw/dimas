@@ -38,8 +38,8 @@ and the pong'er in another terminal window with
 cargo run --bin pong
 ```
 
-## [Queryable/Query](https://github.com/dimas-fw/dimas/tree/main/examples/queries)
-Implements a simple Qeryale/Query pair, where the Query does not wait for a started Queryable, but continues querying.
+## [Queryable/Querier](https://github.com/dimas-fw/dimas/tree/main/examples/queries)
+Implements a simple Qeryable/Querier pair, where the Querier does not wait for a started Queryable, but continues querying.
 
 Run the query in one terminal window with
 ```shell
@@ -48,4 +48,16 @@ cargo run --bin query
 and the queryable in another terminal window with
 ```shell
 cargo run --bin queryable
+```
+
+## [Observable/Observer](https://github.com/dimas-fw/dimas/tree/main/examples/observation)
+Implements a simple Observable/Observer pair, where the Observer does not wait for a started Observable, but continues requesting an Observation.
+
+Run the observer in one terminal window with
+```shell
+cargo run --bin observer
+```
+and the observable in another terminal window with
+```shell
+cargo run --bin observable
 ```
