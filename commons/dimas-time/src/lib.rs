@@ -1,15 +1,14 @@
 // Copyright © 2024 Stephan Kunz
+#![no_std]
 
-//! Module implements time related things.
+//! Library implements time related things.
 //!
 
 // region:    --- modules
 mod timer;
-mod timer_builder;
 
 // flatten
 pub use timer::*;
-pub use timer_builder::*;
 // endregion: --- modules
 
 #[cfg(test)]

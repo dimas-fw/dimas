@@ -20,9 +20,9 @@ use dimas_com::{
 use dimas_config::Config;
 use dimas_core::{
 	enums::{OperationState, Signal},
-	error::Result,
 	message_types::Message,
 	utils::selector_from,
+	Result,
 };
 #[cfg(feature = "std")]
 use std::collections::HashMap;
@@ -46,7 +46,7 @@ pub fn about_list(com: &Communicator, base_selector: &String) -> Vec<AboutEntity
 	let message = Message::encode(&Signal::About);
 	// set state for entities matching the selector
 	com.get(&selector, Some(message), |response| -> Result<()> {
-		let response: AboutEntity = response.decode().expect("decode failed");
+		let response: AboutEntity = response.decode()?;
 		map.entry(response.zid().to_string())
 			.or_insert(response);
 		Ok(())

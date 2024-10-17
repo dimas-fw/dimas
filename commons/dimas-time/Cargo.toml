@@ -1,7 +1,7 @@
 # Copyright © 2024 Stephan Kunz
 
 [package]
-name = "dimas-config"
+name = "dimas-time"
 rust-version.workspace = true
 edition.workspace = true
 version.workspace = true
@@ -11,8 +11,8 @@ keywords.workspace = true
 categories.workspace = true
 homepage.workspace = true
 repository.workspace = true
-description = "dimas-config - configuration library for DiMAS"
-documentation = "https://docs.rs/dimas-config/latest/dimas-config/"
+description = "dimas-time - core library for DiMAS"
+documentation = "https://docs.rs/dimas-time/latest/dimas-time/"
 readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -21,13 +21,12 @@ readme = "README.md"
 workspace = true
 
 [dependencies]
-derive_more = { workspace = true, features = ["from"] }
-dirs = { workspace = true}
-json5 = { workspace = true}
-serde = { workspace = true }
+dimas-core = { workspace = true}
+tokio = { workspace = true}
 tracing = { workspace = true}
-zenoh = { workspace = true}
+tracing-subscriber = { workspace = true}
 
 [features]
 default = ["std"]
 std = []
+#unstable = []

@@ -10,12 +10,11 @@ extern crate alloc;
 extern crate std;
 
 // region:		--- modules
+use crate::error::Error;
 use alloc::sync::Arc;
 use core::{fmt::Debug, time::Duration};
-use dimas_core::{
-	error::{DimasError, Result},
-	message_types::{Message, QueryableMsg},
-};
+use dimas_core::message_types::{Message, QueryableMsg};
+use dimas_core::Result;
 #[cfg(feature = "std")]
 use std::prelude::rust_2021::*;
 use zenoh::config::WhatAmI;
@@ -50,7 +49,7 @@ impl Communicator {
 		let session = Arc::new(
 			zenoh::open(cfg)
 				.wait()
-				.map_err(DimasError::CreateSession)?,
+				.map_err(|source| Error::CreateCommunicator { source })?,
 		);
 		Ok(Self {
 			session,
@@ -83,7 +82,7 @@ impl Communicator {
 		self.session
 			.put(selector, message.value())
 			.wait()
-			.map_err(|_| DimasError::Put.into())
+			.map_err(|source| Error::PublishingPut { source }.into())
 	}
 
 	/// Send an ad hoc delete using the given `selector`.
@@ -92,7 +91,7 @@ impl Communicator {
 		self.session
 			.delete(selector)
 			.wait()
-			.map_err(|_| DimasError::Delete.into())
+			.map_err(|source| Error::PublishingDelete { source }.into())
 	}
 
 	/// Send an ad hoc query with an optional [`Message`] using the given `selector`.
@@ -101,9 +100,9 @@ impl Communicator {
 	/// # Panics
 	pub fn get<F>(&self, selector: &str, message: Option<Message>, mut callback: F) -> Result<()>
 	where
-		F: FnMut(QueryableMsg) -> Result<()> + Sized,
+		F: FnMut(QueryableMsg) -> Result<()>,
 	{
-		let replies = message
+		let builder = message
 			.map_or_else(
 				|| self.session.get(selector),
 				|msg| self.session.get(selector).payload(msg.value()),
@@ -112,24 +111,25 @@ impl Communicator {
 			.target(QueryTarget::All);
 
 		#[cfg(feature = "unstable")]
-		let replies = replies.allowed_destination(Locality::Any);
+		let builder = builder.allowed_destination(Locality::Any);
 
-		let replies = replies
+		let query = builder
 			.timeout(Duration::from_millis(250))
 			.wait()
-			.map_err(|_| DimasError::ShouldNotHappen)?;
+			.map_err(|source| Error::QueryCreation { source })?;
 
-			let mut unreached = true;
-			let mut retry_count = 0u8;
-	
+		let mut unreached = true;
+		let mut retry_count = 0u8;
+
 		while unreached && retry_count <= 5 {
 			retry_count += 1;
-			while let Ok(reply) = replies.recv() {
+			while let Ok(reply) = query.recv() {
 				match reply.result() {
 					Ok(sample) => match sample.kind() {
 						SampleKind::Put => {
 							let content: Vec<u8> = sample.payload().to_bytes().into_owned();
-							callback(QueryableMsg(content))?;
+							callback(QueryableMsg(content))
+								.map_err(|source| Error::QueryCallback { source })?;
 						}
 						SampleKind::Delete => {
 							todo!("Delete in Query");
@@ -142,11 +142,14 @@ impl Communicator {
 				}
 				unreached = false;
 			}
-			if unreached  {
+			if unreached {
 				if retry_count < 5 {
 					std::thread::sleep(Duration::from_millis(1000));
 				} else {
-					return Err(DimasError::AccessService(selector.to_string()).into());
+					return Err(Error::AccessingQueryable {
+						selector: selector.to_string(),
+					}
+					.into());
 				}
 			}
 		}

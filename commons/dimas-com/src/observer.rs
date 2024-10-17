@@ -1,15 +1,27 @@
 // Copyright © 2024 Stephan Kunz
 
+extern crate alloc;
+
+#[cfg(feature = "std")]
+extern crate std;
+
 // region:		--- modules
-use super::{ArcObserverControlCallback, ArcObserverResponseCallback};
+use alloc::sync::Arc;
 use bitcode::decode;
 use core::time::Duration;
 use dimas_core::{
 	enums::OperationState,
-	error::{DimasError, Result},
 	message_types::{ControlResponse, Message, ObservableResponse},
 	traits::{Capability, Context},
+	utils::{cancel_selector_from, feedback_selector_from, request_selector_from},
+	Result,
 };
+use futures::future::BoxFuture;
+#[cfg(feature = "std")]
+use std::prelude::rust_2021::*;
+#[cfg(feature = "std")]
+use tokio::sync::Mutex;
+#[cfg(feature = "std")]
 use tokio::task::JoinHandle;
 use tracing::{error, instrument, warn, Level};
 #[cfg(feature = "unstable")]
@@ -19,7 +31,22 @@ use zenoh::{
 	sample::SampleKind,
 	Wait,
 };
+
+use crate::error::Error;
 // endregion:	--- modules
+
+// region:    	--- types
+/// Type definition for an observers `control` callback
+pub type ControlCallback<P> =
+	Box<dyn FnMut(Context<P>, ControlResponse) -> BoxFuture<'static, Result<()>> + Send + Sync>;
+/// Type definition for an observers atomic reference counted `control` callback
+pub type ArcControlCallback<P> = Arc<Mutex<ControlCallback<P>>>;
+/// Type definition for an observers `response` callback
+pub type ResponseCallback<P> =
+	Box<dyn FnMut(Context<P>, ObservableResponse) -> BoxFuture<'static, Result<()>> + Send + Sync>;
+/// Type definition for an observers atomic reference counted `response` callback
+pub type ArcResponseCallback<P> = Arc<Mutex<ResponseCallback<P>>>;
+// endregion: 	--- types
 
 // region:		--- Observer
 /// Observer
@@ -33,9 +60,9 @@ where
 	context: Context<P>,
 	activation_state: OperationState,
 	/// callback for control request results
-	control_callback: ArcObserverControlCallback<P>,
+	control_callback: ArcControlCallback<P>,
 	/// callback for responses
-	response_callback: ArcObserverResponseCallback<P>,
+	response_callback: ArcResponseCallback<P>,
 	/// timeout value
 	timeout: Duration,
 	handle: Option<JoinHandle<()>>,
@@ -74,8 +101,8 @@ where
 		selector: String,
 		context: Context<P>,
 		activation_state: OperationState,
-		control_callback: ArcObserverControlCallback<P>,
-		response_callback: ArcObserverResponseCallback<P>,
+		control_callback: ArcControlCallback<P>,
+		response_callback: ArcResponseCallback<P>,
 		timeout: Duration,
 	) -> Self {
 		Self {
@@ -119,25 +146,26 @@ where
 	pub fn cancel(&self) -> Result<()> {
 		let session = self.context.session();
 		// TODO: make a proper "key: value" implementation
-		let selector = format!("{}?cancel", &self.selector);
-		let query = session
+		let selector = cancel_selector_from(&self.selector);
+		let builder = session
 			.get(&selector)
 			.target(QueryTarget::All)
-			.consolidation(ConsolidationMode::None);
+			.consolidation(ConsolidationMode::None)
+			.timeout(self.timeout);
 
 		#[cfg(feature = "unstable")]
-		let query = query.allowed_destination(Locality::Any);
+		let builder = builder.allowed_destination(Locality::Any);
 
-		let replies = query
+		let query = builder
 			.wait()
-			.map_err(|_| DimasError::ShouldNotHappen)?;
+			.map_err(|source| Error::QueryCreation { source })?;
 
 		let mut unreached = true;
 		let mut retry_count = 0u8;
-	
+
 		while unreached && retry_count <= 5 {
 			retry_count += 1;
-			while let Ok(reply) = replies.recv() {
+			while let Ok(reply) = query.recv() {
 				match reply.result() {
 					Ok(sample) => match sample.kind() {
 						SampleKind::Put => {
@@ -165,11 +193,14 @@ where
 				}
 				unreached = false;
 			}
-			if unreached  {
+			if unreached {
 				if retry_count < 5 {
 					std::thread::sleep(self.timeout);
 				} else {
-					return Err(DimasError::AccessService(self.selector.to_string()).into());
+					return Err(Error::AccessingObservable {
+						selector: self.selector.to_string(),
+					}
+					.into());
 				}
 			}
 		}
@@ -181,7 +212,7 @@ where
 	pub fn request(&self, message: Option<Message>) -> Result<()> {
 		let session = self.context.session();
 		// TODO: make a proper "key: value" implementation
-		let selector = format!("{}?request", &self.selector);
+		let selector = request_selector_from(&self.selector);
 		let mut query = session
 			.get(&selector)
 			.target(QueryTarget::All)
@@ -196,16 +227,16 @@ where
 		#[cfg(feature = "unstable")]
 		let query = query.allowed_destination(Locality::Any);
 
-		let replies = query
+		let query = query
 			.wait()
-			.map_err(|_| DimasError::ShouldNotHappen)?;
+			.map_err(|source| Error::QueryCreation { source })?;
 
 		let mut unreached = true;
 		let mut retry_count = 0u8;
-	
+
 		while unreached && retry_count <= 5 {
 			retry_count += 1;
-			while let Ok(reply) = replies.recv() {
+			while let Ok(reply) = query.recv() {
 				match reply.result() {
 					Ok(sample) => match sample.kind() {
 						SampleKind::Put => {
@@ -240,7 +271,7 @@ where
 											},
 										);
 										let selector =
-											format!("{}/feedback/{}", &self.selector, &source_id);
+											feedback_selector_from(&self.selector, &source_id);
 
 										let rcb = self.response_callback.clone();
 										tokio::task::spawn(async move {
@@ -271,11 +302,14 @@ where
 				};
 				unreached = false;
 			}
-			if unreached  {
+			if unreached {
 				if retry_count < 5 {
 					std::thread::sleep(self.timeout);
 				} else {
-					return Err(DimasError::AccessService(self.selector.to_string()).into());
+					return Err(Error::AccessingObservable {
+						selector: self.selector.to_string(),
+					}
+					.into());
 				}
 			}
 		}
@@ -290,7 +324,7 @@ where
 async fn run_observation<P>(
 	selector: String,
 	ctx: Context<P>,
-	rcb: ArcObserverResponseCallback<P>,
+	rcb: ArcResponseCallback<P>,
 ) -> Result<()> {
 	// create the feedback subscriber
 	let subscriber = ctx

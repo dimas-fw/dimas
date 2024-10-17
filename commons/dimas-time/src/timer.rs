@@ -3,18 +3,33 @@
 //! Module `timer` provides a set of `Timer` variants which can be created using the `TimerBuilder`.
 //! When fired, a `Timer` calls his assigned `TimerCallback`.
 
+#[doc(hidden)]
+extern crate alloc;
+
+#[cfg(feature = "std")]
+extern crate std;
+
 // region:		--- modules
+use alloc::sync::Arc;
 use core::{fmt::Debug, time::Duration};
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
-	error::Result,
 	traits::{Capability, Context},
+	Result,
 };
+#[cfg(feature = "std")]
+use std::prelude::rust_2021::*;
+#[cfg(feature = "std")]
+use std::sync::Mutex;
 use tokio::{task::JoinHandle, time};
 use tracing::{error, info, instrument, warn, Level};
-
-use super::ArcTimerCallback;
 // endregion:	--- modules
+
+// region:		--- types
+/// type definition for the functions called by a timer
+pub type ArcTimerCallback<P> =
+	Arc<Mutex<dyn FnMut(Context<P>) -> Result<()> + Send + Sync + 'static>>;
+// endregion:	--- types
 
 // region:		--- Timer
 /// Timer

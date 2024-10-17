@@ -3,23 +3,46 @@
 //! Module `subscriber` provides a message `Subscriber` which can be created using the `SubscriberBuilder`.
 //! A `Subscriber` can optional subscribe on a delete message.
 
+#[doc(hidden)]
+extern crate alloc;
+
+#[cfg(feature = "std")]
+extern crate std;
+
 // region:		--- modules
-// these ones are only for doc needed
-use super::{ArcSubscriberDeleteCallback, ArcSubscriberPutCallback};
-#[cfg(doc)]
-use crate::agent::Agent;
+#[cfg(feature = "std")]
+use std::prelude::rust_2021::*;
+use crate::error::Error;
+use alloc::sync::Arc;
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
-	error::{DimasError, Result},
 	message_types::Message,
 	traits::{Capability, Context},
+	Result,
 };
+use futures::future::BoxFuture;
+#[cfg(feature = "std")]
+use tokio::sync::Mutex;
+#[cfg(feature = "std")]
 use tokio::task::JoinHandle;
 use tracing::{error, info, instrument, warn, Level};
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
 use zenoh::sample::SampleKind;
 // endregion:	--- modules
+
+// region:    	--- types
+/// Type definition for a subscribers `put` callback
+pub type PutCallback<P> =
+	Box<dyn FnMut(Context<P>, Message) -> BoxFuture<'static, Result<()>> + Send + Sync>;
+/// Type definition for a subscribers atomic reference counted `put` callback
+pub type ArcPutCallback<P> = Arc<Mutex<PutCallback<P>>>;
+/// Type definition for a subscribers `delete` callback
+pub type DeleteCallback<P> =
+	Box<dyn FnMut(Context<P>) -> BoxFuture<'static, Result<()>> + Send + Sync>;
+/// Type definition for a subscribers atomic reference counted `delete` callback
+pub type ArcDeleteCallback<P> = Arc<Mutex<DeleteCallback<P>>>;
+// endregion: 	--- types
 
 // region:		--- Subscriber
 /// Subscriber
@@ -35,8 +58,8 @@ where
 	activation_state: OperationState,
 	#[cfg(feature = "unstable")]
 	allowed_origin: Locality,
-	put_callback: ArcSubscriberPutCallback<P>,
-	delete_callback: Option<ArcSubscriberDeleteCallback<P>>,
+	put_callback: ArcPutCallback<P>,
+	delete_callback: Option<ArcDeleteCallback<P>>,
 	handle: Option<JoinHandle<()>>,
 }
 
@@ -77,8 +100,8 @@ where
 		context: Context<P>,
 		activation_state: OperationState,
 		#[cfg(feature = "unstable")] allowed_origin: Locality,
-		put_callback: ArcSubscriberPutCallback<P>,
-		delete_callback: Option<ArcSubscriberDeleteCallback<P>>,
+		put_callback: ArcPutCallback<P>,
+		delete_callback: Option<ArcDeleteCallback<P>>,
 	) -> Self {
 		Self {
 			selector,
@@ -155,8 +178,8 @@ where
 async fn run_subscriber<P>(
 	selector: String,
 	#[cfg(feature = "unstable")] allowed_origin: Locality,
-	p_cb: ArcSubscriberPutCallback<P>,
-	d_cb: Option<ArcSubscriberDeleteCallback<P>>,
+	p_cb: ArcPutCallback<P>,
+	d_cb: Option<ArcDeleteCallback<P>>,
 	ctx: Context<P>,
 ) -> Result<()>
 where
@@ -174,7 +197,7 @@ where
 		let sample = subscriber
 			.recv_async()
 			.await
-			.map_err(|_| DimasError::ShouldNotHappen)?;
+			.map_err(|source| Error::SubscriberCreation { source })?;
 
 		match sample.kind() {
 			SampleKind::Put => {

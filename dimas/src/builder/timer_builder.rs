@@ -4,24 +4,17 @@
 //! When fired, a `Timer` calls his assigned `TimerCallback`.
 
 // region:		--- modules
-use crate::{Callback, Interval, NoCallback, NoInterval, NoSelector, NoStorage, Selector, Storage};
+use crate::{
+	error::Error, Callback, Interval, NoCallback, NoInterval, NoSelector, NoStorage, Selector,
+	Storage,
+};
 
-use crate::time::timer::Timer;
+use dimas_time::{ArcTimerCallback, Timer};
 
 use core::time::Duration;
-use dimas_core::{
-	enums::OperationState,
-	error::{DimasError, Result},
-	traits::Context,
-};
+use dimas_core::{enums::OperationState, traits::Context, Result};
 use std::sync::{Arc, Mutex, RwLock};
 // endregion:	--- modules
-
-// region:		--- types
-/// type definition for the functions called by a timer
-pub type ArcTimerCallback<P> =
-	Arc<Mutex<dyn FnMut(Context<P>) -> Result<()> + Send + Sync + 'static>>;
-// endregion:	--- types
 
 // region:		--- TimerBuilder
 /// A builder for a timer
@@ -269,7 +262,7 @@ where
 
 		let r = collection
 			.write()
-			.map_err(|_| DimasError::ShouldNotHappen)?
+			.map_err(|_| Error::MutexPoison(String::from("TimerBuilder")))?
 			.insert(name, t);
 		Ok(r)
 	}

@@ -6,7 +6,7 @@
 extern crate std;
 
 // region:		--- modules
-use crate::error::DimasError;
+use crate::error::{Error, Result};
 use bitcode::{decode, encode, Decode, Encode};
 use core::ops::Deref;
 #[cfg(feature = "std")]
@@ -53,12 +53,17 @@ impl Message {
 	/// Decode Message
 	///
 	/// # Errors
-	pub fn decode<T>(self) -> crate::error::Result<T>
+	pub fn decode<T>(self) -> Result<T>
 	where
 		T: for<'a> Decode<'a>,
 	{
 		let value: Vec<u8> = self.0;
-		decode::<T>(value.as_slice()).map_err(|_| DimasError::Decoding.into())
+		decode::<T>(value.as_slice()).map_err(|source| {
+			Error::Decoding {
+				source: Box::new(source),
+			}
+			.into()
+		})
 	}
 
 	/// Get value of [`Message`]
@@ -93,7 +98,7 @@ impl QueryMsg {
 	///
 	/// # Errors
 	#[allow(clippy::needless_pass_by_value)]
-	pub fn reply<T>(self, value: T) -> crate::error::Result<()>
+	pub fn reply<T>(self, value: T) -> Result<()>
 	where
 		T: Encode,
 	{
@@ -103,7 +108,7 @@ impl QueryMsg {
 		self.0
 			.reply(&key, encoded)
 			.wait()
-			.map_err(|_| DimasError::ShouldNotHappen)?;
+			.map_err(|source| Error::Reply { source })?;
 		Ok(())
 	}
 
@@ -116,15 +121,20 @@ impl QueryMsg {
 	/// Decode [`QueryMsg`]
 	///
 	/// # Errors
-	pub fn decode<T>(&self) -> crate::error::Result<T>
+	pub fn decode<T>(&self) -> Result<T>
 	where
 		T: for<'a> Decode<'a>,
 	{
 		if let Some(value) = self.0.payload() {
 			let content: Vec<u8> = value.to_bytes().into_owned();
-			return decode::<T>(content.as_slice()).map_err(|_| DimasError::Decoding.into());
+			return decode::<T>(content.as_slice()).map_err(|source| {
+				Error::Decoding {
+					source: Box::new(source),
+				}
+				.into()
+			});
 		}
-		Err(DimasError::NoMessage.into())
+		Err(Error::EmptyQuery.into())
 	}
 }
 // endregion: 	--- QueryMsg
@@ -161,12 +171,17 @@ impl QueryableMsg {
 	/// Decode [`QueryableMsg`]
 	///
 	/// # Errors
-	pub fn decode<T>(self) -> crate::error::Result<T>
+	pub fn decode<T>(self) -> Result<T>
 	where
 		T: for<'a> Decode<'a>,
 	{
 		let value: Vec<u8> = self.0;
-		decode::<T>(value.as_slice()).map_err(|_| DimasError::Decoding.into())
+		decode::<T>(value.as_slice()).map_err(|source| {
+			Error::Decoding {
+				source: Box::new(source),
+			}
+			.into()
+		})
 	}
 }
 // endregion:	--- QueryableMsg

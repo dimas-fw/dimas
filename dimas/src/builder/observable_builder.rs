@@ -1,18 +1,19 @@
 // Copyright © 2024 Stephan Kunz
 
+//! Module
+
 // region:		--- modules
-use super::{
-	observable::Observable, ArcObservableControlCallback, ArcObservableExecutionCallback,
-	ArcObservableFeedbackCallback, ObservableControlCallback, ObservableExecutionCallback,
-	ObservableFeedbackCallback,
+use crate::{error::Error, Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
+use dimas_com::observable::{
+	ArcControlCallback, ArcExecutionCallback, ArcFeedbackCallback, ControlCallback,
+	ExecutionCallback, FeedbackCallback, Observable,
 };
-use crate::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use dimas_core::{
 	enums::OperationState,
-	error::{DimasError, Result},
 	message_types::{ControlResponse, Message},
 	traits::Context,
 	utils::selector_from,
+	Result,
 };
 use futures::future::{BoxFuture, Future};
 use std::sync::{Arc, RwLock};
@@ -128,7 +129,7 @@ where
 	pub fn control_callback<C, F>(
 		self,
 		mut callback: C,
-	) -> ObservableBuilder<P, K, Callback<ArcObservableControlCallback<P>>, FC, EF, S>
+	) -> ObservableBuilder<P, K, Callback<ArcControlCallback<P>>, FC, EF, S>
 	where
 		C: FnMut(Context<P>, Message) -> F + Send + Sync + 'static,
 		F: Future<Output = Result<ControlResponse>> + Send + Sync + 'static,
@@ -143,9 +144,8 @@ where
 			execution_callback,
 			..
 		} = self;
-		let callback: ObservableControlCallback<P> =
-			Box::new(move |ctx, msg| Box::pin(callback(ctx, msg)));
-		let callback: ArcObservableControlCallback<P> = Arc::new(Mutex::new(callback));
+		let callback: ControlCallback<P> = Box::new(move |ctx, msg| Box::pin(callback(ctx, msg)));
+		let callback: ArcControlCallback<P> = Arc::new(Mutex::new(callback));
 		ObservableBuilder {
 			context,
 			activation_state,
@@ -168,7 +168,7 @@ where
 	pub fn feedback_callback<C, F>(
 		self,
 		mut callback: C,
-	) -> ObservableBuilder<P, K, CC, Callback<ArcObservableFeedbackCallback<P>>, EF, S>
+	) -> ObservableBuilder<P, K, CC, Callback<ArcFeedbackCallback<P>>, EF, S>
 	where
 		C: FnMut(Context<P>) -> F + Send + Sync + 'static,
 		F: Future<Output = Result<Message>> + Send + Sync + 'static,
@@ -183,8 +183,8 @@ where
 			execution_callback,
 			..
 		} = self;
-		let callback: ObservableFeedbackCallback<P> = Box::new(move |ctx| Box::pin(callback(ctx)));
-		let callback: ArcObservableFeedbackCallback<P> = Arc::new(Mutex::new(callback));
+		let callback: FeedbackCallback<P> = Box::new(move |ctx| Box::pin(callback(ctx)));
+		let callback: ArcFeedbackCallback<P> = Arc::new(Mutex::new(callback));
 		ObservableBuilder {
 			context,
 			activation_state,
@@ -207,7 +207,7 @@ where
 	pub fn execution_callback<C, F>(
 		self,
 		mut callback: C,
-	) -> ObservableBuilder<P, K, CC, FC, Callback<ArcObservableExecutionCallback<P>>, S>
+	) -> ObservableBuilder<P, K, CC, FC, Callback<ArcExecutionCallback<P>>, S>
 	where
 		C: FnMut(Context<P>) -> F + Send + Sync + 'static,
 		F: Future<Output = Result<Message>> + Send + Sync + 'static,
@@ -222,7 +222,7 @@ where
 			feedback_callback,
 			..
 		} = self;
-		let callback: ObservableExecutionCallback<P> = Box::new(move |ctx| Box::pin(callback(ctx)));
+		let callback: ExecutionCallback<P> = Box::new(move |ctx| Box::pin(callback(ctx)));
 		let callback = Arc::new(Mutex::new(callback));
 		ObservableBuilder {
 			context,
@@ -274,8 +274,8 @@ impl<P, S>
 	ObservableBuilder<
 		P,
 		Selector,
-		Callback<ArcObservableControlCallback<P>>,
-		Callback<ArcObservableFeedbackCallback<P>>,
+		Callback<ArcControlCallback<P>>,
+		Callback<ArcFeedbackCallback<P>>,
 		Callback<
 			Arc<
 				Mutex<
@@ -318,9 +318,9 @@ impl<P>
 	ObservableBuilder<
 		P,
 		Selector,
-		Callback<ArcObservableControlCallback<P>>,
-		Callback<ArcObservableFeedbackCallback<P>>,
-		Callback<ArcObservableExecutionCallback<P>>,
+		Callback<ArcControlCallback<P>>,
+		Callback<ArcFeedbackCallback<P>>,
+		Callback<ArcExecutionCallback<P>>,
 		Storage<Observable<P>>,
 	>
 where
@@ -335,7 +335,7 @@ where
 
 		let r = collection
 			.write()
-			.map_err(|_| DimasError::ShouldNotHappen)?
+			.map_err(|_| Error::MutexPoison(String::from("ObservableBuilder")))?
 			.insert(q.selector().to_string(), q);
 		Ok(r)
 	}

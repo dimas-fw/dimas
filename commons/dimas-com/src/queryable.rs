@@ -2,21 +2,39 @@
 
 //! Module `queryable` provides an information/compute provider `Queryable` which can be created using the `QueryableBuilder`.
 
+#[doc(hidden)]
+extern crate alloc;
+
+#[cfg(feature = "std")]
+extern crate std;
+
 // region:		--- modules
+use alloc::sync::Arc;
 use core::fmt::Debug;
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
-	error::Result,
 	message_types::QueryMsg,
 	traits::{Capability, Context},
+	Result,
 };
+use futures::future::BoxFuture;
+#[cfg(feature = "std")]
+use std::prelude::rust_2021::*;
+#[cfg(feature = "std")]
+use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tracing::{error, info, instrument, warn, Level};
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
-
-use super::ArcQueryableCallback;
 // endregion:	--- modules
+
+// region:    	--- types
+/// type defnition for a queryables `request` callback
+pub type GetCallback<P> =
+	Box<dyn FnMut(Context<P>, QueryMsg) -> BoxFuture<'static, Result<()>> + Send + Sync>;
+/// type defnition for a queryables atomic reference counted `request` callback
+pub type ArcGetCallback<P> = Arc<Mutex<GetCallback<P>>>;
+// endregion: 	--- types
 
 // region:		--- Queryable
 /// Queryable
@@ -28,7 +46,7 @@ where
 	/// Context for the Subscriber
 	context: Context<P>,
 	activation_state: OperationState,
-	callback: ArcQueryableCallback<P>,
+	callback: ArcGetCallback<P>,
 	completeness: bool,
 	#[cfg(feature = "unstable")]
 	allowed_origin: Locality,
@@ -72,7 +90,7 @@ where
 		selector: String,
 		context: Context<P>,
 		activation_state: OperationState,
-		request_callback: ArcQueryableCallback<P>,
+		request_callback: ArcGetCallback<P>,
 		completeness: bool,
 		#[cfg(feature = "unstable")] allowed_origin: Locality,
 	) -> Self {
@@ -150,7 +168,7 @@ where
 #[instrument(name="queryable", level = Level::ERROR, skip_all)]
 async fn run_queryable<P>(
 	selector: String,
-	callback: ArcQueryableCallback<P>,
+	callback: ArcGetCallback<P>,
 	completeness: bool,
 	#[cfg(feature = "unstable")] allowed_origin: Locality,
 	ctx: Context<P>,

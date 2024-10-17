@@ -32,27 +32,24 @@
 // only for doc needed
 #[cfg(doc)]
 use crate::agent::Agent;
-#[cfg(feature = "unstable")]
-use crate::com::liveliness::LivelinessSubscriber;
-use crate::{
-	com::{
-		observation::{Observable, Observer},
-		pubsub::{Publisher, Subscriber},
-		queries::{Querier, Queryable},
-	},
-	time::Timer,
-};
+use crate::error::Error;
 use core::fmt::Debug;
-use dimas_com::communicator::Communicator;
+#[cfg(feature = "unstable")]
+use dimas_com::LivelinessSubscriber;
+use dimas_com::{
+	observable::Observable, observer::Observer, publisher::Publisher, querier::Querier,
+	queryable::Queryable, subscriber::Subscriber, Communicator,
+};
 use dimas_config::Config;
 #[cfg(doc)]
 use dimas_core::traits::Context;
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
-	error::{DimasError, Result},
 	message_types::{Message, QueryableMsg},
 	traits::{Capability, ContextAbstraction},
+	Result,
 };
+use dimas_time::Timer;
 use std::{
 	collections::HashMap,
 	sync::{Arc, RwLock},
@@ -135,8 +132,7 @@ where
 
 	#[must_use]
 	fn state(&self) -> OperationState {
-		let val = self.state.read().expect("snh").clone();
-		val
+		self.state.read().expect("snh").clone()
 	}
 
 	#[must_use]
@@ -166,13 +162,13 @@ where
 	fn read(&self) -> Result<std::sync::RwLockReadGuard<'_, P>> {
 		self.props
 			.read()
-			.map_err(|_| DimasError::ReadProperties.into())
+			.map_err(|_| Error::ReadAccess.into())
 	}
 
 	fn write(&self) -> Result<std::sync::RwLockWriteGuard<'_, P>> {
 		self.props
 			.write()
-			.map_err(|_| DimasError::WriteProperties.into())
+			.map_err(|_| Error::WriteAccess.into())
 	}
 
 	fn set_state(&self, state: OperationState) -> Result<()> {
@@ -183,7 +179,7 @@ where
 		while self.state() < final_state {
 			match self.state() {
 				OperationState::Error => {
-					return Err(DimasError::ManageState.into());
+					return Err(Error::ManageState.into());
 				}
 				OperationState::Created => {
 					next_state = OperationState::Configured;
@@ -223,7 +219,7 @@ where
 					return self.modify_state_property(OperationState::Error);
 				}
 				OperationState::Error => {
-					return Err(DimasError::ManageState.into());
+					return Err(Error::ManageState.into());
 				}
 			}
 			self.downgrade_registered_tasks(next_state)?;
@@ -237,15 +233,15 @@ where
 		if self
 			.publishers
 			.read()
-			.map_err(|_| DimasError::ReadContext("publishers".into()))?
+			.map_err(|_| Error::ReadContext("publishers".into()))?
 			.get(selector)
 			.is_some()
 		{
 			self.publishers
 				.read()
-				.map_err(|_| DimasError::ReadContext("publishers".into()))?
+				.map_err(|_| Error::ReadContext("publishers".into()))?
 				.get(selector)
-				.ok_or(DimasError::ShouldNotHappen)?
+				.ok_or_else(|| Error::Get("publishers".into()))?
 				.put(message)?;
 		} else {
 			self.communicator.put(selector, message)?;
@@ -258,15 +254,15 @@ where
 		if self
 			.publishers
 			.read()
-			.map_err(|_| DimasError::ReadContext("publishers".into()))?
+			.map_err(|_| Error::ReadContext("publishers".into()))?
 			.get(selector)
 			.is_some()
 		{
 			self.publishers
 				.read()
-				.map_err(|_| DimasError::ReadContext("publishers".into()))?
+				.map_err(|_| Error::ReadContext("publishers".into()))?
 				.get(selector)
-				.ok_or(DimasError::ShouldNotHappen)?
+				.ok_or_else(|| Error::Get("publishers".into()))?
 				.delete()?;
 		} else {
 			self.communicator.delete(selector)?;
@@ -284,19 +280,20 @@ where
 		if self
 			.queries
 			.read()
-			.map_err(|_| DimasError::ReadContext("queries".into()))?
+			.map_err(|_| Error::ReadContext("queries".into()))?
 			.get(selector)
 			.is_some()
 		{
 			self.queries
 				.read()
-				.map_err(|_| DimasError::ReadContext("queries".into()))?
+				.map_err(|_| Error::ReadContext("queries".into()))?
 				.get(selector)
-				.ok_or(DimasError::ShouldNotHappen)?
+				.ok_or_else(|| Error::Get("queries".into()))?
 				.get(message, callback)?;
 		} else {
+			let callback = callback.ok_or_else(|| Error::MissingCallback)?;
 			self.communicator
-				.get(selector, message, callback.expect("snh"))?;
+				.get(selector, message, callback)?;
 		};
 		Ok(())
 	}
@@ -305,9 +302,9 @@ where
 	fn observe_with(&self, selector: &str, message: Option<Message>) -> Result<()> {
 		self.observers
 			.read()
-			.map_err(|_| DimasError::ReadContext("observers".into()))?
+			.map_err(|_| Error::ReadContext("observers".into()))?
 			.get(selector)
-			.ok_or(DimasError::ShouldNotHappen)?
+			.ok_or_else(|| Error::Get("observers".into()))?
 			.request(message)?;
 		Ok(())
 	}
@@ -316,9 +313,9 @@ where
 	fn cancel_observe_with(&self, selector: &str) -> Result<()> {
 		self.observers
 			.read()
-			.map_err(|_| DimasError::ReadContext("observers".into()))?
+			.map_err(|_| Error::ReadContext("observers".into()))?
 			.get(selector)
-			.ok_or(DimasError::ShouldNotHappen)?
+			.ok_or_else(|| Error::Get("observers".into()))?
 			.cancel()?;
 		Ok(())
 	}
@@ -363,7 +360,7 @@ where
 		*(self
 			.state
 			.write()
-			.map_err(|_| DimasError::ModifyContext("state".into()))?) = state;
+			.map_err(|_| Error::ModifyContext("state".into()))?) = state;
 		Ok(())
 	}
 
@@ -437,7 +434,7 @@ where
 		#[cfg(feature = "unstable")]
 		self.liveliness_subscribers
 			.write()
-			.map_err(|_| DimasError::ModifyContext("liveliness subscribers".into()))?
+			.map_err(|_| Error::ModifyContext("liveliness subscribers".into()))?
 			.iter_mut()
 			.for_each(|subscriber| {
 				let _ = subscriber.1.manage_operation_state(&new_state);
@@ -446,7 +443,7 @@ where
 		// start all registered queryables
 		self.queryables
 			.write()
-			.map_err(|_| DimasError::ModifyContext("queryables".into()))?
+			.map_err(|_| Error::ModifyContext("queryables".into()))?
 			.iter_mut()
 			.for_each(|queryable| {
 				let _ = queryable.1.manage_operation_state(&new_state);
@@ -455,7 +452,7 @@ where
 		// start all registered observables
 		self.observables
 			.write()
-			.map_err(|_| DimasError::ModifyContext("observables".into()))?
+			.map_err(|_| Error::ModifyContext("observables".into()))?
 			.iter_mut()
 			.for_each(|observable| {
 				let _ = observable.1.manage_operation_state(&new_state);
@@ -464,7 +461,7 @@ where
 		// start all registered subscribers
 		self.subscribers
 			.write()
-			.map_err(|_| DimasError::ModifyContext("subscribers".into()))?
+			.map_err(|_| Error::ModifyContext("subscribers".into()))?
 			.iter_mut()
 			.for_each(|subscriber| {
 				let _ = subscriber.1.manage_operation_state(&new_state);
@@ -473,7 +470,7 @@ where
 		// init all registered publishers
 		self.publishers
 			.write()
-			.map_err(|_| DimasError::ModifyContext("publishers".into()))?
+			.map_err(|_| Error::ModifyContext("publishers".into()))?
 			.iter_mut()
 			.for_each(|publisher| {
 				if let Err(reason) = publisher.1.manage_operation_state(&new_state) {
@@ -488,7 +485,7 @@ where
 		// init all registered observers
 		self.observers
 			.write()
-			.map_err(|_| DimasError::ModifyContext("observers".into()))?
+			.map_err(|_| Error::ModifyContext("observers".into()))?
 			.iter_mut()
 			.for_each(|observer| {
 				if let Err(reason) = observer.1.manage_operation_state(&new_state) {
@@ -503,7 +500,7 @@ where
 		// init all registered queries
 		self.queries
 			.write()
-			.map_err(|_| DimasError::ModifyContext("queries".into()))?
+			.map_err(|_| Error::ModifyContext("queries".into()))?
 			.iter_mut()
 			.for_each(|query| {
 				if let Err(reason) = query.1.manage_operation_state(&new_state) {
@@ -518,7 +515,7 @@ where
 		// start all registered timers
 		self.timers
 			.write()
-			.map_err(|_| DimasError::ModifyContext("timers".into()))?
+			.map_err(|_| Error::ModifyContext("timers".into()))?
 			.iter_mut()
 			.for_each(|timer| {
 				let _ = timer.1.manage_operation_state(&new_state);
@@ -538,7 +535,7 @@ where
 		// stop all registered timers
 		self.timers
 			.write()
-			.map_err(|_| DimasError::ModifyContext("timers".into()))?
+			.map_err(|_| Error::ModifyContext("timers".into()))?
 			.iter_mut()
 			.for_each(|timer| {
 				let _ = timer.1.manage_operation_state(&new_state);
@@ -547,7 +544,7 @@ where
 		// de-init all registered queries
 		self.queries
 			.write()
-			.map_err(|_| DimasError::ModifyContext("queries".into()))?
+			.map_err(|_| Error::ModifyContext("queries".into()))?
 			.iter_mut()
 			.for_each(|query| {
 				if let Err(reason) = query.1.manage_operation_state(&new_state) {
@@ -562,7 +559,7 @@ where
 		// de-init all registered observers
 		self.observers
 			.write()
-			.map_err(|_| DimasError::ModifyContext("observers".into()))?
+			.map_err(|_| Error::ModifyContext("observers".into()))?
 			.iter_mut()
 			.for_each(|observer| {
 				if let Err(reason) = observer.1.manage_operation_state(&new_state) {
@@ -577,7 +574,7 @@ where
 		// de-init all registered publishers
 		self.publishers
 			.write()
-			.map_err(|_| DimasError::ModifyContext("publishers".into()))?
+			.map_err(|_| Error::ModifyContext("publishers".into()))?
 			.iter_mut()
 			.for_each(|publisher| {
 				let _ = publisher.1.manage_operation_state(&new_state);
@@ -586,7 +583,7 @@ where
 		// stop all registered subscribers
 		self.subscribers
 			.write()
-			.map_err(|_| DimasError::ModifyContext("subscribers".into()))?
+			.map_err(|_| Error::ModifyContext("subscribers".into()))?
 			.iter_mut()
 			.for_each(|subscriber| {
 				let _ = subscriber.1.manage_operation_state(&new_state);
@@ -595,7 +592,7 @@ where
 		// stop all registered observables
 		self.observables
 			.write()
-			.map_err(|_| DimasError::ModifyContext("observables".into()))?
+			.map_err(|_| Error::ModifyContext("observables".into()))?
 			.iter_mut()
 			.for_each(|observable| {
 				let _ = observable.1.manage_operation_state(&new_state);
@@ -604,7 +601,7 @@ where
 		// stop all registered queryables
 		self.queryables
 			.write()
-			.map_err(|_| DimasError::ModifyContext("queryables".into()))?
+			.map_err(|_| Error::ModifyContext("queryables".into()))?
 			.iter_mut()
 			.for_each(|queryable| {
 				let _ = queryable.1.manage_operation_state(&new_state);
@@ -614,7 +611,7 @@ where
 		#[cfg(feature = "unstable")]
 		self.liveliness_subscribers
 			.write()
-			.map_err(|_| DimasError::ModifyContext("liveliness subscribers".into()))?
+			.map_err(|_| Error::ModifyContext("liveliness subscribers".into()))?
 			.iter_mut()
 			.for_each(|subscriber| {
 				let _ = subscriber.1.manage_operation_state(&new_state);

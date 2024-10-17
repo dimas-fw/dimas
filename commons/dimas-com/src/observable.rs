@@ -1,19 +1,27 @@
 // Copyright © 2024 Stephan Kunz
 
+extern crate alloc;
+
+#[cfg(feature = "std")]
+extern crate std;
+
 // region:		--- modules
-use super::{
-	ArcObservableControlCallback, ArcObservableExecutionCallback, ArcObservableFeedbackCallback,
-};
+use alloc::sync::Arc;
 use bitcode::encode;
 use core::time::Duration;
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
-	error::Result,
 	message_types::{ControlResponse, Message, ObservableResponse},
 	traits::{Capability, Context},
+	utils::feedback_selector_from,
+	Result,
 };
-use std::sync::Arc;
+use futures::future::BoxFuture;
+#[cfg(feature = "std")]
+use std::prelude::rust_2021::*;
+#[cfg(feature = "std")]
 use tokio::sync::Mutex;
+#[cfg(feature = "std")]
 use tokio::task::JoinHandle;
 use tracing::{error, info, instrument, warn, Level};
 use zenoh::qos::{CongestionControl, Priority};
@@ -21,6 +29,25 @@ use zenoh::qos::{CongestionControl, Priority};
 use zenoh::sample::Locality;
 use zenoh::Wait;
 // endregion:	--- modules
+
+// region:    	--- types
+/// Type definition for an observables `control` callback
+pub type ControlCallback<P> = Box<
+	dyn FnMut(Context<P>, Message) -> BoxFuture<'static, Result<ControlResponse>> + Send + Sync,
+>;
+/// Type definition for an observables atomic reference counted `control` callback
+pub type ArcControlCallback<P> = Arc<Mutex<ControlCallback<P>>>;
+/// Type definition for an observables `feedback` callback
+pub type FeedbackCallback<P> =
+	Box<dyn FnMut(Context<P>) -> BoxFuture<'static, Result<Message>> + Send + Sync>;
+/// Type definition for an observables atomic reference counted `feedback` callback
+pub type ArcFeedbackCallback<P> = Arc<Mutex<FeedbackCallback<P>>>;
+/// Type definition for an observables atomic reference counted `execution` callback
+pub type ExecutionCallback<P> =
+	Box<dyn FnMut(Context<P>) -> BoxFuture<'static, Result<Message>> + Send + Sync>;
+/// Type definition for an observables atomic reference counted `execution` callback
+pub type ArcExecutionCallback<P> = Arc<Mutex<ExecutionCallback<P>>>;
+// endregion: 	--- types
 
 // region:		--- Observable
 /// Observable
@@ -35,12 +62,12 @@ where
 	activation_state: OperationState,
 	feedback_interval: Duration,
 	/// callback for observation request and cancelation
-	control_callback: ArcObservableControlCallback<P>,
+	control_callback: ArcControlCallback<P>,
 	/// callback for observation feedback
-	feedback_callback: ArcObservableFeedbackCallback<P>,
+	feedback_callback: ArcFeedbackCallback<P>,
 	feedback_publisher: Arc<Mutex<Option<zenoh::pubsub::Publisher<'static>>>>,
 	/// function for observation execution
-	execution_function: ArcObservableExecutionCallback<P>,
+	execution_function: ArcExecutionCallback<P>,
 	execution_handle: Arc<Mutex<Option<JoinHandle<()>>>>,
 	handle: Option<JoinHandle<()>>,
 }
@@ -81,9 +108,9 @@ where
 		context: Context<P>,
 		activation_state: OperationState,
 		feedback_interval: Duration,
-		control_callback: ArcObservableControlCallback<P>,
-		feedback_callback: ArcObservableFeedbackCallback<P>,
-		execution_function: ArcObservableExecutionCallback<P>,
+		control_callback: ArcControlCallback<P>,
+		feedback_callback: ArcFeedbackCallback<P>,
+		execution_function: ArcExecutionCallback<P>,
 	) -> Self {
 		Self {
 			selector,
@@ -187,10 +214,10 @@ where
 async fn run_observable<P>(
 	selector: String,
 	feedback_interval: Duration,
-	control_callback: ArcObservableControlCallback<P>,
-	feedback_callback: ArcObservableFeedbackCallback<P>,
+	control_callback: ArcControlCallback<P>,
+	feedback_callback: ArcFeedbackCallback<P>,
 	feedback_publisher: Arc<Mutex<Option<zenoh::pubsub::Publisher<'static>>>>,
-	execution_function: ArcObservableExecutionCallback<P>,
+	execution_function: ArcExecutionCallback<P>,
 	execution_handle: Arc<Mutex<Option<JoinHandle<()>>>>,
 	ctx: Context<P>,
 ) -> Result<()>
@@ -199,14 +226,14 @@ where
 {
 	// create the control queryable
 	let session = ctx.session();
-	let queryable = session
+	let builder = session
 		.declare_queryable(&selector)
 		.complete(true);
 
 	#[cfg(feature = "unstable")]
-	let queryable = queryable.allowed_origin(Locality::Any);
+	let builder = builder.allowed_origin(Locality::Any);
 
-	let queryable = queryable.await?;
+	let queryable = builder.await?;
 
 	// initialize a pinned feedback timer
 	// TODO: init here leads to on unnecessary timer-cycle without doing something
@@ -215,7 +242,7 @@ where
 
 	// base communication key & selector for feedback publisher
 	let key = selector.clone();
-	let publisher_selector = format!("{}/feedback/{}", &key, ctx.session().zid());
+	let publisher_selector = feedback_selector_from(&key, &ctx.session().zid().to_string());
 
 	// variables to manage control loop
 	let mut is_running = false;

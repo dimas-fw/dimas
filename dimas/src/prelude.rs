@@ -26,19 +26,23 @@ pub use zenoh::sample::Locality;
 // dimas stuff
 pub use crate::agent::Agent;
 #[cfg(feature = "unstable")]
-pub use crate::com::liveliness::{LivelinessSubscriber, LivelinessSubscriberBuilder};
-pub use crate::com::observation::{Observable, ObservableBuilder, Observer, ObserverBuilder};
-pub use crate::com::pubsub::{Publisher, PublisherBuilder, Subscriber, SubscriberBuilder};
-pub use crate::com::queries::{Querier, QuerierBuilder, Queryable, QueryableBuilder};
-pub use crate::time::{Timer, TimerBuilder};
+pub use crate::builder::LivelinessSubscriberBuilder;
+pub use crate::builder::ObservableBuilder;
+pub use crate::builder::ObserverBuilder;
+pub use crate::builder::PublisherBuilder;
+pub use crate::builder::QuerierBuilder;
+pub use crate::builder::QueryableBuilder;
+pub use crate::builder::SubscriberBuilder;
+pub use crate::builder::TimerBuilder;
+pub use dimas_time::Timer;
 
 pub use dimas_config::Config;
-pub use dimas_core::error::{DimasError, Result};
 pub use dimas_core::message_types::{
 	ControlResponse, Message, ObservableResponse, QueryMsg, QueryableMsg,
 };
 pub use dimas_core::traits::Context;
 pub use dimas_core::utils::init_tracing;
+pub use dimas_core::Result;
 // endregeion:  --- modules
 
 // region:    --- types

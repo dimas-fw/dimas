@@ -24,6 +24,7 @@ workspace = true
 bitcode = { workspace = true}
 dimas-config = { workspace = true }
 dimas-core = { workspace = true }
+futures = { workspace = true }
 itertools = { workspace = true }
 tokio = { workspace = true}
 tracing = { workspace = true}

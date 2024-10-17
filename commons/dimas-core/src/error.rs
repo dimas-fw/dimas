@@ -4,94 +4,78 @@
 //! type alias for [`core::result::Result`] to write only `Result<T>`.
 //!
 
+#[doc(hidden)]
+extern crate alloc;
+
 #[cfg(feature = "std")]
 extern crate std;
 
 // region:		--- modules
+#[cfg(doc)]
+use super::enums::OperationState;
 #[cfg(feature = "std")]
 use std::prelude::rust_2021::*;
 // endregion:	--- modules
 
 // region:		--- types
-/// Type alias for `core::result::Result` to ease up implementation
+/// Result type alias.
 pub type Result<T> = core::result::Result<T, Box<dyn core::error::Error + Send + Sync + 'static>>;
 // endregion:	--- types
 
-// region:    --- DimasError
-/// `DiMAS` Error type
-#[non_exhaustive]
-#[derive(thiserror::Error, Debug)]
-#[allow(clippy::module_name_repetitions)]
-pub enum DimasError {
-	/// this error should never happen
-	#[error("should not happen")]
-	ShouldNotHappen,
-	/// The `put` of a `Publisher` failed
-	#[error("Publisher 'put' failed")]
-	Put,
-	/// The `delete` of a `Publisher` failed
-	#[error("Publisher 'delete' failed")]
-	Delete,
-	/// The `get` of a `Query` failed
-	#[error("Query 'get' failed")]
-	Get,
-	/// Encoding of message failed
-	#[error("message encoding failed")]
-	Encoding,
-	/// Converting of message failed
-	#[error("converting value into 'Vec<u8>' failed")]
-	ConvertingValue,
-	/// Decoding of message failed
-	#[error("message decoding failed")]
-	Decoding,
-	/// Decoding of message failed
-	#[error("no message received")]
-	NoMessage,
-	/// Read access to properties failed
-	#[error("read of properties failed")]
-	ReadProperties,
-	/// Write access to properties failed
-	#[error("write of properties failed")]
-	WriteProperties,
-	/// Lock on callback failed
-	#[error("could not execute callback")]
-	ExecuteCallback,
+// region:		--- Error
+/// Core error type.
+pub enum Error {
+	/// decoding failed
+	Decoding {
+		/// the original bitcode error
+		source: Box<dyn core::error::Error + Send + Sync>,
+	},
+	/// sending reply failed
+	Reply {
+		/// the original zenoh error
+		source: Box<dyn core::error::Error + Send + Sync>,
+	},
+	/// empty request
+	EmptyQuery,
+	/// An unknown [`OperationState`] is given
+	UnknownOperationState {
+		/// name of the operation state
+		state: String,
+	},
+}
+// region:		--- Error
 
-	/// Invalid `OperationState`
-	#[error("invalid OperationState {0}")]
-	OperationState(String),
-	/// File not found
-	#[error("could not find file: {0}")]
-	FileNotFound(String),
-	/// Modifying context failed
-	#[error("modifying context for {0} failed")]
-	ModifyContext(String),
-	/// The `set_state` failed
-	#[error("setting the 'OperationState' failed")]
-	ManageState,
-	/// Reading context failed
-	#[error("reading context for {0} failed")]
-	ReadContext(String),
+// region:      --- boilerplate
+impl core::fmt::Display for Error {
+	fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> {
+		write!(fmt, "{self:?}")
+	}
+}
 
-	/// reaching a service (queryable/observable)
-	#[error("{0} is not accessible")]
-	AccessService(String),
+impl core::fmt::Debug for Error {
+	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+		match self {
+			Self::Decoding { source } => {
+				write!(f, "creation of zenoh session failed: reason {source}")
+			}
+			Self::Reply { source } => write!(f, "publishing a put message failed: reason {source}"),
+			Self::EmptyQuery => write!(f, "query was empty"),
+			Self::UnknownOperationState { state } => {
+				write!(f, "the operation state {state} is unknown")
+			}
+		}
+	}
+}
 
-	/// `zenoh` session creation failed
-	#[error("creation of zenoh session failed with {0}")]
-	CreateSession(#[source] Box<dyn core::error::Error + Send + Sync + 'static>),
-	/// `zenoh` activate sending liveliness failed
-	#[error("activation of zenoh liveliness failed with {0}")]
-	ActivateLiveliness(#[source] Box<dyn core::error::Error + Send + Sync + 'static>),
-	/// `zenoh` publisher  declaration failed
-	#[error("declaration of zenoh publisher failed with {0}")]
-	DeclarePublisher(#[source] Box<dyn core::error::Error + Send + Sync + 'static>),
-
-	// should be last line
-	/// auto conversion for boxed `core::error::Error`
-	#[error(transparent)]
-	StdError(#[from] Box<dyn core::error::Error + Send + Sync + 'static>),
-} // endregion: --- DimasError
+impl std::error::Error for Error {
+	fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
+		match *self {
+			Self::Decoding { ref source } | Self::Reply { ref source } => Some(source.as_ref()),
+			Self::EmptyQuery | Self::UnknownOperationState { .. } => None,
+		}
+	}
+}
+// endregion:   --- boilerplate
 
 #[cfg(test)]
 mod tests {
@@ -102,6 +86,6 @@ mod tests {
 
 	#[test]
 	const fn normal_types() {
-		is_normal::<DimasError>();
+		is_normal::<Error>();
 	}
 }

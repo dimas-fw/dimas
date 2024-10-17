@@ -6,14 +6,10 @@
 // these ones are only for doc needed
 #[cfg(doc)]
 use crate::agent::Agent;
-use crate::com::pubsub::publisher::Publisher;
+use crate::error::Error;
 use crate::{NoSelector, NoStorage, Selector, Storage};
-use dimas_core::{
-	enums::OperationState,
-	error::{DimasError, Result},
-	traits::Context,
-	utils::selector_from,
-};
+use dimas_com::publisher::Publisher;
+use dimas_core::{enums::OperationState, traits::Context, utils::selector_from, Result};
 use std::sync::{Arc, RwLock};
 use zenoh::bytes::Encoding;
 use zenoh::qos::CongestionControl;
@@ -249,7 +245,7 @@ where
 		let p = self.build()?;
 		let r = collection
 			.write()
-			.map_err(|_| DimasError::ShouldNotHappen)?
+			.map_err(|_| Error::MutexPoison(String::from("PublisherBuilder")))?
 			.insert(p.selector().to_string(), p);
 		Ok(r)
 	}

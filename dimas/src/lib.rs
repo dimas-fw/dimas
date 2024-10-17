@@ -9,10 +9,11 @@
 doc_comment::doctest!("../README.md");
 
 // region:    --- modules
+mod error;
+
 pub mod agent;
-pub mod com;
+pub mod builder;
 pub mod context;
-pub mod time;
 
 // Simplified usage of dimas.
 pub mod prelude;

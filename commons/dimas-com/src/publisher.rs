@@ -2,16 +2,22 @@
 
 //! Module `publisher` provides a message sender `Publisher` which can be created using the `PublisherBuilder`.
 
+#[doc(hidden)]
+extern crate alloc;
+
+#[cfg(feature = "std")]
+extern crate std;
+
 // region:		--- modules
-// these ones are only for doc needed
-#[cfg(doc)]
-use crate::agent::Agent;
+#[cfg(feature = "std")]
+use std::prelude::rust_2021::*;
+use crate::error::Error;
 use core::fmt::Debug;
 use dimas_core::{
 	enums::OperationState,
-	error::{DimasError, Result},
 	message_types::Message,
 	traits::{Capability, Context},
+	Result,
 };
 use tracing::{instrument, Level};
 #[cfg(feature = "unstable")]
@@ -129,9 +135,9 @@ where
 			.allowed_destination(self.allowed_destination)
 			.reliability(self.reliability);
 
-		let publ = builder.wait()?;
+		let publisher = builder.wait()?;
 		//.map_err(|_| DimasError::Put.into())?;
-		self.publisher.replace(publ);
+		self.publisher.replace(publisher);
 		Ok(())
 	}
 
@@ -152,12 +158,12 @@ where
 		match self
 			.publisher
 			.as_ref()
-			.ok_or(DimasError::ShouldNotHappen)?
+			.ok_or(Error::AccessPublisher)?
 			.put(message.value())
 			.wait()
 		{
 			Ok(()) => Ok(()),
-			Err(_) => Err(DimasError::Put.into()),
+			Err(source) => Err(Error::PublishingPut { source }.into()),
 		}
 	}
 
@@ -169,12 +175,12 @@ where
 		match self
 			.publisher
 			.as_ref()
-			.ok_or(DimasError::ShouldNotHappen)?
+			.ok_or(Error::AccessPublisher)?
 			.delete()
 			.wait()
 		{
 			Ok(()) => Ok(()),
-			Err(_) => Err(DimasError::Delete.into()),
+			Err(source) => Err(Error::PublishingDelete { source }.into()),
 		}
 	}
 }

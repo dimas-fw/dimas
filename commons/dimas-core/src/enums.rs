@@ -3,11 +3,14 @@
 //! Core enums of `DiMAS`
 //!
 
+#[doc(hidden)]
+extern crate alloc;
+
 #[cfg(feature = "std")]
 extern crate std;
 
 // region:		--- modules
-use crate::error::{DimasError, Result};
+use crate::error::Error;
 use bitcode::{Decode, Encode};
 use core::fmt::{Debug, Display};
 #[cfg(feature = "std")]
@@ -36,7 +39,9 @@ pub enum OperationState {
 impl TryFrom<&str> for OperationState {
 	type Error = Box<dyn core::error::Error + Send + Sync + 'static>;
 
-	fn try_from(value: &str) -> Result<Self> {
+	fn try_from(
+		value: &str,
+	) -> core::result::Result<Self, Box<dyn core::error::Error + Send + Sync + 'static>> {
 		let v = value.to_lowercase();
 		match v.as_str() {
 			"created" => Ok(Self::Created),
@@ -44,7 +49,10 @@ impl TryFrom<&str> for OperationState {
 			"inactive" => Ok(Self::Inactive),
 			"standby" => Ok(Self::Standby),
 			"active" => Ok(Self::Active),
-			_ => Err(DimasError::OperationState(value.to_string()).into()),
+			_ => Err(Error::UnknownOperationState {
+				state: value.to_string(),
+			}
+			.into()),
 		}
 	}
 }

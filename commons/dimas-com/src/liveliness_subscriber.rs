@@ -3,21 +3,40 @@
 //! Module `liveliness` provides a `LivelinessSubscriber` which can be created using the `LivelinessSubscriberBuilder`.
 //! A `LivelinessSubscriber` can optional subscribe on a delete message.
 
+#[doc(hidden)]
+extern crate alloc;
+
+#[cfg(feature = "std")]
+extern crate std;
+
 // region:		--- modules
-use super::ArcLivelinessCallback;
+use alloc::sync::Arc;
 use core::time::Duration;
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
-	error::Result,
 	traits::{Capability, Context},
+	Result,
 };
+use futures::future::BoxFuture;
 #[cfg(doc)]
 use std::collections::HashMap;
+#[cfg(feature = "std")]
+use std::prelude::rust_2021::*;
+#[cfg(feature = "std")]
+use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tracing::info;
 use tracing::{error, instrument, warn, Level};
 use zenoh::sample::SampleKind;
 // endregion:	--- modules
+
+// region:    	--- types
+/// Type definition for a boxed liveliness subscribers callback
+pub type LivelinessCallback<P> =
+	Box<dyn FnMut(Context<P>, String) -> BoxFuture<'static, Result<()>> + Send + Sync>;
+/// Type definition for a liveliness subscribers atomic reference counted callback
+pub type ArcLivelinessCallback<P> = Arc<Mutex<LivelinessCallback<P>>>;
+// endregion: 	--- types
 
 // region:		--- LivelinessSubscriber
 /// Liveliness Subscriber

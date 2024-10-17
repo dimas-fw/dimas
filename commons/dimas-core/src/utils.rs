@@ -37,4 +37,29 @@ pub fn selector_from(topic: &str, mut prefix: Option<&String>) -> String {
 		result
 	})
 }
+
+/// create request selector
+#[must_use]
+pub fn request_selector_from(selector: &str) -> String {
+	let mut result = String::from(selector);
+	result.push_str("?request");
+	result
+}
+
+/// create cancel selector
+#[must_use]
+pub fn cancel_selector_from(selector: &str) -> String {
+	let mut result = String::from(selector);
+	result.push_str("?cancel");
+	result
+}
+
+/// create feedback selector
+#[must_use]
+pub fn feedback_selector_from(selector: &str, id: &str) -> String {
+	let mut result = String::from(selector);
+	result.push_str("/feedback/");
+	result.push_str(id);
+	result
+}
 // endregion: --- helper

@@ -4,16 +4,9 @@
 //! A `LivelinessSubscriber` can optional subscribe on a delete message.
 
 // region:		--- modules
-use super::{
-	liveliness_subscriber::LivelinessSubscriber, ArcLivelinessCallback, LivelinessCallback,
-};
-use crate::{Callback, NoCallback, NoStorage, Storage};
-use dimas_core::{
-	enums::OperationState,
-	error::{DimasError, Result},
-	traits::Context,
-	utils::selector_from,
-};
+use crate::{error::Error, Callback, NoCallback, NoStorage, Storage};
+use dimas_com::{ArcLivelinessCallback, LivelinessCallback, LivelinessSubscriber};
+use dimas_core::{enums::OperationState, traits::Context, utils::selector_from, Result};
 use futures::future::Future;
 use std::{
 	collections::HashMap,
@@ -258,7 +251,7 @@ where
 
 		let r = c
 			.write()
-			.map_err(|_| DimasError::ShouldNotHappen)?
+			.map_err(|_| Error::MutexPoison(String::from("LivelinessSubscriberBuilder")))?
 			.insert(s.token(), s);
 		Ok(r)
 	}

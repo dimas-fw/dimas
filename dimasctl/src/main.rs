@@ -7,7 +7,7 @@ use clap::{Parser, Subcommand};
 use core::time::Duration;
 use dimas_com::Communicator;
 use dimas_config::Config;
-use dimas_core::{enums::OperationState, error::Result};
+use dimas_core::enums::OperationState;
 use std::thread;
 // endregion:	--- modules
 
@@ -23,7 +23,9 @@ struct DimasctlArgs {
 }
 // endregion:	--- Cli
 
-fn operation_state_parser(s: &str) -> Result<OperationState> {
+fn operation_state_parser(
+	s: &str,
+) -> Result<OperationState, Box<dyn core::error::Error + Send + Sync + 'static>> {
 	OperationState::try_from(s)
 }
 

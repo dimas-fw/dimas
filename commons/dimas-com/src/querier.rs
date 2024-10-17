@@ -2,25 +2,44 @@
 
 //! Module `Querier` provides an information/compute requestor `Querier` which can be created using the `QuerierBuilder`.
 
+#[doc(hidden)]
+extern crate alloc;
+
+#[cfg(feature = "std")]
+extern crate std;
+
 // region:		--- modules
-use super::ArcQuerierCallback;
+use crate::error::Error;
+use alloc::sync::Arc;
 use core::{fmt::Debug, time::Duration};
 use dimas_core::{
 	enums::OperationState,
-	error::{DimasError, Result},
 	message_types::{Message, QueryableMsg},
 	traits::{Capability, Context},
+	Result,
 };
+use futures::future::BoxFuture;
+#[cfg(feature = "std")]
+use std::prelude::rust_2021::*;
+#[cfg(feature = "std")]
+use tokio::sync::Mutex;
 use tracing::{error, instrument, warn, Level};
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
 use zenoh::{
-	key_expr::KeyExpr,
 	query::{ConsolidationMode, QueryTarget},
 	sample::SampleKind,
 	Wait,
 };
 // endregion:	--- modules
+
+// region:    	--- types
+/// type definition for a queriers `response` callback
+pub type GetCallback<P> =
+	Box<dyn FnMut(Context<P>, QueryableMsg) -> BoxFuture<'static, Result<()>> + Send + Sync>;
+/// type definition for a queriers atomic reference counted `response` callback
+pub type ArcGetCallback<P> = Arc<Mutex<GetCallback<P>>>;
+// endregion: 	--- types
 
 // region:		--- Querier
 /// Querier
@@ -32,7 +51,7 @@ where
 	/// Context for the Querier
 	context: Context<P>,
 	activation_state: OperationState,
-	callback: ArcQuerierCallback<P>,
+	callback: ArcGetCallback<P>,
 	mode: ConsolidationMode,
 	#[cfg(feature = "unstable")]
 	allowed_destination: Locality,
@@ -89,7 +108,7 @@ where
 		selector: String,
 		context: Context<P>,
 		activation_state: OperationState,
-		response_callback: ArcQuerierCallback<P>,
+		response_callback: ArcGetCallback<P>,
 		mode: ConsolidationMode,
 		#[cfg(feature = "unstable")] allowed_destination: Locality,
 		encoding: String,
@@ -155,10 +174,11 @@ where
 		let key_expr = self
 			.key_expr
 			.clone()
-			.unwrap_or_else(|| KeyExpr::new(&self.selector).expect("snh"));
+			.ok_or_else(|| Error::InvalidSelector("querier".into()))?;
+
 		let builder = message
 			.map_or_else(
-				|| session.get(key_expr),
+				|| session.get(&key_expr),
 				|msg| session.get(&self.selector).payload(msg.value()),
 			)
 			.encoding(self.encoding.as_str())
@@ -169,16 +189,16 @@ where
 		#[cfg(feature = "unstable")]
 		let builder = builder.allowed_destination(self.allowed_destination);
 
-		let replies = builder
+		let query = builder
 			.wait()
-			.map_err(|_| DimasError::ShouldNotHappen)?;
+			.map_err(|source| Error::QueryCreation { source })?;
 
 		let mut unreached = true;
 		let mut retry_count = 0u8;
 
 		while unreached && retry_count <= 5 {
 			retry_count += 1;
-			while let Ok(reply) = replies.recv() {
+			while let Ok(reply) = query.recv() {
 				match reply.result() {
 					Ok(sample) => match sample.kind() {
 						SampleKind::Put => {
@@ -194,7 +214,13 @@ where
 									}
 								});
 							} else {
-								callback.as_mut().expect("snh")(msg)?;
+								let callback =
+									callback
+										.as_mut()
+										.ok_or_else(|| Error::AccessingQuerier {
+											selector: key_expr.to_string(),
+										})?;
+								callback(msg).map_err(|source| Error::QueryCallback { source })?;
 							}
 						}
 						SampleKind::Delete => {
@@ -205,11 +231,14 @@ where
 				}
 				unreached = false;
 			}
-			if unreached  {
+			if unreached {
 				if retry_count < 5 {
 					std::thread::sleep(self.timeout);
 				} else {
-					return Err(DimasError::AccessService(self.selector.to_string()).into());
+					return Err(Error::AccessingQueryable {
+						selector: key_expr.to_string(),
+					}
+					.into());
 				}
 			}
 		}

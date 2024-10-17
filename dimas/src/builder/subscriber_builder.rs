@@ -7,14 +7,10 @@
 // these ones are only for doc needed
 #[cfg(doc)]
 use crate::agent::Agent;
-use crate::com::pubsub::subscriber::Subscriber;
-use crate::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
+use crate::{error::Error, Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
+use dimas_com::subscriber::Subscriber;
 use dimas_core::{
-	enums::OperationState,
-	error::{DimasError, Result},
-	message_types::Message,
-	traits::Context,
-	utils::selector_from,
+	enums::OperationState, message_types::Message, traits::Context, utils::selector_from, Result,
 };
 use futures::future::Future;
 use std::sync::{Arc, RwLock};
@@ -22,10 +18,7 @@ use tokio::sync::Mutex;
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
 
-use super::{
-	ArcSubscriberDeleteCallback, ArcSubscriberPutCallback, SubscriberDeleteCallback,
-	SubscriberPutCallback,
-};
+use dimas_com::subscriber::{ArcDeleteCallback, ArcPutCallback, DeleteCallback, PutCallback};
 // endregion:	--- modules
 
 // region:    	--- types
@@ -45,7 +38,7 @@ where
 	selector: K,
 	put_callback: C,
 	storage: S,
-	delete_callback: Option<ArcSubscriberDeleteCallback<P>>,
+	delete_callback: Option<ArcDeleteCallback<P>>,
 }
 
 impl<P> SubscriberBuilder<P, NoSelector, NoCallback, NoStorage>
@@ -94,7 +87,7 @@ where
 		CB: FnMut(Context<P>) -> F + Send + Sync + 'static,
 		F: Future<Output = Result<()>> + Send + Sync + 'static,
 	{
-		let callback: SubscriberDeleteCallback<P> = Box::new(move |ctx| Box::pin(callback(ctx)));
+		let callback: DeleteCallback<P> = Box::new(move |ctx| Box::pin(callback(ctx)));
 		self.delete_callback
 			.replace(Arc::new(Mutex::new(callback)));
 		self
@@ -150,7 +143,7 @@ where
 	pub fn put_callback<CB, F>(
 		self,
 		mut callback: CB,
-	) -> SubscriberBuilder<P, K, Callback<ArcSubscriberPutCallback<P>>, S>
+	) -> SubscriberBuilder<P, K, Callback<ArcPutCallback<P>>, S>
 	where
 		CB: FnMut(Context<P>, Message) -> F + Send + Sync + 'static,
 		F: Future<Output = Result<()>> + Send + Sync + 'static,
@@ -165,9 +158,8 @@ where
 			delete_callback,
 			..
 		} = self;
-		let callback: SubscriberPutCallback<P> =
-			Box::new(move |ctx, msg| Box::pin(callback(ctx, msg)));
-		let callback: ArcSubscriberPutCallback<P> = Arc::new(Mutex::new(callback));
+		let callback: PutCallback<P> = Box::new(move |ctx, msg| Box::pin(callback(ctx, msg)));
+		let callback: ArcPutCallback<P> = Arc::new(Mutex::new(callback));
 		SubscriberBuilder {
 			context,
 			activation_state,
@@ -214,7 +206,7 @@ where
 	}
 }
 
-impl<P, S> SubscriberBuilder<P, Selector, Callback<ArcSubscriberPutCallback<P>>, S>
+impl<P, S> SubscriberBuilder<P, Selector, Callback<ArcPutCallback<P>>, S>
 where
 	P: Send + Sync + 'static,
 {
@@ -245,8 +237,7 @@ where
 	}
 }
 
-impl<P>
-	SubscriberBuilder<P, Selector, Callback<ArcSubscriberPutCallback<P>>, Storage<Subscriber<P>>>
+impl<P> SubscriberBuilder<P, Selector, Callback<ArcPutCallback<P>>, Storage<Subscriber<P>>>
 where
 	P: Send + Sync + 'static,
 {
@@ -260,7 +251,7 @@ where
 
 		let r = c
 			.write()
-			.map_err(|_| DimasError::ShouldNotHappen)?
+			.map_err(|_| Error::MutexPoison(String::from("SubscriberBuilder")))?
 			.insert(s.selector().to_string(), s);
 		Ok(r)
 	}

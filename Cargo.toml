@@ -8,6 +8,7 @@ members = [
 	"commons/dimas-commands", 
 	"commons/dimas-config", 
 	"commons/dimas-core",
+	"commons/dimas-time",
 	"dimas",
 	"dimasctl",
 	"dimasmon",
@@ -55,6 +56,7 @@ repository = "https://github.com/dimas-fw/dimas/"
 bitcode = "0.6.0"
 clap = "4.1.0"
 chrono = "0.4.34"
+derive_more = { version="1.0.0" }
 dimas = { path = "dimas" }
 #dimas = "0.4.0"
 dimas-com = { path = "commons/dimas-com" }
@@ -65,6 +67,8 @@ dimas-config = { path = "commons/dimas-config" }
 #dimas-config = "0.4.0"
 dimas-core = { path = "commons/dimas-core" }
 #dimas-core = "0.4.0"
+dimas-time = { path = "commons/dimas-time" }
+#dimas-time = "0.4.0"
 dirs = "5.0.0"
 doc-comment = "0.3.0"
 futures = "0.3.30"
@@ -74,7 +78,6 @@ json5 = "0.4.1"
 serde = "1.0.210"
 slint = "1.2.0"
 slint-build = "1.2.0"
-thiserror = "1.0.37"
 tokio = "1.40.0"
 tracing = "0.1.37"
 tracing-subscriber = "0.3.0"

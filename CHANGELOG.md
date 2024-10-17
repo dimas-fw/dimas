@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - filenames of module `liveliness`
 - method for getting a `QuerierBuilder` from an `Agent` to `querier()`
+- error handling without `thiserror`
+- module structure reworked
 
 ### Fixed
 

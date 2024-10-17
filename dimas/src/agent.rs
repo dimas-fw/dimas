@@ -46,25 +46,35 @@
 
 // region:		--- modules
 #[cfg(feature = "unstable")]
-use crate::com::liveliness::{LivelinessSubscriber, LivelinessSubscriberBuilder};
-use crate::com::{
-	observation::{Observable, ObservableBuilder, Observer, ObserverBuilder},
-	pubsub::{Publisher, PublisherBuilder, Subscriber, SubscriberBuilder},
-	queries::{Querier, QuerierBuilder, Queryable, QueryableBuilder},
+use crate::builder::LivelinessSubscriberBuilder;
+use crate::builder::{
+	ObservableBuilder, ObserverBuilder, PublisherBuilder, QuerierBuilder, QueryableBuilder,
+	SubscriberBuilder, TimerBuilder,
 };
 use crate::context::ContextImpl;
-use crate::time::{Timer, TimerBuilder};
+use crate::error::Error;
 use chrono::Local;
 use core::fmt::Debug;
 use core::time::Duration;
-use dimas_com::messages::{AboutEntity, PingEntity};
+use dimas_com::observable::Observable;
+use dimas_com::observer::Observer;
+#[cfg(feature = "unstable")]
+use dimas_com::LivelinessSubscriber;
+use dimas_com::{
+	messages::{AboutEntity, PingEntity},
+	publisher::Publisher,
+	querier::Querier,
+	queryable::Queryable,
+	subscriber::Subscriber,
+};
 use dimas_config::Config;
 use dimas_core::{
 	enums::{OperationState, Signal, TaskSignal},
-	error::{DimasError, Result},
 	message_types::{Message, QueryMsg},
 	traits::{Capability, Context, ContextAbstraction},
+	Result,
 };
+use dimas_time::Timer;
 use std::sync::Arc;
 #[cfg(feature = "unstable")]
 use std::sync::RwLock;
@@ -301,7 +311,12 @@ where
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Agent")
 			.field("id", &self.context.uuid())
-			.field("prefix", self.context.prefix().expect("None"))
+			.field(
+				"prefix",
+				self.context
+					.prefix()
+					.unwrap_or(&"None".to_string()),
+			)
 			.field("name", &self.context.name())
 			.finish_non_exhaustive()
 	}
@@ -431,11 +446,11 @@ where
 				.liveliness()
 				.declare_token(&token_str)
 				.wait()
-				.map_err(DimasError::ActivateLiveliness)?;
+				.map_err(|source| Error::ActivateLiveliness { source })?;
 
 			self.liveliness_token
 				.write()
-				.map_err(|_| DimasError::ModifyContext("liveliness".into()))?
+				.map_err(|_| Error::ModifyContext("liveliness".into()))?
 				.replace(token);
 		};
 
@@ -491,41 +506,41 @@ where
 						TaskSignal::RestartLiveliness(selector) => {
 							self.context.liveliness_subscribers()
 								.write()
-								.map_err(|_| DimasError::WriteProperties)?
+								.map_err(|_| Error::WriteAccess)?
 								.get_mut(&selector)
-								.ok_or(DimasError::ShouldNotHappen)?
+								.ok_or_else(|| Error::GetMut("liveliness".into()))?
 								.manage_operation_state(&self.context.state())?;
 						},
 						TaskSignal::RestartQueryable(selector) => {
 							self.context.queryables()
 								.write()
-								.map_err(|_| DimasError::WriteProperties)?
+								.map_err(|_| Error::WriteAccess)?
 								.get_mut(&selector)
-								.ok_or(DimasError::ShouldNotHappen)?
+								.ok_or_else(|| Error::GetMut("queryables".into()))?
 								.manage_operation_state(&self.context.state())?;
 						},
 						TaskSignal::RestartObservable(selector) => {
 							self.context.observables()
 								.write()
-								.map_err(|_| DimasError::WriteProperties)?
+								.map_err(|_| Error::WriteAccess)?
 								.get_mut(&selector)
-								.ok_or(DimasError::ShouldNotHappen)?
+								.ok_or_else(|| Error::GetMut("observables".into()))?
 								.manage_operation_state(&self.context.state())?;
 						},
 						TaskSignal::RestartSubscriber(selector) => {
 							self.context.subscribers()
 								.write()
-								.map_err(|_| DimasError::WriteProperties)?
+								.map_err(|_| Error::WriteAccess)?
 								.get_mut(&selector)
-								.ok_or(DimasError::ShouldNotHappen)?
+								.ok_or_else(|| Error::GetMut("subscribers".into()))?
 								.manage_operation_state(&self.context.state())?;
 						},
 						TaskSignal::RestartTimer(selector) => {
 							self.context.timers()
 								.write()
-								.map_err(|_| DimasError::WriteProperties)?
+								.map_err(|_| Error::WriteAccess)?
 								.get_mut(&selector)
-								.ok_or(DimasError::ShouldNotHappen)?
+								.ok_or_else(|| Error::GetMut("timers".into()))?
 								.manage_operation_state(&self.context.state())?;
 						},
 						TaskSignal::Shutdown => {
@@ -564,7 +579,7 @@ where
 		if self.liveliness {
 			self.liveliness_token
 				.write()
-				.map_err(|_| DimasError::ModifyContext("liveliness".into()))?
+				.map_err(|_| Error::ModifyContext("liveliness".into()))?
 				.take();
 		}
 		let r = Agent {

@@ -4,11 +4,7 @@
 
 // region:		--- modules
 use dimas_core::{
-	enums::OperationState,
-	error::{DimasError, Result},
-	message_types::QueryMsg,
-	traits::Context,
-	utils::selector_from,
+	enums::OperationState, message_types::QueryMsg, traits::Context, utils::selector_from, Result,
 };
 use futures::future::Future;
 use std::sync::{Arc, RwLock};
@@ -16,10 +12,11 @@ use tokio::sync::Mutex;
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
 
-use crate::com::queries::queryable::Queryable;
+use crate::error::Error;
 use crate::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
+use dimas_com::queryable::Queryable;
 
-use super::{ArcQueryableCallback, QueryableCallback};
+use dimas_com::queryable::{ArcGetCallback, GetCallback};
 // endregion:	--- modules
 
 // region:    	--- types
@@ -138,7 +135,7 @@ where
 	pub fn callback<C, F>(
 		self,
 		mut callback: C,
-	) -> QueryableBuilder<P, K, Callback<ArcQueryableCallback<P>>, S>
+	) -> QueryableBuilder<P, K, Callback<ArcGetCallback<P>>, S>
 	where
 		C: FnMut(Context<P>, QueryMsg) -> F + Send + Sync + 'static,
 		F: Future<Output = Result<()>> + Send + Sync + 'static,
@@ -153,8 +150,8 @@ where
 			storage,
 			..
 		} = self;
-		let callback: QueryableCallback<P> = Box::new(move |ctx, msg| Box::pin(callback(ctx, msg)));
-		let callback: ArcQueryableCallback<P> = Arc::new(Mutex::new(callback));
+		let callback: GetCallback<P> = Box::new(move |ctx, msg| Box::pin(callback(ctx, msg)));
+		let callback: ArcGetCallback<P> = Arc::new(Mutex::new(callback));
 		QueryableBuilder {
 			context,
 			activation_state,
@@ -201,7 +198,7 @@ where
 	}
 }
 
-impl<P, S> QueryableBuilder<P, Selector, Callback<ArcQueryableCallback<P>>, S>
+impl<P, S> QueryableBuilder<P, Selector, Callback<ArcGetCallback<P>>, S>
 where
 	P: Send + Sync + 'static,
 {
@@ -232,7 +229,7 @@ where
 	}
 }
 
-impl<P> QueryableBuilder<P, Selector, Callback<ArcQueryableCallback<P>>, Storage<Queryable<P>>>
+impl<P> QueryableBuilder<P, Selector, Callback<ArcGetCallback<P>>, Storage<Queryable<P>>>
 where
 	P: Send + Sync + 'static,
 {
@@ -245,7 +242,7 @@ where
 
 		let r = collection
 			.write()
-			.map_err(|_| DimasError::ShouldNotHappen)?
+			.map_err(|_| Error::MutexPoison(String::from("QueryableBuilder")))?
 			.insert(q.selector().to_string(), q);
 		Ok(r)
 	}

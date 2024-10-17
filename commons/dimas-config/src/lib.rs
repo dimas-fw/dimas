@@ -53,8 +53,9 @@ extern crate alloc;
 extern crate std;
 
 // region:		--- types
-/// Type alias for `core::result::Result` to ease up implementation
-pub type Result<T> = core::result::Result<T, Box<dyn core::error::Error + Send + Sync + 'static>>;
+/// copy of Result type alias from `dimas_core` to avoid dependency
+pub(crate) type Result<T> =
+	core::result::Result<T, Box<dyn core::error::Error + Send + Sync + 'static>>;
 // endregion:	--- types
 
 // region:		--- modules

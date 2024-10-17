@@ -1,20 +1,21 @@
 // Copyright © 2024 Stephan Kunz
 
+//! Module
+
 // region:		--- modules
-use super::{
-	observer::Observer, ArcObserverControlCallback, ArcObserverResponseCallback,
-	ObserverControlCallback, ObserverResponseCallback,
-};
 #[cfg(doc)]
 use crate::agent::Agent;
-use crate::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
+use crate::{error::Error, Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use core::time::Duration;
+use dimas_com::observer::{
+	ArcControlCallback, ArcResponseCallback, ControlCallback, Observer, ResponseCallback,
+};
 use dimas_core::{
 	enums::OperationState,
-	error::{DimasError, Result},
 	message_types::{ControlResponse, ObservableResponse},
 	traits::Context,
 	utils::selector_from,
+	Result,
 };
 use futures::future::Future;
 use std::sync::{Arc, RwLock};
@@ -128,7 +129,7 @@ where
 	pub fn control_callback<C, F>(
 		self,
 		mut callback: C,
-	) -> ObserverBuilder<P, K, Callback<ArcObserverControlCallback<P>>, RC, S>
+	) -> ObserverBuilder<P, K, Callback<ArcControlCallback<P>>, RC, S>
 	where
 		C: FnMut(Context<P>, ControlResponse) -> F + Send + Sync + 'static,
 		F: Future<Output = Result<()>> + Send + Sync + 'static,
@@ -142,9 +143,8 @@ where
 			storage,
 			..
 		} = self;
-		let callback: ObserverControlCallback<P> =
-			Box::new(move |ctx, msg| Box::pin(callback(ctx, msg)));
-		let callback: ArcObserverControlCallback<P> = Arc::new(Mutex::new(callback));
+		let callback: ControlCallback<P> = Box::new(move |ctx, msg| Box::pin(callback(ctx, msg)));
+		let callback: ArcControlCallback<P> = Arc::new(Mutex::new(callback));
 		ObserverBuilder {
 			context,
 			activation_state,
@@ -166,7 +166,7 @@ where
 	pub fn result_callback<C, F>(
 		self,
 		mut callback: C,
-	) -> ObserverBuilder<P, K, CC, Callback<ArcObserverResponseCallback<P>>, S>
+	) -> ObserverBuilder<P, K, CC, Callback<ArcResponseCallback<P>>, S>
 	where
 		C: FnMut(Context<P>, ObservableResponse) -> F + Send + Sync + 'static,
 		F: Future<Output = Result<()>> + Send + Sync + 'static,
@@ -180,9 +180,8 @@ where
 			storage,
 			..
 		} = self;
-		let callback: ObserverResponseCallback<P> =
-			Box::new(move |ctx, msg| Box::pin(callback(ctx, msg)));
-		let callback: ArcObserverResponseCallback<P> = Arc::new(Mutex::new(callback));
+		let callback: ResponseCallback<P> = Box::new(move |ctx, msg| Box::pin(callback(ctx, msg)));
+		let callback: ArcResponseCallback<P> = Arc::new(Mutex::new(callback));
 		ObserverBuilder {
 			context,
 			activation_state,
@@ -227,13 +226,7 @@ where
 }
 
 impl<P, S>
-	ObserverBuilder<
-		P,
-		Selector,
-		Callback<ArcObserverControlCallback<P>>,
-		Callback<ArcObserverResponseCallback<P>>,
-		S,
-	>
+	ObserverBuilder<P, Selector, Callback<ArcControlCallback<P>>, Callback<ArcResponseCallback<P>>, S>
 where
 	P: Send + Sync + 'static,
 {
@@ -267,8 +260,8 @@ impl<P>
 	ObserverBuilder<
 		P,
 		Selector,
-		Callback<ArcObserverControlCallback<P>>,
-		Callback<ArcObserverResponseCallback<P>>,
+		Callback<ArcControlCallback<P>>,
+		Callback<ArcResponseCallback<P>>,
 		Storage<Observer<P>>,
 	>
 where
@@ -284,7 +277,7 @@ where
 
 		let r = c
 			.write()
-			.map_err(|_| DimasError::ShouldNotHappen)?
+			.map_err(|_| Error::MutexPoison(String::from("ObserverBuilder")))?
 			.insert(s.selector().to_string(), s);
 		Ok(r)
 	}

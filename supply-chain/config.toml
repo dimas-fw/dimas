@@ -267,10 +267,6 @@ criteria = "safe-to-deploy"
 version = "0.1.60"
 criteria = "safe-to-deploy"
 
-[[exemptions.instant]]
-version = "0.1.12"
-criteria = "safe-to-deploy"
-
 [[exemptions.ipnetwork]]
 version = "0.20.0"
 criteria = "safe-to-deploy"
@@ -492,10 +488,6 @@ version = "3.1.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.socket2]]
-version = "0.4.10"
-criteria = "safe-to-deploy"
-
-[[exemptions.socket2]]
 version = "0.5.6"
 criteria = "safe-to-deploy"
 
@@ -565,10 +557,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.validated_struct_macros]]
 version = "2.1.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.waker-fn]]
-version = "1.1.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.webpki-roots]]
