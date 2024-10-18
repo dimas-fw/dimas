@@ -3,7 +3,10 @@
 //! Module `query` provides an information/compute requestor `Query` which can be created using the `QuerierBuilder`.
 
 // region:		--- modules
+use super::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
+use crate::error::Error;
 use core::time::Duration;
+use dimas_com::querier::Querier;
 use dimas_core::{
 	enums::OperationState, message_types::QueryableMsg, traits::Context, utils::selector_from,
 	Result,
@@ -19,9 +22,6 @@ use zenoh::{
 	bytes::Encoding,
 	query::{ConsolidationMode, QueryTarget},
 };
-
-use crate::{error::Error, Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
-use dimas_com::querier::Querier;
 
 use dimas_com::querier::{ArcGetCallback, GetCallback};
 // endregion:	--- modules

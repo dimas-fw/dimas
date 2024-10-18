@@ -3,9 +3,10 @@
 //! Module
 
 // region:		--- modules
+use super::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 #[cfg(doc)]
 use crate::agent::Agent;
-use crate::{error::Error, Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
+use crate::error::Error;
 use core::time::Duration;
 use dimas_com::observer::{
 	ArcControlCallback, ArcResponseCallback, ControlCallback, Observer, ResponseCallback,

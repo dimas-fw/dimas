@@ -4,10 +4,10 @@
 
 // region:		--- modules
 // these ones are only for doc needed
+use super::{NoSelector, NoStorage, Selector, Storage};
 #[cfg(doc)]
 use crate::agent::Agent;
 use crate::error::Error;
-use crate::{NoSelector, NoStorage, Selector, Storage};
 use dimas_com::publisher::Publisher;
 use dimas_core::{enums::OperationState, traits::Context, utils::selector_from, Result};
 use std::sync::{Arc, RwLock};

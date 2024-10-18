@@ -3,7 +3,8 @@
 //! Module
 
 // region:		--- modules
-use crate::{error::Error, Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
+use super::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
+use crate::error::Error;
 use dimas_com::observable::{
 	ArcControlCallback, ArcExecutionCallback, ArcFeedbackCallback, ControlCallback,
 	ExecutionCallback, FeedbackCallback, Observable,

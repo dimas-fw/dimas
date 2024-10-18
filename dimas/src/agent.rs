@@ -343,8 +343,11 @@ where
 	#[must_use]
 	pub fn liveliness_subscriber(
 		&self,
-	) -> LivelinessSubscriberBuilder<P, crate::NoCallback, crate::Storage<LivelinessSubscriber<P>>>
-	{
+	) -> LivelinessSubscriberBuilder<
+		P,
+		crate::builder::NoCallback,
+		crate::builder::Storage<LivelinessSubscriber<P>>,
+	> {
 		LivelinessSubscriberBuilder::new(self.context.clone())
 			.storage(self.context.liveliness_subscribers().clone())
 	}
@@ -355,11 +358,11 @@ where
 		&self,
 	) -> ObservableBuilder<
 		P,
-		crate::NoSelector,
-		crate::NoCallback,
-		crate::NoCallback,
-		crate::NoCallback,
-		crate::Storage<Observable<P>>,
+		crate::builder::NoSelector,
+		crate::builder::NoCallback,
+		crate::builder::NoCallback,
+		crate::builder::NoCallback,
+		crate::builder::Storage<Observable<P>>,
 	> {
 		ObservableBuilder::new(self.context.clone()).storage(self.context.observables().clone())
 	}
@@ -370,10 +373,10 @@ where
 		&self,
 	) -> ObserverBuilder<
 		P,
-		crate::NoSelector,
-		crate::NoCallback,
-		crate::NoCallback,
-		crate::Storage<Observer<P>>,
+		crate::builder::NoSelector,
+		crate::builder::NoCallback,
+		crate::builder::NoCallback,
+		crate::builder::Storage<Observer<P>>,
 	> {
 		ObserverBuilder::new(self.context.clone()).storage(self.context.observers().clone())
 	}
@@ -382,7 +385,7 @@ where
 	#[must_use]
 	pub fn publisher(
 		&self,
-	) -> PublisherBuilder<P, crate::NoSelector, crate::Storage<Publisher<P>>> {
+	) -> PublisherBuilder<P, crate::builder::NoSelector, crate::builder::Storage<Publisher<P>>> {
 		PublisherBuilder::new(self.context.clone()).storage(self.context.publishers().clone())
 	}
 
@@ -390,7 +393,12 @@ where
 	#[must_use]
 	pub fn querier(
 		&self,
-	) -> QuerierBuilder<P, crate::NoSelector, crate::NoCallback, crate::Storage<Querier<P>>> {
+	) -> QuerierBuilder<
+		P,
+		crate::builder::NoSelector,
+		crate::builder::NoCallback,
+		crate::builder::Storage<Querier<P>>,
+	> {
 		QuerierBuilder::new(self.context.clone()).storage(self.context.queries().clone())
 	}
 
@@ -398,7 +406,12 @@ where
 	#[must_use]
 	pub fn queryable(
 		&self,
-	) -> QueryableBuilder<P, crate::NoSelector, crate::NoCallback, crate::Storage<Queryable<P>>> {
+	) -> QueryableBuilder<
+		P,
+		crate::builder::NoSelector,
+		crate::builder::NoCallback,
+		crate::builder::Storage<Queryable<P>>,
+	> {
 		QueryableBuilder::new(self.context.clone()).storage(self.context.queryables().clone())
 	}
 
@@ -406,8 +419,12 @@ where
 	#[must_use]
 	pub fn subscriber(
 		&self,
-	) -> SubscriberBuilder<P, crate::NoSelector, crate::NoCallback, crate::Storage<Subscriber<P>>>
-	{
+	) -> SubscriberBuilder<
+		P,
+		crate::builder::NoSelector,
+		crate::builder::NoCallback,
+		crate::builder::Storage<Subscriber<P>>,
+	> {
 		SubscriberBuilder::new(self.context.clone()).storage(self.context.subscribers().clone())
 	}
 
@@ -417,10 +434,10 @@ where
 		&self,
 	) -> TimerBuilder<
 		P,
-		crate::NoSelector,
-		crate::NoInterval,
-		crate::NoCallback,
-		crate::Storage<Timer<P>>,
+		crate::builder::NoSelector,
+		crate::builder::NoInterval,
+		crate::builder::NoCallback,
+		crate::builder::Storage<Timer<P>>,
 	> {
 		TimerBuilder::new(self.context.clone()).storage(self.context.timers().clone())
 	}

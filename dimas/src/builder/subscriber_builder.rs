@@ -5,9 +5,10 @@
 
 // region:		--- modules
 // these ones are only for doc needed
+use super::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 #[cfg(doc)]
 use crate::agent::Agent;
-use crate::{error::Error, Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
+use crate::error::Error;
 use dimas_com::subscriber::Subscriber;
 use dimas_core::{
 	enums::OperationState, message_types::Message, traits::Context, utils::selector_from, Result,

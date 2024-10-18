@@ -13,11 +13,10 @@ use proc_macro::TokenStream;
 use quote::quote;
 use std::collections::HashSet as Set;
 use syn::{
-	Ident,
 	parse::{Parse, ParseStream, Result},
 	parse_macro_input,
 	punctuated::Punctuated,
-	ItemFn, Token,
+	Ident, ItemFn, Token,
 };
 
 struct Args {
@@ -34,7 +33,7 @@ impl Parse for Args {
 }
 
 /// main wrapper
-/// 
+///
 /// # Panics
 /// - if a main function has parameters/attributes
 #[proc_macro_attribute]
@@ -45,15 +44,15 @@ pub fn main(metadata: TokenStream, input: TokenStream) -> TokenStream {
 	// parse the rust code given by input
 	let mut input_fn = parse_macro_input!(input as ItemFn);
 	if input_fn.sig.ident != "main" {
-        panic!("can only be used for main function");
-    }
+		panic!("can only be used for main function");
+	}
 	if !input_fn.sig.inputs.is_empty() {
-        panic!("the main function cannot accept arguments");
-    }
+		panic!("the main function cannot accept arguments");
+	}
 	// remove asyncness from function signature
 	input_fn.sig.asyncness = None;
 	let signature = input_fn.sig;
-	let body = input_fn.block;//.stmts;
+	let body = input_fn.block; //.stmts;
 
 	// possible extensions see: https://docs.rs/tokio/latest/tokio/runtime/struct.Builder.html#
 	TokenStream::from(quote! {

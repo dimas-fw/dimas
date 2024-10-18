@@ -4,10 +4,8 @@
 //! When fired, a `Timer` calls his assigned `TimerCallback`.
 
 // region:		--- modules
-use crate::{
-	error::Error, Callback, Interval, NoCallback, NoInterval, NoSelector, NoStorage, Selector,
-	Storage,
-};
+use super::{Callback, Interval, NoCallback, NoInterval, NoSelector, NoStorage, Selector, Storage};
+use crate::error::Error;
 
 use dimas_time::{ArcTimerCallback, Timer};
 

@@ -12,8 +12,8 @@ use tokio::sync::Mutex;
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
 
+use super::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use crate::error::Error;
-use crate::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use dimas_com::queryable::Queryable;
 
 use dimas_com::queryable::{ArcGetCallback, GetCallback};
