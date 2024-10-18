@@ -32,8 +32,8 @@ changes but may include enhancements.
 
 ## Usage
 
-DiMAS needs the `tokio` runtime, you have to define your `main` function as a
-`tokio async` function.
+DiMAS needs the `tokio` runtime, you have to define your `main` function as an
+`async` function.
 
 So include `dimas` together with `tokio` runtime in the dependencies section of
 your `Cargo.toml`.
@@ -43,16 +43,14 @@ Your `Cargo.toml` should include:
 ```toml
 [dependencies]
 dimas = "0.4.0"
-tokio = { version = "1.40.0", features = ["macros"] }
+tokio = { version = "1.40.0" }
 ```
 
-It also makes sense to return a `Result`, as some functions may return one.
-DiMAS errors are always of type `Box<dyn core::error::Error>` and should be threadsafe.
+It also makes sense to return a `Result`, as many DimAs `Agent`s functions return one.
+DiMAS errors are always of type `Box<dyn core::error::Error>` and must be thread safe.
 DiMAS provides a type definition `Result<T>` to make life easier
 
-Ensure that you use the multi-threaded runtime, otherwise dimas will panic. 
-Usually it is a good idea to limit the worker threads to the necessary amount.
-A good starting point is 3 workers.
+DiMAS also provides a `main` attribute macro to create the runtime environment.
 
 A suitable main program skeleton may look like:
 
@@ -79,7 +77,7 @@ The `Cargo.toml` for this publisher/subscriber example should include
 ```toml
 [dependencies]
 dimas = version = "0.4"
-tokio = { version = "1.40.0",features = ["macros"] }
+tokio = { version = "1.40.0" }
 ```
 
 ### Publisher

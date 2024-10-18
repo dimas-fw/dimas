@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - timeout handling to `Querier` and `Observer`
+- macro `dimas::main`
 
 ### Changed
 
@@ -27,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - method for getting a `QuerierBuilder` from an `Agent` to `querier()`
 - error handling without `thiserror`
 - module structure reworked
+- usage of `tokio::main` macro replaced with `dimas::main` macro
 
 ### Fixed
 

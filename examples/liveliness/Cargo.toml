@@ -19,7 +19,7 @@ path = "src/liveliness.rs"
 
 [dependencies]
 dimas = { workspace = true, features = ["unstable"] }
-tokio = { workspace = true, features = ["macros"] }
+tokio = { workspace = true }
 
 [dev-dependencies]
 
