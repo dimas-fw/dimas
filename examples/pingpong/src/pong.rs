@@ -33,7 +33,7 @@ async fn ping_received(_ctx: Context<AgentProps>, message: QueryMsg) -> Result<(
 	Ok(())
 }
 
-#[tokio::main]
+#[tokio::main(worker_threads = 3)]
 async fn main() -> Result<()> {
 	// initialize tracing/logging
 	init_tracing();

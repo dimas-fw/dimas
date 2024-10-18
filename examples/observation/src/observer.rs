@@ -75,7 +75,8 @@ async fn response(ctx: Context<AgentProps>, response: ObservableResponse) -> Res
 	}
 	Ok(())
 }
-#[tokio::main]
+
+#[tokio::main(worker_threads = 3)]
 async fn main() -> Result<()> {
 	// initialize tracing/logging
 	init_tracing();

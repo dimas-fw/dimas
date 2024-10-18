@@ -28,7 +28,7 @@ async fn delete_callback(ctx: Context<AgentProps>, id: String) -> Result<()> {
 	Ok(())
 }
 
-#[tokio::main]
+#[tokio::main(worker_threads = 3)]
 async fn main() -> Result<()> {
 	// initialize tracing/logging
 	init_tracing();

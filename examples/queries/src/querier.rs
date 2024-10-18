@@ -20,7 +20,7 @@ fn query_callback2(response: QueryableMsg) -> Result<()> {
 	Ok(())
 }
 
-#[tokio::main]
+#[tokio::main(worker_threads = 3)]
 async fn main() -> Result<()> {
 	// initialize tracing/logging
 	init_tracing();

@@ -10,8 +10,6 @@ extern crate alloc;
 extern crate std;
 
 // region:		--- modules
-#[cfg(feature = "std")]
-use std::prelude::rust_2021::*;
 use crate::error::Error;
 use alloc::sync::Arc;
 use dimas_core::{
@@ -21,6 +19,8 @@ use dimas_core::{
 	Result,
 };
 use futures::future::BoxFuture;
+#[cfg(feature = "std")]
+use std::prelude::rust_2021::*;
 #[cfg(feature = "std")]
 use tokio::sync::Mutex;
 #[cfg(feature = "std")]
