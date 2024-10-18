@@ -23,8 +23,8 @@
 //! #[derive(Debug)]
 //! struct AgentProps {}
 //!
-//! // we need an async runtime, preferably tokio
-//! #[tokio::main]
+//! // we need a tokio runtime
+//! #[tokio::main(worker_threads = 3)]
 //! async fn main() -> Result<()> {
 //!   // create & initialize agents properties
 //!   let properties = AgentProps {};

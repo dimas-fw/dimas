@@ -36,27 +36,30 @@ DiMAS needs the `tokio` runtime, you have to define your `main` function as a
 `tokio async` function.
 
 So include `dimas` together with `tokio` runtime in the dependencies section of
-your `Cargo.toml`. Ensure that you use the multi-threaded runtime, otherwise
-dimas will panic.
+your `Cargo.toml`.
 
 Your `Cargo.toml` should include:
 
 ```toml
 [dependencies]
-dimas = "0.3"
-tokio = { version = "1", features = ["macros"] }
+dimas = "0.4.0"
+tokio = { version = "1.40.0", features = ["macros"] }
 ```
 
 It also makes sense to return a `Result`, as some functions may return one.
 DiMAS errors are always of type `Box<dyn core::error::Error>` and should be threadsafe.
 DiMAS provides a type definition `Result<T>` to make life easier
 
+Ensure that you use the multi-threaded runtime, otherwise dimas will panic. 
+Usually it is a good idea to limit the worker threads to the necessary amount.
+A good starting point is 3 workers.
+
 A suitable main program skeleton may look like:
 
 ```rust
 use dimas::prelude::*;
 
-#[tokio::main]
+#[tokio::main(worker_threads = 3)]
 async fn main() -> Result<()> {
 
     // your code
@@ -75,8 +78,8 @@ The `Cargo.toml` for this publisher/subscriber example should include
 
 ```toml
 [dependencies]
-dimas = version = "0.3"
-tokio = { version = "1",features = ["macros"] }
+dimas = version = "0.4"
+tokio = { version = "1.40.0",features = ["macros"] }
 ```
 
 ### Publisher
@@ -93,7 +96,7 @@ struct AgentProps {
     counter: u128,
 }
 
-#[tokio::main]
+#[tokio::main(worker_threads = 3)]
 async fn main() -> Result<()> {
     // create & initialize agents properties
     let properties = AgentProps { counter: 0 };
@@ -163,7 +166,7 @@ async fn callback(_ctx: Context<AgentProps>, message: Message) -> Result<()> {
     Ok(())
 }
 
-#[tokio::main]
+#[tokio::main(worker_threads = 3)]
 async fn main() -> Result<()> {
     // create & initialize agents properties
     let properties = AgentProps {};

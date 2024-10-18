@@ -6,12 +6,13 @@ rust-version.workspace = true
 edition.workspace = true
 version.workspace = true
 authors.workspace = true
-license-file.workspace = true
+#license = "NGMC"
+license-file = "LICENSE"
 keywords.workspace = true
 categories.workspace = true
 homepage.workspace = true
 repository.workspace = true
-description = "dimas-time - core library for DiMAS"
+description = "dimas-time - time library for DiMAS"
 documentation = "https://docs.rs/dimas-time/latest/dimas-time/"
 readme = "README.md"
 

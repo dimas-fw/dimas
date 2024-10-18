@@ -5,7 +5,8 @@ rust-version = { workspace = true }
 version = { workspace = true }
 edition = { workspace = true }
 authors = { workspace = true }
-license-file = { workspace = true }
+#license = "NGMC"
+license-file = "LICENSE"
 keywords = { workspace = true }
 categories = { workspace = true }
 homepage.workspace = true
@@ -27,7 +28,7 @@ dimas-config = { workspace = true }
 dimas-core = { workspace = true }
 dimas-time = { workspace = true }
 futures = { workspace = true }
-tokio = { workspace = true, features = ["signal", "time"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal", "sync", "time"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 zenoh = { workspace = true }
@@ -36,4 +37,4 @@ zenoh = { workspace = true }
 doc-comment = { workspace = true }
 
 [features]
-unstable = ["zenoh/unstable", "dimas-core/unstable", "dimas-com/unstable"]
+unstable = ["zenoh/unstable", "dimas-com/unstable", "dimas-core/unstable"]
