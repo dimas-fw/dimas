@@ -59,7 +59,7 @@ A suitable main program skeleton may look like:
 ```rust
 use dimas::prelude::*;
 
-#[tokio::main(worker_threads = 3)]
+#[dimas::main]
 async fn main() -> Result<()> {
 
     // your code
@@ -96,7 +96,7 @@ struct AgentProps {
     counter: u128,
 }
 
-#[tokio::main(worker_threads = 3)]
+#[dimas::main]
 async fn main() -> Result<()> {
     // create & initialize agents properties
     let properties = AgentProps { counter: 0 };
@@ -166,7 +166,7 @@ async fn callback(_ctx: Context<AgentProps>, message: Message) -> Result<()> {
     Ok(())
 }
 
-#[tokio::main(worker_threads = 3)]
+#[dimas::main]
 async fn main() -> Result<()> {
     // create & initialize agents properties
     let properties = AgentProps {};

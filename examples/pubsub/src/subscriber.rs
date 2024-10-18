@@ -29,7 +29,7 @@ async fn hello_deletion(ctx: Context<AgentProps>) -> Result<()> {
 	Ok(())
 }
 
-#[tokio::main(worker_threads = 3)]
+#[dimas::main]
 async fn main() -> Result<()> {
 	// initialize tracing/logging
 	init_tracing();

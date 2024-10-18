@@ -24,7 +24,7 @@
 //! struct AgentProps {}
 //!
 //! // we need a tokio runtime
-//! #[tokio::main(worker_threads = 3)]
+//! #[dimas::main]
 //! async fn main() -> Result<()> {
 //!   // create & initialize agents properties
 //!   let properties = AgentProps {};

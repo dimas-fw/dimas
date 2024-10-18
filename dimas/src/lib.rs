@@ -25,6 +25,7 @@ use std::{
 	sync::{Arc, RwLock},
 };
 use tokio::time::Duration;
+pub use dimas_macros::main;
 // endregion: --- modules
 
 // region:		--- builder_states

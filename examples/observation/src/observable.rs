@@ -57,7 +57,7 @@ async fn fibonacci(ctx: Context<AgentProps>) -> Result<Message> {
 	Ok(result)
 }
 
-#[tokio::main(worker_threads = 3)]
+#[dimas::main]
 async fn main() -> Result<()> {
 	// initialize tracing/logging
 	init_tracing();

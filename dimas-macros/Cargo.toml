@@ -1,0 +1,29 @@
+# Copyright © 2024 Stephan Kunz
+
+[package]
+name = "dimas-macros"
+rust-version.workspace = true
+edition.workspace = true
+version.workspace = true
+authors.workspace = true
+#license = "NGMC"
+license-file = "LICENSE"
+keywords.workspace = true
+categories.workspace = true
+homepage.workspace = true
+repository.workspace = true
+description = "proc-macros for dimas"
+documentation = "https://docs.rs/dimas-macros/latest/dimas-macros/"
+readme = "README.md"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = { version = "1", features = ["nightly"] }
+quote = "1.0.37"
+syn = { version = "2.0.79", features = ["full"] }
+tokio = { workspace = true, features = ["rt-multi-thread"] }
+
+[lints]
+workspace = true

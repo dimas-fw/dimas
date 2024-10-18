@@ -37,7 +37,7 @@ async fn pong_received(_ctx: Context<AgentProps>, message: QueryableMsg) -> Resu
 	Ok(())
 }
 
-#[tokio::main(worker_threads = 3)]
+#[dimas::main]
 async fn main() -> Result<()> {
 	// initialize tracing/logging
 	init_tracing();
