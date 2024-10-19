@@ -1,6 +1,8 @@
 // Copyright © 2024 Stephan Kunz
 
-#[dimas_macros::main(additional_threads = 5)]
+//! Doku
+
+#[dimas_macros::main(additional_threads = 1)]
 async fn main() -> std::result::Result<(), std::io::Error> {
 	println!("Hello world");
 	Ok(())

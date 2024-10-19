@@ -50,6 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - feature `unstable`, which encapsulates zenoh unstable feature
 - additional settings in: `PublisherBuilder`, `SubscriberBuilder`,
   `Querier`, `QueryableBuilder`. `ObserableBuilder`. `Observer`
+- attribute macro for `main` function: `#[dimas::main(...)]`
 
 ### Changed
 
