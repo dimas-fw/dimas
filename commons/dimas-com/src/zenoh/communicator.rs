@@ -1,6 +1,6 @@
 // Copyright © 2023 Stephan Kunz
 
-//! Communicator implements the communication capabilities.
+//! Implements the zenoh communication capabilities.
 //!
 
 #[doc(hidden)]
@@ -25,6 +25,7 @@ use zenoh::{
 	sample::SampleKind,
 	Session, Wait,
 };
+use crate::traits::Communicator as CommunicatorTrait;
 // endregion:	--- modules
 
 // region:		--- Communicator
@@ -37,57 +38,20 @@ pub struct Communicator {
 	mode: String,
 }
 
-impl Communicator {
-	/// Constructor
-	/// # Errors
-	pub fn new(config: &dimas_config::Config) -> Result<Self> {
-		let cfg = config.zenoh_config();
-		#[cfg(feature = "unstable")]
-		let kind = cfg.mode().unwrap_or(WhatAmI::Peer).to_string();
-		#[cfg(not(feature = "unstable"))]
-		let kind = WhatAmI::Peer.to_string();
-		let session = Arc::new(
-			zenoh::open(cfg.to_owned())
-				.wait()
-				.map_err(|source| Error::CreateCommunicator { source })?,
-		);
-		Ok(Self {
-			session,
-			mode: kind,
-		})
-	}
-
-	/// Get globally unique ID
-	#[must_use]
-	pub fn uuid(&self) -> String {
-		self.session.zid().to_string()
-	}
-
-	/// Get session reference
-	#[must_use]
-	pub fn session(&self) -> &Session {
-		self.session.as_ref()
-	}
-
-	/// Get session mode
-	#[must_use]
-	pub const fn mode(&self) -> &String {
-		&self.mode
-	}
-
-	/// Send an ad hoc put `message` of type `Message` using the given `selector`.
+impl CommunicatorTrait for Communicator {
+	/// Send an ad hoc put message of type [`Message`] using the given `selector`.
 	/// # Errors
 	#[allow(clippy::needless_pass_by_value)]
-	pub fn put(&self, selector: &str, message: Message) -> Result<()> {
+	fn put(&self, selector: &str, message: Message) -> Result<()> {
 		self.session
 			.put(selector, message.value())
 			.wait()
 			.map_err(|source| Error::PublishingPut { source }.into())
 	}
 
-	/// Send an ad hoc delete using the given `selector`.
+	/// Send an ad hoc delete message using the given `selector`.
 	/// # Errors
-	pub fn delete(&self, selector: &str) -> Result<()> {
+	fn delete(&self, selector: &str) -> Result<()> {
 		self.session
 			.delete(selector)
 			.wait()
@@ -98,7 +62,7 @@ impl Communicator {
 	/// Answers are collected via callback
 	/// # Errors
 	/// # Panics
-	pub fn get<F>(&self, selector: &str, message: Option<Message>, mut callback: F) -> Result<()>
+	fn get<F>(&self, selector: &str, message: Option<Message>, mut callback: F) -> Result<()>
 	where
 		F: FnMut(QueryableMsg) -> Result<()>,
 	{
@@ -154,6 +118,45 @@ impl Communicator {
 			}
 		}
 		Ok(())
+	}
+}
+
+impl Communicator {
+	/// Constructor
+	/// # Errors
+	pub fn new(config: &dimas_config::Config) -> Result<Self> {
+		let cfg = config.zenoh_config();
+		#[cfg(feature = "unstable")]
+		let kind = cfg.mode().unwrap_or(WhatAmI::Peer).to_string();
+		#[cfg(not(feature = "unstable"))]
+		let kind = WhatAmI::Peer.to_string();
+		let session = Arc::new(
+			zenoh::open(cfg.to_owned())
+				.wait()
+				.map_err(|source| Error::CreateCommunicator { source })?,
+		);
+		Ok(Self {
+			session,
+			mode: kind,
+		})
+	}
+
+	/// Get globally unique ID
+	#[must_use]
+	pub fn uuid(&self) -> String {
+		self.session.zid().to_string()
+	}
+
+	/// Get session reference
+	#[must_use]
+	pub fn session(&self) -> &Session {
+		self.session.as_ref()
+	}
+
+	/// Get session mode
+	#[must_use]
+	pub const fn mode(&self) -> &String {
+		&self.mode
 	}
 }
 // endregion:	--- Communicator

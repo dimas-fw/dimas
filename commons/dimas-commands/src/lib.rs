@@ -15,7 +15,7 @@ use chrono::Local;
 use core::time::Duration;
 use dimas_com::{
 	messages::{AboutEntity, PingEntity, ScoutingEntity},
-	Communicator,
+	zenoh::Communicator,
 };
 use dimas_config::Config;
 use dimas_core::{
@@ -40,6 +40,8 @@ use zenoh::{
 #[cfg(feature = "std")]
 #[must_use]
 pub fn about_list(com: &Communicator, base_selector: &String) -> Vec<AboutEntity> {
+    use dimas_com::traits::Communicator;
+
 	let mut map: HashMap<String, AboutEntity> = HashMap::new();
 
 	let selector = selector_from("signal", Some(base_selector));
@@ -63,6 +65,8 @@ pub fn about_list(com: &Communicator, base_selector: &String) -> Vec<AboutEntity
 #[cfg(feature = "std")]
 #[must_use]
 pub fn ping_list(com: &Communicator, base_selector: &String) -> Vec<(PingEntity, i64)> {
+    use dimas_com::traits::Communicator;
+
 	let mut map: HashMap<String, (PingEntity, i64)> = HashMap::new();
 
 	let selector = selector_from("signal", Some(base_selector));
@@ -131,6 +135,8 @@ pub fn set_state(
 	base_selector: &String,
 	state: Option<OperationState>,
 ) -> Vec<AboutEntity> {
+    use dimas_com::traits::Communicator;
+
 	let mut map: HashMap<String, AboutEntity> = HashMap::new();
 
 	let selector = selector_from("signal", Some(base_selector));
@@ -155,6 +161,8 @@ pub fn set_state(
 #[cfg(feature = "std")]
 #[must_use]
 pub fn shutdown(com: &Communicator, base_selector: &String) -> Vec<AboutEntity> {
+    use dimas_com::traits::Communicator;
+
 	let mut map: HashMap<String, AboutEntity> = HashMap::new();
 
 	let selector = selector_from("signal", Some(base_selector));

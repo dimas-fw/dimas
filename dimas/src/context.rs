@@ -35,11 +35,11 @@ use crate::agent::Agent;
 use crate::error::Error;
 use core::fmt::Debug;
 #[cfg(feature = "unstable")]
-use dimas_com::LivelinessSubscriber;
-use dimas_com::{
+use dimas_com::zenoh::LivelinessSubscriber;
+use dimas_com::{traits::Communicator as CommunicatorTrait, zenoh::{
 	observable::Observable, observer::Observer, publisher::Publisher, querier::Querier,
 	queryable::Queryable, subscriber::Subscriber, Communicator,
-};
+}};
 use dimas_config::Config;
 #[cfg(doc)]
 use dimas_core::traits::Context;

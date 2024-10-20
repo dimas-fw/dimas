@@ -9,7 +9,9 @@ use super::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 #[cfg(doc)]
 use crate::agent::Agent;
 use crate::error::Error;
-use dimas_com::subscriber::Subscriber;
+use dimas_com::zenoh::subscriber::{
+	ArcDeleteCallback, ArcPutCallback, DeleteCallback, PutCallback, Subscriber,
+};
 use dimas_core::{
 	enums::OperationState, message_types::Message, traits::Context, utils::selector_from, Result,
 };
@@ -18,8 +20,6 @@ use std::sync::{Arc, RwLock};
 use tokio::sync::Mutex;
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
-
-use dimas_com::subscriber::{ArcDeleteCallback, ArcPutCallback, DeleteCallback, PutCallback};
 // endregion:	--- modules
 
 // region:    	--- types

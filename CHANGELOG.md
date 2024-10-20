@@ -21,13 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - timeout handling to `Querier` and `Observer`
 - macro `dimas::main`
+- module for time related stuff
+- trait `Communicator`
 
 ### Changed
 
-- filenames of module `liveliness`
+- modules structured
 - method for getting a `QuerierBuilder` from an `Agent` to `querier()`
 - error handling without `thiserror`
-- module structure reworked
 - usage of `tokio::main` macro replaced with `dimas::main` macro
 
 ### Fixed

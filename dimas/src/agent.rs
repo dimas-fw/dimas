@@ -56,16 +56,14 @@ use crate::error::Error;
 use chrono::Local;
 use core::fmt::Debug;
 use core::time::Duration;
-use dimas_com::observable::Observable;
-use dimas_com::observer::Observer;
 #[cfg(feature = "unstable")]
-use dimas_com::LivelinessSubscriber;
+use dimas_com::zenoh::LivelinessSubscriber;
 use dimas_com::{
 	messages::{AboutEntity, PingEntity},
-	publisher::Publisher,
-	querier::Querier,
-	queryable::Queryable,
-	subscriber::Subscriber,
+	zenoh::{
+		publisher::Publisher, querier::Querier, queryable::Queryable, subscriber::Subscriber,
+		Observable, Observer,
+	},
 };
 use dimas_config::Config;
 use dimas_core::{

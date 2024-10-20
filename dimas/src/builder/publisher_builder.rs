@@ -8,7 +8,7 @@ use super::{NoSelector, NoStorage, Selector, Storage};
 #[cfg(doc)]
 use crate::agent::Agent;
 use crate::error::Error;
-use dimas_com::publisher::Publisher;
+use dimas_com::zenoh::publisher::Publisher;
 use dimas_core::{enums::OperationState, traits::Context, utils::selector_from, Result};
 use std::sync::{Arc, RwLock};
 use zenoh::bytes::Encoding;

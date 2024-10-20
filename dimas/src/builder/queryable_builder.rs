@@ -14,9 +14,7 @@ use zenoh::sample::Locality;
 
 use super::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use crate::error::Error;
-use dimas_com::queryable::Queryable;
-
-use dimas_com::queryable::{ArcGetCallback, GetCallback};
+use dimas_com::zenoh::queryable::{ArcGetCallback, GetCallback, Queryable};
 // endregion:	--- modules
 
 // region:    	--- types

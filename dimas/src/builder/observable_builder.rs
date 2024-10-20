@@ -5,7 +5,7 @@
 // region:		--- modules
 use super::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use crate::error::Error;
-use dimas_com::observable::{
+use dimas_com::zenoh::observable::{
 	ArcControlCallback, ArcExecutionCallback, ArcFeedbackCallback, ControlCallback,
 	ExecutionCallback, FeedbackCallback, Observable,
 };

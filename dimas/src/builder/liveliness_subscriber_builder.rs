@@ -6,7 +6,9 @@
 // region:		--- modules
 use super::{Callback, NoCallback, NoStorage, Storage};
 use crate::error::Error;
-use dimas_com::liveliness::{ArcLivelinessCallback, LivelinessCallback, LivelinessSubscriber};
+use dimas_com::zenoh::liveliness::{
+	ArcLivelinessCallback, LivelinessCallback, LivelinessSubscriber,
+};
 use dimas_core::{enums::OperationState, traits::Context, utils::selector_from, Result};
 use futures::future::Future;
 use std::{

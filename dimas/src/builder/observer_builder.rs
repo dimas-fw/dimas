@@ -8,7 +8,7 @@ use super::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use crate::agent::Agent;
 use crate::error::Error;
 use core::time::Duration;
-use dimas_com::observer::{
+use dimas_com::zenoh::observer::{
 	ArcControlCallback, ArcResponseCallback, ControlCallback, Observer, ResponseCallback,
 };
 use dimas_core::{

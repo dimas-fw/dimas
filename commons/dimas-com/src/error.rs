@@ -23,6 +23,8 @@ use zenoh::query::Query;
 // region:		--- Error
 /// Com error type.
 pub enum Error {
+	/// Not available/implemented
+	NotImplemented,
 	/// Invalid selector
 	InvalidSelector(String),
 	/// Creation of the [`Communicator`] was not possible
@@ -90,10 +92,12 @@ impl core::fmt::Display for Error {
 impl core::fmt::Debug for Error {
 	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		match self {
+			Self::NotImplemented => {
+				write!(f, "no implementation available")
+			}
 			Self::InvalidSelector(location) => {
 				write!(f, "invalid selector for '{location}'")
 			}
-
 			Self::CreateCommunicator { source } => {
 				write!(f, "creation of zenoh session failed: reason {source}")
 			}
@@ -141,7 +145,8 @@ impl std::error::Error for Error {
 			| Self::QueryCallback { ref source }
 			| Self::SubscriberCreation { ref source }
 			| Self::SubscriberCallback { ref source } => Some(source.as_ref()),
-			Self::AccessPublisher
+			Self::NotImplemented
+			| Self::AccessPublisher
 			| Self::AccessingQuerier { .. }
 			| Self::AccessingQueryable { .. }
 			| Self::AccessingObservable { .. }

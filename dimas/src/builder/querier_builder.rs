@@ -6,7 +6,7 @@
 use super::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use crate::error::Error;
 use core::time::Duration;
-use dimas_com::querier::Querier;
+use dimas_com::zenoh::querier::Querier;
 use dimas_core::{
 	enums::OperationState, message_types::QueryableMsg, traits::Context, utils::selector_from,
 	Result,
@@ -23,7 +23,7 @@ use zenoh::{
 	query::{ConsolidationMode, QueryTarget},
 };
 
-use dimas_com::querier::{ArcGetCallback, GetCallback};
+use dimas_com::zenoh::querier::{ArcGetCallback, GetCallback};
 // endregion:	--- modules
 
 // region:    	--- types

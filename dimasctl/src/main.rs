@@ -5,7 +5,7 @@
 // region:		--- modules
 use clap::{Parser, Subcommand};
 use core::time::Duration;
-use dimas_com::Communicator;
+use dimas_com::zenoh::Communicator;
 use dimas_config::Config;
 use dimas_core::enums::OperationState;
 use std::thread;
