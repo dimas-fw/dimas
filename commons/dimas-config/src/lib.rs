@@ -224,8 +224,8 @@ impl Config {
 	/// Method to extract the zenoh configuration from [`Config`].<br>
 	/// Can be passed to `zenoh::open()`.
 	#[must_use]
-	pub fn zenoh_config(&self) -> zenoh::Config {
-		self.zenoh.clone()
+	pub const fn zenoh_config(&self) -> &zenoh::Config {
+		&self.zenoh
 	}
 }
 // endregion:	--- Config

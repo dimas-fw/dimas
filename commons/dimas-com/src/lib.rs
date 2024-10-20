@@ -12,7 +12,7 @@ pub mod error;
 mod communicator;
 /// the liveliness subscriber
 #[cfg(feature = "unstable")]
-mod liveliness_subscriber;
+pub mod liveliness;
 /// the core messages
 pub mod messages;
 /// the observable
@@ -31,7 +31,7 @@ pub mod subscriber;
 // flatten
 pub use communicator::Communicator;
 #[cfg(feature = "unstable")]
-pub use liveliness_subscriber::*;
+pub use liveliness::LivelinessSubscriber;
 pub use observable::Observable;
 pub use observer::Observer;
 pub use publisher::Publisher;

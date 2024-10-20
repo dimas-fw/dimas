@@ -101,7 +101,7 @@ pub fn ping_list(com: &Communicator, base_selector: &String) -> Vec<(PingEntity,
 pub fn scouting_list(config: &Config) -> Vec<ScoutingEntity> {
 	let mut map: HashMap<String, ScoutingEntity> = HashMap::new();
 	let what = WhatAmI::Router | WhatAmI::Peer | WhatAmI::Client;
-	let receiver = zenoh::scout(what, config.zenoh_config())
+	let receiver = zenoh::scout(what, config.zenoh_config().to_owned())
 		.wait()
 		.expect("scouting failed");
 

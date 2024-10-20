@@ -47,7 +47,7 @@ impl Communicator {
 		#[cfg(not(feature = "unstable"))]
 		let kind = WhatAmI::Peer.to_string();
 		let session = Arc::new(
-			zenoh::open(cfg)
+			zenoh::open(cfg.to_owned())
 				.wait()
 				.map_err(|source| Error::CreateCommunicator { source })?,
 		);
@@ -65,8 +65,8 @@ impl Communicator {
 
 	/// Get session reference
 	#[must_use]
-	pub fn session(&self) -> Arc<Session> {
-		self.session.clone()
+	pub fn session(&self) -> &Session {
+		self.session.as_ref()
 	}
 
 	/// Get session mode

@@ -1,6 +1,6 @@
 // Copyright © 2023 Stephan Kunz
 
-//! simplified interface of dimas.
+//! Simplified interface of dimas.
 //! Typically it is sufficient to include the prelude with
 //! ```use dimas::prelude::*;```
 
@@ -8,7 +8,6 @@
 pub extern crate bitcode;
 pub extern crate tokio;
 
-// region:    --- modules
 // bitcode encoding/decoding
 pub use bitcode::{Decode, Encode};
 
@@ -36,10 +35,3 @@ pub use dimas_core::utils::init_tracing;
 pub use dimas_core::Result;
 pub use dimas_macros::main;
 pub use dimas_time::Timer;
-// endregeion:  --- modules
-
-// region:    --- types
-// Generic wrapper tuple struct for newtype pattern
-//#[repr(transparent)]
-//pub struct Wrap<T>(pub T);
-// endregion: --- types

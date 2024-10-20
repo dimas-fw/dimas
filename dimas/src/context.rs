@@ -155,7 +155,7 @@ where
 		self.communicator.mode()
 	}
 
-	fn session(&self) -> Arc<Session> {
+	fn session(&self) -> &Session {
 		self.communicator.session()
 	}
 

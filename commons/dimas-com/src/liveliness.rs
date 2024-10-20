@@ -32,6 +32,7 @@ use zenoh::sample::SampleKind;
 
 // region:    	--- types
 /// Type definition for a boxed liveliness subscribers callback
+#[allow(clippy::module_name_repetitions)]
 pub type LivelinessCallback<P> =
 	Box<dyn FnMut(Context<P>, String) -> BoxFuture<'static, Result<()>> + Send + Sync>;
 /// Type definition for a liveliness subscribers atomic reference counted callback
@@ -102,8 +103,8 @@ where
 
 	/// get token
 	#[must_use]
-	pub fn token(&self) -> String {
-		self.token.clone()
+	pub const fn token(&self) -> &String {
+		&self.token
 	}
 
 	/// Start or restart the liveliness subscriber.

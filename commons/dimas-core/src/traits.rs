@@ -65,7 +65,7 @@ pub trait ContextAbstraction: Debug + Send + Sync {
 
 	/// Get zenoh session reference
 	#[must_use]
-	fn session(&self) -> Arc<Session>;
+	fn session(&self) -> &Session;
 
 	/// Get sender reference
 	#[must_use]
