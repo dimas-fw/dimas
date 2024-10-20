@@ -46,11 +46,12 @@ dimas = "0.4.0"
 tokio = { version = "1.40.0" }
 ```
 
-It also makes sense to return a `Result`, as many DimAs `Agent`s functions return one.
-DiMAS errors are always of type `Box<dyn core::error::Error>` and must be thread safe.
+It also makes sense to return a `Result`, as DimAs `Agent`s functions return one.
+DiMAS errors are of type `Box<dyn core::error::Error>` and must be thread safe.
 DiMAS provides a type definition `Result<T>` to make life easier
 
-DiMAS also provides a `main` attribute macro to create the runtime environment.
+DiMAS also provides a `main` attribute macro to create the runtime environment
+and a `prelude` to import most used declarations.
 
 A suitable main program skeleton may look like:
 

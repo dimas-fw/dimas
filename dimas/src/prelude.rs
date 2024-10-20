@@ -7,17 +7,17 @@
 pub extern crate bitcode;
 
 // region:    --- modules
-// re-exports
-// Duration for Timers
-pub use tokio::time::Duration;
-// used std synchronisation primitives
-pub use std::sync::{Arc, RwLock};
-
 // bitcode encoding/decoding
 pub use bitcode::{Decode, Encode};
+
+// Duration from tokio
+pub use tokio::time::Duration;
+
 // zenoh stuff
 pub use zenoh::qos::CongestionControl;
 pub use zenoh::qos::Priority;
+#[cfg(feature = "unstable")]
+pub use zenoh::qos::Reliability;
 pub use zenoh::query::ConsolidationMode;
 pub use zenoh::query::QueryTarget;
 #[cfg(feature = "unstable")]
@@ -25,17 +25,6 @@ pub use zenoh::sample::Locality;
 
 // dimas stuff
 pub use crate::agent::Agent;
-#[cfg(feature = "unstable")]
-pub use crate::builder::LivelinessSubscriberBuilder;
-pub use crate::builder::ObservableBuilder;
-pub use crate::builder::ObserverBuilder;
-pub use crate::builder::PublisherBuilder;
-pub use crate::builder::QuerierBuilder;
-pub use crate::builder::QueryableBuilder;
-pub use crate::builder::SubscriberBuilder;
-pub use crate::builder::TimerBuilder;
-pub use dimas_time::Timer;
-
 pub use dimas_config::Config;
 pub use dimas_core::message_types::{
 	ControlResponse, Message, ObservableResponse, QueryMsg, QueryableMsg,
@@ -43,6 +32,7 @@ pub use dimas_core::message_types::{
 pub use dimas_core::traits::Context;
 pub use dimas_core::utils::init_tracing;
 pub use dimas_core::Result;
+pub use dimas_time::Timer;
 // endregeion:  --- modules
 
 // region:    --- types
