@@ -40,7 +40,7 @@ use zenoh::{
 #[cfg(feature = "std")]
 #[must_use]
 pub fn about_list(com: &Communicator, base_selector: &String) -> Vec<AboutEntity> {
-    use dimas_com::traits::Communicator;
+	use dimas_com::traits::Communicator;
 
 	let mut map: HashMap<String, AboutEntity> = HashMap::new();
 
@@ -65,7 +65,7 @@ pub fn about_list(com: &Communicator, base_selector: &String) -> Vec<AboutEntity
 #[cfg(feature = "std")]
 #[must_use]
 pub fn ping_list(com: &Communicator, base_selector: &String) -> Vec<(PingEntity, i64)> {
-    use dimas_com::traits::Communicator;
+	use dimas_com::traits::Communicator;
 
 	let mut map: HashMap<String, (PingEntity, i64)> = HashMap::new();
 
@@ -135,7 +135,7 @@ pub fn set_state(
 	base_selector: &String,
 	state: Option<OperationState>,
 ) -> Vec<AboutEntity> {
-    use dimas_com::traits::Communicator;
+	use dimas_com::traits::Communicator;
 
 	let mut map: HashMap<String, AboutEntity> = HashMap::new();
 
@@ -161,7 +161,7 @@ pub fn set_state(
 #[cfg(feature = "std")]
 #[must_use]
 pub fn shutdown(com: &Communicator, base_selector: &String) -> Vec<AboutEntity> {
-    use dimas_com::traits::Communicator;
+	use dimas_com::traits::Communicator;
 
 	let mut map: HashMap<String, AboutEntity> = HashMap::new();
 

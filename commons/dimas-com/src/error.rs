@@ -13,7 +13,7 @@ extern crate std;
 use std::prelude::rust_2021::*;
 
 #[cfg(doc)]
-use super::{Communicator, Observable, Observer, Publisher, Querier, Queryable, Subscriber};
+use crate::zenoh::{Communicator, Observable, Observer, Publisher, Querier, Queryable, Subscriber};
 #[cfg(doc)]
 use dimas_core::message_types::Message;
 #[cfg(doc)]

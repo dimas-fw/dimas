@@ -7,9 +7,9 @@
 /// Modules errors
 pub mod error;
 
-/// `Communicator` trait
-pub mod traits;
 /// the core messages
 pub mod messages;
+/// `Communicator` trait
+pub mod traits;
 /// zenoh implementation
 pub mod zenoh;

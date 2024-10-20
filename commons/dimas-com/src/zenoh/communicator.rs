@@ -11,6 +11,7 @@ extern crate std;
 
 // region:		--- modules
 use crate::error::Error;
+use crate::traits::Communicator as CommunicatorTrait;
 use alloc::sync::Arc;
 use core::{fmt::Debug, time::Duration};
 use dimas_core::message_types::{Message, QueryableMsg};
@@ -25,7 +26,6 @@ use zenoh::{
 	sample::SampleKind,
 	Session, Wait,
 };
-use crate::traits::Communicator as CommunicatorTrait;
 // endregion:	--- modules
 
 // region:		--- Communicator
