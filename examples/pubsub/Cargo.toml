@@ -23,6 +23,5 @@ path = "src/subscriber.rs"
 
 [dependencies]
 dimas = { workspace = true, features = ["unstable"] }
-tokio = { workspace = true }
 
 [dev-dependencies]

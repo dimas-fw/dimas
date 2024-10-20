@@ -4,7 +4,9 @@
 //! Typically it is sufficient to include the prelude with
 //! ```use dimas::prelude::*;```
 
+// to avoid adding these crates to dependencies
 pub extern crate bitcode;
+pub extern crate tokio;
 
 // region:    --- modules
 // bitcode encoding/decoding
@@ -32,6 +34,7 @@ pub use dimas_core::message_types::{
 pub use dimas_core::traits::Context;
 pub use dimas_core::utils::init_tracing;
 pub use dimas_core::Result;
+pub use dimas_macros::main;
 pub use dimas_time::Timer;
 // endregeion:  --- modules
 

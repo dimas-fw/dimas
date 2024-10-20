@@ -25,6 +25,5 @@ path = "src/pong.rs"
 chrono = { workspace = true }
 dimas = { workspace = true, features = ["unstable"] }
 hostname = { workspace = true }
-tokio = { workspace = true }
 
 [dev-dependencies]

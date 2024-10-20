@@ -17,7 +17,9 @@ struct Config {
 
 impl Default for Config {
 	fn default() -> Self {
-		Self { additional_threads: 3usize }
+		Self {
+			additional_threads: 3usize,
+		}
 	}
 }
 
@@ -32,13 +34,13 @@ fn parse_config(args: Arguments) -> Result<Config, syn::Error> {
 			Meta::NameValue(named_value) => {
 				// get ident
 				let ident = named_value
-                    .path
-                    .get_ident()
-                    .ok_or_else(|| {
-                        syn::Error::new_spanned(&named_value, "must have a specified ident")
-                    })?
-                    .to_string()
-                    .to_lowercase();
+					.path
+					.get_ident()
+					.ok_or_else(|| {
+						syn::Error::new_spanned(&named_value, "must have a specified ident")
+					})?
+					.to_string()
+					.to_lowercase();
 
 				// check
 				let lit = match &named_value.value {
@@ -46,22 +48,26 @@ fn parse_config(args: Arguments) -> Result<Config, syn::Error> {
 					expr => return Err(syn::Error::new_spanned(expr, "must be a literal")),
 				};
 				match ident.as_str() {
-                    "additional_threads" => {
-						config.additional_threads =  match lit {
+					"additional_threads" => {
+						config.additional_threads = match lit {
 							syn::Lit::Int(int_lit) => match int_lit.base10_parse::<usize>() {
 								Ok(value) => value,
-								Err(err) => return Err(syn::Error::new(
-									syn::spanned::Spanned::span(lit),
-									format!("value `{ident}` is no positive integer: {err}"),
-								)),
+								Err(err) => {
+									return Err(syn::Error::new(
+										syn::spanned::Spanned::span(lit),
+										format!("value `{ident}` is no positive integer: {err}"),
+									))
+								}
 							},
-							_ => return Err(syn::Error::new(
-								syn::spanned::Spanned::span(lit),
-								format!("value `{ident}` is no positive integer"),
-							)),
+							_ => {
+								return Err(syn::Error::new(
+									syn::spanned::Spanned::span(lit),
+									format!("value `{ident}` is no positive integer"),
+								))
+							}
 						};
-                    }
- 					_ => return Err(syn::Error::new_spanned(&named_value, UNSUPPORTED)),
+					}
+					_ => return Err(syn::Error::new_spanned(&named_value, UNSUPPORTED)),
 				}
 			}
 			Meta::Path(path) => {
