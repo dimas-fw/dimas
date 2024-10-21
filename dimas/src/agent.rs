@@ -45,6 +45,8 @@
 //!
 
 // region:		--- modules
+#[cfg(doc)]
+use dimas_com::zenoh::{LivelinessSubscriber, Observable, Observer, Publisher, Queryable, Querier, Subscriber};
 #[cfg(feature = "unstable")]
 use crate::builder::LivelinessSubscriberBuilder;
 use crate::builder::{
@@ -58,8 +60,8 @@ use core::fmt::Debug;
 use core::time::Duration;
 use dimas_com::messages::{AboutEntity, PingEntity};
 #[cfg(feature = "unstable")]
-use dimas_com::traits::LivelinessSubscriber;
-use dimas_com::traits::{Observer, Publisher, Querier, Responder};
+use dimas_com::traits::LivelinessSubscriber as LivelinessSubscriberTrait;
+use dimas_com::traits::{Observer as ObserverTrait, Publisher as PublisherTrait, Querier as QuerierTrait, Responder as ResponderTrait};
 use dimas_config::Config;
 use dimas_core::{
 	enums::{OperationState, Signal, TaskSignal},
@@ -339,7 +341,7 @@ where
 	) -> LivelinessSubscriberBuilder<
 		P,
 		crate::builder::NoCallback,
-		crate::builder::Storage<Box<dyn LivelinessSubscriber>>,
+		crate::builder::Storage<Box<dyn LivelinessSubscriberTrait>>,
 	> {
 		LivelinessSubscriberBuilder::new(self.context.clone())
 			.storage(self.context.liveliness_subscribers().clone())
@@ -355,7 +357,7 @@ where
 		crate::builder::NoCallback,
 		crate::builder::NoCallback,
 		crate::builder::NoCallback,
-		crate::builder::Storage<Box<dyn Responder>>,
+		crate::builder::Storage<Box<dyn ResponderTrait>>,
 	> {
 		ObservableBuilder::new(self.context.clone()).storage(self.context.observables().clone())
 	}
@@ -369,7 +371,7 @@ where
 		crate::builder::NoSelector,
 		crate::builder::NoCallback,
 		crate::builder::NoCallback,
-		crate::builder::Storage<Box<dyn Observer>>,
+		crate::builder::Storage<Box<dyn ObserverTrait>>,
 	> {
 		ObserverBuilder::new(self.context.clone()).storage(self.context.observers().clone())
 	}
@@ -378,7 +380,7 @@ where
 	#[must_use]
 	pub fn publisher(
 		&self,
-	) -> PublisherBuilder<P, crate::builder::NoSelector, crate::builder::Storage<Box<dyn Publisher>>>
+	) -> PublisherBuilder<P, crate::builder::NoSelector, crate::builder::Storage<Box<dyn PublisherTrait>>>
 	{
 		PublisherBuilder::new(self.context.clone()).storage(self.context.publishers().clone())
 	}
@@ -391,7 +393,7 @@ where
 		P,
 		crate::builder::NoSelector,
 		crate::builder::NoCallback,
-		crate::builder::Storage<Box<dyn Querier>>,
+		crate::builder::Storage<Box<dyn QuerierTrait>>,
 	> {
 		QuerierBuilder::new(self.context.clone()).storage(self.context.queries().clone())
 	}
@@ -404,7 +406,7 @@ where
 		P,
 		crate::builder::NoSelector,
 		crate::builder::NoCallback,
-		crate::builder::Storage<Box<dyn Responder>>,
+		crate::builder::Storage<Box<dyn ResponderTrait>>,
 	> {
 		QueryableBuilder::new(self.context.clone()).storage(self.context.queryables().clone())
 	}
@@ -417,7 +419,7 @@ where
 		P,
 		crate::builder::NoSelector,
 		crate::builder::NoCallback,
-		crate::builder::Storage<Box<dyn Responder>>,
+		crate::builder::Storage<Box<dyn ResponderTrait>>,
 	> {
 		SubscriberBuilder::new(self.context.clone()).storage(self.context.subscribers().clone())
 	}

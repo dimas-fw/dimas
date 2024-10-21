@@ -1,6 +1,6 @@
 // Copyright © 2024 Stephan Kunz
 
-//! Trait for communication capabilities.
+//! Traits for communication capabilities.
 //!
 
 #[doc(hidden)]

@@ -1,7 +1,9 @@
 // Copyright © 2023 Stephan Kunz
 
-//! Simplified interface of dimas.
+//! Most commonly used interface of dimas.
+//! 
 //! Typically it is sufficient to include the prelude with
+//! 
 //! ```use dimas::prelude::*;```
 
 // to avoid adding these crates to dependencies

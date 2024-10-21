@@ -1,6 +1,6 @@
 // Copyright © 2024 Stephan Kunz
 
-//! Errors from com
+//! Errors
 
 #[doc(hidden)]
 extern crate alloc;

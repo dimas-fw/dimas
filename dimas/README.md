@@ -32,10 +32,11 @@ changes but may include enhancements.
 
 ## Usage
 
-DiMAS needs the `tokio` runtime, you have to define your `main` function as an
-`async` function.
+DiMAS uses the `tokio` runtime, you have to define your `main` function as an
+`async` function. The declaration of tokio crate is not necessary, unless you use
+tokio functionality within your implementations.
 
-So include `dimas` together with `tokio` runtime in the dependencies section of
+So include `dimas` runtime in the dependencies section of
 your `Cargo.toml`.
 
 Your `Cargo.toml` should include:
@@ -43,10 +44,9 @@ Your `Cargo.toml` should include:
 ```toml
 [dependencies]
 dimas = "0.4.0"
-tokio = { version = "1.40.0" }
 ```
 
-It also makes sense to return a `Result`, as DimAs `Agent`s functions return one.
+It makes sense to return a `Result`, as most DiMAS `Agent`s functions return one.
 DiMAS errors are of type `Box<dyn core::error::Error>` and must be thread safe.
 DiMAS provides a type definition `Result<T>` to make life easier
 
@@ -78,7 +78,6 @@ The `Cargo.toml` for this publisher/subscriber example should include
 ```toml
 [dependencies]
 dimas = version = "0.4"
-tokio = { version = "1.40.0" }
 ```
 
 ### Publisher
@@ -148,7 +147,7 @@ async fn main() -> Result<()> {
 }
 ```
 
-#### Subscriber
+### Subscriber
 
 The `subscriber.rs` should look like this:
 
@@ -192,7 +191,7 @@ async fn main() -> Result<()> {
 }
 ```
 
-#### More examples
+## More examples
 
 You can find some simple examples in [dimas-fw/dimas/examples](https://github.com/dimas-fw/dimas/blob/main/examples/README.md)
 and more complex examples in [dimas-fw/examples](https://github.com/dimas-fw/examples/blob/main/README.md)

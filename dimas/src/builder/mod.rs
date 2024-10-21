@@ -1,6 +1,8 @@
 // Copyright © 2023 Stephan Kunz
 #![allow(clippy::module_name_repetitions)]
-//! Module handles communication with other Agents.
+//! Module provides builder for communication with other Agents.
+//! 
+//! Currently only communication via `zenoh` is implemented.
 //!
 
 // region:    	--- modules

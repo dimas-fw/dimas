@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- use zenoh release 1.0.0
 - modules structured
 - method for getting a `QuerierBuilder` from an `Agent` to `querier()`
 - error handling without `thiserror`

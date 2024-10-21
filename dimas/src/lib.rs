@@ -5,8 +5,10 @@
 #![warn(missing_docs)]
 #![doc = include_str!("../README.md")]
 
-//! Public interface of dimas.
+//! ## Public interface
+//! 
 //! Typically it is sufficient to include the prelude with
+//! 
 //! ```use dimas::prelude::*;```
 
 #[cfg(doctest)]
