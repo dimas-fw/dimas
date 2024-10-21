@@ -5,9 +5,12 @@
 // region:		--- modules
 use super::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use crate::error::Error;
-use dimas_com::zenoh::observable::{
-	ArcControlCallback, ArcExecutionCallback, ArcFeedbackCallback, ControlCallback,
-	ExecutionCallback, FeedbackCallback, Observable,
+use dimas_com::{
+	traits::Responder,
+	zenoh::observable::{
+		ArcControlCallback, ArcExecutionCallback, ArcFeedbackCallback, ControlCallback,
+		ExecutionCallback, FeedbackCallback, Observable,
+	},
 };
 use dimas_core::{
 	enums::OperationState,
@@ -246,8 +249,8 @@ where
 	#[must_use]
 	pub fn storage(
 		self,
-		storage: Arc<RwLock<std::collections::HashMap<String, Observable<P>>>>,
-	) -> ObservableBuilder<P, K, CC, FC, EF, Storage<Observable<P>>> {
+		storage: Arc<RwLock<std::collections::HashMap<String, Box<dyn Responder>>>>,
+	) -> ObservableBuilder<P, K, CC, FC, EF, Storage<Box<dyn Responder>>> {
 		let Self {
 			context,
 			activation_state,
@@ -322,7 +325,7 @@ impl<P>
 		Callback<ArcControlCallback<P>>,
 		Callback<ArcFeedbackCallback<P>>,
 		Callback<ArcExecutionCallback<P>>,
-		Storage<Observable<P>>,
+		Storage<Box<dyn Responder>>,
 	>
 where
 	P: Send + Sync + 'static,
@@ -330,14 +333,14 @@ where
 	/// Build and add the observable to the agents context
 	/// # Errors
 	///
-	pub fn add(self) -> Result<Option<Observable<P>>> {
+	pub fn add(self) -> Result<Option<Box<dyn Responder>>> {
 		let collection = self.storage.storage.clone();
 		let q = self.build()?;
 
 		let r = collection
 			.write()
 			.map_err(|_| Error::MutexPoison(String::from("ObservableBuilder")))?
-			.insert(q.selector().to_string(), q);
+			.insert(q.selector().to_string(), Box::new(q));
 		Ok(r)
 	}
 }

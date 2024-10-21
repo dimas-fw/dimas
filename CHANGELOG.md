@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - timeout handling to `Querier` and `Observer`
 - macro `dimas::main`
 - module for time related stuff
-- trait `Communicator`
+- traits `Communicator`, `Observer`, `Publisher`, `Querier`, `Responder` in dimas-com
 
 ### Changed
 

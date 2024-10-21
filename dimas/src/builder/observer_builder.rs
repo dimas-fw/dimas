@@ -8,6 +8,7 @@ use super::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use crate::agent::Agent;
 use crate::error::Error;
 use core::time::Duration;
+use dimas_com::traits::Observer as ObserverTrait;
 use dimas_com::zenoh::observer::{
 	ArcControlCallback, ArcResponseCallback, ControlCallback, Observer, ResponseCallback,
 };
@@ -203,8 +204,8 @@ where
 	#[must_use]
 	pub fn storage(
 		self,
-		storage: Arc<RwLock<std::collections::HashMap<String, Observer<P>>>>,
-	) -> ObserverBuilder<P, K, CC, RC, Storage<Observer<P>>> {
+		storage: Arc<RwLock<std::collections::HashMap<String, Box<dyn ObserverTrait>>>>,
+	) -> ObserverBuilder<P, K, CC, RC, Storage<Box<dyn ObserverTrait>>> {
 		let Self {
 			context,
 			activation_state,
@@ -263,7 +264,7 @@ impl<P>
 		Selector,
 		Callback<ArcControlCallback<P>>,
 		Callback<ArcResponseCallback<P>>,
-		Storage<Observer<P>>,
+		Storage<Box<dyn ObserverTrait>>,
 	>
 where
 	P: Send + Sync + 'static,
@@ -272,14 +273,14 @@ where
 	///
 	/// # Errors
 	/// Currently none
-	pub fn add(self) -> Result<Option<Observer<P>>> {
+	pub fn add(self) -> Result<Option<Box<dyn ObserverTrait>>> {
 		let c = self.storage.storage.clone();
 		let s = self.build()?;
 
 		let r = c
 			.write()
 			.map_err(|_| Error::MutexPoison(String::from("ObserverBuilder")))?
-			.insert(s.selector().to_string(), s);
+			.insert(s.selector().to_string(), Box::new(s));
 		Ok(r)
 	}
 }

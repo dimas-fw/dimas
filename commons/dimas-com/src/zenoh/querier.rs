@@ -83,88 +83,18 @@ where
 	}
 }
 
-impl<P> Capability for Querier<P>
+impl<P> crate::traits::Querier for Querier<P>
 where
 	P: Send + Sync + 'static,
 {
-	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()> {
-		if state >= &self.activation_state {
-			return self.init();
-		} else if state < &self.activation_state {
-			return self.de_init();
-		}
-		Ok(())
-	}
-}
-
-impl<P> Querier<P>
-where
-	P: Send + Sync + 'static,
-{
-	/// Constructor for a [`Querier`]
-	#[must_use]
-	#[allow(clippy::too_many_arguments)]
-	pub fn new(
-		selector: String,
-		context: Context<P>,
-		activation_state: OperationState,
-		response_callback: ArcGetCallback<P>,
-		mode: ConsolidationMode,
-		#[cfg(feature = "unstable")] allowed_destination: Locality,
-		encoding: String,
-		target: QueryTarget,
-		timeout: Duration,
-	) -> Self {
-		Self {
-			selector,
-			context,
-			activation_state,
-			callback: response_callback,
-			mode,
-			#[cfg(feature = "unstable")]
-			allowed_destination,
-			encoding,
-			target,
-			timeout,
-			key_expr: None,
-		}
-	}
-
 	/// Get `selector`
-	#[must_use]
-	pub fn selector(&self) -> &str {
+	fn selector(&self) -> &str {
 		&self.selector
-	}
-
-	/// Initialize
-	/// # Errors
-	fn init(&mut self) -> Result<()>
-	where
-		P: Send + Sync + 'static,
-	{
-		let key_expr = self
-			.context
-			.session()
-			.declare_keyexpr(self.selector.clone())
-			.wait()?;
-		self.key_expr.replace(key_expr);
-		Ok(())
-	}
-
-	/// De-Initialize
-	/// # Errors
-	#[allow(clippy::unnecessary_wraps)]
-	fn de_init(&mut self) -> Result<()>
-	where
-		P: Send + Sync + 'static,
-	{
-		self.key_expr.take();
-		Ok(())
 	}
 
 	/// Run a Querier with an optional [`Message`].
 	#[instrument(name="Querier", level = Level::ERROR, skip_all)]
-	pub fn get(
+	fn get(
 		&self,
 		message: Option<Message>,
 		mut callback: Option<&dyn Fn(QueryableMsg) -> Result<()>>,
@@ -243,6 +173,80 @@ where
 			}
 		}
 
+		Ok(())
+	}
+}
+
+impl<P> Capability for Querier<P>
+where
+	P: Send + Sync + 'static,
+{
+	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()> {
+		if state >= &self.activation_state {
+			return self.init();
+		} else if state < &self.activation_state {
+			return self.de_init();
+		}
+		Ok(())
+	}
+}
+
+impl<P> Querier<P>
+where
+	P: Send + Sync + 'static,
+{
+	/// Constructor for a [`Querier`]
+	#[must_use]
+	#[allow(clippy::too_many_arguments)]
+	pub fn new(
+		selector: String,
+		context: Context<P>,
+		activation_state: OperationState,
+		response_callback: ArcGetCallback<P>,
+		mode: ConsolidationMode,
+		#[cfg(feature = "unstable")] allowed_destination: Locality,
+		encoding: String,
+		target: QueryTarget,
+		timeout: Duration,
+	) -> Self {
+		Self {
+			selector,
+			context,
+			activation_state,
+			callback: response_callback,
+			mode,
+			#[cfg(feature = "unstable")]
+			allowed_destination,
+			encoding,
+			target,
+			timeout,
+			key_expr: None,
+		}
+	}
+
+	/// Initialize
+	/// # Errors
+	fn init(&mut self) -> Result<()>
+	where
+		P: Send + Sync + 'static,
+	{
+		let key_expr = self
+			.context
+			.session()
+			.declare_keyexpr(self.selector.clone())
+			.wait()?;
+		self.key_expr.replace(key_expr);
+		Ok(())
+	}
+
+	/// De-Initialize
+	/// # Errors
+	#[allow(clippy::unnecessary_wraps)]
+	fn de_init(&mut self) -> Result<()>
+	where
+		P: Send + Sync + 'static,
+	{
+		self.key_expr.take();
 		Ok(())
 	}
 }

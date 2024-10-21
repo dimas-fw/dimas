@@ -82,6 +82,16 @@ where
 	}
 }
 
+impl<P> crate::traits::Responder for Observable<P>
+where
+	P: Send + Sync + 'static,
+{
+	/// Get `selector`
+	fn selector(&self) -> &str {
+		&self.selector
+	}
+}
+
 impl<P> Capability for Observable<P>
 where
 	P: Send + Sync + 'static,
@@ -124,12 +134,6 @@ where
 			execution_handle: Arc::new(Mutex::new(None)),
 			handle: None,
 		}
-	}
-
-	/// Get `selector`
-	#[must_use]
-	pub fn selector(&self) -> &str {
-		&self.selector
 	}
 
 	/// Start or restart the Observable.

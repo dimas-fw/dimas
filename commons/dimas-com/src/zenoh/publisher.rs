@@ -61,6 +61,50 @@ where
 	}
 }
 
+impl<P> crate::traits::Publisher for Publisher<P>
+where
+	P: Send + Sync + 'static,
+{
+	/// Get `selector`
+	fn selector(&self) -> &str {
+		&self.selector
+	}
+
+	/// Send a "put" message
+	/// # Errors
+	///
+	#[instrument(name="publish", level = Level::ERROR, skip_all)]
+	fn put(&self, message: Message) -> Result<()> {
+		match self
+			.publisher
+			.as_ref()
+			.ok_or(Error::AccessPublisher)?
+			.put(message.value())
+			.wait()
+		{
+			Ok(()) => Ok(()),
+			Err(source) => Err(Error::PublishingPut { source }.into()),
+		}
+	}
+
+	/// Send a "delete" message
+	/// # Errors
+	///
+	#[instrument(level = Level::ERROR, skip_all)]
+	fn delete(&self) -> Result<()> {
+		match self
+			.publisher
+			.as_ref()
+			.ok_or(Error::AccessPublisher)?
+			.delete()
+			.wait()
+		{
+			Ok(()) => Ok(()),
+			Err(source) => Err(Error::PublishingDelete { source }.into()),
+		}
+	}
+}
+
 impl<P> Capability for Publisher<P>
 where
 	P: Send + Sync + 'static,
@@ -109,12 +153,6 @@ where
 		}
 	}
 
-	/// Get `selector`
-	#[must_use]
-	pub fn selector(&self) -> &str {
-		&self.selector
-	}
-
 	/// Initialize
 	/// # Errors
 	///
@@ -148,40 +186,6 @@ where
 	fn de_init(&mut self) -> Result<()> {
 		self.publisher.take();
 		Ok(())
-	}
-
-	/// Send a "put" message
-	/// # Errors
-	///
-	#[instrument(name="publish", level = Level::ERROR, skip_all)]
-	pub fn put(&self, message: Message) -> Result<()> {
-		match self
-			.publisher
-			.as_ref()
-			.ok_or(Error::AccessPublisher)?
-			.put(message.value())
-			.wait()
-		{
-			Ok(()) => Ok(()),
-			Err(source) => Err(Error::PublishingPut { source }.into()),
-		}
-	}
-
-	/// Send a "delete" message
-	/// # Errors
-	///
-	#[instrument(level = Level::ERROR, skip_all)]
-	pub fn delete(&self) -> Result<()> {
-		match self
-			.publisher
-			.as_ref()
-			.ok_or(Error::AccessPublisher)?
-			.delete()
-			.wait()
-		{
-			Ok(()) => Ok(()),
-			Err(source) => Err(Error::PublishingDelete { source }.into()),
-		}
 	}
 }
 // endregion:	--- Publisher

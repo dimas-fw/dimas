@@ -9,6 +9,7 @@ use super::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 #[cfg(doc)]
 use crate::agent::Agent;
 use crate::error::Error;
+use dimas_com::traits::Responder as SubscriberTrait;
 use dimas_com::zenoh::subscriber::{
 	ArcDeleteCallback, ArcPutCallback, DeleteCallback, PutCallback, Subscriber,
 };
@@ -182,8 +183,8 @@ where
 	#[must_use]
 	pub fn storage(
 		self,
-		storage: Arc<RwLock<std::collections::HashMap<String, Subscriber<P>>>>,
-	) -> SubscriberBuilder<P, K, C, Storage<Subscriber<P>>> {
+		storage: Arc<RwLock<std::collections::HashMap<String, Box<dyn SubscriberTrait>>>>,
+	) -> SubscriberBuilder<P, K, C, Storage<Box<dyn SubscriberTrait>>> {
 		let Self {
 			context,
 			activation_state,
@@ -238,7 +239,8 @@ where
 	}
 }
 
-impl<P> SubscriberBuilder<P, Selector, Callback<ArcPutCallback<P>>, Storage<Subscriber<P>>>
+impl<P>
+	SubscriberBuilder<P, Selector, Callback<ArcPutCallback<P>>, Storage<Box<dyn SubscriberTrait>>>
 where
 	P: Send + Sync + 'static,
 {
@@ -246,14 +248,14 @@ where
 	///
 	/// # Errors
 	/// Currently none
-	pub fn add(self) -> Result<Option<Subscriber<P>>> {
+	pub fn add(self) -> Result<Option<Box<dyn SubscriberTrait>>> {
 		let c = self.storage.storage.clone();
 		let s = self.build()?;
 
 		let r = c
 			.write()
 			.map_err(|_| Error::MutexPoison(String::from("SubscriberBuilder")))?
-			.insert(s.selector().to_string(), s);
+			.insert(s.selector().to_string(), Box::new(s));
 		Ok(r)
 	}
 }

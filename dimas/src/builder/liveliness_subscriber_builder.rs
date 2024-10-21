@@ -6,8 +6,9 @@
 // region:		--- modules
 use super::{Callback, NoCallback, NoStorage, Storage};
 use crate::error::Error;
-use dimas_com::zenoh::liveliness::{
-	ArcLivelinessCallback, LivelinessCallback, LivelinessSubscriber,
+use dimas_com::{
+	traits::LivelinessSubscriber as LivelinessSubscriberTrait,
+	zenoh::liveliness::{ArcLivelinessCallback, LivelinessCallback, LivelinessSubscriber},
 };
 use dimas_core::{enums::OperationState, traits::Context, utils::selector_from, Result};
 use futures::future::Future;
@@ -17,9 +18,6 @@ use std::{
 };
 use tokio::sync::Mutex;
 // endregion:	--- modules
-
-// region:    	--- types
-// endregion: 	--- types
 
 // region:		--- LivelinessSubscriberBuilder
 /// The builder for the liveliness subscriber
@@ -189,8 +187,8 @@ where
 	#[must_use]
 	pub fn storage(
 		self,
-		storage: Arc<RwLock<HashMap<String, LivelinessSubscriber<P>>>>,
-	) -> LivelinessSubscriberBuilder<P, C, Storage<LivelinessSubscriber<P>>> {
+		storage: Arc<RwLock<HashMap<String, Box<dyn LivelinessSubscriberTrait>>>>,
+	) -> LivelinessSubscriberBuilder<P, C, Storage<Box<dyn LivelinessSubscriberTrait>>> {
 		let Self {
 			token,
 			context,
@@ -240,7 +238,7 @@ impl<P>
 	LivelinessSubscriberBuilder<
 		P,
 		Callback<ArcLivelinessCallback<P>>,
-		Storage<LivelinessSubscriber<P>>,
+		Storage<Box<dyn LivelinessSubscriberTrait>>,
 	>
 where
 	P: Send + Sync + 'static,
@@ -248,14 +246,14 @@ where
 	/// Build and add the liveliness subscriber to the agent
 	/// # Errors
 	///
-	pub fn add(self) -> Result<Option<LivelinessSubscriber<P>>> {
+	pub fn add(self) -> Result<Option<Box<dyn LivelinessSubscriberTrait>>> {
 		let c = self.storage.storage.clone();
 		let s = self.build()?;
 
 		let r = c
 			.write()
 			.map_err(|_| Error::MutexPoison(String::from("LivelinessSubscriberBuilder")))?
-			.insert(s.token().into(), s);
+			.insert(s.token().into(), Box::new(s));
 		Ok(r)
 	}
 }

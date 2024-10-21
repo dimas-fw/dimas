@@ -6,6 +6,7 @@
 use super::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use crate::error::Error;
 use core::time::Duration;
+use dimas_com::traits::Querier as QuerierTrait;
 use dimas_com::zenoh::querier::Querier;
 use dimas_core::{
 	enums::OperationState, message_types::QueryableMsg, traits::Context, utils::selector_from,
@@ -220,8 +221,8 @@ where
 	#[must_use]
 	pub fn storage(
 		self,
-		storage: Arc<RwLock<std::collections::HashMap<String, Querier<P>>>>,
-	) -> QuerierBuilder<P, K, C, Storage<Querier<P>>> {
+		storage: Arc<RwLock<std::collections::HashMap<String, Box<dyn QuerierTrait>>>>,
+	) -> QuerierBuilder<P, K, C, Storage<Box<dyn QuerierTrait>>> {
 		let Self {
 			context,
 			activation_state,
@@ -288,20 +289,20 @@ where
 	}
 }
 
-impl<P> QuerierBuilder<P, Selector, Callback<ArcGetCallback<P>>, Storage<Querier<P>>>
+impl<P> QuerierBuilder<P, Selector, Callback<ArcGetCallback<P>>, Storage<Box<dyn QuerierTrait>>>
 where
 	P: Send + Sync + 'static,
 {
 	/// Build and add the query to the agents context
 	/// # Errors
-	pub fn add(self) -> Result<Option<Querier<P>>> {
+	pub fn add(self) -> Result<Option<Box<dyn QuerierTrait>>> {
 		let collection = self.storage.storage.clone();
 		let q = self.build()?;
 
 		let r = collection
 			.write()
 			.map_err(|_| Error::MutexPoison(String::from("QuerierBuilder")))?
-			.insert(q.selector().to_string(), q);
+			.insert(q.selector().to_string(), Box::new(q));
 		Ok(r)
 	}
 }

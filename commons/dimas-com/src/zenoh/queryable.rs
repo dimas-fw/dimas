@@ -65,6 +65,16 @@ where
 	}
 }
 
+impl<P> crate::traits::Responder for Queryable<P>
+where
+	P: Send + Sync + 'static,
+{
+	/// Get `selector`
+	fn selector(&self) -> &str {
+		&self.selector
+	}
+}
+
 impl<P> Capability for Queryable<P>
 where
 	P: Send + Sync + 'static,
@@ -104,12 +114,6 @@ where
 			allowed_origin,
 			handle: None,
 		}
-	}
-
-	/// Get `selector`
-	#[must_use]
-	pub fn selector(&self) -> &str {
-		&self.selector
 	}
 
 	/// Start or restart the queryable.

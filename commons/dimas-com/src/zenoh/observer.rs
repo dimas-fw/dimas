@@ -77,73 +77,18 @@ where
 	}
 }
 
-impl<P> Capability for Observer<P>
+impl<P> crate::traits::Observer for Observer<P>
 where
 	P: Send + Sync + 'static,
 {
-	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()> {
-		if state >= &self.activation_state {
-			return self.init();
-		} else if state < &self.activation_state {
-			return self.de_init();
-		}
-		Ok(())
-	}
-}
-
-impl<P> Observer<P>
-where
-	P: Send + Sync + 'static,
-{
-	/// Constructor for an [`Observer`]
-	#[must_use]
-	pub fn new(
-		selector: String,
-		context: Context<P>,
-		activation_state: OperationState,
-		control_callback: ArcControlCallback<P>,
-		response_callback: ArcResponseCallback<P>,
-		timeout: Duration,
-	) -> Self {
-		Self {
-			selector,
-			context,
-			activation_state,
-			control_callback,
-			response_callback,
-			timeout,
-			handle: None,
-		}
-	}
-
 	/// Get `selector`
-	#[must_use]
-	pub fn selector(&self) -> &str {
+	fn selector(&self) -> &str {
 		&self.selector
-	}
-
-	/// Initialize
-	/// # Errors
-	///
-	#[instrument(level = Level::TRACE, skip_all)]
-	fn init(&mut self) -> Result<()> {
-		Ok(())
-	}
-
-	/// De-Initialize
-	/// # Errors
-	///
-	#[allow(clippy::unnecessary_wraps)]
-	fn de_init(&mut self) -> Result<()> {
-		// cancel current request before stopping
-		let _ = self.cancel();
-		self.handle.take();
-		Ok(())
 	}
 
 	/// Cancel a running observation
 	#[instrument(level = Level::ERROR, skip_all)]
-	pub fn cancel(&self) -> Result<()> {
+	fn cancel(&self) -> Result<()> {
 		let session = self.context.session();
 		// TODO: make a proper "key: value" implementation
 		let selector = cancel_selector_from(&self.selector);
@@ -209,7 +154,7 @@ where
 
 	/// Request an observation with an optional [`Message`].
 	#[instrument(level = Level::ERROR, skip_all)]
-	pub fn request(&self, message: Option<Message>) -> Result<()> {
+	fn request(&self, message: Option<Message>) -> Result<()> {
 		let session = self.context.session();
 		// TODO: make a proper "key: value" implementation
 		let selector = request_selector_from(&self.selector);
@@ -313,6 +258,65 @@ where
 				}
 			}
 		}
+		Ok(())
+	}
+}
+
+impl<P> Capability for Observer<P>
+where
+	P: Send + Sync + 'static,
+{
+	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()> {
+		if state >= &self.activation_state {
+			return self.init();
+		} else if state < &self.activation_state {
+			return self.de_init();
+		}
+		Ok(())
+	}
+}
+
+impl<P> Observer<P>
+where
+	P: Send + Sync + 'static,
+{
+	/// Constructor for an [`Observer`]
+	#[must_use]
+	pub fn new(
+		selector: String,
+		context: Context<P>,
+		activation_state: OperationState,
+		control_callback: ArcControlCallback<P>,
+		response_callback: ArcResponseCallback<P>,
+		timeout: Duration,
+	) -> Self {
+		Self {
+			selector,
+			context,
+			activation_state,
+			control_callback,
+			response_callback,
+			timeout,
+			handle: None,
+		}
+	}
+
+	/// Initialize
+	/// # Errors
+	///
+	#[instrument(level = Level::TRACE, skip_all)]
+	fn init(&mut self) -> Result<()> {
+		Ok(())
+	}
+
+	/// De-Initialize
+	/// # Errors
+	///
+	#[allow(clippy::unnecessary_wraps)]
+	fn de_init(&mut self) -> Result<()> {
+		// cancel current request before stopping
+		let _ = crate::traits::Observer::cancel(self);
+		self.handle.take();
 		Ok(())
 	}
 }

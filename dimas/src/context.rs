@@ -35,14 +35,9 @@ use crate::agent::Agent;
 use crate::error::Error;
 use core::fmt::Debug;
 #[cfg(feature = "unstable")]
-use dimas_com::zenoh::LivelinessSubscriber;
-use dimas_com::{
-	traits::Communicator as CommunicatorTrait,
-	zenoh::{
-		observable::Observable, observer::Observer, publisher::Publisher, querier::Querier,
-		queryable::Queryable, subscriber::Subscriber, Communicator,
-	},
-};
+use dimas_com::traits::LivelinessSubscriber;
+use dimas_com::traits::{Observer, Publisher, Querier, Responder};
+use dimas_com::{traits::Communicator as CommunicatorTrait, zenoh::Communicator};
 use dimas_config::Config;
 #[cfg(doc)]
 use dimas_core::traits::Context;
@@ -90,19 +85,15 @@ where
 	communicator: Arc<Communicator>,
 	/// Registered [`LivelinessSubscriber`]
 	#[cfg(feature = "unstable")]
-	liveliness_subscribers: Arc<RwLock<HashMap<String, LivelinessSubscriber<P>>>>,
-	/// Registered [`Observable`]
-	observables: Arc<RwLock<HashMap<String, Observable<P>>>>,
+	liveliness_subscribers: Arc<RwLock<HashMap<String, Box<dyn LivelinessSubscriber>>>>,
 	/// Registered [`Observer`]
-	observers: Arc<RwLock<HashMap<String, Observer<P>>>>,
+	observers: Arc<RwLock<HashMap<String, Box<dyn Observer>>>>,
 	/// Registered [`Publisher`]
-	publishers: Arc<RwLock<HashMap<String, Publisher<P>>>>,
+	publishers: Arc<RwLock<HashMap<String, Box<dyn Publisher>>>>,
 	/// Registered [`Query`]s
-	queries: Arc<RwLock<HashMap<String, Querier<P>>>>,
-	/// Registered [`Queryable`]s
-	queryables: Arc<RwLock<HashMap<String, Queryable<P>>>>,
-	/// Registered [`Subscriber`]
-	subscribers: Arc<RwLock<HashMap<String, Subscriber<P>>>>,
+	queries: Arc<RwLock<HashMap<String, Box<dyn Querier>>>>,
+	/// Registered [`Observable`]s, [`Queryable`]s and [`Subscriber`]s
+	responders: Arc<RwLock<HashMap<String, Box<dyn Responder>>>>,
 	/// Registered [`Timer`]
 	timers: Arc<RwLock<HashMap<String, Timer<P>>>>,
 }
@@ -347,12 +338,10 @@ where
 			props: Arc::new(RwLock::new(props)),
 			#[cfg(feature = "unstable")]
 			liveliness_subscribers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
-			observables: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 			observers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 			publishers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 			queries: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
-			queryables: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
-			subscribers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
+			responders: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 			timers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 		})
 	}
@@ -372,43 +361,43 @@ where
 	#[must_use]
 	pub const fn liveliness_subscribers(
 		&self,
-	) -> &Arc<RwLock<HashMap<String, LivelinessSubscriber<P>>>> {
+	) -> &Arc<RwLock<HashMap<String, Box<dyn LivelinessSubscriber>>>> {
 		&self.liveliness_subscribers
 	}
 	/// Get the observables
 	#[must_use]
-	pub const fn observables(&self) -> &Arc<RwLock<HashMap<String, Observable<P>>>> {
-		&self.observables
+	pub const fn observables(&self) -> &Arc<RwLock<HashMap<String, Box<dyn Responder>>>> {
+		&self.responders
 	}
 
 	/// Get the observers
 	#[must_use]
-	pub const fn observers(&self) -> &Arc<RwLock<HashMap<String, Observer<P>>>> {
+	pub const fn observers(&self) -> &Arc<RwLock<HashMap<String, Box<dyn Observer>>>> {
 		&self.observers
 	}
 
 	/// Get the publishers
 	#[must_use]
-	pub const fn publishers(&self) -> &Arc<RwLock<HashMap<String, Publisher<P>>>> {
+	pub const fn publishers(&self) -> &Arc<RwLock<HashMap<String, Box<dyn Publisher>>>> {
 		&self.publishers
 	}
 
 	/// Get the queries
 	#[must_use]
-	pub const fn queries(&self) -> &Arc<RwLock<HashMap<String, Querier<P>>>> {
+	pub const fn queries(&self) -> &Arc<RwLock<HashMap<String, Box<dyn Querier>>>> {
 		&self.queries
 	}
 
 	/// Get the queryables
 	#[must_use]
-	pub const fn queryables(&self) -> &Arc<RwLock<HashMap<String, Queryable<P>>>> {
-		&self.queryables
+	pub const fn queryables(&self) -> &Arc<RwLock<HashMap<String, Box<dyn Responder>>>> {
+		&self.responders
 	}
 
 	/// Get the subscribers
 	#[must_use]
-	pub const fn subscribers(&self) -> &Arc<RwLock<HashMap<String, Subscriber<P>>>> {
-		&self.subscribers
+	pub const fn subscribers(&self) -> &Arc<RwLock<HashMap<String, Box<dyn Responder>>>> {
+		&self.responders
 	}
 
 	/// Get the timers
@@ -443,26 +432,8 @@ where
 				let _ = subscriber.1.manage_operation_state(&new_state);
 			});
 
-		// start all registered queryables
-		self.queryables
-			.write()
-			.map_err(|_| Error::ModifyContext("queryables".into()))?
-			.iter_mut()
-			.for_each(|queryable| {
-				let _ = queryable.1.manage_operation_state(&new_state);
-			});
-
-		// start all registered observables
-		self.observables
-			.write()
-			.map_err(|_| Error::ModifyContext("observables".into()))?
-			.iter_mut()
-			.for_each(|observable| {
-				let _ = observable.1.manage_operation_state(&new_state);
-			});
-
-		// start all registered subscribers
-		self.subscribers
+		// start all registered responders
+		self.responders
 			.write()
 			.map_err(|_| Error::ModifyContext("subscribers".into()))?
 			.iter_mut()
@@ -583,31 +554,13 @@ where
 				let _ = publisher.1.manage_operation_state(&new_state);
 			});
 
-		// stop all registered subscribers
-		self.subscribers
+		// stop all registered responders
+		self.responders
 			.write()
 			.map_err(|_| Error::ModifyContext("subscribers".into()))?
 			.iter_mut()
 			.for_each(|subscriber| {
 				let _ = subscriber.1.manage_operation_state(&new_state);
-			});
-
-		// stop all registered observables
-		self.observables
-			.write()
-			.map_err(|_| Error::ModifyContext("observables".into()))?
-			.iter_mut()
-			.for_each(|observable| {
-				let _ = observable.1.manage_operation_state(&new_state);
-			});
-
-		// stop all registered queryables
-		self.queryables
-			.write()
-			.map_err(|_| Error::ModifyContext("queryables".into()))?
-			.iter_mut()
-			.for_each(|queryable| {
-				let _ = queryable.1.manage_operation_state(&new_state);
 			});
 
 		// stop all registered liveliness subscribers

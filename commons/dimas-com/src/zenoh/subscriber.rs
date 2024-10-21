@@ -74,6 +74,16 @@ where
 	}
 }
 
+impl<P> crate::traits::Responder for Subscriber<P>
+where
+	P: Send + Sync + 'static,
+{
+	/// Get `selector`
+	fn selector(&self) -> &str {
+		&self.selector
+	}
+}
+
 impl<P> Capability for Subscriber<P>
 where
 	P: Send + Sync + 'static,
@@ -114,13 +124,6 @@ where
 			handle: None,
 		}
 	}
-
-	/// Get `selector`
-	#[must_use]
-	pub fn selector(&self) -> &str {
-		&self.selector
-	}
-
 	/// Start or restart the subscriber.
 	/// An already running subscriber will be stopped, eventually damaged Mutexes will be repaired
 	#[instrument(level = Level::TRACE, skip_all)]

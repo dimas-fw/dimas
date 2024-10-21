@@ -8,6 +8,7 @@ use super::{NoSelector, NoStorage, Selector, Storage};
 #[cfg(doc)]
 use crate::agent::Agent;
 use crate::error::Error;
+use dimas_com::traits::Publisher as PublisherTrait;
 use dimas_com::zenoh::publisher::Publisher;
 use dimas_core::{enums::OperationState, traits::Context, utils::selector_from, Result};
 use std::sync::{Arc, RwLock};
@@ -126,8 +127,8 @@ where
 	#[must_use]
 	pub fn storage(
 		self,
-		storage: Arc<RwLock<std::collections::HashMap<String, Publisher<P>>>>,
-	) -> PublisherBuilder<P, K, Storage<Publisher<P>>> {
+		storage: Arc<RwLock<std::collections::HashMap<String, Box<dyn PublisherTrait>>>>,
+	) -> PublisherBuilder<P, K, Storage<Box<dyn PublisherTrait>>> {
 		let Self {
 			context,
 			activation_state,
@@ -232,7 +233,7 @@ where
 	}
 }
 
-impl<P> PublisherBuilder<P, Selector, Storage<Publisher<P>>>
+impl<P> PublisherBuilder<P, Selector, Storage<Box<dyn PublisherTrait>>>
 where
 	P: Send + Sync + 'static,
 {
@@ -240,13 +241,13 @@ where
 	///
 	/// # Errors
 	/// Currently none
-	pub fn add(self) -> Result<Option<Publisher<P>>> {
+	pub fn add(self) -> Result<Option<Box<dyn PublisherTrait>>> {
 		let collection = self.storage.storage.clone();
 		let p = self.build()?;
 		let r = collection
 			.write()
 			.map_err(|_| Error::MutexPoison(String::from("PublisherBuilder")))?
-			.insert(p.selector().to_string(), p);
+			.insert(p.selector().to_string(), Box::new(p));
 		Ok(r)
 	}
 }

@@ -64,6 +64,17 @@ where
 	}
 }
 
+impl<P> crate::traits::LivelinessSubscriber for LivelinessSubscriber<P>
+where
+	P: Send + Sync + 'static,
+{
+	/// get token
+	#[must_use]
+	fn token(&self) -> &String {
+		&self.token
+	}
+}
+
 impl<P> Capability for LivelinessSubscriber<P>
 where
 	P: Send + Sync + 'static,
@@ -99,12 +110,6 @@ where
 			delete_callback,
 			handle: None,
 		}
-	}
-
-	/// get token
-	#[must_use]
-	pub const fn token(&self) -> &String {
-		&self.token
 	}
 
 	/// Start or restart the liveliness subscriber.

@@ -14,7 +14,10 @@ use zenoh::sample::Locality;
 
 use super::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use crate::error::Error;
-use dimas_com::zenoh::queryable::{ArcGetCallback, GetCallback, Queryable};
+use dimas_com::{
+	traits::Responder,
+	zenoh::queryable::{ArcGetCallback, GetCallback, Queryable},
+};
 // endregion:	--- modules
 
 // region:    	--- types
@@ -171,8 +174,8 @@ where
 	#[must_use]
 	pub fn storage(
 		self,
-		storage: Arc<RwLock<std::collections::HashMap<String, Queryable<P>>>>,
-	) -> QueryableBuilder<P, K, C, Storage<Queryable<P>>> {
+		storage: Arc<RwLock<std::collections::HashMap<String, Box<dyn Responder>>>>,
+	) -> QueryableBuilder<P, K, C, Storage<Box<dyn Responder>>> {
 		let Self {
 			context,
 			activation_state,
@@ -227,21 +230,21 @@ where
 	}
 }
 
-impl<P> QueryableBuilder<P, Selector, Callback<ArcGetCallback<P>>, Storage<Queryable<P>>>
+impl<P> QueryableBuilder<P, Selector, Callback<ArcGetCallback<P>>, Storage<Box<dyn Responder>>>
 where
 	P: Send + Sync + 'static,
 {
 	/// Build and add the queryable to the agents context
 	/// # Errors
 	///
-	pub fn add(self) -> Result<Option<Queryable<P>>> {
+	pub fn add(self) -> Result<Option<Box<dyn Responder>>> {
 		let collection = self.storage.storage.clone();
 		let q = self.build()?;
 
 		let r = collection
 			.write()
 			.map_err(|_| Error::MutexPoison(String::from("QueryableBuilder")))?
-			.insert(q.selector().to_string(), q);
+			.insert(q.selector().to_string(), Box::new(q));
 		Ok(r)
 	}
 }
