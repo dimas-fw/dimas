@@ -3,6 +3,9 @@
 
 //! Core of `DiMAS`
 
+/// States for usage in builders
+#[cfg(feature = "std")]
+pub mod builder_states;
 /// Enums
 pub mod enums;
 /// Error handling

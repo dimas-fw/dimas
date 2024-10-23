@@ -18,7 +18,7 @@ use dimas_core::{
 	Result,
 };
 use futures::future::BoxFuture;
-#[cfg(doc)]
+#[cfg(all(doc, feature = "std"))]
 use std::collections::HashMap;
 #[cfg(feature = "std")]
 use std::prelude::rust_2021::*;

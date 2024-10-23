@@ -3,15 +3,20 @@
 //! Module `timer` provides a set of `Timer` variants which can be created using the `TimerBuilder`.
 //! When fired, a `Timer` calls his assigned `TimerCallback`.
 
+#[cfg(feature = "std")]
+extern crate std;
+
 // region:		--- modules
-use super::{Callback, Interval, NoCallback, NoInterval, NoSelector, NoStorage, Selector, Storage};
+use dimas_core::builder_states::{Callback, Interval, NoCallback, NoInterval, NoSelector, NoStorage, Selector, Storage};
 use crate::error::Error;
 
-use dimas_time::{ArcTimerCallback, Timer};
+use super::{ArcTimerCallback, Timer};
 
 use core::time::Duration;
 use dimas_core::{enums::OperationState, traits::Context, Result};
 use std::sync::{Arc, Mutex, RwLock};
+use std::string::{String, ToString};
+use std::format;
 // endregion:	--- modules
 
 // region:		--- TimerBuilder

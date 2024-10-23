@@ -45,13 +45,11 @@
 //!
 
 // region:		--- modules
-#[cfg(doc)]
-use dimas_com::zenoh::{LivelinessSubscriber, Observable, Observer, Publisher, Queryable, Querier, Subscriber};
 #[cfg(feature = "unstable")]
-use crate::builder::LivelinessSubscriberBuilder;
-use crate::builder::{
+use dimas_com::builder::LivelinessSubscriberBuilder;
+use dimas_com::builder::{
 	ObservableBuilder, ObserverBuilder, PublisherBuilder, QuerierBuilder, QueryableBuilder,
-	SubscriberBuilder, TimerBuilder,
+	SubscriberBuilder,
 };
 use crate::context::ContextImpl;
 use crate::error::Error;
@@ -60,16 +58,17 @@ use core::fmt::Debug;
 use core::time::Duration;
 use dimas_com::messages::{AboutEntity, PingEntity};
 #[cfg(feature = "unstable")]
-use dimas_com::traits::LivelinessSubscriber as LivelinessSubscriberTrait;
-use dimas_com::traits::{Observer as ObserverTrait, Publisher as PublisherTrait, Querier as QuerierTrait, Responder as ResponderTrait};
+use dimas_com::traits::LivelinessSubscriber;
+use dimas_com::traits::{Observer, Publisher, Querier, Responder};
 use dimas_config::Config;
 use dimas_core::{
 	enums::{OperationState, Signal, TaskSignal},
 	message_types::{Message, QueryMsg},
 	traits::{Capability, Context, ContextAbstraction},
 	Result,
+	builder_states::{NoCallback, NoInterval, NoSelector, Storage},
 };
-use dimas_time::Timer;
+use dimas_time::{Timer, TimerBuilder};
 use std::sync::Arc;
 #[cfg(feature = "unstable")]
 use std::sync::RwLock;
@@ -333,93 +332,93 @@ where
 		self.liveliness = activate;
 	}
 
-	/// Get a [`LivelinessSubscriberBuilder`], the builder for a [`LivelinessSubscriber`].
+	/// Get a [`LivelinessSubscriberBuilder`], the builder for a `LivelinessSubscriber`.
 	#[cfg(feature = "unstable")]
 	#[must_use]
 	pub fn liveliness_subscriber(
 		&self,
 	) -> LivelinessSubscriberBuilder<
 		P,
-		crate::builder::NoCallback,
-		crate::builder::Storage<Box<dyn LivelinessSubscriberTrait>>,
+		NoCallback,
+		Storage<Box<dyn LivelinessSubscriber>>,
 	> {
 		LivelinessSubscriberBuilder::new(self.context.clone())
 			.storage(self.context.liveliness_subscribers().clone())
 	}
 
-	/// Get an [`ObservableBuilder`], the builder for an [`Observable`].
+	/// Get an [`ObservableBuilder`], the builder for an `Observable`.
 	#[must_use]
 	pub fn observable(
 		&self,
 	) -> ObservableBuilder<
 		P,
-		crate::builder::NoSelector,
-		crate::builder::NoCallback,
-		crate::builder::NoCallback,
-		crate::builder::NoCallback,
-		crate::builder::Storage<Box<dyn ResponderTrait>>,
+		NoSelector,
+		NoCallback,
+		NoCallback,
+		NoCallback,
+		Storage<Box<dyn Responder>>,
 	> {
 		ObservableBuilder::new(self.context.clone()).storage(self.context.observables().clone())
 	}
 
-	/// Get an [`ObserverBuilder`], the builder for an [`Observer`].
+	/// Get an [`ObserverBuilder`], the builder for an `Observer`.
 	#[must_use]
 	pub fn observer(
 		&self,
 	) -> ObserverBuilder<
 		P,
-		crate::builder::NoSelector,
-		crate::builder::NoCallback,
-		crate::builder::NoCallback,
-		crate::builder::Storage<Box<dyn ObserverTrait>>,
+		NoSelector,
+		NoCallback,
+		NoCallback,
+		Storage<Box<dyn Observer>>,
 	> {
 		ObserverBuilder::new(self.context.clone()).storage(self.context.observers().clone())
 	}
 
-	/// Get a [`PublisherBuilder`], the builder for a [`Publisher`].
+	/// Get a [`PublisherBuilder`], the builder for a s`Publisher`.
 	#[must_use]
 	pub fn publisher(
 		&self,
-	) -> PublisherBuilder<P, crate::builder::NoSelector, crate::builder::Storage<Box<dyn PublisherTrait>>>
+	) -> PublisherBuilder<P, NoSelector, Storage<Box<dyn Publisher>>>
 	{
 		PublisherBuilder::new(self.context.clone()).storage(self.context.publishers().clone())
 	}
 
-	/// Get a [`QuerierBuilder`], the builder for a [`Querier`].
+	/// Get a [`QuerierBuilder`], the builder for a `Querier`.
 	#[must_use]
 	pub fn querier(
 		&self,
 	) -> QuerierBuilder<
 		P,
-		crate::builder::NoSelector,
-		crate::builder::NoCallback,
-		crate::builder::Storage<Box<dyn QuerierTrait>>,
+		NoSelector,
+		NoCallback,
+		Storage<Box<dyn Querier>>,
 	> {
 		QuerierBuilder::new(self.context.clone()).storage(self.context.queries().clone())
 	}
 
-	/// Get a [`QueryableBuilder`], the builder for a [`Queryable`].
+	/// Get a [`QueryableBuilder`], the builder for a `Queryable`.
 	#[must_use]
 	pub fn queryable(
 		&self,
 	) -> QueryableBuilder<
 		P,
-		crate::builder::NoSelector,
-		crate::builder::NoCallback,
-		crate::builder::Storage<Box<dyn ResponderTrait>>,
+		NoSelector,
+		NoCallback,
+		Storage<Box<dyn Responder>>,
 	> {
 		QueryableBuilder::new(self.context.clone()).storage(self.context.queryables().clone())
 	}
 
-	/// Get a [`SubscriberBuilder`], the builder for a [`Subscriber`].
+	/// Get a [`SubscriberBuilder`], the builder for a `Subscriber`.
 	#[must_use]
 	pub fn subscriber(
 		&self,
 	) -> SubscriberBuilder<
 		P,
-		crate::builder::NoSelector,
-		crate::builder::NoCallback,
-		crate::builder::Storage<Box<dyn ResponderTrait>>,
+		NoSelector,
+		NoCallback,
+		Storage<Box<dyn Responder>>,
 	> {
 		SubscriberBuilder::new(self.context.clone()).storage(self.context.subscribers().clone())
 	}
@@ -430,10 +429,10 @@ where
 		&self,
 	) -> TimerBuilder<
 		P,
-		crate::builder::NoSelector,
-		crate::builder::NoInterval,
-		crate::builder::NoCallback,
-		crate::builder::Storage<Timer<P>>,
+		NoSelector,
+		NoInterval,
+		NoCallback,
+		Storage<Timer<P>>,
 	> {
 		TimerBuilder::new(self.context.clone()).storage(self.context.timers().clone())
 	}

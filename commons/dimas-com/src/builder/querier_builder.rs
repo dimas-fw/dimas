@@ -2,12 +2,15 @@
 
 //! Module `query` provides an information/compute requestor `Query` which can be created using the `QuerierBuilder`.
 
+#[cfg(feature = "std")]
+extern crate std;
+
 // region:		--- modules
-use super::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
+use dimas_core::builder_states::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use crate::error::Error;
 use core::time::Duration;
-use dimas_com::traits::Querier as QuerierTrait;
-use dimas_com::zenoh::querier::Querier;
+use crate::traits::Querier as QuerierTrait;
+use crate::zenoh::querier::Querier;
 use dimas_core::{
 	enums::OperationState, message_types::QueryableMsg, traits::Context, utils::selector_from,
 	Result,
@@ -16,6 +19,8 @@ use std::{
 	future::Future,
 	sync::{Arc, RwLock},
 };
+use std::boxed::Box;
+use std::string::{String, ToString};
 use tokio::sync::Mutex;
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
@@ -24,11 +29,8 @@ use zenoh::{
 	query::{ConsolidationMode, QueryTarget},
 };
 
-use dimas_com::zenoh::querier::{ArcGetCallback, GetCallback};
+use crate::zenoh::querier::{ArcGetCallback, GetCallback};
 // endregion:	--- modules
-
-// region:    	--- types
-// endregion: 	--- types
 
 // region:		--- QuerierBuilder
 /// The builder for a query

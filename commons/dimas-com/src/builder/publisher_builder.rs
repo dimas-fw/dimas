@@ -2,16 +2,18 @@
 
 //! Module `publisher` provides a message sender `Publisher` which can be created using the `PublisherBuilder`.
 
+#[cfg(feature = "std")]
+extern crate std;
+
 // region:		--- modules
-// these ones are only for doc needed
-use super::{NoSelector, NoStorage, Selector, Storage};
-#[cfg(doc)]
-use crate::agent::Agent;
+use dimas_core::builder_states::{NoSelector, NoStorage, Selector, Storage};
 use crate::error::Error;
-use dimas_com::traits::Publisher as PublisherTrait;
-use dimas_com::zenoh::publisher::Publisher;
+use crate::traits::Publisher as PublisherTrait;
+use crate::zenoh::publisher::Publisher;
 use dimas_core::{enums::OperationState, traits::Context, utils::selector_from, Result};
 use std::sync::{Arc, RwLock};
+use std::boxed::Box;
+use std::string::{String, ToString};
 use zenoh::bytes::Encoding;
 use zenoh::qos::CongestionControl;
 use zenoh::qos::Priority;
@@ -200,7 +202,7 @@ where
 	}
 
 	/// Set only the message qualifing part of the [`Publisher`].
-	/// Will be prefixed with [`Agent`]s prefix.
+	/// Will be prefixed with `Agent`s prefix.
 	#[must_use]
 	pub fn topic(self, topic: &str) -> PublisherBuilder<P, Selector, S> {
 		let selector = selector_from(topic, self.context.prefix());
@@ -237,7 +239,7 @@ impl<P> PublisherBuilder<P, Selector, Storage<Box<dyn PublisherTrait>>>
 where
 	P: Send + Sync + 'static,
 {
-	/// Build and add the [Publisher] to the [`Agent`]s context
+	/// Build and add the [Publisher] to the `Agent`s context
 	///
 	/// # Errors
 	/// Currently none

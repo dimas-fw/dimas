@@ -34,6 +34,8 @@ pub enum Error {
 	},
 	/// Accessing a [`Publisher`] failed
 	AccessPublisher,
+	/// A Mutex is poisoned.
+	MutexPoison(String),
 	/// Publishing a [`Message`] via `put` failed
 	PublishingPut {
 		/// the original zenoh error
@@ -104,6 +106,9 @@ impl core::fmt::Debug for Error {
 			Self::AccessPublisher => {
 				write!(f, "getting the publisher failed")
 			}
+			Self::MutexPoison(location) => {
+				write!(f, "an Mutex poison error happened in {location}")
+			}
 			Self::PublishingPut { source } => {
 				write!(f, "publishing a put message failed: reason {source}")
 			}
@@ -150,6 +155,7 @@ impl std::error::Error for Error {
 			| Self::AccessingQuerier { .. }
 			| Self::AccessingQueryable { .. }
 			| Self::AccessingObservable { .. }
+			| Self::MutexPoison { .. }
 			| Self::InvalidSelector(_) => None,
 		}
 	}

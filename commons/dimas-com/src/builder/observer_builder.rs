@@ -2,14 +2,15 @@
 
 //! Module
 
+#[cfg(feature = "std")]
+extern crate std;
+
 // region:		--- modules
-use super::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
-#[cfg(doc)]
-use crate::agent::Agent;
+use dimas_core::builder_states::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use crate::error::Error;
 use core::time::Duration;
-use dimas_com::traits::Observer as ObserverTrait;
-use dimas_com::zenoh::observer::{
+use crate::traits::Observer as ObserverTrait;
+use crate::zenoh::observer::{
 	ArcControlCallback, ArcResponseCallback, ControlCallback, Observer, ResponseCallback,
 };
 use dimas_core::{
@@ -21,11 +22,10 @@ use dimas_core::{
 };
 use futures::future::Future;
 use std::sync::{Arc, RwLock};
+use std::boxed::Box;
+use std::string::{String, ToString};
 use tokio::sync::Mutex;
 // endregion:	--- modules
-
-// region:    	--- types
-// endregion: 	--- types
 
 // region:		--- ObserverBuilder
 /// The builder for an [`Observer`]
@@ -114,7 +114,7 @@ where
 	}
 
 	/// Set only the message qualifing part of the [`Observer`].
-	/// Will be prefixed with [`Agent`]s prefix.
+	/// Will be prefixed with `Agent`s prefix.
 	#[must_use]
 	pub fn topic(self, topic: &str) -> ObserverBuilder<P, Selector, CC, RC, S> {
 		let selector = selector_from(topic, self.context.prefix());
@@ -269,7 +269,7 @@ impl<P>
 where
 	P: Send + Sync + 'static,
 {
-	/// Build and add the [`Observer`] to the [`Agent`].
+	/// Build and add the [`Observer`] to the `Agent`.
 	///
 	/// # Errors
 	/// Currently none

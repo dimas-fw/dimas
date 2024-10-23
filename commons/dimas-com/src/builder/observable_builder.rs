@@ -2,10 +2,13 @@
 
 //! Module
 
+#[cfg(feature = "std")]
+extern crate std;
+
 // region:		--- modules
-use super::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
+use dimas_core::builder_states::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use crate::error::Error;
-use dimas_com::{
+use crate::{
 	traits::Responder,
 	zenoh::observable::{
 		ArcControlCallback, ArcExecutionCallback, ArcFeedbackCallback, ControlCallback,
@@ -21,12 +24,11 @@ use dimas_core::{
 };
 use futures::future::{BoxFuture, Future};
 use std::sync::{Arc, RwLock};
+use std::boxed::Box;
+use std::string::{String, ToString};
 use tokio::sync::Mutex;
 use tokio::time::Duration;
 // endregion:	--- modules
-
-// region:    	--- types
-// endregion: 	--- types
 
 // region:		--- ObservableBuilder
 /// The builder for an [`Observable`]

@@ -4,9 +4,11 @@
 //! dimas-com implements the communication capabilities.
 //!
 
+/// Builders
+#[cfg(feature = "std")]
+pub mod builder;
 /// Modules errors
 pub mod error;
-
 /// the core messages
 pub mod messages;
 /// `Communicator` trait

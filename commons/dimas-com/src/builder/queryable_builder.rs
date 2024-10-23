@@ -2,26 +2,28 @@
 
 //! Module `queryable` provides an information/compute provider `Queryable` which can be created using the `QueryableBuilder`.
 
+#[cfg(feature = "std")]
+extern crate std;
+
 // region:		--- modules
 use dimas_core::{
 	enums::OperationState, message_types::QueryMsg, traits::Context, utils::selector_from, Result,
 };
 use futures::future::Future;
 use std::sync::{Arc, RwLock};
+use std::boxed::Box;
+use std::string::{String, ToString};
 use tokio::sync::Mutex;
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
 
-use super::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
+use dimas_core::builder_states::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use crate::error::Error;
-use dimas_com::{
+use crate::{
 	traits::Responder,
 	zenoh::queryable::{ArcGetCallback, GetCallback, Queryable},
 };
 // endregion:	--- modules
-
-// region:    	--- types
-// endregion: 	--- types
 
 // region:		--- QueryableBuilder
 /// The builder for a queryable.

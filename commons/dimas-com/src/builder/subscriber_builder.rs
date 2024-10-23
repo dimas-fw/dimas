@@ -3,14 +3,14 @@
 //! Module `subscriber` provides a message `Subscriber` which can be created using the `SubscriberBuilder`.
 //! A `Subscriber` can optional subscribe on a delete message.
 
+#[cfg(feature = "std")]
+extern crate std;
+
 // region:		--- modules
-// these ones are only for doc needed
-use super::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
-#[cfg(doc)]
-use crate::agent::Agent;
+use dimas_core::builder_states::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use crate::error::Error;
-use dimas_com::traits::Responder as SubscriberTrait;
-use dimas_com::zenoh::subscriber::{
+use crate::traits::Responder as SubscriberTrait;
+use crate::zenoh::subscriber::{
 	ArcDeleteCallback, ArcPutCallback, DeleteCallback, PutCallback, Subscriber,
 };
 use dimas_core::{
@@ -18,13 +18,12 @@ use dimas_core::{
 };
 use futures::future::Future;
 use std::sync::{Arc, RwLock};
+use std::boxed::Box;
+use std::string::{String, ToString};
 use tokio::sync::Mutex;
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
 // endregion:	--- modules
-
-// region:    	--- types
-// endregion: 	--- types
 
 // region:		--- SubscriberBuilder
 /// A builder for a subscriber
@@ -128,7 +127,7 @@ where
 	}
 
 	/// Set only the message qualifing part of the [`Subscriber`].
-	/// Will be prefixed with [`Agent`]s prefix.
+	/// Will be prefixed with `Agent`s prefix.
 	#[must_use]
 	pub fn topic(self, topic: &str) -> SubscriberBuilder<P, Selector, C, S> {
 		let selector = selector_from(topic, self.context.prefix());
@@ -244,7 +243,7 @@ impl<P>
 where
 	P: Send + Sync + 'static,
 {
-	/// Build and add the [`Subscriber`] to the [`Agent`].
+	/// Build and add the [`Subscriber`] to the `Agent`.
 	///
 	/// # Errors
 	/// Currently none
