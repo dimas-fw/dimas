@@ -10,7 +10,7 @@ extern crate alloc;
 extern crate std;
 
 // region:		--- modules
-use alloc::sync::Arc;
+use alloc::{boxed::Box, string::String, sync::Arc};
 use core::{fmt::Debug, time::Duration};
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
@@ -18,9 +18,8 @@ use dimas_core::{
 	Result,
 };
 #[cfg(feature = "std")]
-use std::prelude::rust_2021::*;
-#[cfg(feature = "std")]
 use std::sync::Mutex;
+#[cfg(feature = "std")]
 use tokio::{task::JoinHandle, time};
 use tracing::{error, info, instrument, warn, Level};
 // endregion:	--- modules

@@ -10,11 +10,11 @@ extern crate alloc;
 extern crate std;
 
 // region:		--- modules
+#[doc(hidden)]
+use alloc::{string::String, vec::Vec};
 use bitcode::{Decode, Encode};
 use core::fmt::Display;
 use dimas_core::enums::OperationState;
-#[cfg(feature = "std")]
-use std::prelude::rust_2021::*;
 // endregion:	--- modules
 
 // region:		--- AboutEntity

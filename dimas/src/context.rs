@@ -1,7 +1,7 @@
 // Copyright © 2023 Stephan Kunz
 
 //! Implementation of an [`Agent`]'s internal and user defined properties [`ContextImpl`].
-//! 
+//!
 //! Never use it directly but through the type [`Context`], which provides thread safe access.
 //! A [`Context`] is handed into every callback function.
 //!

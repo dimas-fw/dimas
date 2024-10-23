@@ -2,11 +2,13 @@
 
 //! Module
 
+#[doc(hidden)]
+extern crate alloc;
+
 #[cfg(feature = "std")]
 extern crate std;
 
 // region:		--- modules
-use dimas_core::builder_states::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use crate::error::Error;
 use crate::{
 	traits::Responder,
@@ -15,6 +17,13 @@ use crate::{
 		ExecutionCallback, FeedbackCallback, Observable,
 	},
 };
+use alloc::{
+	boxed::Box,
+	string::{String, ToString},
+	sync::Arc,
+};
+use core::time::Duration;
+use dimas_core::builder_states::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use dimas_core::{
 	enums::OperationState,
 	message_types::{ControlResponse, Message},
@@ -23,11 +32,10 @@ use dimas_core::{
 	Result,
 };
 use futures::future::{BoxFuture, Future};
-use std::sync::{Arc, RwLock};
-use std::boxed::Box;
-use std::string::{String, ToString};
+#[cfg(feature = "std")]
+use std::{collections::HashMap, sync::RwLock};
+#[cfg(feature = "std")]
 use tokio::sync::Mutex;
-use tokio::time::Duration;
 // endregion:	--- modules
 
 // region:		--- ObservableBuilder
@@ -251,7 +259,7 @@ where
 	#[must_use]
 	pub fn storage(
 		self,
-		storage: Arc<RwLock<std::collections::HashMap<String, Box<dyn Responder>>>>,
+		storage: Arc<RwLock<HashMap<String, Box<dyn Responder>>>>,
 	) -> ObservableBuilder<P, K, CC, FC, EF, Storage<Box<dyn Responder>>> {
 		let Self {
 			context,

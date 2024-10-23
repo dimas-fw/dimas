@@ -36,7 +36,7 @@ impl core::fmt::Debug for Error {
 	}
 }
 
-impl std::error::Error for Error {
+impl core::error::Error for Error {
 	fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
 		match *self {
 			Self::MutexPoison { .. } => None,

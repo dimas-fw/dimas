@@ -2,13 +2,12 @@
 #![crate_type = "lib"]
 #![crate_name = "dimas"]
 //#![no_panic]
-#![warn(missing_docs)]
 #![doc = include_str!("../README.md")]
 
 //! ## Public interface
-//! 
+//!
 //! Typically it is sufficient to include the prelude with
-//! 
+//!
 //! ```use dimas::prelude::*;```
 
 #[cfg(doctest)]

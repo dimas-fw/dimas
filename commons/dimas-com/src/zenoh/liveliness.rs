@@ -11,6 +11,10 @@ extern crate std;
 
 // region:		--- modules
 use alloc::sync::Arc;
+use alloc::{
+	boxed::Box,
+	string::{String, ToString},
+};
 use core::time::Duration;
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
@@ -18,13 +22,8 @@ use dimas_core::{
 	Result,
 };
 use futures::future::BoxFuture;
-#[cfg(all(doc, feature = "std"))]
-use std::collections::HashMap;
 #[cfg(feature = "std")]
-use std::prelude::rust_2021::*;
-#[cfg(feature = "std")]
-use tokio::sync::Mutex;
-use tokio::task::JoinHandle;
+use tokio::{sync::Mutex, task::JoinHandle};
 use tracing::info;
 use tracing::{error, instrument, warn, Level};
 use zenoh::sample::SampleKind;

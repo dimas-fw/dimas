@@ -3,12 +3,11 @@
 //! Helper functions and structs
 //!
 
-#[cfg(feature = "std")]
-extern crate std;
+#[doc(hidden)]
+extern crate alloc;
 
 // region:		--- modules
-#[cfg(feature = "std")]
-use std::prelude::rust_2021::*;
+use alloc::string::{String, ToString};
 // endregion:	--- modules
 
 // region:    --- tracing

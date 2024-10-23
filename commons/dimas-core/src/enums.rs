@@ -6,15 +6,15 @@
 #[doc(hidden)]
 extern crate alloc;
 
-#[cfg(feature = "std")]
-extern crate std;
-
 // region:		--- modules
 use crate::error::Error;
+use alloc::vec::Vec;
+use alloc::{
+	boxed::Box,
+	string::{String, ToString},
+};
 use bitcode::{Decode, Encode};
 use core::fmt::{Debug, Display};
-#[cfg(feature = "std")]
-use std::prelude::rust_2021::*;
 // endregion:	--- modules
 
 // region:		--- OperationState

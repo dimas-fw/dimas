@@ -7,14 +7,10 @@
 #[doc(hidden)]
 extern crate alloc;
 
-#[cfg(feature = "std")]
-extern crate std;
-
 // region:		--- modules
 #[cfg(doc)]
 use super::enums::OperationState;
-#[cfg(feature = "std")]
-use std::prelude::rust_2021::*;
+use alloc::{boxed::Box, string::String};
 // endregion:	--- modules
 
 // region:		--- types
@@ -67,7 +63,7 @@ impl core::fmt::Debug for Error {
 	}
 }
 
-impl std::error::Error for Error {
+impl core::error::Error for Error {
 	fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
 		match *self {
 			Self::Decoding { ref source } | Self::Reply { ref source } => Some(source.as_ref()),

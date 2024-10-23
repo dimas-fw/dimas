@@ -2,25 +2,31 @@
 
 //! Module `query` provides an information/compute requestor `Query` which can be created using the `QuerierBuilder`.
 
+#[doc(hidden)]
+extern crate alloc;
+
 #[cfg(feature = "std")]
 extern crate std;
 
 // region:		--- modules
-use dimas_core::builder_states::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use crate::error::Error;
-use core::time::Duration;
 use crate::traits::Querier as QuerierTrait;
 use crate::zenoh::querier::Querier;
+use alloc::{
+	boxed::Box,
+	string::{String, ToString},
+	sync::Arc,
+};
+use core::time::Duration;
+use dimas_core::builder_states::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use dimas_core::{
 	enums::OperationState, message_types::QueryableMsg, traits::Context, utils::selector_from,
 	Result,
 };
-use std::{
-	future::Future,
-	sync::{Arc, RwLock},
-};
-use std::boxed::Box;
-use std::string::{String, ToString};
+use futures::Future;
+#[cfg(feature = "std")]
+use std::{collections::HashMap, sync::RwLock};
+#[cfg(feature = "std")]
 use tokio::sync::Mutex;
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
@@ -223,7 +229,7 @@ where
 	#[must_use]
 	pub fn storage(
 		self,
-		storage: Arc<RwLock<std::collections::HashMap<String, Box<dyn QuerierTrait>>>>,
+		storage: Arc<RwLock<HashMap<String, Box<dyn QuerierTrait>>>>,
 	) -> QuerierBuilder<P, K, C, Storage<Box<dyn QuerierTrait>>> {
 		let Self {
 			context,

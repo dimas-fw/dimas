@@ -5,12 +5,8 @@
 #[doc(hidden)]
 extern crate alloc;
 
-#[cfg(feature = "std")]
-extern crate std;
-
 // region:		--- modules
-#[cfg(feature = "std")]
-use std::prelude::rust_2021::*;
+use alloc::{boxed::Box, string::String};
 
 #[cfg(doc)]
 use crate::zenoh::{Communicator, Observable, Observer, Publisher, Querier, Queryable, Subscriber};
@@ -140,7 +136,7 @@ impl core::fmt::Debug for Error {
 	}
 }
 
-impl std::error::Error for Error {
+impl core::error::Error for Error {
 	fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
 		match *self {
 			Self::CreateCommunicator { ref source }

@@ -8,7 +8,6 @@ use core::time::Duration;
 use dimas_com::zenoh::Communicator;
 use dimas_config::Config;
 use dimas_core::enums::OperationState;
-use std::thread;
 // endregion:	--- modules
 
 // region:		--- Cli
@@ -101,7 +100,7 @@ fn main() {
 				}
 				if *count > 1 {
 					println!("\r");
-					thread::sleep(Duration::from_millis(1000));
+					std::thread::sleep(Duration::from_millis(1000));
 				}
 			}
 		}

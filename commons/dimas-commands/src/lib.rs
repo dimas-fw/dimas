@@ -11,6 +11,10 @@ extern crate std;
 
 // region:		--- modules
 use alloc::vec::Vec;
+use alloc::{
+	borrow::ToOwned,
+	string::{String, ToString},
+};
 use chrono::Local;
 use core::time::Duration;
 use dimas_com::{
@@ -26,8 +30,6 @@ use dimas_core::{
 };
 #[cfg(feature = "std")]
 use std::collections::HashMap;
-#[cfg(feature = "std")]
-use std::prelude::rust_2021::*;
 use zenoh::{
 	config::{Locator, WhatAmI},
 	Wait,

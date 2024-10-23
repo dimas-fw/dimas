@@ -45,28 +45,27 @@
 //!
 
 // region:		--- modules
+use crate::context::ContextImpl;
+use crate::error::Error;
+use chrono::Local;
+use core::{fmt::Debug, time::Duration};
 #[cfg(feature = "unstable")]
 use dimas_com::builder::LivelinessSubscriberBuilder;
 use dimas_com::builder::{
 	ObservableBuilder, ObserverBuilder, PublisherBuilder, QuerierBuilder, QueryableBuilder,
 	SubscriberBuilder,
 };
-use crate::context::ContextImpl;
-use crate::error::Error;
-use chrono::Local;
-use core::fmt::Debug;
-use core::time::Duration;
 use dimas_com::messages::{AboutEntity, PingEntity};
 #[cfg(feature = "unstable")]
 use dimas_com::traits::LivelinessSubscriber;
 use dimas_com::traits::{Observer, Publisher, Querier, Responder};
 use dimas_config::Config;
 use dimas_core::{
+	builder_states::{NoCallback, NoInterval, NoSelector, Storage},
 	enums::{OperationState, Signal, TaskSignal},
 	message_types::{Message, QueryMsg},
 	traits::{Capability, Context, ContextAbstraction},
 	Result,
-	builder_states::{NoCallback, NoInterval, NoSelector, Storage},
 };
 use dimas_time::{Timer, TimerBuilder};
 use std::sync::Arc;
@@ -337,11 +336,7 @@ where
 	#[must_use]
 	pub fn liveliness_subscriber(
 		&self,
-	) -> LivelinessSubscriberBuilder<
-		P,
-		NoCallback,
-		Storage<Box<dyn LivelinessSubscriber>>,
-	> {
+	) -> LivelinessSubscriberBuilder<P, NoCallback, Storage<Box<dyn LivelinessSubscriber>>> {
 		LivelinessSubscriberBuilder::new(self.context.clone())
 			.storage(self.context.liveliness_subscribers().clone())
 	}
@@ -365,35 +360,19 @@ where
 	#[must_use]
 	pub fn observer(
 		&self,
-	) -> ObserverBuilder<
-		P,
-		NoSelector,
-		NoCallback,
-		NoCallback,
-		Storage<Box<dyn Observer>>,
-	> {
+	) -> ObserverBuilder<P, NoSelector, NoCallback, NoCallback, Storage<Box<dyn Observer>>> {
 		ObserverBuilder::new(self.context.clone()).storage(self.context.observers().clone())
 	}
 
 	/// Get a [`PublisherBuilder`], the builder for a s`Publisher`.
 	#[must_use]
-	pub fn publisher(
-		&self,
-	) -> PublisherBuilder<P, NoSelector, Storage<Box<dyn Publisher>>>
-	{
+	pub fn publisher(&self) -> PublisherBuilder<P, NoSelector, Storage<Box<dyn Publisher>>> {
 		PublisherBuilder::new(self.context.clone()).storage(self.context.publishers().clone())
 	}
 
 	/// Get a [`QuerierBuilder`], the builder for a `Querier`.
 	#[must_use]
-	pub fn querier(
-		&self,
-	) -> QuerierBuilder<
-		P,
-		NoSelector,
-		NoCallback,
-		Storage<Box<dyn Querier>>,
-	> {
+	pub fn querier(&self) -> QuerierBuilder<P, NoSelector, NoCallback, Storage<Box<dyn Querier>>> {
 		QuerierBuilder::new(self.context.clone()).storage(self.context.queries().clone())
 	}
 
@@ -401,12 +380,7 @@ where
 	#[must_use]
 	pub fn queryable(
 		&self,
-	) -> QueryableBuilder<
-		P,
-		NoSelector,
-		NoCallback,
-		Storage<Box<dyn Responder>>,
-	> {
+	) -> QueryableBuilder<P, NoSelector, NoCallback, Storage<Box<dyn Responder>>> {
 		QueryableBuilder::new(self.context.clone()).storage(self.context.queryables().clone())
 	}
 
@@ -414,26 +388,13 @@ where
 	#[must_use]
 	pub fn subscriber(
 		&self,
-	) -> SubscriberBuilder<
-		P,
-		NoSelector,
-		NoCallback,
-		Storage<Box<dyn Responder>>,
-	> {
+	) -> SubscriberBuilder<P, NoSelector, NoCallback, Storage<Box<dyn Responder>>> {
 		SubscriberBuilder::new(self.context.clone()).storage(self.context.subscribers().clone())
 	}
 
 	/// Get a [`TimerBuilder`], the builder for a [`Timer`].
 	#[must_use]
-	pub fn timer(
-		&self,
-	) -> TimerBuilder<
-		P,
-		NoSelector,
-		NoInterval,
-		NoCallback,
-		Storage<Timer<P>>,
-	> {
+	pub fn timer(&self) -> TimerBuilder<P, NoSelector, NoInterval, NoCallback, Storage<Timer<P>>> {
 		TimerBuilder::new(self.context.clone()).storage(self.context.timers().clone())
 	}
 

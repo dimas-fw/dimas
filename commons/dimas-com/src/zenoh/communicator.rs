@@ -12,12 +12,15 @@ extern crate std;
 // region:		--- modules
 use crate::error::Error;
 use crate::traits::Communicator as CommunicatorTrait;
-use alloc::sync::Arc;
+use alloc::{
+	borrow::ToOwned,
+	string::{String, ToString},
+	sync::Arc,
+	vec::Vec,
+};
 use core::{fmt::Debug, time::Duration};
 use dimas_core::message_types::{Message, QueryableMsg};
 use dimas_core::Result;
-#[cfg(feature = "std")]
-use std::prelude::rust_2021::*;
 use zenoh::config::WhatAmI;
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;

@@ -2,18 +2,25 @@
 
 //! Module `publisher` provides a message sender `Publisher` which can be created using the `PublisherBuilder`.
 
+#[doc(hidden)]
+extern crate alloc;
+
 #[cfg(feature = "std")]
 extern crate std;
 
 // region:		--- modules
-use dimas_core::builder_states::{NoSelector, NoStorage, Selector, Storage};
 use crate::error::Error;
 use crate::traits::Publisher as PublisherTrait;
 use crate::zenoh::publisher::Publisher;
+use alloc::{
+	boxed::Box,
+	string::{String, ToString},
+	sync::Arc,
+};
+use dimas_core::builder_states::{NoSelector, NoStorage, Selector, Storage};
 use dimas_core::{enums::OperationState, traits::Context, utils::selector_from, Result};
-use std::sync::{Arc, RwLock};
-use std::boxed::Box;
-use std::string::{String, ToString};
+#[cfg(feature = "std")]
+use std::{collections::HashMap, sync::RwLock};
 use zenoh::bytes::Encoding;
 use zenoh::qos::CongestionControl;
 use zenoh::qos::Priority;
@@ -129,7 +136,7 @@ where
 	#[must_use]
 	pub fn storage(
 		self,
-		storage: Arc<RwLock<std::collections::HashMap<String, Box<dyn PublisherTrait>>>>,
+		storage: Arc<RwLock<HashMap<String, Box<dyn PublisherTrait>>>>,
 	) -> PublisherBuilder<P, K, Storage<Box<dyn PublisherTrait>>> {
 		let Self {
 			context,

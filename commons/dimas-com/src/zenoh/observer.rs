@@ -1,5 +1,6 @@
 // Copyright © 2024 Stephan Kunz
 
+#[doc(hidden)]
 extern crate alloc;
 
 #[cfg(feature = "std")]
@@ -7,6 +8,12 @@ extern crate std;
 
 // region:		--- modules
 use alloc::sync::Arc;
+use alloc::{
+	borrow::ToOwned,
+	boxed::Box,
+	string::{String, ToString},
+	vec::Vec,
+};
 use bitcode::decode;
 use core::time::Duration;
 use dimas_core::{
@@ -18,11 +25,7 @@ use dimas_core::{
 };
 use futures::future::BoxFuture;
 #[cfg(feature = "std")]
-use std::prelude::rust_2021::*;
-#[cfg(feature = "std")]
-use tokio::sync::Mutex;
-#[cfg(feature = "std")]
-use tokio::task::JoinHandle;
+use tokio::{sync::Mutex, task::JoinHandle};
 use tracing::{error, instrument, warn, Level};
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;

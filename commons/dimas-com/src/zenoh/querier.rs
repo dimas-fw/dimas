@@ -20,7 +20,11 @@ use dimas_core::{
 };
 use futures::future::BoxFuture;
 #[cfg(feature = "std")]
-use std::prelude::rust_2021::*;
+use std::{
+	boxed::Box,
+	string::{String, ToString},
+	vec::Vec,
+};
 #[cfg(feature = "std")]
 use tokio::sync::Mutex;
 use tracing::{error, instrument, warn, Level};

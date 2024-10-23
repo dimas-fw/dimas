@@ -6,7 +6,12 @@ extern crate alloc;
 extern crate std;
 
 // region:		--- modules
-use alloc::sync::Arc;
+use alloc::{
+	boxed::Box,
+	string::{String, ToString},
+	sync::Arc,
+	vec::Vec,
+};
 use bitcode::encode;
 use core::time::Duration;
 use dimas_core::{
@@ -18,11 +23,7 @@ use dimas_core::{
 };
 use futures::future::BoxFuture;
 #[cfg(feature = "std")]
-use std::prelude::rust_2021::*;
-#[cfg(feature = "std")]
-use tokio::sync::Mutex;
-#[cfg(feature = "std")]
-use tokio::task::JoinHandle;
+use tokio::{sync::Mutex, task::JoinHandle};
 use tracing::{error, info, instrument, warn, Level};
 use zenoh::qos::{CongestionControl, Priority};
 #[cfg(feature = "unstable")]

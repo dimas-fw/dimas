@@ -1,9 +1,9 @@
 // Copyright © 2023 Stephan Kunz
 
 //! Most commonly used interface of dimas.
-//! 
+//!
 //! Typically it is sufficient to include the prelude with
-//! 
+//!
 //! ```use dimas::prelude::*;```
 
 // to avoid adding these crates to dependencies
@@ -13,8 +13,8 @@ pub extern crate tokio;
 // bitcode encoding/decoding
 pub use bitcode::{Decode, Encode};
 
-// Duration from tokio
-pub use tokio::time::Duration;
+// Duration from core
+pub use core::time::Duration;
 
 // zenoh stuff
 pub use zenoh::qos::CongestionControl;

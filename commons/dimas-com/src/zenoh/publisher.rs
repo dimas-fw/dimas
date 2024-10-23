@@ -5,11 +5,9 @@
 #[doc(hidden)]
 extern crate alloc;
 
-#[cfg(feature = "std")]
-extern crate std;
-
 // region:		--- modules
 use crate::error::Error;
+use alloc::string::String;
 use core::fmt::Debug;
 use dimas_core::{
 	enums::OperationState,
@@ -17,8 +15,6 @@ use dimas_core::{
 	traits::{Capability, Context},
 	Result,
 };
-#[cfg(feature = "std")]
-use std::prelude::rust_2021::*;
 use tracing::{instrument, Level};
 #[cfg(feature = "unstable")]
 use zenoh::{qos::Reliability, sample::Locality};

@@ -2,27 +2,35 @@
 
 //! Module `queryable` provides an information/compute provider `Queryable` which can be created using the `QueryableBuilder`.
 
+#[doc(hidden)]
+extern crate alloc;
+
 #[cfg(feature = "std")]
 extern crate std;
 
 // region:		--- modules
+use alloc::{
+	boxed::Box,
+	string::{String, ToString},
+	sync::Arc,
+};
 use dimas_core::{
 	enums::OperationState, message_types::QueryMsg, traits::Context, utils::selector_from, Result,
 };
 use futures::future::Future;
-use std::sync::{Arc, RwLock};
-use std::boxed::Box;
-use std::string::{String, ToString};
+#[cfg(feature = "std")]
+use std::{collections::HashMap, sync::RwLock};
+#[cfg(feature = "std")]
 use tokio::sync::Mutex;
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
 
-use dimas_core::builder_states::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use crate::error::Error;
 use crate::{
 	traits::Responder,
 	zenoh::queryable::{ArcGetCallback, GetCallback, Queryable},
 };
+use dimas_core::builder_states::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 // endregion:	--- modules
 
 // region:		--- QueryableBuilder
@@ -176,7 +184,7 @@ where
 	#[must_use]
 	pub fn storage(
 		self,
-		storage: Arc<RwLock<std::collections::HashMap<String, Box<dyn Responder>>>>,
+		storage: Arc<RwLock<HashMap<String, Box<dyn Responder>>>>,
 	) -> QueryableBuilder<P, K, C, Storage<Box<dyn Responder>>> {
 		let Self {
 			context,

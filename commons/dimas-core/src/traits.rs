@@ -16,10 +16,9 @@ use crate::{
 	message_types::{Message, QueryableMsg},
 	utils::selector_from,
 };
-use alloc::sync::Arc;
+use alloc::{string::String, sync::Arc};
 use core::fmt::Debug;
 #[cfg(feature = "std")]
-use std::prelude::rust_2021::*;
 use tokio::sync::mpsc::Sender;
 use zenoh::Session;
 // endregion:	--- modules

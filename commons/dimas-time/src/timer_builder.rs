@@ -3,20 +3,31 @@
 //! Module `timer` provides a set of `Timer` variants which can be created using the `TimerBuilder`.
 //! When fired, a `Timer` calls his assigned `TimerCallback`.
 
+#[doc(hidden)]
+extern crate alloc;
+
 #[cfg(feature = "std")]
 extern crate std;
 
 // region:		--- modules
-use dimas_core::builder_states::{Callback, Interval, NoCallback, NoInterval, NoSelector, NoStorage, Selector, Storage};
 use crate::error::Error;
+use dimas_core::builder_states::{
+	Callback, Interval, NoCallback, NoInterval, NoSelector, NoStorage, Selector, Storage,
+};
 
 use super::{ArcTimerCallback, Timer};
 
+use alloc::{
+	format,
+	string::{String, ToString},
+	sync::Arc,
+};
 use core::time::Duration;
 use dimas_core::{enums::OperationState, traits::Context, Result};
-use std::sync::{Arc, Mutex, RwLock};
-use std::string::{String, ToString};
-use std::format;
+use std::{
+	collections::HashMap,
+	sync::{Mutex, RwLock},
+};
 // endregion:	--- modules
 
 // region:		--- TimerBuilder
@@ -199,7 +210,7 @@ where
 	#[must_use]
 	pub fn storage(
 		self,
-		storage: Arc<RwLock<std::collections::HashMap<String, Timer<P>>>>,
+		storage: Arc<RwLock<HashMap<String, Timer<P>>>>,
 	) -> TimerBuilder<P, K, I, C, Storage<Timer<P>>> {
 		let Self {
 			context,

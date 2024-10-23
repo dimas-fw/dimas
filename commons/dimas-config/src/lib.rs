@@ -59,14 +59,13 @@ pub(crate) type Result<T> =
 // endregion:	--- types
 
 // region:		--- modules
+use alloc::{boxed::Box, string::String};
 #[cfg(feature = "std")]
 use dirs::{config_dir, config_local_dir, home_dir};
 #[cfg(feature = "std")]
 use std::env;
 #[cfg(feature = "std")]
 use std::io::{Error, ErrorKind};
-#[cfg(feature = "std")]
-use std::prelude::rust_2021::*;
 #[cfg(feature = "std")]
 use tracing::{debug, error, warn};
 // endregion:	--- modules

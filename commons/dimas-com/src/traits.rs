@@ -6,17 +6,13 @@
 #[doc(hidden)]
 extern crate alloc;
 
-#[cfg(feature = "std")]
-extern crate std;
-
 use super::error::Error;
+use alloc::string::String;
 use dimas_core::{
 	error::Result,
 	message_types::{Message, QueryableMsg},
 	traits::Capability,
 };
-#[cfg(feature = "std")]
-use std::string::String;
 
 /// `LivelinessSubscriber` capabilities
 pub trait LivelinessSubscriber: Capability + Send + Sync {

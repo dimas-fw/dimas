@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - method for getting a `QuerierBuilder` from an `Agent` to `querier()`
 - error handling without `thiserror`
 - usage of `tokio::main` macro replaced with `dimas::main` macro
+- replaced `tokio::time::Duration` with `core::time::Duration`
+- replaced `std::` with `alloc::` and `core::` where possible
 
 ### Fixed
 

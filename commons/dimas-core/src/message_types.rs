@@ -2,15 +2,14 @@
 
 //! Module `message_types` provides the different types of `Message`s used in callbacks.
 
-#[cfg(feature = "std")]
-extern crate std;
+#[doc(hidden)]
+extern crate alloc;
 
 // region:		--- modules
 use crate::error::{Error, Result};
+use alloc::{boxed::Box, string::ToString, vec::Vec};
 use bitcode::{decode, encode, Decode, Encode};
 use core::ops::Deref;
-#[cfg(feature = "std")]
-use std::prelude::rust_2021::*;
 use zenoh::{query::Query, Wait};
 // endregion:	--- modules
 
