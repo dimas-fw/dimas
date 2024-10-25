@@ -14,7 +14,8 @@
 doc_comment::doctest!("../README.md");
 
 pub mod agent;
-pub mod context;
+mod communicator;
+mod context;
 pub mod error;
 // macro reexport
 pub use dimas_macros::main;

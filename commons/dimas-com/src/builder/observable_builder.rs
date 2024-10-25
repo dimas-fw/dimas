@@ -44,6 +44,7 @@ pub struct ObservableBuilder<P, K, CC, FC, EF, S>
 where
 	P: Send + Sync + 'static,
 {
+	session_id: String,
 	/// Context for the `ObservableBuilder`
 	context: Context<P>,
 	activation_state: OperationState,
@@ -61,8 +62,9 @@ where
 {
 	/// Construct a `ObservableBuilder` in initial state
 	#[must_use]
-	pub const fn new(context: Context<P>) -> Self {
+	pub fn new(session_id: impl Into<String>, context: Context<P>) -> Self {
 		Self {
+			session_id: session_id.into(),
 			context,
 			activation_state: OperationState::Active,
 			feedback_interval: Duration::from_millis(1000),
@@ -102,6 +104,7 @@ where
 	#[must_use]
 	pub fn selector(self, selector: &str) -> ObservableBuilder<P, Selector, CC, FC, EF, S> {
 		let Self {
+			session_id,
 			context,
 			activation_state,
 			feedback_interval,
@@ -112,6 +115,7 @@ where
 			..
 		} = self;
 		ObservableBuilder {
+			session_id,
 			context,
 			activation_state,
 			feedback_interval,
@@ -149,6 +153,7 @@ where
 		F: Future<Output = Result<ControlResponse>> + Send + Sync + 'static,
 	{
 		let Self {
+			session_id,
 			context,
 			activation_state,
 			feedback_interval,
@@ -161,6 +166,7 @@ where
 		let callback: ControlCallback<P> = Box::new(move |ctx, msg| Box::pin(callback(ctx, msg)));
 		let callback: ArcControlCallback<P> = Arc::new(Mutex::new(callback));
 		ObservableBuilder {
+			session_id,
 			context,
 			activation_state,
 			feedback_interval,
@@ -188,6 +194,7 @@ where
 		F: Future<Output = Result<Message>> + Send + Sync + 'static,
 	{
 		let Self {
+			session_id,
 			context,
 			activation_state,
 			feedback_interval,
@@ -200,6 +207,7 @@ where
 		let callback: FeedbackCallback<P> = Box::new(move |ctx| Box::pin(callback(ctx)));
 		let callback: ArcFeedbackCallback<P> = Arc::new(Mutex::new(callback));
 		ObservableBuilder {
+			session_id,
 			context,
 			activation_state,
 			feedback_interval,
@@ -227,6 +235,7 @@ where
 		F: Future<Output = Result<Message>> + Send + Sync + 'static,
 	{
 		let Self {
+			session_id,
 			context,
 			activation_state,
 			feedback_interval,
@@ -239,6 +248,7 @@ where
 		let callback: ExecutionCallback<P> = Box::new(move |ctx| Box::pin(callback(ctx)));
 		let callback = Arc::new(Mutex::new(callback));
 		ObservableBuilder {
+			session_id,
 			context,
 			activation_state,
 			feedback_interval,
@@ -262,6 +272,7 @@ where
 		storage: Arc<RwLock<HashMap<String, Box<dyn Responder>>>>,
 	) -> ObservableBuilder<P, K, CC, FC, EF, Storage<Box<dyn Responder>>> {
 		let Self {
+			session_id,
 			context,
 			activation_state,
 			feedback_interval,
@@ -272,6 +283,7 @@ where
 			..
 		} = self;
 		ObservableBuilder {
+			session_id,
 			context,
 			activation_state,
 			feedback_interval,
@@ -307,6 +319,7 @@ where
 	///
 	pub fn build(self) -> Result<Observable<P>> {
 		let Self {
+			session_id,
 			context,
 			activation_state,
 			feedback_interval,
@@ -316,7 +329,11 @@ where
 			execution_callback,
 			..
 		} = self;
+		let session = context
+			.session(&session_id)
+			.ok_or_else(|| Error::NoZenohSession)?;
 		Ok(Observable::new(
+			session,
 			selector.selector,
 			context,
 			activation_state,

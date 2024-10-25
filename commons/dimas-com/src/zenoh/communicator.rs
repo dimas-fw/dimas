@@ -1,4 +1,5 @@
 // Copyright © 2023 Stephan Kunz
+#![allow(unused_imports)]
 
 //! Implements the zenoh communication capabilities.
 //!
@@ -10,17 +11,24 @@ extern crate alloc;
 extern crate std;
 
 // region:		--- modules
-use crate::error::Error;
-use crate::traits::Communicator as CommunicatorTrait;
+use crate::{
+	error::Error,
+	traits::{SingleSessionCommunicator, SingleSessionCommunicatorMethods},
+};
 use alloc::{
 	borrow::ToOwned,
+	boxed::Box,
 	string::{String, ToString},
 	sync::Arc,
 	vec::Vec,
 };
 use core::{fmt::Debug, time::Duration};
-use dimas_core::message_types::{Message, QueryableMsg};
-use dimas_core::Result;
+use dimas_core::{
+	enums::OperationState,
+	message_types::{Message, QueryableMsg},
+	traits::Capability,
+	Result,
+};
 use zenoh::config::WhatAmI;
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
@@ -41,8 +49,14 @@ pub struct Communicator {
 	mode: String,
 }
 
-impl CommunicatorTrait for Communicator {
-	/// Send an ad hoc put message of type [`Message`] using the given `selector`.
+impl Capability for Communicator {
+	fn manage_operation_state(&self, _state: &OperationState) -> Result<()> {
+		Ok(())
+	}
+}
+
+impl SingleSessionCommunicatorMethods for Communicator {
+	/// Send a put message [`Message`] using the given `selector`
 	/// # Errors
 	#[allow(clippy::needless_pass_by_value)]
 	fn put(&self, selector: &str, message: Message) -> Result<()> {
@@ -52,7 +66,7 @@ impl CommunicatorTrait for Communicator {
 			.map_err(|source| Error::PublishingPut { source }.into())
 	}
 
-	/// Send an ad hoc delete message using the given `selector`.
+	/// Send a delete message using the given `selector`.
 	/// # Errors
 	fn delete(&self, selector: &str) -> Result<()> {
 		self.session
@@ -61,14 +75,16 @@ impl CommunicatorTrait for Communicator {
 			.map_err(|source| Error::PublishingDelete { source }.into())
 	}
 
-	/// Send an ad hoc query with an optional [`Message`] using the given `selector`.
+	/// Send a query with an optional [`Message`] using the given `selector`.
 	/// Answers are collected via callback
 	/// # Errors
 	/// # Panics
-	fn get<F>(&self, selector: &str, message: Option<Message>, mut callback: F) -> Result<()>
-	where
-		F: FnMut(QueryableMsg) -> Result<()>,
-	{
+	fn get(
+		&self,
+		selector: &str,
+		message: Option<Message>,
+		callback: &mut dyn FnMut(QueryableMsg) -> Result<()>,
+	) -> Result<()> {
 		let builder = message
 			.map_or_else(
 				|| self.session.get(selector),
@@ -124,6 +140,8 @@ impl CommunicatorTrait for Communicator {
 	}
 }
 
+impl SingleSessionCommunicator for Communicator {}
+
 impl Communicator {
 	/// Constructor
 	/// # Errors
@@ -152,8 +170,8 @@ impl Communicator {
 
 	/// Get session reference
 	#[must_use]
-	pub fn session(&self) -> &Session {
-		self.session.as_ref()
+	pub fn session(&self) -> Arc<Session> {
+		self.session.clone()
 	}
 
 	/// Get session mode

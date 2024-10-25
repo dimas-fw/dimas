@@ -5,34 +5,29 @@
 #[doc(hidden)]
 extern crate alloc;
 
+#[cfg(feature = "std")]
+extern crate std;
+
 // region:		--- modules
 use crate::error::Error;
-use alloc::string::String;
+use alloc::{string::String, sync::Arc};
 use core::fmt::Debug;
-use dimas_core::{
-	enums::OperationState,
-	message_types::Message,
-	traits::{Capability, Context},
-	Result,
-};
+use dimas_core::{enums::OperationState, message_types::Message, traits::Capability, Result};
 use tracing::{instrument, Level};
 #[cfg(feature = "unstable")]
 use zenoh::{qos::Reliability, sample::Locality};
 use zenoh::{
 	qos::{CongestionControl, Priority},
-	Wait,
+	Session, Wait,
 };
 // endregion:	--- modules
 
 // region:		--- Publisher
 /// Publisher
-pub struct Publisher<P>
-where
-	P: Send + Sync + 'static,
-{
+pub struct Publisher {
+	/// the zenoh session this publisher belongs to
+	session: Arc<Session>,
 	selector: String,
-	/// Context for the Publisher
-	context: Context<P>,
 	activation_state: OperationState,
 	#[cfg(feature = "unstable")]
 	allowed_destination: Locality,
@@ -42,25 +37,19 @@ where
 	priority: Priority,
 	#[cfg(feature = "unstable")]
 	reliability: Reliability,
-	publisher: Option<zenoh::pubsub::Publisher<'static>>,
+	publisher: std::sync::Mutex<Option<zenoh::pubsub::Publisher<'static>>>,
 }
 
-impl<P> Debug for Publisher<P>
-where
-	P: Send + Sync + 'static,
-{
+impl Debug for Publisher {
 	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		f.debug_struct("Publisher")
 			.field("selector", &self.selector)
-			.field("initialized", &self.publisher.is_some())
+			.field("initialized", &self.publisher)
 			.finish_non_exhaustive()
 	}
 }
 
-impl<P> crate::traits::Publisher for Publisher<P>
-where
-	P: Send + Sync + 'static,
-{
+impl crate::traits::Publisher for Publisher {
 	/// Get `selector`
 	fn selector(&self) -> &str {
 		&self.selector
@@ -71,16 +60,18 @@ where
 	///
 	#[instrument(name="publish", level = Level::ERROR, skip_all)]
 	fn put(&self, message: Message) -> Result<()> {
-		match self
-			.publisher
-			.as_ref()
-			.ok_or(Error::AccessPublisher)?
-			.put(message.value())
-			.wait()
-		{
-			Ok(()) => Ok(()),
-			Err(source) => Err(Error::PublishingPut { source }.into()),
-		}
+		self.publisher.lock().map_or_else(
+			|_| todo!(),
+			|publisher| match publisher
+				.as_ref()
+				.ok_or(Error::AccessPublisher)?
+				.put(message.value())
+				.wait()
+			{
+				Ok(()) => Ok(()),
+				Err(source) => Err(Error::PublishingPut { source }.into()),
+			},
+		)
 	}
 
 	/// Send a "delete" message
@@ -88,24 +79,23 @@ where
 	///
 	#[instrument(level = Level::ERROR, skip_all)]
 	fn delete(&self) -> Result<()> {
-		match self
-			.publisher
-			.as_ref()
-			.ok_or(Error::AccessPublisher)?
-			.delete()
-			.wait()
-		{
-			Ok(()) => Ok(()),
-			Err(source) => Err(Error::PublishingDelete { source }.into()),
-		}
+		self.publisher.lock().map_or_else(
+			|_| todo!(),
+			|publisher| match publisher
+				.as_ref()
+				.ok_or(Error::AccessPublisher)?
+				.delete()
+				.wait()
+			{
+				Ok(()) => Ok(()),
+				Err(source) => Err(Error::PublishingDelete { source }.into()),
+			},
+		)
 	}
 }
 
-impl<P> Capability for Publisher<P>
-where
-	P: Send + Sync + 'static,
-{
-	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()> {
+impl Capability for Publisher {
+	fn manage_operation_state(&self, state: &OperationState) -> Result<()> {
 		if state >= &self.activation_state {
 			return self.init();
 		} else if state < &self.activation_state {
@@ -115,16 +105,13 @@ where
 	}
 }
 
-impl<P> Publisher<P>
-where
-	P: Send + Sync + 'static,
-{
+impl Publisher {
 	/// Constructor for a [`Publisher`]
 	#[allow(clippy::too_many_arguments)]
 	#[must_use]
 	pub const fn new(
+		session: Arc<Session>,
 		selector: String,
-		context: Context<P>,
 		activation_state: OperationState,
 		#[cfg(feature = "unstable")] allowed_destination: Locality,
 		congestion_control: CongestionControl,
@@ -134,8 +121,8 @@ where
 		#[cfg(feature = "unstable")] reliability: Reliability,
 	) -> Self {
 		Self {
+			session,
 			selector,
-			context,
 			activation_state,
 			#[cfg(feature = "unstable")]
 			allowed_destination,
@@ -145,19 +132,18 @@ where
 			priority,
 			#[cfg(feature = "unstable")]
 			reliability,
-			publisher: None,
+			publisher: std::sync::Mutex::new(None),
 		}
 	}
 
 	/// Initialize
 	/// # Errors
 	///
-	fn init(&mut self) -> Result<()>
-	where
-		P: Send + Sync + 'static,
-	{
-		let session = self.context.session();
-		let builder = session
+	fn init(&self) -> Result<()> {
+		self.de_init()?;
+
+		let builder = self
+			.session
 			.declare_publisher(self.selector.clone())
 			.congestion_control(self.congestion_control)
 			.encoding(self.encoding.as_str())
@@ -169,19 +155,29 @@ where
 			.allowed_destination(self.allowed_destination)
 			.reliability(self.reliability);
 
-		let publisher = builder.wait()?;
+		let new_publisher = builder.wait()?;
 		//.map_err(|_| DimasError::Put.into())?;
-		self.publisher.replace(publisher);
-		Ok(())
+		self.publisher.lock().map_or_else(
+			|_| todo!(),
+			|mut publisher| {
+				publisher.replace(new_publisher);
+				Ok(())
+			},
+		)
 	}
 
 	/// De-Initialize
 	/// # Errors
 	///
 	#[allow(clippy::unnecessary_wraps)]
-	fn de_init(&mut self) -> Result<()> {
-		self.publisher.take();
-		Ok(())
+	fn de_init(&self) -> Result<()> {
+		self.publisher.lock().map_or_else(
+			|_| todo!(),
+			|mut publisher| {
+				publisher.take();
+				Ok(())
+			},
+		)
 	}
 }
 // endregion:	--- Publisher
@@ -190,14 +186,11 @@ where
 mod tests {
 	use super::*;
 
-	#[derive(Debug)]
-	struct Props {}
-
 	// check, that the auto traits are available
 	const fn is_normal<T: Sized + Send + Sync>() {}
 
 	#[test]
 	const fn normal_types() {
-		is_normal::<Publisher<Props>>();
+		is_normal::<Publisher>();
 	}
 }

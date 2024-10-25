@@ -6,13 +6,15 @@
 #[doc(hidden)]
 extern crate alloc;
 
-use super::error::Error;
-use alloc::string::String;
+use alloc::{string::String, sync::Arc};
 use dimas_core::{
 	error::Result,
 	message_types::{Message, QueryableMsg},
 	traits::Capability,
 };
+use zenoh::Session;
+
+use crate::error::Error;
 
 /// `LivelinessSubscriber` capabilities
 pub trait LivelinessSubscriber: Capability + Send + Sync {
@@ -61,7 +63,7 @@ pub trait Querier: Capability + Send + Sync {
 	fn get(
 		&self,
 		message: Option<Message>,
-		callback: Option<&dyn Fn(QueryableMsg) -> Result<()>>,
+		callback: Option<&mut dyn FnMut(QueryableMsg) -> Result<()>>,
 	) -> Result<()>;
 }
 
@@ -72,9 +74,10 @@ pub trait Responder: Capability + Send + Sync {
 	fn selector(&self) -> &str;
 }
 
-/// communication capabilities
-pub trait Communicator {
-	/// Send a put message of type [`Message`] to the given `selector`.
+// region:		--- communication
+/// the communication methods to be implemented by a single session Communicator implementation
+pub trait SingleSessionCommunicatorMethods {
+	/// Send a put message [`Message`] to the given `selector`.
 	/// # Errors
 	/// - `NotImplemented`: there is no implementation within this communicator
 	fn put(&self, _selector: &str, _message: Message) -> Result<()> {
@@ -89,13 +92,14 @@ pub trait Communicator {
 	}
 
 	/// Send a query with an optional specification [`Message`] to the given `selector`.
-	/// Answers are collected with the callback
 	/// # Errors
 	/// - `NotImplemented`: there is no implementation within this communicator
-	fn get<F>(&self, _selector: &str, _message: Option<Message>, _callback: F) -> Result<()>
-	where
-		F: FnMut(QueryableMsg) -> Result<()>,
-	{
+	fn get(
+		&self,
+		_selector: &str,
+		_message: Option<Message>,
+		_callback: &mut dyn FnMut(QueryableMsg) -> Result<()>,
+	) -> Result<()> {
 		Err(Error::NotImplemented.into())
 	}
 
@@ -113,3 +117,102 @@ pub trait Communicator {
 		Err(Error::NotImplemented.into())
 	}
 }
+
+/// the communication methods to be implemented by a multi session Communicator
+pub trait MultiSessionCommunicatorMethods {
+	/// Send a put message [`Message`] to the given `selector`.
+	/// # Errors
+	/// - `NotImplemented`: there is no implementation within this communicator
+	fn put(&self, selector: &str, message: Message) -> Result<()> {
+		self.put_from("default", selector, message)
+	}
+
+	/// Send a put message [`Message`] from the given `session` to the given `selector`.
+	/// # Errors
+	/// - `NotImplemented`: there is no implementation within this communicator
+	fn put_from(&self, _session_id: &str, _selector: &str, _message: Message) -> Result<()> {
+		Err(Error::NotImplemented.into())
+	}
+
+	/// Send a delete message to the given `selector`.
+	/// # Errors
+	/// - `NotImplemented`: there is no implementation within this communicator
+	fn delete(&self, selector: &str) -> Result<()> {
+		self.delete_from("default", selector)
+	}
+
+	/// Send a delete message from the given `session` to the given `selector`.
+	/// # Errors
+	/// - `NotImplemented`: there is no implementation within this communicator
+	fn delete_from(&self, _session_id: &str, _selector: &str) -> Result<()> {
+		Err(Error::NotImplemented.into())
+	}
+
+	/// Send a query with an optional specification [`Message`] to the given `selector`.
+	/// # Errors
+	/// - `NotImplemented`: there is no implementation within this communicator
+	fn get(
+		&self,
+		selector: &str,
+		message: Option<Message>,
+		callback: Option<&mut dyn FnMut(QueryableMsg) -> Result<()>>,
+	) -> Result<()> {
+		self.get_from("default", selector, message, callback)
+	}
+
+	/// Send a query with an optional specification [`Message`] from the given `session` to the given `selector`.
+	/// # Errors
+	/// - `NotImplemented`: there is no implementation within this communicator
+	fn get_from(
+		&self,
+		_session_id: &str,
+		_selector: &str,
+		_message: Option<Message>,
+		_callback: Option<&mut dyn FnMut(QueryableMsg) -> Result<()>>,
+	) -> Result<()> {
+		Err(Error::NotImplemented.into())
+	}
+
+	/// Request an observation for [`Message`] from the given `selector`
+	/// # Errors
+	/// - `NotImplemented`: there is no implementation within this communicator
+	fn observe(&self, selector: &str, message: Option<Message>) -> Result<()> {
+		self.observe_from("default", selector, message)
+	}
+
+	/// Request an observation for [`Message`] from the given `session` from the given `selector`
+	/// # Errors
+	/// - `NotImplemented`: there is no implementation within this communicator
+	fn observe_from(&self, _session: &str, _selector: &str, _message: Option<Message>) -> Result<()> {
+		Err(Error::NotImplemented.into())
+	}
+
+	/// Request a stream configured by [`Message`] from the given `selector`
+	/// # Errors
+	/// - `NotImplemented`: there is no implementation within this communicator
+	fn watch(&self, selector: &str, message: Message) -> Result<()> {
+		self.watch_from("default", selector, message)
+	}
+
+	/// Request a stream configured by [`Message`] from the given `session` from the given `selector`
+	/// # Errors
+	/// - `NotImplemented`: there is no implementation within this communicator
+	fn watch_from(&self, _session: &str, _selector: &str, _message: Message) -> Result<()> {
+		Err(Error::NotImplemented.into())
+	}
+}
+
+/// communicator implementation capabilities
+pub trait SingleSessionCommunicator:
+	SingleSessionCommunicatorMethods + Capability + Send + Sync
+{
+}
+
+/// communicator capabilities
+pub trait MultiSessionCommunicator:
+	MultiSessionCommunicatorMethods + Capability + Send + Sync
+{
+	/// get a communicator session
+	fn session(&self, session_id: &str) -> Option<Arc<Session>>;
+}
+// endregion:	--- communication

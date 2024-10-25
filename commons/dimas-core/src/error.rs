@@ -33,6 +33,8 @@ pub enum Error {
 	},
 	/// empty request
 	EmptyQuery,
+	/// Not available/implemented
+	NotImplemented,
 	/// An unknown [`OperationState`] is given
 	UnknownOperationState {
 		/// name of the operation state
@@ -56,6 +58,9 @@ impl core::fmt::Debug for Error {
 			}
 			Self::Reply { source } => write!(f, "publishing a put message failed: reason {source}"),
 			Self::EmptyQuery => write!(f, "query was empty"),
+			Self::NotImplemented => {
+				write!(f, "no implementation available")
+			}
 			Self::UnknownOperationState { state } => {
 				write!(f, "the operation state {state} is unknown")
 			}
@@ -67,7 +72,7 @@ impl core::error::Error for Error {
 	fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
 		match *self {
 			Self::Decoding { ref source } | Self::Reply { ref source } => Some(source.as_ref()),
-			Self::EmptyQuery | Self::UnknownOperationState { .. } => None,
+			Self::EmptyQuery | Self::NotImplemented | Self::UnknownOperationState { .. } => None,
 		}
 	}
 }

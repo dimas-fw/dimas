@@ -27,6 +27,7 @@ use tokio::{sync::Mutex, task::JoinHandle};
 use tracing::info;
 use tracing::{error, instrument, warn, Level};
 use zenoh::sample::SampleKind;
+use zenoh::Session;
 // endregion:	--- modules
 
 // region:    	--- types
@@ -45,12 +46,14 @@ pub struct LivelinessSubscriber<P>
 where
 	P: Send + Sync + 'static,
 {
+	/// the zenoh session this liveliness subscriber belongs to
+	session: Arc<Session>,
 	token: String,
 	context: Context<P>,
 	activation_state: OperationState,
 	put_callback: ArcLivelinessCallback<P>,
 	delete_callback: Option<ArcLivelinessCallback<P>>,
-	handle: Option<JoinHandle<()>>,
+	handle: std::sync::Mutex<Option<JoinHandle<()>>>,
 }
 
 impl<P> core::fmt::Debug for LivelinessSubscriber<P>
@@ -78,14 +81,14 @@ impl<P> Capability for LivelinessSubscriber<P>
 where
 	P: Send + Sync + 'static,
 {
-	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()> {
-		if (state >= &self.activation_state) && self.handle.is_none() {
-			return self.start();
-		} else if (state < &self.activation_state) && self.handle.is_some() {
-			self.stop();
-			return Ok(());
+	fn manage_operation_state(&self, state: &OperationState) -> Result<()> {
+		if state >= &self.activation_state {
+			self.start()
+		} else if state < &self.activation_state {
+			self.stop()
+		} else {
+			Ok(())
 		}
-		Ok(())
 	}
 }
 
@@ -95,6 +98,7 @@ where
 {
 	/// Constructor for a [`LivelinessSubscriber`]
 	pub fn new(
+		session: Arc<Session>,
 		token: String,
 		context: Context<P>,
 		activation_state: OperationState,
@@ -102,12 +106,13 @@ where
 		delete_callback: Option<ArcLivelinessCallback<P>>,
 	) -> Self {
 		Self {
+			session,
 			token,
 			context,
 			activation_state,
 			put_callback,
 			delete_callback,
-			handle: None,
+			handle: std::sync::Mutex::new(None),
 		}
 	}
 
@@ -115,12 +120,14 @@ where
 	/// An already running subscriber will be stopped before,
 	/// eventually damaged Mutexes will be repaired
 	#[instrument(level = Level::TRACE, skip_all)]
-	fn start(&mut self) -> Result<()> {
-		self.stop();
+	fn start(&self) -> Result<()> {
+		self.stop()?;
 
 		// liveliness handling
 		let key = self.token.clone();
+		let session1 = self.session.clone();
 		let token1 = self.token.clone();
+		let session2 = self.session.clone();
 		let token2 = self.token.clone();
 		let p_cb1 = self.put_callback.clone();
 		let p_cb2 = self.put_callback.clone();
@@ -129,52 +136,60 @@ where
 		let ctx1 = self.context.clone();
 		let ctx2 = self.context.clone();
 
-		self.handle
-			.replace(tokio::task::spawn(async move {
-				std::panic::set_hook(Box::new(move |reason| {
-					error!("liveliness subscriber panic: {}", reason);
-					if let Err(reason) = ctx
-						.sender()
-						.blocking_send(TaskSignal::RestartLiveliness(key.clone()))
-					{
-						error!("could not restart liveliness subscriber: {}", reason);
-					} else {
-						info!("restarting liveliness subscriber!");
+		self.handle.lock().map_or_else(
+			|_| todo!(),
+			|mut handle| {
+				handle.replace(tokio::task::spawn(async move {
+					std::panic::set_hook(Box::new(move |reason| {
+						error!("liveliness subscriber panic: {}", reason);
+						if let Err(reason) = ctx
+							.sender()
+							.blocking_send(TaskSignal::RestartLiveliness(key.clone()))
+						{
+							error!("could not restart liveliness subscriber: {}", reason);
+						} else {
+							info!("restarting liveliness subscriber!");
+						};
+					}));
+
+					let timeout = Duration::from_millis(250);
+					// the initial liveliness query
+					if let Err(error) = run_initial(session1, token1, p_cb1, ctx1, timeout).await {
+						error!("running initial liveliness query failed with {error}");
+					};
+
+					// the liveliness subscriber
+					if let Err(error) = run_liveliness(session2, token2, p_cb2, d_cb, ctx2).await {
+						error!("running liveliness subscriber failed with {error}");
 					};
 				}));
-
-				let timeout = Duration::from_millis(250);
-				// the initial liveliness query
-				if let Err(error) = run_initial(token1, p_cb1, ctx1, timeout).await {
-					error!("running initial liveliness query failed with {error}");
-				};
-
-				// the liveliness subscriber
-				if let Err(error) = run_liveliness(token2, p_cb2, d_cb, ctx2).await {
-					error!("running liveliness subscriber failed with {error}");
-				};
-			}));
-		Ok(())
+				Ok(())
+			},
+		)
 	}
 
 	/// Stop a running LivelinessSubscriber
 	#[instrument(level = Level::TRACE)]
-	fn stop(&mut self) {
-		if let Some(handle) = self.handle.take() {
-			handle.abort();
-		}
+	fn stop(&self) -> Result<()> {
+		self.handle.lock().map_or_else(
+			|_| todo!(),
+			|mut handle| {
+				handle.take();
+				Ok(())
+			},
+		)
 	}
 }
 
 #[instrument(name="liveliness", level = Level::ERROR, skip_all)]
 async fn run_liveliness<P>(
+	session: Arc<Session>,
 	token: String,
 	p_cb: ArcLivelinessCallback<P>,
 	d_cb: Option<ArcLivelinessCallback<P>>,
 	ctx: Context<P>,
 ) -> Result<()> {
-	let subscriber = ctx
-		.session()
+	let subscriber = session
 		.liveliness()
 		.declare_subscriber(&token)
 		.await?;
@@ -216,13 +231,13 @@ async fn run_liveliness<P>(
 
 #[instrument(name="initial liveliness", level = Level::ERROR, skip_all)]
 async fn run_initial<P>(
+	session: Arc<Session>,
 	token: String,
 	p_cb: ArcLivelinessCallback<P>,
 	ctx: Context<P>,
 	timeout: Duration,
 ) -> Result<()> {
-	let result = ctx
-		.session()
+	let result = session
 		.liveliness()
 		.get(&token)
 		.timeout(timeout)

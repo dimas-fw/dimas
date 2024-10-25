@@ -45,6 +45,7 @@ pub struct QuerierBuilder<P, K, C, S>
 where
 	P: Send + Sync + 'static,
 {
+	session_id: String,
 	context: Context<P>,
 	activation_state: OperationState,
 	#[cfg(feature = "unstable")]
@@ -64,8 +65,9 @@ where
 {
 	/// Construct a `QuerierBuilder` in initial state
 	#[must_use]
-	pub fn new(context: Context<P>) -> Self {
+	pub fn new(session_id: impl Into<String>, context: Context<P>) -> Self {
 		Self {
+			session_id: session_id.into(),
 			context,
 			activation_state: OperationState::Active,
 			#[cfg(feature = "unstable")]
@@ -138,6 +140,7 @@ where
 	#[must_use]
 	pub fn selector(self, selector: &str) -> QuerierBuilder<P, Selector, C, S> {
 		let Self {
+			session_id,
 			context,
 			activation_state,
 			#[cfg(feature = "unstable")]
@@ -151,6 +154,7 @@ where
 			..
 		} = self;
 		QuerierBuilder {
+			session_id,
 			context,
 			activation_state,
 			#[cfg(feature = "unstable")]
@@ -191,6 +195,7 @@ where
 		F: Future<Output = Result<()>> + Send + Sync + 'static,
 	{
 		let Self {
+			session_id,
 			context,
 			activation_state,
 			#[cfg(feature = "unstable")]
@@ -206,6 +211,7 @@ where
 		let callback: GetCallback<P> = Box::new(move |ctx, msg| Box::pin(callback(ctx, msg)));
 		let callback: ArcGetCallback<P> = Arc::new(Mutex::new(callback));
 		QuerierBuilder {
+			session_id,
 			context,
 			activation_state,
 			#[cfg(feature = "unstable")]
@@ -232,6 +238,7 @@ where
 		storage: Arc<RwLock<HashMap<String, Box<dyn QuerierTrait>>>>,
 	) -> QuerierBuilder<P, K, C, Storage<Box<dyn QuerierTrait>>> {
 		let Self {
+			session_id,
 			context,
 			activation_state,
 			#[cfg(feature = "unstable")]
@@ -245,6 +252,7 @@ where
 			..
 		} = self;
 		QuerierBuilder {
+			session_id,
 			context,
 			activation_state,
 			#[cfg(feature = "unstable")]
@@ -269,6 +277,7 @@ where
 	///
 	pub fn build(self) -> Result<Querier<P>> {
 		let Self {
+			session_id,
 			context,
 			activation_state,
 			#[cfg(feature = "unstable")]
@@ -282,7 +291,11 @@ where
 			..
 		} = self;
 		let selector = selector.selector;
+		let session = context
+			.session(&session_id)
+			.ok_or_else(|| Error::NoZenohSession)?;
 		Ok(Querier::new(
+			session,
 			selector,
 			context,
 			activation_state,

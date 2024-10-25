@@ -21,6 +21,8 @@ use zenoh::query::Query;
 pub enum Error {
 	/// Not available/implemented
 	NotImplemented,
+	/// No zenoh available/implemented
+	NoZenohSession,
 	/// Invalid selector
 	InvalidSelector(String),
 	/// Creation of the [`Communicator`] was not possible
@@ -93,6 +95,9 @@ impl core::fmt::Debug for Error {
 			Self::NotImplemented => {
 				write!(f, "no implementation available")
 			}
+			Self::NoZenohSession => {
+				write!(f, "no zenoh session available")
+			}
 			Self::InvalidSelector(location) => {
 				write!(f, "invalid selector for '{location}'")
 			}
@@ -147,6 +152,7 @@ impl core::error::Error for Error {
 			| Self::SubscriberCreation { ref source }
 			| Self::SubscriberCallback { ref source } => Some(source.as_ref()),
 			Self::NotImplemented
+			| Self::NoZenohSession
 			| Self::AccessPublisher
 			| Self::AccessingQuerier { .. }
 			| Self::AccessingQueryable { .. }

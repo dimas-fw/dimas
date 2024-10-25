@@ -34,6 +34,7 @@ pub struct PublisherBuilder<P, K, S>
 where
 	P: Send + Sync + 'static,
 {
+	session_id: String,
 	context: Context<P>,
 	activation_state: OperationState,
 	#[cfg(feature = "unstable")]
@@ -54,8 +55,9 @@ where
 {
 	/// Construct a [`PublisherBuilder`] in initial state
 	#[must_use]
-	pub fn new(context: Context<P>) -> Self {
+	pub fn new(session_id: impl Into<String>, context: Context<P>) -> Self {
 		Self {
+			session_id: session_id.into(),
 			context,
 			activation_state: OperationState::Active,
 			#[cfg(feature = "unstable")]
@@ -139,6 +141,7 @@ where
 		storage: Arc<RwLock<HashMap<String, Box<dyn PublisherTrait>>>>,
 	) -> PublisherBuilder<P, K, Storage<Box<dyn PublisherTrait>>> {
 		let Self {
+			session_id,
 			context,
 			activation_state,
 			#[cfg(feature = "unstable")]
@@ -153,6 +156,7 @@ where
 			..
 		} = self;
 		PublisherBuilder {
+			session_id,
 			context,
 			activation_state,
 			#[cfg(feature = "unstable")]
@@ -177,6 +181,7 @@ where
 	#[must_use]
 	pub fn selector(self, selector: &str) -> PublisherBuilder<P, Selector, S> {
 		let Self {
+			session_id,
 			context,
 			activation_state,
 			#[cfg(feature = "unstable")]
@@ -191,6 +196,7 @@ where
 			..
 		} = self;
 		PublisherBuilder {
+			session_id,
 			context,
 			activation_state,
 			#[cfg(feature = "unstable")]
@@ -225,10 +231,14 @@ where
 	///
 	/// # Errors
 	/// Currently none
-	pub fn build(self) -> Result<Publisher<P>> {
+	pub fn build(self) -> Result<Publisher> {
+		let session = self
+			.context
+			.session(&self.session_id)
+			.ok_or_else(|| Error::NoZenohSession)?;
 		Ok(Publisher::new(
+			session,
 			self.selector.selector,
-			self.context,
 			self.activation_state,
 			#[cfg(feature = "unstable")]
 			self.allowed_destination,

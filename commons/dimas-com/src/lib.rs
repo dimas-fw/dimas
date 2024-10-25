@@ -4,9 +4,11 @@
 //! dimas-com implements the communication capabilities.
 //!
 
-/// Builders
+// /// Builders
 #[cfg(feature = "std")]
 pub mod builder;
+/// Enums
+pub mod enums;
 /// Modules errors
 pub mod error;
 /// the core messages

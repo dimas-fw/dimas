@@ -25,10 +25,13 @@ use futures::future::BoxFuture;
 #[cfg(feature = "std")]
 use tokio::{sync::Mutex, task::JoinHandle};
 use tracing::{error, info, instrument, warn, Level};
-use zenoh::qos::{CongestionControl, Priority};
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
 use zenoh::Wait;
+use zenoh::{
+	qos::{CongestionControl, Priority},
+	Session,
+};
 // endregion:	--- modules
 
 // region:    	--- types
@@ -56,6 +59,8 @@ pub struct Observable<P>
 where
 	P: Send + Sync + 'static,
 {
+	/// the zenoh session this observable belongs to
+	session: Arc<Session>,
 	/// The observables key expression
 	selector: String,
 	/// Context for the Observable
@@ -70,7 +75,7 @@ where
 	/// function for observation execution
 	execution_function: ArcExecutionCallback<P>,
 	execution_handle: Arc<Mutex<Option<JoinHandle<()>>>>,
-	handle: Option<JoinHandle<()>>,
+	handle: std::sync::Mutex<Option<JoinHandle<()>>>,
 }
 
 impl<P> core::fmt::Debug for Observable<P>
@@ -97,14 +102,14 @@ impl<P> Capability for Observable<P>
 where
 	P: Send + Sync + 'static,
 {
-	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()> {
-		if (state >= &self.activation_state) && self.handle.is_none() {
-			return self.start();
-		} else if (state < &self.activation_state) && self.handle.is_some() {
-			self.stop();
-			return Ok(());
+	fn manage_operation_state(&self, state: &OperationState) -> Result<()> {
+		if state >= &self.activation_state {
+			self.start()
+		} else if state < &self.activation_state {
+			self.stop()
+		} else {
+			Ok(())
 		}
-		Ok(())
 	}
 }
 
@@ -113,8 +118,10 @@ where
 	P: Send + Sync + 'static,
 {
 	/// Constructor for an [`Observable`]
+	#[allow(clippy::too_many_arguments)]
 	#[must_use]
 	pub fn new(
+		session: Arc<Session>,
 		selector: String,
 		context: Context<P>,
 		activation_state: OperationState,
@@ -124,6 +131,7 @@ where
 		execution_function: ArcExecutionCallback<P>,
 	) -> Self {
 		Self {
+			session,
 			selector,
 			context,
 			activation_state,
@@ -133,15 +141,15 @@ where
 			feedback_publisher: Arc::new(Mutex::new(None)),
 			execution_function,
 			execution_handle: Arc::new(Mutex::new(None)),
-			handle: None,
+			handle: std::sync::Mutex::new(None),
 		}
 	}
 
 	/// Start or restart the Observable.
 	/// An already running Observable will be stopped, eventually damaged Mutexes will be repaired
 	#[instrument(level = Level::TRACE, skip_all)]
-	fn start(&mut self) -> Result<()> {
-		self.stop();
+	fn start(&self) -> Result<()> {
+		self.stop()?;
 
 		let selector = self.selector.clone();
 		let interval = self.feedback_interval;
@@ -152,62 +160,74 @@ where
 		let efch = self.execution_handle.clone();
 		let ctx1 = self.context.clone();
 		let ctx2 = self.context.clone();
+		let session = self.session.clone();
 
-		self.handle
-			.replace(tokio::task::spawn(async move {
-				let key = selector.clone();
-				std::panic::set_hook(Box::new(move |reason| {
-					error!("observable panic: {}", reason);
-					if let Err(reason) = ctx1
-						.sender()
-						.blocking_send(TaskSignal::RestartObservable(key.clone()))
+		self.handle.lock().map_or_else(
+			|_| todo!(),
+			|mut handle| {
+				handle.replace(tokio::task::spawn(async move {
+					let key = selector.clone();
+					std::panic::set_hook(Box::new(move |reason| {
+						error!("observable panic: {}", reason);
+						if let Err(reason) = ctx1
+							.sender()
+							.blocking_send(TaskSignal::RestartObservable(key.clone()))
+						{
+							error!("could not restart observable: {}", reason);
+						} else {
+							info!("restarting observable!");
+						};
+					}));
+					if let Err(error) =
+						run_observable(session, selector, interval, ccb, fcb, fcbp, efc, efch, ctx2)
+							.await
 					{
-						error!("could not restart observable: {}", reason);
-					} else {
-						info!("restarting observable!");
+						error!("observable failed with {error}");
 					};
 				}));
-				if let Err(error) =
-					run_observable(selector, interval, ccb, fcb, fcbp, efc, efch, ctx2).await
-				{
-					error!("observable failed with {error}");
-				};
-			}));
 
-		Ok(())
+				Ok(())
+			},
+		)
 	}
 
 	/// Stop a running Observable
 	#[instrument(level = Level::TRACE, skip_all)]
 	#[allow(clippy::significant_drop_in_scrutinee)]
-	fn stop(&mut self) {
-		if let Some(handle) = self.handle.take() {
-			let feedback_publisher = self.feedback_publisher.clone();
-			let feedback_callback = self.feedback_callback.clone();
-			let execution_handle = self.execution_handle.clone();
-			let ctx = self.context.clone();
-			tokio::spawn(async move {
-				// stop execution if running
-				if let Some(execution_handle) = execution_handle.lock().await.take() {
-					execution_handle.abort();
-					// send back cancelation message
-					if let Some(publisher) = feedback_publisher.lock().await.take() {
-						let Ok(msg) = feedback_callback.lock().await(ctx).await else {
-							todo!()
+	fn stop(&self) -> Result<()> {
+		self.handle.lock().map_or_else(
+			|_| todo!(),
+			|mut handle| {
+				if let Some(handle) = handle.take() {
+					let feedback_publisher = self.feedback_publisher.clone();
+					let feedback_callback = self.feedback_callback.clone();
+					let execution_handle = self.execution_handle.clone();
+					let ctx = self.context.clone();
+					tokio::spawn(async move {
+						// stop execution if running
+						if let Some(execution_handle) = execution_handle.lock().await.take() {
+							execution_handle.abort();
+							// send back cancelation message
+							if let Some(publisher) = feedback_publisher.lock().await.take() {
+								let Ok(msg) = feedback_callback.lock().await(ctx).await else {
+									todo!()
+								};
+								let response = ObservableResponse::Canceled(msg.value().clone());
+								match publisher
+									.put(Message::encode(&response).value().clone())
+									.wait()
+								{
+									Ok(()) => {}
+									Err(err) => error!("could not send cancel state due to {err}"),
+								};
+							};
 						};
-						let response = ObservableResponse::Canceled(msg.value().clone());
-						match publisher
-							.put(Message::encode(&response).value().clone())
-							.wait()
-						{
-							Ok(()) => {}
-							Err(err) => error!("could not send cancel state due to {err}"),
-						};
-					};
-				};
-				handle.abort();
-			});
-		}
+						handle.abort();
+					});
+				}
+				Ok(())
+			},
+		)
 	}
 }
 // endregion:	--- Observable
@@ -217,6 +237,7 @@ where
 #[allow(clippy::too_many_arguments)]
 #[instrument(name="observable", level = Level::ERROR, skip_all)]
 async fn run_observable<P>(
+	session: Arc<Session>,
 	selector: String,
 	feedback_interval: Duration,
 	control_callback: ArcControlCallback<P>,
@@ -230,7 +251,6 @@ where
 	P: Send + Sync + 'static,
 {
 	// create the control queryable
-	let session = ctx.session();
 	let builder = session
 		.declare_queryable(&selector)
 		.complete(true);
@@ -247,7 +267,7 @@ where
 
 	// base communication key & selector for feedback publisher
 	let key = selector.clone();
-	let publisher_selector = feedback_selector_from(&key, &ctx.session().zid().to_string());
+	let publisher_selector = feedback_selector_from(&key, &session.zid().to_string());
 
 	// variables to manage control loop
 	let mut is_running = false;
@@ -295,7 +315,7 @@ where
 								if matches!(response, ControlResponse::Accepted ) {
 									// create feedback publisher
 									let mut fp = feedback_publisher.lock().await;
-									ctx.session()
+									session
 										.declare_publisher(publisher_selector.clone())
 										.congestion_control(CongestionControl::Block)
 										.priority(Priority::RealTime)

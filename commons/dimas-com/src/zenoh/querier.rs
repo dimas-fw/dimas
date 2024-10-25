@@ -33,7 +33,7 @@ use zenoh::sample::Locality;
 use zenoh::{
 	query::{ConsolidationMode, QueryTarget},
 	sample::SampleKind,
-	Wait,
+	Session, Wait,
 };
 // endregion:	--- modules
 
@@ -51,6 +51,8 @@ pub struct Querier<P>
 where
 	P: Send + Sync + 'static,
 {
+	/// the zenoh session this querier belongs to
+	session: Arc<Session>,
 	selector: String,
 	/// Context for the Querier
 	context: Context<P>,
@@ -62,7 +64,7 @@ where
 	encoding: String,
 	target: QueryTarget,
 	timeout: Duration,
-	key_expr: Option<zenoh::key_expr::KeyExpr<'static>>,
+	key_expr: std::sync::Mutex<Option<zenoh::key_expr::KeyExpr<'static>>>,
 }
 
 impl<P> Debug for Querier<P>
@@ -101,83 +103,90 @@ where
 	fn get(
 		&self,
 		message: Option<Message>,
-		mut callback: Option<&dyn Fn(QueryableMsg) -> Result<()>>,
+		mut callback: Option<&mut dyn FnMut(QueryableMsg) -> Result<()>>,
 	) -> Result<()> {
 		let cb = self.callback.clone();
-		let session = self.context.session();
-		let key_expr = self
-			.key_expr
-			.clone()
-			.ok_or_else(|| Error::InvalidSelector("querier".into()))?;
+		self.key_expr.lock().map_or_else(
+			|_| todo!(),
+			|key_expr| {
+				let key_expr = key_expr
+					.clone()
+					.ok_or_else(|| Error::InvalidSelector("querier".into()))?;
 
-		let builder = message
-			.map_or_else(
-				|| session.get(&key_expr),
-				|msg| session.get(&self.selector).payload(msg.value()),
-			)
-			.encoding(self.encoding.as_str())
-			.target(self.target)
-			.consolidation(self.mode)
-			.timeout(self.timeout);
+				let builder = message
+					.map_or_else(
+						|| self.session.get(&key_expr),
+						|msg| {
+							self.session
+								.get(&self.selector)
+								.payload(msg.value())
+						},
+					)
+					.encoding(self.encoding.as_str())
+					.target(self.target)
+					.consolidation(self.mode)
+					.timeout(self.timeout);
 
-		#[cfg(feature = "unstable")]
-		let builder = builder.allowed_destination(self.allowed_destination);
+				#[cfg(feature = "unstable")]
+				let builder = builder.allowed_destination(self.allowed_destination);
 
-		let query = builder
-			.wait()
-			.map_err(|source| Error::QueryCreation { source })?;
+				let query = builder
+					.wait()
+					.map_err(|source| Error::QueryCreation { source })?;
 
-		let mut unreached = true;
-		let mut retry_count = 0u8;
+				let mut unreached = true;
+				let mut retry_count = 0u8;
 
-		while unreached && retry_count <= 5 {
-			retry_count += 1;
-			while let Ok(reply) = query.recv() {
-				match reply.result() {
-					Ok(sample) => match sample.kind() {
-						SampleKind::Put => {
-							let content: Vec<u8> = sample.payload().to_bytes().into_owned();
-							let msg = QueryableMsg(content);
-							if callback.is_none() {
-								let cb = cb.clone();
-								let ctx = self.context.clone();
-								tokio::task::spawn(async move {
-									let mut lock = cb.lock().await;
-									if let Err(error) = lock(ctx, msg).await {
-										error!("querier callback failed with {error}");
-									}
-								});
-							} else {
-								let callback =
-									callback
-										.as_mut()
-										.ok_or_else(|| Error::AccessingQuerier {
-											selector: key_expr.to_string(),
+				while unreached && retry_count <= 5 {
+					retry_count += 1;
+					while let Ok(reply) = query.recv() {
+						match reply.result() {
+							Ok(sample) => match sample.kind() {
+								SampleKind::Put => {
+									let content: Vec<u8> = sample.payload().to_bytes().into_owned();
+									let msg = QueryableMsg(content);
+									if callback.is_none() {
+										let cb = cb.clone();
+										let ctx = self.context.clone();
+										tokio::task::spawn(async move {
+											let mut lock = cb.lock().await;
+											if let Err(error) = lock(ctx, msg).await {
+												error!("querier callback failed with {error}");
+											}
+										});
+									} else {
+										let callback = callback.as_mut().ok_or_else(|| {
+											Error::AccessingQuerier {
+												selector: key_expr.to_string(),
+											}
 										})?;
-								callback(msg).map_err(|source| Error::QueryCallback { source })?;
-							}
+										callback(msg)
+											.map_err(|source| Error::QueryCallback { source })?;
+									}
+								}
+								SampleKind::Delete => {
+									error!("Delete in Querier");
+								}
+							},
+							Err(err) => error!("receive error: {:?})", err),
 						}
-						SampleKind::Delete => {
-							error!("Delete in Querier");
-						}
-					},
-					Err(err) => error!("receive error: {:?})", err),
-				}
-				unreached = false;
-			}
-			if unreached {
-				if retry_count < 5 {
-					std::thread::sleep(self.timeout);
-				} else {
-					return Err(Error::AccessingQueryable {
-						selector: key_expr.to_string(),
+						unreached = false;
 					}
-					.into());
+					if unreached {
+						if retry_count < 5 {
+							std::thread::sleep(self.timeout);
+						} else {
+							return Err(Error::AccessingQueryable {
+								selector: key_expr.to_string(),
+							}
+							.into());
+						}
+					}
 				}
-			}
-		}
 
-		Ok(())
+				Ok(())
+			},
+		)
 	}
 }
 
@@ -185,7 +194,7 @@ impl<P> Capability for Querier<P>
 where
 	P: Send + Sync + 'static,
 {
-	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()> {
+	fn manage_operation_state(&self, state: &OperationState) -> Result<()> {
 		if state >= &self.activation_state {
 			return self.init();
 		} else if state < &self.activation_state {
@@ -203,6 +212,7 @@ where
 	#[must_use]
 	#[allow(clippy::too_many_arguments)]
 	pub fn new(
+		session: Arc<Session>,
 		selector: String,
 		context: Context<P>,
 		activation_state: OperationState,
@@ -214,6 +224,7 @@ where
 		timeout: Duration,
 	) -> Self {
 		Self {
+			session,
 			selector,
 			context,
 			activation_state,
@@ -224,34 +235,45 @@ where
 			encoding,
 			target,
 			timeout,
-			key_expr: None,
+			key_expr: std::sync::Mutex::new(None),
 		}
 	}
 
 	/// Initialize
 	/// # Errors
-	fn init(&mut self) -> Result<()>
+	fn init(&self) -> Result<()>
 	where
 		P: Send + Sync + 'static,
 	{
-		let key_expr = self
-			.context
-			.session()
-			.declare_keyexpr(self.selector.clone())
-			.wait()?;
-		self.key_expr.replace(key_expr);
-		Ok(())
+		self.de_init()?;
+
+		self.key_expr.lock().map_or_else(
+			|_| todo!(),
+			|mut key_expr| {
+				let new_key_expr = self
+					.session
+					.declare_keyexpr(self.selector.clone())
+					.wait()?;
+				key_expr.replace(new_key_expr);
+				Ok(())
+			},
+		)
 	}
 
 	/// De-Initialize
 	/// # Errors
 	#[allow(clippy::unnecessary_wraps)]
-	fn de_init(&mut self) -> Result<()>
+	fn de_init(&self) -> Result<()>
 	where
 		P: Send + Sync + 'static,
 	{
-		self.key_expr.take();
-		Ok(())
+		self.key_expr.lock().map_or_else(
+			|_| todo!(),
+			|mut key_expr| {
+				key_expr.take();
+				Ok(())
+			},
+		)
 	}
 }
 // endregion:	--- Querier

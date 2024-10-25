@@ -34,7 +34,7 @@ async fn main() -> Result<()> {
 		.name("query")
 		.config(&Config::default())?;
 
-	// create querier for topic "query/1"
+	// create querier for topic "query1"
 	agent
 		.querier()
 		.topic("query1")
@@ -71,7 +71,7 @@ async fn main() -> Result<()> {
 			println!("Querying 2 [{counter2}]");
 			let message = Message::encode(&counter2);
 			// querying with ad-hoc query
-			ctx.get("query2", Some(message), Some(&query_callback2))?;
+			ctx.get("query2", Some(message), Some(&mut query_callback2))?;
 			counter2 += 4;
 			Ok(())
 		})
@@ -93,7 +93,7 @@ async fn main() -> Result<()> {
 			ctx.get(
 				"query3",
 				Some(message),
-				Some(&|response| -> Result<()> {
+				Some(&mut |response| -> Result<()> {
 					let message: u128 = response.decode()?;
 					println!("Response 3 is '{message}'");
 					Ok(())
@@ -120,7 +120,7 @@ async fn main() -> Result<()> {
 			ctx.get(
 				"query4",
 				Some(message),
-				Some(&|response| -> Result<()> {
+				Some(&mut |response| -> Result<()> {
 					let message: u128 = response.decode()?;
 					println!("Response 4 is '{message}'");
 					Ok(())

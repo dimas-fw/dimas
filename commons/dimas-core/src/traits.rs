@@ -1,5 +1,5 @@
 // Copyright © 2024 Stephan Kunz
-
+#![allow(unused_imports)]
 //! Core traits of `DiMAS`
 //!
 
@@ -64,7 +64,7 @@ pub trait ContextAbstraction: Debug + Send + Sync {
 
 	/// Get zenoh session reference
 	#[must_use]
-	fn session(&self) -> &Session;
+	fn session(&self, session_id: &str) -> Option<Arc<Session>>;
 
 	/// Get sender reference
 	#[must_use]
@@ -128,7 +128,7 @@ pub trait ContextAbstraction: Debug + Send + Sync {
 		&self,
 		topic: &str,
 		message: Option<Message>,
-		callback: Option<&dyn Fn(QueryableMsg) -> Result<()>>,
+		callback: Option<&mut dyn FnMut(QueryableMsg) -> Result<()>>,
 	) -> Result<()> {
 		let selector = selector_from(topic, self.prefix());
 		self.get_with(&selector, message, callback)
@@ -146,7 +146,7 @@ pub trait ContextAbstraction: Debug + Send + Sync {
 		&self,
 		selector: &str,
 		message: Option<Message>,
-		callback: Option<&dyn Fn(QueryableMsg) -> Result<()>>,
+		callback: Option<&mut dyn FnMut(QueryableMsg) -> Result<()>>,
 	) -> Result<()>;
 
 	/// Send an observation request for a `topic` with a [`Message`].
@@ -185,6 +185,6 @@ pub trait Capability: Debug {
 	/// Checks whether state of capability component is appropriate for the given [`OperationState`].
 	/// If not, implementation has to adjusts components state to needs.
 	/// # Errors
-	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()>;
+	fn manage_operation_state(&self, state: &OperationState) -> Result<()>;
 }
 // endregion:	--- Capability

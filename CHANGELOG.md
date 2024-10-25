@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - macro `dimas::main`
 - module for time related stuff
 - traits `Communicator`, `Observer`, `Publisher`, `Querier`, `Responder` in dimas-com
+- multi session/protocol communication with traits `SingleSessionCommunicator` & `MultiSessionCommunicator`
 
 ### Changed
 

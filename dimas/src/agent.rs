@@ -337,7 +337,18 @@ where
 	pub fn liveliness_subscriber(
 		&self,
 	) -> LivelinessSubscriberBuilder<P, NoCallback, Storage<Box<dyn LivelinessSubscriber>>> {
-		LivelinessSubscriberBuilder::new(self.context.clone())
+		LivelinessSubscriberBuilder::new("default", self.context.clone())
+			.storage(self.context.liveliness_subscribers().clone())
+	}
+
+	/// Get a [`LivelinessSubscriberBuilder`], the builder for a `LivelinessSubscriber`.
+	#[cfg(feature = "unstable")]
+	#[must_use]
+	pub fn liveliness_subscriber_for(
+		&self,
+		session_id: impl Into<String>,
+	) -> LivelinessSubscriberBuilder<P, NoCallback, Storage<Box<dyn LivelinessSubscriber>>> {
+		LivelinessSubscriberBuilder::new(session_id, self.context.clone())
 			.storage(self.context.liveliness_subscribers().clone())
 	}
 
@@ -353,7 +364,25 @@ where
 		NoCallback,
 		Storage<Box<dyn Responder>>,
 	> {
-		ObservableBuilder::new(self.context.clone()).storage(self.context.observables().clone())
+		ObservableBuilder::new("default", self.context.clone())
+			.storage(self.context.responders().clone())
+	}
+
+	/// Get an [`ObservableBuilder`], the builder for an `Observable`.
+	#[must_use]
+	pub fn observable_for(
+		&self,
+		session_id: impl Into<String>,
+	) -> ObservableBuilder<
+		P,
+		NoSelector,
+		NoCallback,
+		NoCallback,
+		NoCallback,
+		Storage<Box<dyn Responder>>,
+	> {
+		ObservableBuilder::new(session_id, self.context.clone())
+			.storage(self.context.responders().clone())
 	}
 
 	/// Get an [`ObserverBuilder`], the builder for an `Observer`.
@@ -361,19 +390,52 @@ where
 	pub fn observer(
 		&self,
 	) -> ObserverBuilder<P, NoSelector, NoCallback, NoCallback, Storage<Box<dyn Observer>>> {
-		ObserverBuilder::new(self.context.clone()).storage(self.context.observers().clone())
+		ObserverBuilder::new("default", self.context.clone())
+			.storage(self.context.observers().clone())
+	}
+
+	/// Get an [`ObserverBuilder`], the builder for an `Observer`.
+	#[must_use]
+	pub fn observer_for(
+		&self,
+		session_id: impl Into<String>,
+	) -> ObserverBuilder<P, NoSelector, NoCallback, NoCallback, Storage<Box<dyn Observer>>> {
+		ObserverBuilder::new(session_id, self.context.clone())
+			.storage(self.context.observers().clone())
 	}
 
 	/// Get a [`PublisherBuilder`], the builder for a s`Publisher`.
 	#[must_use]
 	pub fn publisher(&self) -> PublisherBuilder<P, NoSelector, Storage<Box<dyn Publisher>>> {
-		PublisherBuilder::new(self.context.clone()).storage(self.context.publishers().clone())
+		PublisherBuilder::new("default", self.context.clone())
+			.storage(self.context.publishers().clone())
+	}
+
+	/// Get a [`PublisherBuilder`], the builder for a s`Publisher`.
+	#[must_use]
+	pub fn publisher_for(
+		&self,
+		session_id: impl Into<String>,
+	) -> PublisherBuilder<P, NoSelector, Storage<Box<dyn Publisher>>> {
+		PublisherBuilder::new(session_id, self.context.clone())
+			.storage(self.context.publishers().clone())
 	}
 
 	/// Get a [`QuerierBuilder`], the builder for a `Querier`.
 	#[must_use]
 	pub fn querier(&self) -> QuerierBuilder<P, NoSelector, NoCallback, Storage<Box<dyn Querier>>> {
-		QuerierBuilder::new(self.context.clone()).storage(self.context.queries().clone())
+		QuerierBuilder::new("default", self.context.clone())
+			.storage(self.context.queriers().clone())
+	}
+
+	/// Get a [`QuerierBuilder`], the builder for a `Querier`.
+	#[must_use]
+	pub fn querier_for(
+		&self,
+		session_id: impl Into<String>,
+	) -> QuerierBuilder<P, NoSelector, NoCallback, Storage<Box<dyn Querier>>> {
+		QuerierBuilder::new(session_id, self.context.clone())
+			.storage(self.context.queriers().clone())
 	}
 
 	/// Get a [`QueryableBuilder`], the builder for a `Queryable`.
@@ -381,7 +443,18 @@ where
 	pub fn queryable(
 		&self,
 	) -> QueryableBuilder<P, NoSelector, NoCallback, Storage<Box<dyn Responder>>> {
-		QueryableBuilder::new(self.context.clone()).storage(self.context.queryables().clone())
+		QueryableBuilder::new("default", self.context.clone())
+			.storage(self.context.responders().clone())
+	}
+
+	/// Get a [`QueryableBuilder`], the builder for a `Queryable`.
+	#[must_use]
+	pub fn queryable_for(
+		&self,
+		session_id: impl Into<String>,
+	) -> QueryableBuilder<P, NoSelector, NoCallback, Storage<Box<dyn Responder>>> {
+		QueryableBuilder::new(session_id, self.context.clone())
+			.storage(self.context.responders().clone())
 	}
 
 	/// Get a [`SubscriberBuilder`], the builder for a `Subscriber`.
@@ -389,7 +462,18 @@ where
 	pub fn subscriber(
 		&self,
 	) -> SubscriberBuilder<P, NoSelector, NoCallback, Storage<Box<dyn Responder>>> {
-		SubscriberBuilder::new(self.context.clone()).storage(self.context.subscribers().clone())
+		SubscriberBuilder::new("default", self.context.clone())
+			.storage(self.context.responders().clone())
+	}
+
+	/// Get a [`SubscriberBuilder`], the builder for a `Subscriber`.
+	#[must_use]
+	pub fn subscriber_for(
+		&self,
+		session_id: impl Into<String>,
+	) -> SubscriberBuilder<P, NoSelector, NoCallback, Storage<Box<dyn Responder>>> {
+		SubscriberBuilder::new(session_id, self.context.clone())
+			.storage(self.context.responders().clone())
 	}
 
 	/// Get a [`TimerBuilder`], the builder for a [`Timer`].
@@ -407,7 +491,7 @@ where
 		// activate sending liveliness
 		#[cfg(feature = "unstable")]
 		if self.liveliness {
-			let session = self.context.session();
+			let session = self.context.session("default");
 			let token_str = self
 				.context
 				.prefix()
@@ -416,6 +500,7 @@ where
 				});
 
 			let token = session
+				.expect("snh")
 				.liveliness()
 				.declare_token(&token_str)
 				.wait()
@@ -423,7 +508,7 @@ where
 
 			self.liveliness_token
 				.write()
-				.map_err(|_| Error::ModifyContext("liveliness".into()))?
+				.map_err(|_| Error::ModifyStruct("liveliness".into()))?
 				.replace(token);
 		};
 
@@ -485,7 +570,7 @@ where
 								.manage_operation_state(&self.context.state())?;
 						},
 						TaskSignal::RestartQueryable(selector) => {
-							self.context.queryables()
+							self.context.responders()
 								.write()
 								.map_err(|_| Error::WriteAccess)?
 								.get_mut(&selector)
@@ -493,7 +578,7 @@ where
 								.manage_operation_state(&self.context.state())?;
 						},
 						TaskSignal::RestartObservable(selector) => {
-							self.context.observables()
+							self.context.responders()
 								.write()
 								.map_err(|_| Error::WriteAccess)?
 								.get_mut(&selector)
@@ -501,7 +586,7 @@ where
 								.manage_operation_state(&self.context.state())?;
 						},
 						TaskSignal::RestartSubscriber(selector) => {
-							self.context.subscribers()
+							self.context.responders()
 								.write()
 								.map_err(|_| Error::WriteAccess)?
 								.get_mut(&selector)
@@ -552,7 +637,7 @@ where
 		if self.liveliness {
 			self.liveliness_token
 				.write()
-				.map_err(|_| Error::ModifyContext("liveliness".into()))?
+				.map_err(|_| Error::ModifyStruct("liveliness".into()))?
 				.take();
 		}
 		let r = Agent {

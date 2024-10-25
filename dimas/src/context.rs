@@ -1,5 +1,5 @@
 // Copyright © 2023 Stephan Kunz
-
+#![allow(unused_imports)]
 //! Implementation of an [`Agent`]'s internal and user defined properties [`ContextImpl`].
 //!
 //! Never use it directly but through the type [`Context`], which provides thread safe access.
@@ -33,12 +33,15 @@
 // only for doc needed
 #[cfg(doc)]
 use crate::agent::Agent;
+use crate::communicator::Communicator;
 use crate::error::Error;
 use core::fmt::Debug;
 #[cfg(feature = "unstable")]
 use dimas_com::traits::LivelinessSubscriber;
-use dimas_com::traits::{Observer, Publisher, Querier, Responder};
-use dimas_com::{traits::Communicator as CommunicatorTrait, zenoh::Communicator};
+use dimas_com::traits::{
+	MultiSessionCommunicator, MultiSessionCommunicatorMethods, Observer, Publisher, Querier,
+	Responder,
+};
 use dimas_config::Config;
 #[cfg(doc)]
 use dimas_core::traits::Context;
@@ -54,7 +57,7 @@ use std::{
 	sync::{Arc, RwLock},
 };
 use tokio::sync::mpsc::Sender;
-use tracing::{error, info, instrument, Level};
+use tracing::{info, instrument, Level};
 use zenoh::Session;
 // endregion:	--- modules
 
@@ -71,12 +74,14 @@ pub struct ContextImpl<P>
 where
 	P: Send + Sync + 'static,
 {
-	/// The [`Agent`]s name.
+	/// The [`Agent`]s uuid
+	uuid: String,
+	/// The [`Agent`]s name
 	/// Name must not, but should be unique.
 	name: Option<String>,
 	/// A prefix to separate communication for different groups
 	prefix: Option<String>,
-	/// The [`Agent`]s current operational state.
+	/// The [`Agent`]s current operational state
 	state: Arc<RwLock<OperationState>>,
 	/// A sender for sending signals to owner of context
 	sender: Sender<TaskSignal>,
@@ -84,17 +89,6 @@ where
 	props: Arc<RwLock<P>>,
 	/// The [`Agent`]s [`Communicator`]
 	communicator: Arc<Communicator>,
-	/// Registered [`LivelinessSubscriber`]
-	#[cfg(feature = "unstable")]
-	liveliness_subscribers: Arc<RwLock<HashMap<String, Box<dyn LivelinessSubscriber>>>>,
-	/// Registered [`Observer`]
-	observers: Arc<RwLock<HashMap<String, Box<dyn Observer>>>>,
-	/// Registered [`Publisher`]
-	publishers: Arc<RwLock<HashMap<String, Box<dyn Publisher>>>>,
-	/// Registered [`Query`]s
-	queries: Arc<RwLock<HashMap<String, Box<dyn Querier>>>>,
-	/// Registered [`Observable`]s, [`Queryable`]s and [`Subscriber`]s
-	responders: Arc<RwLock<HashMap<String, Box<dyn Responder>>>>,
 	/// Registered [`Timer`]
 	timers: Arc<RwLock<HashMap<String, Timer<P>>>>,
 }
@@ -132,7 +126,7 @@ where
 
 	#[must_use]
 	fn uuid(&self) -> String {
-		self.communicator.uuid()
+		self.uuid.clone()
 	}
 
 	#[must_use]
@@ -143,15 +137,6 @@ where
 	#[must_use]
 	fn sender(&self) -> &Sender<TaskSignal> {
 		&self.sender
-	}
-
-	#[must_use]
-	fn mode(&self) -> &String {
-		self.communicator.mode()
-	}
-
-	fn session(&self) -> &Session {
-		self.communicator.session()
 	}
 
 	fn read(&self) -> Result<std::sync::RwLockReadGuard<'_, P>> {
@@ -226,20 +211,20 @@ where
 	#[instrument(level = Level::ERROR, skip_all)]
 	fn put_with(&self, selector: &str, message: Message) -> Result<()> {
 		if self
-			.publishers
+			.publishers()
 			.read()
 			.map_err(|_| Error::ReadContext("publishers".into()))?
 			.get(selector)
 			.is_some()
 		{
-			self.publishers
+			self.publishers()
 				.read()
 				.map_err(|_| Error::ReadContext("publishers".into()))?
 				.get(selector)
 				.ok_or_else(|| Error::Get("publishers".into()))?
 				.put(message)?;
 		} else {
-			self.communicator.put(selector, message)?;
+			todo!(); //self.communicator.put(selector, message)?;
 		};
 		Ok(())
 	}
@@ -247,20 +232,20 @@ where
 	#[instrument(level = Level::ERROR, skip_all)]
 	fn delete_with(&self, selector: &str) -> Result<()> {
 		if self
-			.publishers
+			.publishers()
 			.read()
 			.map_err(|_| Error::ReadContext("publishers".into()))?
 			.get(selector)
 			.is_some()
 		{
-			self.publishers
+			self.publishers()
 				.read()
 				.map_err(|_| Error::ReadContext("publishers".into()))?
 				.get(selector)
 				.ok_or_else(|| Error::Get("publishers".into()))?
 				.delete()?;
 		} else {
-			self.communicator.delete(selector)?;
+			todo!(); //self.communicator.delete(selector)?;
 		}
 		Ok(())
 	}
@@ -270,23 +255,22 @@ where
 		&self,
 		selector: &str,
 		message: Option<Message>,
-		callback: Option<&dyn Fn(QueryableMsg) -> Result<()>>,
+		callback: Option<&mut dyn FnMut(QueryableMsg) -> Result<()>>,
 	) -> Result<()> {
 		if self
-			.queries
+			.queriers()
 			.read()
 			.map_err(|_| Error::ReadContext("queries".into()))?
 			.get(selector)
 			.is_some()
 		{
-			self.queries
+			self.queriers()
 				.read()
 				.map_err(|_| Error::ReadContext("queries".into()))?
 				.get(selector)
 				.ok_or_else(|| Error::Get("queries".into()))?
 				.get(message, callback)?;
 		} else {
-			let callback = callback.ok_or_else(|| Error::MissingCallback)?;
 			self.communicator
 				.get(selector, message, callback)?;
 		};
@@ -295,7 +279,7 @@ where
 
 	#[instrument(level = Level::ERROR, skip_all)]
 	fn observe_with(&self, selector: &str, message: Option<Message>) -> Result<()> {
-		self.observers
+		self.observers()
 			.read()
 			.map_err(|_| Error::ReadContext("observers".into()))?
 			.get(selector)
@@ -306,13 +290,21 @@ where
 
 	#[instrument(level = Level::ERROR, skip_all)]
 	fn cancel_observe_with(&self, selector: &str) -> Result<()> {
-		self.observers
+		self.observers()
 			.read()
 			.map_err(|_| Error::ReadContext("observers".into()))?
 			.get(selector)
 			.ok_or_else(|| Error::Get("observers".into()))?
 			.cancel()?;
 		Ok(())
+	}
+
+	fn mode(&self) -> &String {
+		self.communicator.mode()
+	}
+
+	fn session(&self, session_id: &str) -> Option<Arc<Session>> {
+		self.communicator.session(session_id)
 	}
 }
 
@@ -330,19 +322,15 @@ where
 		prefix: Option<String>,
 	) -> Result<Self> {
 		let communicator = Communicator::new(config)?;
+		let uuid = communicator.uuid();
 		Ok(Self {
+			uuid,
 			name,
 			prefix,
 			state: Arc::new(RwLock::new(OperationState::Created)),
 			sender,
 			communicator: Arc::new(communicator),
 			props: Arc::new(RwLock::new(props)),
-			#[cfg(feature = "unstable")]
-			liveliness_subscribers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
-			observers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
-			publishers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
-			queries: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
-			responders: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 			timers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 		})
 	}
@@ -353,52 +341,41 @@ where
 		*(self
 			.state
 			.write()
-			.map_err(|_| Error::ModifyContext("state".into()))?) = state;
+			.map_err(|_| Error::ModifyStruct("state".into()))?) = state;
 		Ok(())
 	}
 
 	/// Get the liveliness subscribers
 	#[cfg(feature = "unstable")]
 	#[must_use]
-	pub const fn liveliness_subscribers(
+	pub fn liveliness_subscribers(
 		&self,
 	) -> &Arc<RwLock<HashMap<String, Box<dyn LivelinessSubscriber>>>> {
-		&self.liveliness_subscribers
-	}
-	/// Get the observables
-	#[must_use]
-	pub const fn observables(&self) -> &Arc<RwLock<HashMap<String, Box<dyn Responder>>>> {
-		&self.responders
+		self.communicator.liveliness_subscribers()
 	}
 
 	/// Get the observers
 	#[must_use]
-	pub const fn observers(&self) -> &Arc<RwLock<HashMap<String, Box<dyn Observer>>>> {
-		&self.observers
+	pub fn observers(&self) -> &Arc<RwLock<HashMap<String, Box<dyn Observer>>>> {
+		self.communicator.observers()
 	}
 
 	/// Get the publishers
 	#[must_use]
-	pub const fn publishers(&self) -> &Arc<RwLock<HashMap<String, Box<dyn Publisher>>>> {
-		&self.publishers
+	pub fn publishers(&self) -> Arc<RwLock<HashMap<String, Box<dyn Publisher>>>> {
+		self.communicator.publishers()
 	}
 
 	/// Get the queries
 	#[must_use]
-	pub const fn queries(&self) -> &Arc<RwLock<HashMap<String, Box<dyn Querier>>>> {
-		&self.queries
+	pub fn queriers(&self) -> &Arc<RwLock<HashMap<String, Box<dyn Querier>>>> {
+		self.communicator.queriers()
 	}
 
-	/// Get the queryables
+	/// Get the responders
 	#[must_use]
-	pub const fn queryables(&self) -> &Arc<RwLock<HashMap<String, Box<dyn Responder>>>> {
-		&self.responders
-	}
-
-	/// Get the subscribers
-	#[must_use]
-	pub const fn subscribers(&self) -> &Arc<RwLock<HashMap<String, Box<dyn Responder>>>> {
-		&self.responders
+	pub fn responders(&self) -> &Arc<RwLock<HashMap<String, Box<dyn Responder>>>> {
+		self.communicator.responders()
 	}
 
 	/// Get the timers
@@ -407,7 +384,7 @@ where
 		&self.timers
 	}
 
-	/// Internal function for starting all registered tasks.<br>
+	/// Internal function for starting all registere)d tasks.<br>
 	/// The tasks are started in the order
 	/// - [`LivelinessSubscriber`]s
 	/// - [`Queryable`]s
@@ -423,74 +400,14 @@ where
 	/// # Errors
 	/// Currently none
 	fn upgrade_registered_tasks(&self, new_state: OperationState) -> Result<()> {
-		// start liveliness subscriber
-		#[cfg(feature = "unstable")]
-		self.liveliness_subscribers
-			.write()
-			.map_err(|_| Error::ModifyContext("liveliness subscribers".into()))?
-			.iter_mut()
-			.for_each(|subscriber| {
-				let _ = subscriber.1.manage_operation_state(&new_state);
-			});
-
-		// start all registered responders
-		self.responders
-			.write()
-			.map_err(|_| Error::ModifyContext("subscribers".into()))?
-			.iter_mut()
-			.for_each(|subscriber| {
-				let _ = subscriber.1.manage_operation_state(&new_state);
-			});
-
-		// init all registered publishers
-		self.publishers
-			.write()
-			.map_err(|_| Error::ModifyContext("publishers".into()))?
-			.iter_mut()
-			.for_each(|publisher| {
-				if let Err(reason) = publisher.1.manage_operation_state(&new_state) {
-					error!(
-						"could not initialize publisher for {}, reason: {}",
-						publisher.1.selector(),
-						reason
-					);
-				};
-			});
-
-		// init all registered observers
-		self.observers
-			.write()
-			.map_err(|_| Error::ModifyContext("observers".into()))?
-			.iter_mut()
-			.for_each(|observer| {
-				if let Err(reason) = observer.1.manage_operation_state(&new_state) {
-					error!(
-						"could not initialize observer for {}, reason: {}",
-						observer.1.selector(),
-						reason
-					);
-				};
-			});
-
-		// init all registered queries
-		self.queries
-			.write()
-			.map_err(|_| Error::ModifyContext("queries".into()))?
-			.iter_mut()
-			.for_each(|query| {
-				if let Err(reason) = query.1.manage_operation_state(&new_state) {
-					error!(
-						"could not initialize query for {}, reason: {}",
-						query.1.selector(),
-						reason
-					);
-				};
-			});
+		// start communication
+		self.communicator
+			.manage_operation_state(&new_state)?;
 
 		// start all registered timers
 		self.timers
 			.write()
-			.map_err(|_| Error::ModifyContext("timers".into()))?
+			.map_err(|_| Error::ModifyStruct("timers".into()))?
 			.iter_mut()
 			.for_each(|timer| {
 				let _ = timer.1.manage_operation_state(&new_state);
@@ -510,69 +427,15 @@ where
 		// stop all registered timers
 		self.timers
 			.write()
-			.map_err(|_| Error::ModifyContext("timers".into()))?
+			.map_err(|_| Error::ModifyStruct("timers".into()))?
 			.iter_mut()
 			.for_each(|timer| {
 				let _ = timer.1.manage_operation_state(&new_state);
 			});
 
-		// de-init all registered queries
-		self.queries
-			.write()
-			.map_err(|_| Error::ModifyContext("queries".into()))?
-			.iter_mut()
-			.for_each(|query| {
-				if let Err(reason) = query.1.manage_operation_state(&new_state) {
-					error!(
-						"could not de-initialize query for {}, reason: {}",
-						query.1.selector(),
-						reason
-					);
-				};
-			});
-
-		// de-init all registered observers
-		self.observers
-			.write()
-			.map_err(|_| Error::ModifyContext("observers".into()))?
-			.iter_mut()
-			.for_each(|observer| {
-				if let Err(reason) = observer.1.manage_operation_state(&new_state) {
-					error!(
-						"could not de-initialize observer for {}, reason: {}",
-						observer.1.selector(),
-						reason
-					);
-				};
-			});
-
-		// de-init all registered publishers
-		self.publishers
-			.write()
-			.map_err(|_| Error::ModifyContext("publishers".into()))?
-			.iter_mut()
-			.for_each(|publisher| {
-				let _ = publisher.1.manage_operation_state(&new_state);
-			});
-
-		// stop all registered responders
-		self.responders
-			.write()
-			.map_err(|_| Error::ModifyContext("subscribers".into()))?
-			.iter_mut()
-			.for_each(|subscriber| {
-				let _ = subscriber.1.manage_operation_state(&new_state);
-			});
-
-		// stop all registered liveliness subscribers
-		#[cfg(feature = "unstable")]
-		self.liveliness_subscribers
-			.write()
-			.map_err(|_| Error::ModifyContext("liveliness subscribers".into()))?
-			.iter_mut()
-			.for_each(|subscriber| {
-				let _ = subscriber.1.manage_operation_state(&new_state);
-			});
+		// start communication
+		self.communicator
+			.manage_operation_state(&new_state)?;
 
 		self.modify_state_property(new_state)?;
 		Ok(())

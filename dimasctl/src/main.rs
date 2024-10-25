@@ -7,7 +7,7 @@ use clap::{Parser, Subcommand};
 use core::time::Duration;
 use dimas_com::zenoh::Communicator;
 use dimas_config::Config;
-use dimas_core::enums::OperationState;
+use dimas_core::{enums::OperationState, Result};
 // endregion:	--- modules
 
 // region:		--- Cli
@@ -22,9 +22,7 @@ struct DimasctlArgs {
 }
 // endregion:	--- Cli
 
-fn operation_state_parser(
-	s: &str,
-) -> Result<OperationState, Box<dyn core::error::Error + Send + Sync + 'static>> {
+fn operation_state_parser(s: &str) -> Result<OperationState> {
 	OperationState::try_from(s)
 }
 
@@ -59,7 +57,7 @@ enum DimasctlCommand {
 }
 // endregion:	--- Commands
 
-fn main() {
+fn main() -> Result<()> {
 	let args = DimasctlArgs::parse();
 	let config = Config::default();
 	let h_zid = "ZenohId";
@@ -77,7 +75,8 @@ fn main() {
 			let com = Communicator::new(&config).expect("failed to create 'Communicator'");
 			println!("List of found DiMAS entities:");
 			println!("{h_zid:32}  {h_kind:6}  {h_state:10}  {h_name}");
-			for item in dimas_commands::about_list(&com, &base_selector) {
+			let list = dimas_commands::about_list(&com, &base_selector)?;
+			for item in list {
 				println!(
 					"{:32}  {:6}  {:10}  {}",
 					item.zid(),
@@ -93,7 +92,8 @@ fn main() {
 				.map_or_else(|| target.to_owned(), |value| format!("{value}/{target}"));
 			let com = Communicator::new(&config).expect("failed to create 'Communicator'");
 			for _ in 0..*count {
-				for item in dimas_commands::ping_list(&com, &target) {
+				let list = dimas_commands::ping_list(&com, &target)?;
+				for item in list {
 					#[allow(clippy::cast_precision_loss)]
 					let time = item.1 as f64 / 2_000_000.0;
 					println!("{:32}  {:6.2}ms  {}", item.0.zid(), time, item.0.name(),);
@@ -107,7 +107,8 @@ fn main() {
 		DimasctlCommand::Scout => {
 			println!("List of scouted Zenoh entities:");
 			println!("ZenohId                           Kind    Locators");
-			for item in dimas_commands::scouting_list(&config) {
+			let list = dimas_commands::scouting_list(&config)?;
+			for item in list {
 				println!(
 					"{:32}  {:6}  {:?}",
 					item.zid(),
@@ -120,7 +121,8 @@ fn main() {
 			let com = Communicator::new(&config).expect("failed to create 'Communicator'");
 			println!("List of current states of DiMAS entities:");
 			println!("{h_zid:32}  {h_kind:6}  {h_state:10}  {h_name}");
-			for item in dimas_commands::set_state(&com, &base_selector, state.to_owned()) {
+			let list = dimas_commands::set_state(&com, &base_selector, state.to_owned())?;
+			for item in list {
 				println!(
 					"{:32}  {:6}  {:10}  {}",
 					item.zid(),
@@ -137,7 +139,8 @@ fn main() {
 			let com = Communicator::new(&config).expect("failed to create 'Communicator'");
 			println!("List of shut down DiMAS entities:");
 			println!("{h_zid:32}  {h_kind:6}  {h_state:10}  {h_name}");
-			for item in dimas_commands::shutdown(&com, &target) {
+			let list = dimas_commands::shutdown(&com, &target)?;
+			for item in list {
 				println!(
 					"{:32}  {:6}  {:10}  {}",
 					item.zid(),
@@ -148,4 +151,5 @@ fn main() {
 			}
 		}
 	}
+	Ok(())
 }

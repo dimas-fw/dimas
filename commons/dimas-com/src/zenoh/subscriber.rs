@@ -26,6 +26,7 @@ use tracing::{error, info, instrument, warn, Level};
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
 use zenoh::sample::SampleKind;
+use zenoh::Session;
 // endregion:	--- modules
 
 // region:    	--- types
@@ -47,6 +48,8 @@ pub struct Subscriber<P>
 where
 	P: Send + Sync + 'static,
 {
+	/// the zenoh session this subscriber belongs to
+	session: Arc<Session>,
 	/// The subscribers key expression
 	selector: String,
 	/// Context for the Subscriber
@@ -57,7 +60,7 @@ where
 	allowed_origin: Locality,
 	put_callback: ArcPutCallback<P>,
 	delete_callback: Option<ArcDeleteCallback<P>>,
-	handle: Option<JoinHandle<()>>,
+	handle: std::sync::Mutex<Option<JoinHandle<()>>>,
 }
 
 impl<P> core::fmt::Debug for Subscriber<P>
@@ -85,14 +88,14 @@ impl<P> Capability for Subscriber<P>
 where
 	P: Send + Sync + 'static,
 {
-	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()> {
-		if (state >= &self.activation_state) && self.handle.is_none() {
-			return self.start();
-		} else if (state < &self.activation_state) && self.handle.is_some() {
-			self.stop();
-			return Ok(());
+	fn manage_operation_state(&self, state: &OperationState) -> Result<()> {
+		if state >= &self.activation_state {
+			self.start()
+		} else if state < &self.activation_state {
+			self.stop()
+		} else {
+			Ok(())
 		}
-		Ok(())
 	}
 }
 
@@ -103,6 +106,7 @@ where
 	/// Constructor for a [`Subscriber`].
 	#[must_use]
 	pub fn new(
+		session: Arc<Session>,
 		selector: String,
 		context: Context<P>,
 		activation_state: OperationState,
@@ -111,6 +115,7 @@ where
 		delete_callback: Option<ArcDeleteCallback<P>>,
 	) -> Self {
 		Self {
+			session,
 			selector,
 			context,
 			activation_state,
@@ -118,64 +123,75 @@ where
 			allowed_origin,
 			put_callback,
 			delete_callback,
-			handle: None,
+			handle: std::sync::Mutex::new(None),
 		}
 	}
 	/// Start or restart the subscriber.
 	/// An already running subscriber will be stopped, eventually damaged Mutexes will be repaired
 	#[instrument(level = Level::TRACE, skip_all)]
-	fn start(&mut self) -> Result<()> {
-		self.stop();
+	fn start(&self) -> Result<()> {
+		self.stop()?;
 
 		let selector = self.selector.clone();
 		let p_cb = self.put_callback.clone();
 		let d_cb = self.delete_callback.clone();
 		let ctx1 = self.context.clone();
 		let ctx2 = self.context.clone();
+		let session = self.session.clone();
 		#[cfg(feature = "unstable")]
 		let allowed_origin = self.allowed_origin;
 
-		self.handle
-			.replace(tokio::task::spawn(async move {
-				let key = selector.clone();
-				std::panic::set_hook(Box::new(move |reason| {
-					error!("subscriber panic: {}", reason);
-					if let Err(reason) = ctx1
-						.sender()
-						.blocking_send(TaskSignal::RestartSubscriber(key.clone()))
+		self.handle.lock().map_or_else(
+			|_| todo!(),
+			|mut handle| {
+				handle.replace(tokio::task::spawn(async move {
+					let key = selector.clone();
+					std::panic::set_hook(Box::new(move |reason| {
+						error!("subscriber panic: {}", reason);
+						if let Err(reason) = ctx1
+							.sender()
+							.blocking_send(TaskSignal::RestartSubscriber(key.clone()))
+						{
+							error!("could not restart subscriber: {}", reason);
+						} else {
+							info!("restarting subscriber!");
+						};
+					}));
+					if let Err(error) = run_subscriber(
+						session,
+						selector,
+						#[cfg(feature = "unstable")]
+						allowed_origin,
+						p_cb,
+						d_cb,
+						ctx2.clone(),
+					)
+					.await
 					{
-						error!("could not restart subscriber: {}", reason);
-					} else {
-						info!("restarting subscriber!");
+						error!("spawning subscriber failed with {error}");
 					};
 				}));
-				if let Err(error) = run_subscriber(
-					selector,
-					#[cfg(feature = "unstable")]
-					allowed_origin,
-					p_cb,
-					d_cb,
-					ctx2.clone(),
-				)
-				.await
-				{
-					error!("spawning subscriber failed with {error}");
-				};
-			}));
-		Ok(())
+				Ok(())
+			},
+		)
 	}
 
 	/// Stop a running Subscriber
 	#[instrument(level = Level::TRACE, skip_all)]
-	fn stop(&mut self) {
-		if let Some(handle) = self.handle.take() {
-			handle.abort();
-		}
+	fn stop(&self) -> Result<()> {
+		self.handle.lock().map_or_else(
+			|_| todo!(),
+			|mut handle| {
+				handle.take();
+				Ok(())
+			},
+		)
 	}
 }
 
 #[instrument(name="subscriber", level = Level::ERROR, skip_all)]
 async fn run_subscriber<P>(
+	session: Arc<Session>,
 	selector: String,
 	#[cfg(feature = "unstable")] allowed_origin: Locality,
 	p_cb: ArcPutCallback<P>,
@@ -185,7 +201,6 @@ async fn run_subscriber<P>(
 where
 	P: Send + Sync + 'static,
 {
-	let session = ctx.session();
 	let builder = session.declare_subscriber(&selector);
 
 	#[cfg(feature = "unstable")]

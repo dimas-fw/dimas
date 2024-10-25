@@ -32,6 +32,7 @@ pub struct LivelinessSubscriberBuilder<P, C, S>
 where
 	P: Send + Sync + 'static,
 {
+	session_id: String,
 	token: String,
 	context: Context<P>,
 	activation_state: OperationState,
@@ -46,12 +47,13 @@ where
 {
 	/// Construct a `LivelinessSubscriberBuilder` in initial state
 	#[must_use]
-	pub fn new(context: Context<P>) -> Self {
+	pub fn new(session_id: impl Into<String>, context: Context<P>) -> Self {
 		//let token = context
 		//	.prefix()
 		//	.map_or("*".to_string(), |prefix| format!("{prefix}/*"));
 		let token = selector_from("*", context.prefix());
 		Self {
+			session_id: session_id.into(),
 			token,
 			context,
 			activation_state: OperationState::Created,
@@ -78,6 +80,7 @@ where
 	pub fn prefix(self, prefix: &str) -> Self {
 		let token = format!("{prefix}/*");
 		let Self {
+			session_id,
 			context,
 			activation_state,
 			put_callback,
@@ -86,6 +89,7 @@ where
 			..
 		} = self;
 		Self {
+			session_id,
 			token,
 			context,
 			activation_state,
@@ -99,6 +103,7 @@ where
 	#[must_use]
 	pub fn token(self, token: impl Into<String>) -> Self {
 		let Self {
+			session_id,
 			context,
 			activation_state,
 			put_callback,
@@ -107,6 +112,7 @@ where
 			..
 		} = self;
 		Self {
+			session_id,
 			token: token.into(),
 			context,
 			activation_state,
@@ -124,6 +130,7 @@ where
 		F: Future<Output = Result<()>> + Send + Sync + 'static,
 	{
 		let Self {
+			session_id,
 			token,
 			context,
 			activation_state,
@@ -137,6 +144,7 @@ where
 		let delete_callback: Option<ArcLivelinessCallback<P>> =
 			Some(Arc::new(Mutex::new(callback)));
 		Self {
+			session_id,
 			token,
 			context,
 			activation_state,
@@ -162,6 +170,7 @@ where
 		F: Future<Output = Result<()>> + Send + Sync + 'static,
 	{
 		let Self {
+			session_id,
 			token,
 			context,
 			activation_state,
@@ -173,6 +182,7 @@ where
 			Box::new(move |ctx, txt| Box::pin(callback(ctx, txt)));
 		let put_callback: ArcLivelinessCallback<P> = Arc::new(Mutex::new(callback));
 		LivelinessSubscriberBuilder {
+			session_id,
 			token,
 			context,
 			activation_state,
@@ -196,6 +206,7 @@ where
 		storage: Arc<RwLock<HashMap<String, Box<dyn LivelinessSubscriberTrait>>>>,
 	) -> LivelinessSubscriberBuilder<P, C, Storage<Box<dyn LivelinessSubscriberTrait>>> {
 		let Self {
+			session_id,
 			token,
 			context,
 			activation_state,
@@ -204,6 +215,7 @@ where
 			..
 		} = self;
 		LivelinessSubscriberBuilder {
+			session_id,
 			token,
 			context,
 			activation_state,
@@ -223,6 +235,7 @@ where
 	///
 	pub fn build(self) -> Result<LivelinessSubscriber<P>> {
 		let Self {
+			session_id,
 			token,
 			context,
 			activation_state,
@@ -230,7 +243,11 @@ where
 			delete_callback,
 			..
 		} = self;
+		let session = context
+			.session(&session_id)
+			.ok_or_else(|| Error::NoZenohSession)?;
 		Ok(LivelinessSubscriber::new(
+			session,
 			token,
 			context,
 			activation_state,

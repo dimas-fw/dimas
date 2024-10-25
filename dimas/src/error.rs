@@ -21,12 +21,16 @@ pub enum Error {
 	ManageState,
 	/// callback is missing
 	MissingCallback,
+	/// callback is missing
+	NotImplemented,
 	/// get from collection failed
 	Get(String),
 	/// get mutable from collection failed
 	GetMut(String),
 	/// a Mutex is poisoned.
 	MutexPoison(String),
+	/// no communicator for that id
+	NoCommunicator(String),
 	/// read access failed
 	ReadAccess,
 	/// write access failed
@@ -34,7 +38,7 @@ pub enum Error {
 	/// read access failed
 	ReadContext(String),
 	/// write access failed
-	ModifyContext(String),
+	ModifyStruct(String),
 }
 // region:		--- Error
 
@@ -67,6 +71,12 @@ impl core::fmt::Debug for Error {
 			Self::MutexPoison(location) => {
 				write!(f, "an Mutex poison error happened in {location}")
 			}
+			Self::NoCommunicator(id) => {
+				write!(f, "no communicator with id: {id}")
+			}
+			Self::NotImplemented => {
+				write!(f, "communicator is not implemented")
+			}
 			Self::ReadAccess => {
 				write!(f, "accesssing the storage for read failed")
 			}
@@ -76,7 +86,7 @@ impl core::fmt::Debug for Error {
 			Self::ReadContext(location) => {
 				write!(f, "read context for {location} failed")
 			}
-			Self::ModifyContext(location) => {
+			Self::ModifyStruct(location) => {
 				write!(f, "write context for {location} failed")
 			}
 		}
@@ -93,10 +103,12 @@ impl core::error::Error for Error {
 			| Self::Get(_)
 			| Self::GetMut(_)
 			| Self::MutexPoison { .. }
+			| Self::NoCommunicator(_)
+			| Self::NotImplemented
 			| Self::ReadAccess
 			| Self::WriteAccess
 			| Self::ReadContext(_)
-			| Self::ModifyContext(_) => None,
+			| Self::ModifyStruct(_) => None,
 		}
 	}
 }

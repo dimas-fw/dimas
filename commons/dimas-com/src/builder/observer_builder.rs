@@ -41,6 +41,7 @@ pub struct ObserverBuilder<P, K, CC, RC, S>
 where
 	P: Send + Sync + 'static,
 {
+	session_id: String,
 	/// Context for the `ObserverBuilder`
 	context: Context<P>,
 	activation_state: OperationState,
@@ -59,8 +60,9 @@ where
 {
 	/// Construct an `ObserverBuilder` in initial state
 	#[must_use]
-	pub const fn new(context: Context<P>) -> Self {
+	pub fn new(session_id: impl Into<String>, context: Context<P>) -> Self {
 		Self {
+			session_id: session_id.into(),
 			context,
 			activation_state: OperationState::Active,
 			timeout: Duration::from_millis(1000),
@@ -92,6 +94,7 @@ where
 	#[must_use]
 	pub fn selector(self, selector: &str) -> ObserverBuilder<P, Selector, CC, RC, S> {
 		let Self {
+			session_id,
 			context,
 			activation_state,
 			timeout,
@@ -101,6 +104,7 @@ where
 			..
 		} = self;
 		ObserverBuilder {
+			session_id,
 			context,
 			activation_state,
 			timeout,
@@ -145,6 +149,7 @@ where
 		F: Future<Output = Result<()>> + Send + Sync + 'static,
 	{
 		let Self {
+			session_id,
 			context,
 			activation_state,
 			timeout,
@@ -156,6 +161,7 @@ where
 		let callback: ControlCallback<P> = Box::new(move |ctx, msg| Box::pin(callback(ctx, msg)));
 		let callback: ArcControlCallback<P> = Arc::new(Mutex::new(callback));
 		ObserverBuilder {
+			session_id,
 			context,
 			activation_state,
 			timeout,
@@ -182,6 +188,7 @@ where
 		F: Future<Output = Result<()>> + Send + Sync + 'static,
 	{
 		let Self {
+			session_id,
 			context,
 			activation_state,
 			timeout,
@@ -193,6 +200,7 @@ where
 		let callback: ResponseCallback<P> = Box::new(move |ctx, msg| Box::pin(callback(ctx, msg)));
 		let callback: ArcResponseCallback<P> = Arc::new(Mutex::new(callback));
 		ObserverBuilder {
+			session_id,
 			context,
 			activation_state,
 			timeout,
@@ -215,6 +223,7 @@ where
 		storage: Arc<RwLock<HashMap<String, Box<dyn ObserverTrait>>>>,
 	) -> ObserverBuilder<P, K, CC, RC, Storage<Box<dyn ObserverTrait>>> {
 		let Self {
+			session_id,
 			context,
 			activation_state,
 			timeout,
@@ -224,6 +233,7 @@ where
 			..
 		} = self;
 		ObserverBuilder {
+			session_id,
 			context,
 			activation_state,
 			timeout,
@@ -246,6 +256,7 @@ where
 	/// Currently none
 	pub fn build(self) -> Result<Observer<P>> {
 		let Self {
+			session_id,
 			context,
 			timeout,
 			selector,
@@ -255,7 +266,11 @@ where
 			..
 		} = self;
 		let selector = selector.selector;
+		let session = context
+			.session(&session_id)
+			.ok_or_else(|| Error::NoZenohSession)?;
 		Ok(Observer::new(
+			session,
 			selector,
 			context,
 			activation_state,

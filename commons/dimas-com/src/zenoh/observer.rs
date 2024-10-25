@@ -29,6 +29,7 @@ use tokio::{sync::Mutex, task::JoinHandle};
 use tracing::{error, instrument, warn, Level};
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
+use zenoh::Session;
 use zenoh::{
 	query::{ConsolidationMode, QueryTarget},
 	sample::SampleKind,
@@ -57,6 +58,8 @@ pub struct Observer<P>
 where
 	P: Send + Sync + 'static,
 {
+	/// the zenoh session this observer belongs to
+	session: Arc<Session>,
 	/// The observers key expression
 	selector: String,
 	/// Context for the Observer
@@ -68,7 +71,7 @@ where
 	response_callback: ArcResponseCallback<P>,
 	/// timeout value
 	timeout: Duration,
-	handle: Option<JoinHandle<()>>,
+	handle: std::sync::Mutex<Option<JoinHandle<()>>>,
 }
 
 impl<P> core::fmt::Debug for Observer<P>
@@ -92,10 +95,10 @@ where
 	/// Cancel a running observation
 	#[instrument(level = Level::ERROR, skip_all)]
 	fn cancel(&self) -> Result<()> {
-		let session = self.context.session();
 		// TODO: make a proper "key: value" implementation
 		let selector = cancel_selector_from(&self.selector);
-		let builder = session
+		let builder = self
+			.session
 			.get(&selector)
 			.target(QueryTarget::All)
 			.consolidation(ConsolidationMode::None)
@@ -158,7 +161,7 @@ where
 	/// Request an observation with an optional [`Message`].
 	#[instrument(level = Level::ERROR, skip_all)]
 	fn request(&self, message: Option<Message>) -> Result<()> {
-		let session = self.context.session();
+		let session = self.session.clone();
 		// TODO: make a proper "key: value" implementation
 		let selector = request_selector_from(&self.selector);
 		let mut query = session
@@ -185,6 +188,7 @@ where
 		while unreached && retry_count <= 5 {
 			retry_count += 1;
 			while let Ok(reply) = query.recv() {
+				let session = session.clone();
 				match reply.result() {
 					Ok(sample) => match sample.kind() {
 						SampleKind::Put => {
@@ -224,7 +228,7 @@ where
 										let rcb = self.response_callback.clone();
 										tokio::task::spawn(async move {
 											if let Err(error) =
-												run_observation(selector, ctx, rcb).await
+												run_observation(session, selector, ctx, rcb).await
 											{
 												error!("observation failed with {error}");
 											};
@@ -269,7 +273,7 @@ impl<P> Capability for Observer<P>
 where
 	P: Send + Sync + 'static,
 {
-	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()> {
+	fn manage_operation_state(&self, state: &OperationState) -> Result<()> {
 		if state >= &self.activation_state {
 			return self.init();
 		} else if state < &self.activation_state {
@@ -286,6 +290,7 @@ where
 	/// Constructor for an [`Observer`]
 	#[must_use]
 	pub fn new(
+		session: Arc<Session>,
 		selector: String,
 		context: Context<P>,
 		activation_state: OperationState,
@@ -294,13 +299,14 @@ where
 		timeout: Duration,
 	) -> Self {
 		Self {
+			session,
 			selector,
 			context,
 			activation_state,
 			control_callback,
 			response_callback,
 			timeout,
-			handle: None,
+			handle: std::sync::Mutex::new(None),
 		}
 	}
 
@@ -308,19 +314,24 @@ where
 	/// # Errors
 	///
 	#[instrument(level = Level::TRACE, skip_all)]
-	fn init(&mut self) -> Result<()> {
-		Ok(())
+	fn init(&self) -> Result<()> {
+		self.de_init()
 	}
 
 	/// De-Initialize
 	/// # Errors
 	///
 	#[allow(clippy::unnecessary_wraps)]
-	fn de_init(&mut self) -> Result<()> {
+	fn de_init(&self) -> Result<()> {
 		// cancel current request before stopping
 		let _ = crate::traits::Observer::cancel(self);
-		self.handle.take();
-		Ok(())
+		self.handle.lock().map_or_else(
+			|_| todo!(),
+			|mut handle| {
+				handle.take();
+				Ok(())
+			},
+		)
 	}
 }
 // endregion:	--- Observer
@@ -329,15 +340,13 @@ where
 #[allow(clippy::significant_drop_in_scrutinee)]
 #[instrument(name="observation", level = Level::ERROR, skip_all)]
 async fn run_observation<P>(
+	session: Arc<Session>,
 	selector: String,
 	ctx: Context<P>,
 	rcb: ArcResponseCallback<P>,
 ) -> Result<()> {
 	// create the feedback subscriber
-	let subscriber = ctx
-		.session()
-		.declare_subscriber(&selector)
-		.await?;
+	let subscriber = session.declare_subscriber(&selector).await?;
 
 	loop {
 		match subscriber.recv_async().await {

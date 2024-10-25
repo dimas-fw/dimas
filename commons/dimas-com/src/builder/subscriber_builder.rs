@@ -40,6 +40,7 @@ pub struct SubscriberBuilder<P, K, C, S>
 where
 	P: Send + Sync + 'static,
 {
+	session_id: String,
 	context: Context<P>,
 	activation_state: OperationState,
 	#[cfg(feature = "unstable")]
@@ -56,8 +57,9 @@ where
 {
 	/// Construct a `SubscriberBuilder` in initial state
 	#[must_use]
-	pub const fn new(context: Context<P>) -> Self {
+	pub fn new(session_id: impl Into<String>, context: Context<P>) -> Self {
 		Self {
+			session_id: session_id.into(),
 			context,
 			activation_state: OperationState::Active,
 			#[cfg(feature = "unstable")]
@@ -111,6 +113,7 @@ where
 	#[must_use]
 	pub fn selector(self, selector: &str) -> SubscriberBuilder<P, Selector, C, S> {
 		let Self {
+			session_id,
 			context,
 			activation_state,
 			#[cfg(feature = "unstable")]
@@ -121,6 +124,7 @@ where
 			..
 		} = self;
 		SubscriberBuilder {
+			session_id,
 			context,
 			activation_state,
 			#[cfg(feature = "unstable")]
@@ -158,6 +162,7 @@ where
 		F: Future<Output = Result<()>> + Send + Sync + 'static,
 	{
 		let Self {
+			session_id,
 			context,
 			activation_state,
 			#[cfg(feature = "unstable")]
@@ -170,6 +175,7 @@ where
 		let callback: PutCallback<P> = Box::new(move |ctx, msg| Box::pin(callback(ctx, msg)));
 		let callback: ArcPutCallback<P> = Arc::new(Mutex::new(callback));
 		SubscriberBuilder {
+			session_id,
 			context,
 			activation_state,
 			#[cfg(feature = "unstable")]
@@ -193,6 +199,7 @@ where
 		storage: Arc<RwLock<HashMap<String, Box<dyn SubscriberTrait>>>>,
 	) -> SubscriberBuilder<P, K, C, Storage<Box<dyn SubscriberTrait>>> {
 		let Self {
+			session_id,
 			context,
 			activation_state,
 			#[cfg(feature = "unstable")]
@@ -203,6 +210,7 @@ where
 			..
 		} = self;
 		SubscriberBuilder {
+			session_id,
 			context,
 			activation_state,
 			#[cfg(feature = "unstable")]
@@ -225,6 +233,7 @@ where
 	/// Currently none
 	pub fn build(self) -> Result<Subscriber<P>> {
 		let Self {
+			session_id,
 			selector,
 			context,
 			activation_state,
@@ -234,7 +243,11 @@ where
 			delete_callback,
 			..
 		} = self;
+		let session = context
+			.session(&session_id)
+			.ok_or_else(|| Error::NoZenohSession)?;
 		Ok(Subscriber::new(
+			session,
 			selector.selector,
 			context,
 			activation_state,

@@ -49,7 +49,7 @@ where
 		/// The interval in which the Timer is fired
 		interval: Duration,
 		/// The handle to stop the Timer
-		handle: Option<JoinHandle<()>>,
+		handle: Mutex<Option<JoinHandle<()>>>,
 	},
 	/// A delayed Timer with an Interval
 	DelayedInterval {
@@ -66,7 +66,7 @@ where
 		/// The delay after which the first firing of the Timer happenes
 		delay: Duration,
 		/// The handle to stop the Timer
-		handle: Option<JoinHandle<()>>,
+		handle: Mutex<Option<JoinHandle<()>>>,
 	},
 }
 
@@ -95,7 +95,7 @@ impl<P> Capability for Timer<P>
 where
 	P: Send + Sync + 'static,
 {
-	fn manage_operation_state(&mut self, state: &OperationState) -> Result<()> {
+	fn manage_operation_state(&self, state: &OperationState) -> Result<()> {
 		match self {
 			Self::Interval {
 				selector: _,
@@ -103,7 +103,7 @@ where
 				activation_state,
 				interval: _,
 				callback: _,
-				handle,
+				handle: _,
 			}
 			| Self::DelayedInterval {
 				selector: _,
@@ -112,17 +112,17 @@ where
 				delay: _,
 				interval: _,
 				callback: _,
-				handle,
+				handle: _,
 			} => {
-				if (state >= activation_state) && handle.is_none() {
-					return self.start();
-				} else if (state < activation_state) && handle.is_some() {
-					self.stop();
-					return Ok(());
+				if state >= activation_state {
+					self.start()
+				} else if state < activation_state {
+					self.stop()
+				} else {
+					Ok(())
 				}
 			}
 		}
-		Ok(())
 	}
 }
 
@@ -148,7 +148,7 @@ where
 				delay,
 				interval,
 				callback,
-				handle: None,
+				handle: Mutex::new(None),
 			},
 			None => Self::Interval {
 				selector: name,
@@ -156,7 +156,7 @@ where
 				activation_state,
 				interval,
 				callback,
-				handle: None,
+				handle: Mutex::new(None),
 			},
 		}
 	}
@@ -164,8 +164,8 @@ where
 	/// Start or restart the timer
 	/// An already running timer will be stopped, eventually damaged Mutexes will be repaired
 	#[instrument(level = Level::TRACE, skip_all)]
-	fn start(&mut self) -> Result<()> {
-		self.stop();
+	fn start(&self) -> Result<()> {
+		self.stop()?;
 
 		match self {
 			Self::Interval {
@@ -190,21 +190,26 @@ where
 				let ctx1 = context.clone();
 				let ctx2 = context.clone();
 
-				handle.replace(tokio::task::spawn(async move {
-					std::panic::set_hook(Box::new(move |reason| {
-						error!("interval timer panic: {}", reason);
-						if let Err(reason) = ctx1
-							.sender()
-							.blocking_send(TaskSignal::RestartTimer(key.clone()))
-						{
-							error!("could not restart timer: {}", reason);
-						} else {
-							info!("restarting timer!");
-						};
-					}));
-					run_timer(interval, cb, ctx2).await;
-				}));
-				Ok(())
+				handle.lock().map_or_else(
+					|_| todo!(),
+					|mut handle| {
+						handle.replace(tokio::task::spawn(async move {
+							std::panic::set_hook(Box::new(move |reason| {
+								error!("delayed timer panic: {}", reason);
+								if let Err(reason) = ctx1
+									.sender()
+									.blocking_send(TaskSignal::RestartTimer(key.clone()))
+								{
+									error!("could not restart timer: {}", reason);
+								} else {
+									info!("restarting timer!");
+								};
+							}));
+							run_timer(interval, cb, ctx2).await;
+						}));
+						Ok(())
+					},
+				)
 			}
 			Self::DelayedInterval {
 				selector,
@@ -230,29 +235,34 @@ where
 				let ctx1 = context.clone();
 				let ctx2 = context.clone();
 
-				handle.replace(tokio::task::spawn(async move {
-					std::panic::set_hook(Box::new(move |reason| {
-						error!("delayed timer panic: {}", reason);
-						if let Err(reason) = ctx1
-							.sender()
-							.blocking_send(TaskSignal::RestartTimer(key.clone()))
-						{
-							error!("could not restart timer: {}", reason);
-						} else {
-							info!("restarting timer!");
-						};
-					}));
-					tokio::time::sleep(delay).await;
-					run_timer(interval, cb, ctx2).await;
-				}));
-				Ok(())
+				handle.lock().map_or_else(
+					|_| todo!(),
+					|mut handle| {
+						handle.replace(tokio::task::spawn(async move {
+							std::panic::set_hook(Box::new(move |reason| {
+								error!("delayed timer panic: {}", reason);
+								if let Err(reason) = ctx1
+									.sender()
+									.blocking_send(TaskSignal::RestartTimer(key.clone()))
+								{
+									error!("could not restart timer: {}", reason);
+								} else {
+									info!("restarting timer!");
+								};
+							}));
+							tokio::time::sleep(delay).await;
+							run_timer(interval, cb, ctx2).await;
+						}));
+						Ok(())
+					},
+				)
 			}
 		}
 	}
 
 	/// Stop a running Timer
 	#[instrument(level = Level::TRACE, skip_all)]
-	fn stop(&mut self) {
+	fn stop(&self) -> Result<()> {
 		match self {
 			Self::Interval {
 				selector: _,
@@ -270,11 +280,15 @@ where
 				interval: _,
 				callback: _,
 				handle,
-			} => {
-				if let Some(handle) = handle.take() {
-					handle.abort();
-				}
-			}
+			} => handle.lock().map_or_else(
+				|_| todo!(),
+				|mut handle| {
+					if let Some(handle) = handle.take() {
+						handle.abort();
+					}
+					Ok(())
+				},
+			),
 		}
 	}
 }
