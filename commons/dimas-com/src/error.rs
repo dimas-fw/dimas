@@ -21,6 +21,8 @@ use zenoh::query::Query;
 pub enum Error {
 	/// Not available/implemented
 	NotImplemented,
+	/// no communicator for that id
+	NoCommunicator(String),
 	/// No zenoh available/implemented
 	NoZenohSession,
 	/// Invalid selector
@@ -54,6 +56,10 @@ pub enum Error {
 		/// the original callback error
 		source: Box<dyn core::error::Error + Send + Sync>,
 	},
+	/// read access failed
+	ReadAccess,
+	/// write access failed
+	ModifyStruct(String),
 	/// Creation of a [`Subscriber`] failed
 	SubscriberCreation {
 		/// the original zenoh error
@@ -92,6 +98,9 @@ impl core::fmt::Display for Error {
 impl core::fmt::Debug for Error {
 	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		match self {
+			Self::NoCommunicator(id) => {
+				write!(f, "no communicator with id: {id}")
+			}
 			Self::NotImplemented => {
 				write!(f, "no implementation available")
 			}
@@ -122,6 +131,9 @@ impl core::fmt::Debug for Error {
 			Self::QueryCallback { source } => {
 				write!(f, "callback of query failed: reason {source}")
 			}
+			Self::ReadAccess => {
+				write!(f, "accesssing the storage for read failed")
+			}
 			Self::SubscriberCreation { source } => {
 				write!(f, "creation of a subscriber failed: reason {source}")
 			}
@@ -136,6 +148,9 @@ impl core::fmt::Debug for Error {
 			}
 			Self::AccessingObservable { selector } => {
 				write!(f, "accessing observable '{selector}' failed")
+			}
+			Self::ModifyStruct(location) => {
+				write!(f, "write context for {location} failed")
 			}
 		}
 	}
@@ -152,13 +167,16 @@ impl core::error::Error for Error {
 			| Self::SubscriberCreation { ref source }
 			| Self::SubscriberCallback { ref source } => Some(source.as_ref()),
 			Self::NotImplemented
+			| Self::NoCommunicator(_)
 			| Self::NoZenohSession
 			| Self::AccessPublisher
 			| Self::AccessingQuerier { .. }
 			| Self::AccessingQueryable { .. }
 			| Self::AccessingObservable { .. }
+			| Self::ReadAccess
 			| Self::MutexPoison { .. }
-			| Self::InvalidSelector(_) => None,
+			| Self::InvalidSelector(_)
+			| Self::ModifyStruct(_) => None,
 		}
 	}
 }

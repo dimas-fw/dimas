@@ -10,7 +10,6 @@ extern crate alloc;
 extern crate std;
 
 // region:		--- modules
-#[doc(hidden)]
 use alloc::{string::String, vec::Vec};
 use bitcode::{Decode, Encode};
 use core::fmt::Display;

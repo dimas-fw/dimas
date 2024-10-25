@@ -29,8 +29,6 @@ pub enum Error {
 	GetMut(String),
 	/// a Mutex is poisoned.
 	MutexPoison(String),
-	/// no communicator for that id
-	NoCommunicator(String),
 	/// read access failed
 	ReadAccess,
 	/// write access failed
@@ -71,9 +69,6 @@ impl core::fmt::Debug for Error {
 			Self::MutexPoison(location) => {
 				write!(f, "an Mutex poison error happened in {location}")
 			}
-			Self::NoCommunicator(id) => {
-				write!(f, "no communicator with id: {id}")
-			}
 			Self::NotImplemented => {
 				write!(f, "communicator is not implemented")
 			}
@@ -103,7 +98,6 @@ impl core::error::Error for Error {
 			| Self::Get(_)
 			| Self::GetMut(_)
 			| Self::MutexPoison { .. }
-			| Self::NoCommunicator(_)
 			| Self::NotImplemented
 			| Self::ReadAccess
 			| Self::WriteAccess

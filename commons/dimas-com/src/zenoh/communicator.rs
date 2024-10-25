@@ -140,8 +140,6 @@ impl SingleSessionCommunicatorMethods for Communicator {
 	}
 }
 
-impl SingleSessionCommunicator for Communicator {}
-
 impl Communicator {
 	/// Constructor
 	/// # Errors

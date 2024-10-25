@@ -33,13 +33,13 @@
 // only for doc needed
 #[cfg(doc)]
 use crate::agent::Agent;
-use crate::communicator::Communicator;
 use crate::error::Error;
 use core::fmt::Debug;
+use dimas_com::multi_communicator::MultiCommunicator;
 #[cfg(feature = "unstable")]
 use dimas_com::traits::LivelinessSubscriber;
 use dimas_com::traits::{
-	MultiSessionCommunicator, MultiSessionCommunicatorMethods, Observer, Publisher, Querier,
+	Communicator, MultiSessionCommunicator, MultiSessionCommunicatorMethods, Observer, Publisher, Querier,
 	Responder,
 };
 use dimas_config::Config;
@@ -88,7 +88,7 @@ where
 	/// The [`Agent`]s property structure
 	props: Arc<RwLock<P>>,
 	/// The [`Agent`]s [`Communicator`]
-	communicator: Arc<Communicator>,
+	communicator: Arc<MultiCommunicator>,
 	/// Registered [`Timer`]
 	timers: Arc<RwLock<HashMap<String, Timer<P>>>>,
 }
@@ -321,7 +321,7 @@ where
 		sender: Sender<TaskSignal>,
 		prefix: Option<String>,
 	) -> Result<Self> {
-		let communicator = Communicator::new(config)?;
+		let communicator = MultiCommunicator::new(config)?;
 		let uuid = communicator.uuid();
 		Ok(Self {
 			uuid,

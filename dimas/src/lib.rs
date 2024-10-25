@@ -14,7 +14,6 @@
 doc_comment::doctest!("../README.md");
 
 pub mod agent;
-mod communicator;
 mod context;
 pub mod error;
 // macro reexport

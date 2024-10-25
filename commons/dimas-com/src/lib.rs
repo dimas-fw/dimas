@@ -13,6 +13,10 @@ pub mod enums;
 pub mod error;
 /// the core messages
 pub mod messages;
+/// a multi session communicator
+pub mod multi_communicator;
+/// a single session communicator
+pub mod single_communicator;
 /// `Communicator` trait
 pub mod traits;
 /// zenoh implementation

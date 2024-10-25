@@ -6,15 +6,21 @@
 #[doc(hidden)]
 extern crate alloc;
 
-use alloc::{string::String, sync::Arc};
+#[cfg(feature = "std")]
+extern crate std;
+
+use crate::error::Error;
+use alloc::{boxed::Box, string::String, sync::Arc};
 use dimas_core::{
+	enums::OperationState,
 	error::Result,
 	message_types::{Message, QueryableMsg},
 	traits::Capability,
 };
+#[cfg(feature = "std")]
+use std::{collections::HashMap, sync::RwLock};
+use tracing::error;
 use zenoh::Session;
-
-use crate::error::Error;
 
 /// `LivelinessSubscriber` capabilities
 pub trait LivelinessSubscriber: Capability + Send + Sync {
@@ -75,6 +81,186 @@ pub trait Responder: Capability + Send + Sync {
 }
 
 // region:		--- communication
+/// the methodes to be implemented by any communicator
+pub trait Communicator {
+	/// Get the liveliness subscribers
+	#[cfg(feature = "unstable")]
+	#[must_use]
+	fn liveliness_subscribers(
+		&self,
+	) -> &Arc<RwLock<HashMap<String, Box<dyn LivelinessSubscriber>>>>;
+
+	/// Get the observers
+	#[must_use]
+	fn observers(&self) -> &Arc<RwLock<HashMap<String, Box<dyn Observer>>>>;
+
+	/// Get the publishers
+	#[must_use]
+	fn publishers(&self) -> Arc<RwLock<HashMap<String, Box<dyn Publisher>>>>;
+
+	/// Get the queriers
+	#[must_use]
+	fn queriers(&self) -> &Arc<RwLock<HashMap<String, Box<dyn Querier>>>>;
+
+	/// Get the responders
+	#[must_use]
+	fn responders(&self) -> &Arc<RwLock<HashMap<String, Box<dyn Responder>>>>;
+
+	/// Method for upgrading [`OperationState`] of all registered tasks.<br>
+	/// The tasks are upgraded in the order
+	/// - [`LivelinessSubscriber`]s
+	/// - `Responders`s: [`Observable`]s, [`Queryable`]s, [`Subscriber`]s
+	/// - [`Publisher`]s the
+	/// - [`Observer`]s and the
+	/// - [`Querier`]s
+	///
+	/// # Errors
+	/// Currently none
+	fn upgrade_registered_tasks(&self, new_state: &OperationState) -> Result<()> {
+		// start liveliness subscriber
+		#[cfg(feature = "unstable")]
+		self.liveliness_subscribers()
+			.write()
+			.map_err(|_| Error::ModifyStruct("liveliness subscribers".into()))?
+			.iter_mut()
+			.for_each(|subscriber| {
+				let _ = subscriber.1.manage_operation_state(new_state);
+			});
+
+		// start all registered responders
+		self.responders()
+			.write()
+			.map_err(|_| Error::ModifyStruct("subscribers".into()))?
+			.iter_mut()
+			.for_each(|subscriber| {
+				let _ = subscriber.1.manage_operation_state(new_state);
+			});
+
+		// init all registered publishers
+		self.publishers()
+			.write()
+			.map_err(|_| Error::ModifyStruct("publishers".into()))?
+			.iter_mut()
+			.for_each(|publisher| {
+				if let Err(reason) = publisher.1.manage_operation_state(new_state) {
+					error!(
+						"could not initialize publisher for {}, reason: {}",
+						publisher.1.selector(),
+						reason
+					);
+				};
+			});
+
+		// init all registered observers
+		self.observers()
+			.write()
+			.map_err(|_| Error::ModifyStruct("observers".into()))?
+			.iter_mut()
+			.for_each(|observer| {
+				if let Err(reason) = observer.1.manage_operation_state(new_state) {
+					error!(
+						"could not initialize observer for {}, reason: {}",
+						observer.1.selector(),
+						reason
+					);
+				};
+			});
+
+		// init all registered queries
+		self.queriers()
+			.write()
+			.map_err(|_| Error::ModifyStruct("queries".into()))?
+			.iter_mut()
+			.for_each(|query| {
+				if let Err(reason) = query.1.manage_operation_state(new_state) {
+					error!(
+						"could not initialize query for {}, reason: {}",
+						query.1.selector(),
+						reason
+					);
+				};
+			});
+
+		Ok(())
+	}
+
+	/// Method for downgrading [`OperationState`] of all registered tasks.<br>
+	/// The tasks are downgraded in reverse order of their start in [`start_registered_tasks()`]
+	///
+	/// # Errors
+	/// Currently none
+	fn downgrade_registered_tasks(&self, new_state: &OperationState) -> Result<()> {
+		// reverse order of start!
+		// de-init all registered queries
+		self.queriers()
+			.write()
+			.map_err(|_| Error::ModifyStruct("queries".into()))?
+			.iter_mut()
+			.for_each(|query| {
+				if let Err(reason) = query.1.manage_operation_state(new_state) {
+					error!(
+						"could not de-initialize query for {}, reason: {}",
+						query.1.selector(),
+						reason
+					);
+				};
+			});
+
+		// de-init all registered observers
+		self.observers()
+			.write()
+			.map_err(|_| Error::ModifyStruct("observers".into()))?
+			.iter_mut()
+			.for_each(|observer| {
+				if let Err(reason) = observer.1.manage_operation_state(new_state) {
+					error!(
+						"could not de-initialize observer for {}, reason: {}",
+						observer.1.selector(),
+						reason
+					);
+				};
+			});
+
+		// de-init all registered publishers
+		self.publishers()
+			.write()
+			.map_err(|_| Error::ModifyStruct("publishers".into()))?
+			.iter_mut()
+			.for_each(|publisher| {
+				let _ = publisher.1.manage_operation_state(new_state);
+			});
+
+		// stop all registered responders
+		self.responders()
+			.write()
+			.map_err(|_| Error::ModifyStruct("subscribers".into()))?
+			.iter_mut()
+			.for_each(|subscriber| {
+				let _ = subscriber.1.manage_operation_state(new_state);
+			});
+
+		// stop all registered liveliness subscribers
+		#[cfg(feature = "unstable")]
+		self.liveliness_subscribers()
+			.write()
+			.map_err(|_| Error::ModifyStruct("liveliness subscribers".into()))?
+			.iter_mut()
+			.for_each(|subscriber| {
+				let _ = subscriber.1.manage_operation_state(new_state);
+			});
+
+		Ok(())
+	}
+
+	/// the uuid of the communicator
+	#[must_use]
+	fn uuid(&self) -> String;
+
+	/// the mode of the communicator
+	#[must_use]
+	fn mode(&self) -> &String;
+}
+
 /// the communication methods to be implemented by a single session Communicator implementation
 pub trait SingleSessionCommunicatorMethods {
 	/// Send a put message [`Message`] to the given `selector`.
@@ -183,7 +369,12 @@ pub trait MultiSessionCommunicatorMethods {
 	/// Request an observation for [`Message`] from the given `session` from the given `selector`
 	/// # Errors
 	/// - `NotImplemented`: there is no implementation within this communicator
-	fn observe_from(&self, _session: &str, _selector: &str, _message: Option<Message>) -> Result<()> {
+	fn observe_from(
+		&self,
+		_session: &str,
+		_selector: &str,
+		_message: Option<Message>,
+	) -> Result<()> {
 		Err(Error::NotImplemented.into())
 	}
 
@@ -204,13 +395,13 @@ pub trait MultiSessionCommunicatorMethods {
 
 /// communicator implementation capabilities
 pub trait SingleSessionCommunicator:
-	SingleSessionCommunicatorMethods + Capability + Send + Sync
+	Communicator + SingleSessionCommunicatorMethods + Capability + Send + Sync
 {
 }
 
 /// communicator capabilities
 pub trait MultiSessionCommunicator:
-	MultiSessionCommunicatorMethods + Capability + Send + Sync
+	Communicator + MultiSessionCommunicatorMethods + Capability + Send + Sync
 {
 	/// get a communicator session
 	fn session(&self, session_id: &str) -> Option<Arc<Session>>;
