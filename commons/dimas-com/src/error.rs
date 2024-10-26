@@ -9,7 +9,9 @@ extern crate alloc;
 use alloc::{boxed::Box, string::String};
 
 #[cfg(doc)]
-use crate::zenoh::{Communicator, Observable, Observer, Publisher, Querier, Queryable, Subscriber};
+use crate::zenoh::{
+	Observable, Observer, Publisher, Querier, Queryable, Subscriber, ZenohCommunicator,
+};
 #[cfg(doc)]
 use dimas_core::message_types::Message;
 #[cfg(doc)]

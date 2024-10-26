@@ -10,13 +10,15 @@ extern crate alloc;
 extern crate std;
 
 // region:		--- modules
+use crate::error::Error;
 #[cfg(feature = "unstable")]
 use crate::traits::LivelinessSubscriber;
 use crate::{
 	enums::CommunicatorImplementation,
 	traits::{
-		Communicator, MultiSessionCommunicator, MultiSessionCommunicatorMethods, Observer,
-		Publisher, Querier, Responder, SingleSessionCommunicatorMethods,
+		Communicator, CommunicatorImplementationMethods, MultiSessionCommunicator,
+		MultiSessionCommunicatorMethods, Observer, Publisher, Querier, Responder,
+		SingleSessionCommunicatorMethods,
 	},
 };
 use alloc::{
@@ -29,8 +31,6 @@ use dimas_core::message_types::{Message, QueryableMsg};
 use dimas_core::{enums::OperationState, traits::Capability, Result};
 use std::{collections::HashMap, sync::RwLock};
 use zenoh::config::ZenohId;
-
-use crate::error::Error;
 // endregion:   --- modules
 
 // region:		--- types
@@ -66,11 +66,53 @@ pub struct MultiCommunicator {
 impl Capability for MultiCommunicator {
 	fn manage_operation_state(&self, new_state: &OperationState) -> Result<()> {
 		if new_state >= &self.state {
-			self.upgrade_registered_tasks(new_state)?;
+			self.upgrade_capabilities(new_state)?;
 		} else if new_state < &self.state {
-			self.downgrade_registered_tasks(new_state)?;
+			self.downgrade_capabilities(new_state)?;
 		}
 		Ok(())
+	}
+}
+
+impl SingleSessionCommunicatorMethods for MultiCommunicator {
+	/// Send a put message [`Message`] to the given `selector`.
+	/// # Errors
+	/// - `NotImplemented`: there is no implementation within this communicator
+	fn put(&self, selector: &str, message: Message) -> Result<()> {
+		self.put_from("default", selector, message)
+	}
+
+	/// Send a delete message to the given `selector`.
+	/// # Errors
+	/// - `NotImplemented`: there is no implementation within this communicator
+	fn delete(&self, selector: &str) -> Result<()> {
+		self.delete_from("default", selector)
+	}
+
+	/// Send a query with an optional specification [`Message`] to the given `selector`.
+	/// # Errors
+	/// - `NotImplemented`: there is no implementation within this communicator
+	fn get(
+		&self,
+		selector: &str,
+		message: Option<Message>,
+		callback: Option<&mut dyn FnMut(QueryableMsg) -> Result<()>>,
+	) -> Result<()> {
+		self.get_from("default", selector, message, callback)
+	}
+
+	/// Request an observation for [`Message`] from the given `selector`
+	/// # Errors
+	/// - `NotImplemented`: there is no implementation within this communicator
+	fn observe(&self, selector: &str, message: Option<Message>) -> Result<()> {
+		self.observe_from("default", selector, message)
+	}
+
+	/// Request a stream configured by [`Message`] from the given `selector`
+	/// # Errors
+	/// - `NotImplemented`: there is no implementation within this communicator
+	fn watch(&self, selector: &str, message: Message) -> Result<()> {
+		self.watch_from("default", selector, message)
 	}
 }
 
@@ -93,11 +135,7 @@ impl MultiSessionCommunicatorMethods for MultiCommunicator {
 					.ok_or_else(|| Error::NoCommunicator(session_id.into()))
 					.cloned()?;
 
-				#[allow(clippy::match_wildcard_for_single_variants)]
-				match comm.as_ref() {
-					CommunicatorImplementation::Zenoh(zenoh) => zenoh.put(selector, message),
-					_ => Err(Error::NotImplemented.into()),
-				}
+				comm.put(selector, message)
 			}
 		}
 	}
@@ -123,7 +161,6 @@ impl MultiSessionCommunicatorMethods for MultiCommunicator {
 				#[allow(clippy::match_wildcard_for_single_variants)]
 				match comm.as_ref() {
 					CommunicatorImplementation::Zenoh(zenoh) => zenoh.delete(selector),
-					_ => Err(Error::NotImplemented.into()),
 				}
 			}
 		}
@@ -155,11 +192,9 @@ impl MultiSessionCommunicatorMethods for MultiCommunicator {
 
 				#[allow(clippy::match_wildcard_for_single_variants)]
 				match comm.as_ref() {
-					CommunicatorImplementation::Zenoh(zenoh) => callback.map_or_else(
-						|| Err(Error::NotImplemented.into()),
-						|callback| zenoh.get(selector, message, callback),
-					),
-					_ => Err(Error::NotImplemented.into()),
+					CommunicatorImplementation::Zenoh(zenoh) => {
+						zenoh.get(selector, message, callback)
+					}
 				}
 			}
 		}
@@ -191,7 +226,6 @@ impl MultiSessionCommunicatorMethods for MultiCommunicator {
 				#[allow(clippy::match_wildcard_for_single_variants)]
 				match comm.as_ref() {
 					CommunicatorImplementation::Zenoh(_zenoh) => Err(Error::NotImplemented.into()),
-					_ => Err(Error::NotImplemented.into()),
 				}
 			}
 		}
@@ -217,13 +251,13 @@ impl Communicator for MultiCommunicator {
 	#[cfg(feature = "unstable")]
 	fn liveliness_subscribers(
 		&self,
-	) -> &Arc<RwLock<HashMap<String, Box<dyn LivelinessSubscriber>>>> {
-		&self.liveliness_subscribers
+	) -> Arc<RwLock<HashMap<String, Box<dyn LivelinessSubscriber>>>> {
+		self.liveliness_subscribers.clone()
 	}
 
 	/// Get the observers
-	fn observers(&self) -> &Arc<RwLock<HashMap<String, Box<dyn Observer>>>> {
-		&self.observers
+	fn observers(&self) -> Arc<RwLock<HashMap<String, Box<dyn Observer>>>> {
+		self.observers.clone()
 	}
 
 	/// Get the publishers
@@ -232,13 +266,13 @@ impl Communicator for MultiCommunicator {
 	}
 
 	/// Get the queries
-	fn queriers(&self) -> &Arc<RwLock<HashMap<String, Box<dyn Querier>>>> {
-		&self.queriers
+	fn queriers(&self) -> Arc<RwLock<HashMap<String, Box<dyn Querier>>>> {
+		self.queriers.clone()
 	}
 
 	/// Get the responders
-	fn responders(&self) -> &Arc<RwLock<HashMap<String, Box<dyn Responder>>>> {
-		&self.responders
+	fn responders(&self) -> Arc<RwLock<HashMap<String, Box<dyn Responder>>>> {
+		self.responders.clone()
 	}
 }
 
@@ -257,7 +291,6 @@ impl MultiSessionCommunicator for MultiCommunicator {
 				let com = communicator.session();
 				Some(com)
 			}
-			_ => None,
 		}
 	}
 }
@@ -266,7 +299,7 @@ impl MultiCommunicator {
 	/// Constructor
 	/// # Errors
 	pub fn new(config: &Config) -> Result<Self> {
-		let zenoh = crate::zenoh::Communicator::new(config)?;
+		let zenoh = crate::zenoh::ZenohCommunicator::new(config)?;
 		let uuid = zenoh.session().zid();
 		let mode = zenoh.mode().to_string();
 		let com = Self {

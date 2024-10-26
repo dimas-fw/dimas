@@ -13,7 +13,7 @@ extern crate std;
 // region:		--- modules
 use crate::{
 	error::Error,
-	traits::{SingleSessionCommunicator, SingleSessionCommunicatorMethods},
+	traits::{CommunicatorImplementationMethods, SingleSessionCommunicator},
 };
 use alloc::{
 	borrow::ToOwned,
@@ -41,21 +41,22 @@ use zenoh::{
 
 // region:		--- Communicator
 /// [`Communicator`] handles all communication aspects
+#[allow(clippy::module_name_repetitions)]
 #[derive(Debug)]
-pub struct Communicator {
+pub struct ZenohCommunicator {
 	/// The zenoh session
 	session: Arc<Session>,
 	/// Mode of the session (router|peer|client)
 	mode: String,
 }
 
-impl Capability for Communicator {
+impl Capability for ZenohCommunicator {
 	fn manage_operation_state(&self, _state: &OperationState) -> Result<()> {
 		Ok(())
 	}
 }
 
-impl SingleSessionCommunicatorMethods for Communicator {
+impl CommunicatorImplementationMethods for ZenohCommunicator {
 	/// Send a put message [`Message`] using the given `selector`
 	/// # Errors
 	#[allow(clippy::needless_pass_by_value)]
@@ -83,7 +84,7 @@ impl SingleSessionCommunicatorMethods for Communicator {
 		&self,
 		selector: &str,
 		message: Option<Message>,
-		callback: &mut dyn FnMut(QueryableMsg) -> Result<()>,
+		mut callback: Option<&mut dyn FnMut(QueryableMsg) -> Result<()>>,
 	) -> Result<()> {
 		let builder = message
 			.map_or_else(
@@ -111,8 +112,14 @@ impl SingleSessionCommunicatorMethods for Communicator {
 					Ok(sample) => match sample.kind() {
 						SampleKind::Put => {
 							let content: Vec<u8> = sample.payload().to_bytes().into_owned();
-							callback(QueryableMsg(content))
-								.map_err(|source| Error::QueryCallback { source })?;
+							// CommunicatorImplementation::Zenoh(zenoh) =>
+							callback.as_deref_mut().map_or_else(
+								|| Err(Error::NotImplemented),
+								|callback| {
+									callback(QueryableMsg(content))
+										.map_err(|source| Error::QueryCallback { source })
+								},
+							)?;
 						}
 						SampleKind::Delete => {
 							todo!("Delete in Query");
@@ -140,7 +147,7 @@ impl SingleSessionCommunicatorMethods for Communicator {
 	}
 }
 
-impl Communicator {
+impl ZenohCommunicator {
 	/// Constructor
 	/// # Errors
 	pub fn new(config: &dimas_config::Config) -> Result<Self> {
@@ -190,14 +197,14 @@ mod tests {
 
 	#[test]
 	const fn normal_types() {
-		is_normal::<Communicator>();
+		is_normal::<ZenohCommunicator>();
 	}
 
 	#[tokio::test(flavor = "multi_thread")]
 	//#[serial]
 	async fn communicator_create() -> Result<()> {
 		let cfg = dimas_config::Config::default();
-		let _peer = Communicator::new(&cfg)?;
+		let _peer = ZenohCommunicator::new(&cfg)?;
 		Ok(())
 	}
 }

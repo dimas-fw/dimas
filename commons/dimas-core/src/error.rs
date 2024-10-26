@@ -1,7 +1,6 @@
 // Copyright © 2023 Stephan Kunz
 
-//! The `DiMAS` specific error enum `DimasError` together with a
-//! type alias for [`core::result::Result`] to write only `Result<T>`.
+//! core errors
 //!
 
 #[doc(hidden)]

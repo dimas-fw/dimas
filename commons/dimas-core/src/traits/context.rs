@@ -1,6 +1,6 @@
 // Copyright © 2024 Stephan Kunz
 #![allow(unused_imports)]
-//! Core traits of `DiMAS`
+//! Context traits
 //!
 
 #[doc(hidden)]
@@ -28,6 +28,7 @@ use zenoh::Session;
 pub type Context<P> = Arc<dyn ContextAbstraction<Props = P>>;
 
 /// Commonalities for the context
+#[allow(clippy::module_name_repetitions)]
 pub trait ContextAbstraction: Debug + Send + Sync {
 	/// The properties structure
 	type Props;
@@ -62,7 +63,11 @@ pub trait ContextAbstraction: Debug + Send + Sync {
 	#[must_use]
 	fn mode(&self) -> &String;
 
-	/// Get zenoh session reference
+	/// Get default session reference
+	#[must_use]
+	fn default_session(&self) -> Arc<Session>;
+
+	/// Get session reference
 	#[must_use]
 	fn session(&self, session_id: &str) -> Option<Arc<Session>>;
 
@@ -178,13 +183,3 @@ pub trait ContextAbstraction: Debug + Send + Sync {
 	fn cancel_observe_with(&self, selector: &str) -> Result<()>;
 }
 // endregion:	--- Context
-
-// region:		--- Capability
-/// Commonalities for capability components
-pub trait Capability: Debug {
-	/// Checks whether state of capability component is appropriate for the given [`OperationState`].
-	/// If not, implementation has to adjusts components state to needs.
-	/// # Errors
-	fn manage_operation_state(&self, state: &OperationState) -> Result<()>;
-}
-// endregion:	--- Capability

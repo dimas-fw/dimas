@@ -5,7 +5,7 @@
 // region:		--- modules
 use clap::{Parser, Subcommand};
 use core::time::Duration;
-use dimas_com::zenoh::Communicator;
+use dimas_com::zenoh::ZenohCommunicator;
 use dimas_config::Config;
 use dimas_core::{enums::OperationState, Result};
 // endregion:	--- modules
@@ -72,7 +72,7 @@ fn main() -> Result<()> {
 
 	match &args.command {
 		DimasctlCommand::List => {
-			let com = Communicator::new(&config).expect("failed to create 'Communicator'");
+			let com = ZenohCommunicator::new(&config).expect("failed to create 'Communicator'");
 			println!("List of found DiMAS entities:");
 			println!("{h_zid:32}  {h_kind:6}  {h_state:10}  {h_name}");
 			let list = dimas_commands::about_list(&com, &base_selector)?;
@@ -90,7 +90,7 @@ fn main() -> Result<()> {
 			let target = args
 				.selector
 				.map_or_else(|| target.to_owned(), |value| format!("{value}/{target}"));
-			let com = Communicator::new(&config).expect("failed to create 'Communicator'");
+			let com = ZenohCommunicator::new(&config).expect("failed to create 'Communicator'");
 			for _ in 0..*count {
 				let list = dimas_commands::ping_list(&com, &target)?;
 				for item in list {
@@ -118,7 +118,7 @@ fn main() -> Result<()> {
 			}
 		}
 		DimasctlCommand::SetState { state } => {
-			let com = Communicator::new(&config).expect("failed to create 'Communicator'");
+			let com = ZenohCommunicator::new(&config).expect("failed to create 'Communicator'");
 			println!("List of current states of DiMAS entities:");
 			println!("{h_zid:32}  {h_kind:6}  {h_state:10}  {h_name}");
 			let list = dimas_commands::set_state(&com, &base_selector, state.to_owned())?;
@@ -136,7 +136,7 @@ fn main() -> Result<()> {
 			let target = args
 				.selector
 				.map_or_else(|| target.to_owned(), |value| format!("{value}/{target}"));
-			let com = Communicator::new(&config).expect("failed to create 'Communicator'");
+			let com = ZenohCommunicator::new(&config).expect("failed to create 'Communicator'");
 			println!("List of shut down DiMAS entities:");
 			println!("{h_zid:32}  {h_kind:6}  {h_state:10}  {h_name}");
 			let list = dimas_commands::shutdown(&com, &target)?;

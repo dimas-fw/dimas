@@ -23,7 +23,8 @@ pub mod queryable;
 pub mod subscriber;
 
 // flatten
-pub use communicator::Communicator;
+#[allow(clippy::module_name_repetitions)]
+pub use communicator::ZenohCommunicator;
 #[cfg(feature = "unstable")]
 pub use liveliness::LivelinessSubscriber;
 pub use observable::Observable;

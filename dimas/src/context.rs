@@ -35,13 +35,13 @@
 use crate::agent::Agent;
 use crate::error::Error;
 use core::fmt::Debug;
-use dimas_com::multi_communicator::MultiCommunicator;
 #[cfg(feature = "unstable")]
 use dimas_com::traits::LivelinessSubscriber;
 use dimas_com::traits::{
-	Communicator, MultiSessionCommunicator, MultiSessionCommunicatorMethods, Observer, Publisher, Querier,
-	Responder,
+	Communicator, MultiSessionCommunicator, MultiSessionCommunicatorMethods, Observer, Publisher,
+	Querier, Responder, SingleSessionCommunicatorMethods,
 };
+use dimas_com::{single_communicator::SingleCommunicator, traits::SingleSessionCommunicator};
 use dimas_config::Config;
 #[cfg(doc)]
 use dimas_core::traits::Context;
@@ -88,7 +88,7 @@ where
 	/// The [`Agent`]s property structure
 	props: Arc<RwLock<P>>,
 	/// The [`Agent`]s [`Communicator`]
-	communicator: Arc<MultiCommunicator>,
+	communicator: Arc<SingleCommunicator>,
 	/// Registered [`Timer`]
 	timers: Arc<RwLock<HashMap<String, Timer<P>>>>,
 }
@@ -303,8 +303,16 @@ where
 		self.communicator.mode()
 	}
 
+	fn default_session(&self) -> Arc<Session> {
+		self.communicator.session()
+	}
+
 	fn session(&self, session_id: &str) -> Option<Arc<Session>> {
-		self.communicator.session(session_id)
+		if session_id == "default" {
+			Some(self.communicator.session())
+		} else {
+			None
+		}
 	}
 }
 
@@ -321,7 +329,7 @@ where
 		sender: Sender<TaskSignal>,
 		prefix: Option<String>,
 	) -> Result<Self> {
-		let communicator = MultiCommunicator::new(config)?;
+		let communicator = SingleCommunicator::new(config)?;
 		let uuid = communicator.uuid();
 		Ok(Self {
 			uuid,
@@ -350,13 +358,13 @@ where
 	#[must_use]
 	pub fn liveliness_subscribers(
 		&self,
-	) -> &Arc<RwLock<HashMap<String, Box<dyn LivelinessSubscriber>>>> {
+	) -> Arc<RwLock<HashMap<String, Box<dyn LivelinessSubscriber>>>> {
 		self.communicator.liveliness_subscribers()
 	}
 
 	/// Get the observers
 	#[must_use]
-	pub fn observers(&self) -> &Arc<RwLock<HashMap<String, Box<dyn Observer>>>> {
+	pub fn observers(&self) -> Arc<RwLock<HashMap<String, Box<dyn Observer>>>> {
 		self.communicator.observers()
 	}
 
@@ -368,20 +376,20 @@ where
 
 	/// Get the queries
 	#[must_use]
-	pub fn queriers(&self) -> &Arc<RwLock<HashMap<String, Box<dyn Querier>>>> {
+	pub fn queriers(&self) -> Arc<RwLock<HashMap<String, Box<dyn Querier>>>> {
 		self.communicator.queriers()
 	}
 
 	/// Get the responders
 	#[must_use]
-	pub fn responders(&self) -> &Arc<RwLock<HashMap<String, Box<dyn Responder>>>> {
+	pub fn responders(&self) -> Arc<RwLock<HashMap<String, Box<dyn Responder>>>> {
 		self.communicator.responders()
 	}
 
 	/// Get the timers
 	#[must_use]
-	pub const fn timers(&self) -> &Arc<RwLock<HashMap<String, Timer<P>>>> {
-		&self.timers
+	pub fn timers(&self) -> Arc<RwLock<HashMap<String, Timer<P>>>> {
+		self.timers.clone()
 	}
 
 	/// Internal function for starting all registere)d tasks.<br>
