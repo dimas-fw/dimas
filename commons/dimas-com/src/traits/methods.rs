@@ -55,6 +55,7 @@ pub trait CommunicatorMethods {
 		Err(Error::NotImplemented.into())
 	}
 
+	/* not used currently
 	/// Send a put message [`Message`] from the given `session` to the given `selector`.
 	/// # Errors
 	/// - `NotImplemented`: there is no implementation within this communicator
@@ -100,6 +101,7 @@ pub trait CommunicatorMethods {
 	fn watch_from(&self, _session: &str, _selector: &str, _message: Message) -> Result<()> {
 		Err(Error::NotImplemented.into())
 	}
+	*/
 }
 // endregion:	--- CommunicatorMethods
 

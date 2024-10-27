@@ -73,7 +73,7 @@ where
 			#[cfg(feature = "unstable")]
 			allowed_destination: Locality::Any,
 			encoding: Encoding::default().to_string(),
-			timeout: Duration::from_millis(1000),
+			timeout: Duration::from_millis(100),
 			selector: NoSelector,
 			callback: NoCallback,
 			storage: NoStorage,
@@ -124,7 +124,7 @@ where
 	}
 
 	/// Set a timeout for the [`Querier`].
-	/// Default is 1000ms
+	/// Default is 100ms
 	#[must_use]
 	pub const fn timeout(mut self, timeout: Duration) -> Self {
 		self.timeout = timeout;

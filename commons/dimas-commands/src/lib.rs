@@ -20,7 +20,7 @@ use core::time::Duration;
 use dimas_com::{
 	messages::{AboutEntity, PingEntity, ScoutingEntity},
 	traits::CommunicatorImplementationMethods,
-	zenoh::ZenohCommunicator,
+	zenoh::Communicator,
 };
 use dimas_config::Config;
 use dimas_core::{
@@ -41,18 +41,22 @@ use zenoh::{
 /// Fetch a list of about messages from all reachable `DiMAS` entities
 /// # Errors
 #[cfg(feature = "std")]
-pub fn about_list(com: &ZenohCommunicator, base_selector: &String) -> Result<Vec<AboutEntity>> {
+pub fn about_list(com: &Communicator, base_selector: &String) -> Result<Vec<AboutEntity>> {
 	let mut map: HashMap<String, AboutEntity> = HashMap::new();
 
 	let selector = selector_from("signal", Some(base_selector));
 	let message = Message::encode(&Signal::About);
 	// set state for entities matching the selector
-	com.get(&selector, Some(message), Some(&mut |response| -> Result<()> {
-		let response: AboutEntity = response.decode()?;
-		map.entry(response.zid().to_string())
-			.or_insert(response);
-		Ok(())
-	}))?;
+	com.get(
+		&selector,
+		Some(message),
+		Some(&mut |response| -> Result<()> {
+			let response: AboutEntity = response.decode()?;
+			map.entry(response.zid().to_string())
+				.or_insert(response);
+			Ok(())
+		}),
+	)?;
 
 	let result: Vec<AboutEntity> = map.values().cloned().collect();
 
@@ -62,10 +66,7 @@ pub fn about_list(com: &ZenohCommunicator, base_selector: &String) -> Result<Vec
 /// Fetch a list of about messages from all reachable `DiMAS` entities
 /// # Errors
 #[cfg(feature = "std")]
-pub fn ping_list(
-	com: &ZenohCommunicator,
-	base_selector: &String,
-) -> Result<Vec<(PingEntity, i64)>> {
+pub fn ping_list(com: &Communicator, base_selector: &String) -> Result<Vec<(PingEntity, i64)>> {
 	let mut map: HashMap<String, (PingEntity, i64)> = HashMap::new();
 
 	let selector = selector_from("signal", Some(base_selector));
@@ -76,19 +77,23 @@ pub fn ping_list(
 		.unwrap_or(0);
 	let message = Message::encode(&Signal::Ping { sent });
 	// set state for entities matching the selector
-	com.get(&selector, Some(message), Some(&mut |response| -> Result<()> {
-		let received = Local::now()
-			.naive_utc()
-			.and_utc()
-			.timestamp_nanos_opt()
-			.unwrap_or(0);
+	com.get(
+		&selector,
+		Some(message),
+		Some(&mut |response| -> Result<()> {
+			let received = Local::now()
+				.naive_utc()
+				.and_utc()
+				.timestamp_nanos_opt()
+				.unwrap_or(0);
 
-		let response: PingEntity = response.decode()?;
-		let roundtrip = received - sent;
-		map.entry(response.zid().to_string())
-			.or_insert((response, roundtrip));
-		Ok(())
-	}))?;
+			let response: PingEntity = response.decode()?;
+			let roundtrip = received - sent;
+			map.entry(response.zid().to_string())
+				.or_insert((response, roundtrip));
+			Ok(())
+		}),
+	)?;
 
 	let result: Vec<(PingEntity, i64)> = map.values().cloned().collect();
 
@@ -123,7 +128,7 @@ pub fn scouting_list(config: &Config) -> Result<Vec<ScoutingEntity>> {
 /// # Errors
 #[cfg(feature = "std")]
 pub fn set_state(
-	com: &ZenohCommunicator,
+	com: &Communicator,
 	base_selector: &String,
 	state: Option<OperationState>,
 ) -> Result<Vec<AboutEntity>> {
@@ -132,12 +137,16 @@ pub fn set_state(
 	let selector = selector_from("signal", Some(base_selector));
 	let message = Message::encode(&Signal::State { state });
 	// set state for entities matching the selector
-	com.get(&selector, Some(message), Some(&mut |response| -> Result<()> {
-		let response: AboutEntity = response.decode()?;
-		map.entry(response.zid().to_string())
-			.or_insert(response);
-		Ok(())
-	}))?;
+	com.get(
+		&selector,
+		Some(message),
+		Some(&mut |response| -> Result<()> {
+			let response: AboutEntity = response.decode()?;
+			map.entry(response.zid().to_string())
+				.or_insert(response);
+			Ok(())
+		}),
+	)?;
 
 	let result: Vec<AboutEntity> = map.values().cloned().collect();
 
@@ -147,18 +156,22 @@ pub fn set_state(
 /// Shutdown of `DiMAS` entities
 /// # Errors
 #[cfg(feature = "std")]
-pub fn shutdown(com: &ZenohCommunicator, base_selector: &String) -> Result<Vec<AboutEntity>> {
+pub fn shutdown(com: &Communicator, base_selector: &String) -> Result<Vec<AboutEntity>> {
 	let mut map: HashMap<String, AboutEntity> = HashMap::new();
 
 	let selector = selector_from("signal", Some(base_selector));
 	let message = Message::encode(&Signal::Shutdown);
 	// set state for entities matching the selector
-	com.get(&selector, Some(message), Some(&mut |response| -> Result<()> {
-		let response: AboutEntity = response.decode()?;
-		map.entry(response.zid().to_string())
-			.or_insert(response);
-		Ok(())
-	}))?;
+	com.get(
+		&selector,
+		Some(message),
+		Some(&mut |response| -> Result<()> {
+			let response: AboutEntity = response.decode()?;
+			map.entry(response.zid().to_string())
+				.or_insert(response);
+			Ok(())
+		}),
+	)?;
 
 	let result: Vec<AboutEntity> = map.values().cloned().collect();
 

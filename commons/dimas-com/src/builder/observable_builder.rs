@@ -67,7 +67,7 @@ where
 			session_id: session_id.into(),
 			context,
 			activation_state: OperationState::Active,
-			feedback_interval: Duration::from_millis(1000),
+			feedback_interval: Duration::from_millis(100),
 			selector: NoSelector,
 			control_callback: NoCallback,
 			feedback_callback: NoCallback,

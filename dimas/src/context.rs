@@ -33,18 +33,16 @@
 // only for doc needed
 #[cfg(doc)]
 use crate::agent::Agent;
-#[cfg(doc)]
-use dimas_core::traits::Context;
 use crate::error::Error;
 use core::fmt::Debug;
 #[cfg(feature = "unstable")]
 use dimas_com::traits::LivelinessSubscriber;
 use dimas_com::traits::{
-	Communicator, CommunicatorMethods, Observer, Publisher,
-	Querier, Responder,
+	Communicator, CommunicatorMethods, Observer, Publisher, Querier, Responder,
 };
-use dimas_com::single_communicator::SingleCommunicator;
 use dimas_config::Config;
+#[cfg(doc)]
+use dimas_core::traits::Context;
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
 	message_types::{Message, QueryableMsg},
@@ -329,7 +327,7 @@ where
 		sender: Sender<TaskSignal>,
 		prefix: Option<String>,
 	) -> Result<Self> {
-		let communicator = SingleCommunicator::new(config)?;
+		let communicator = dimas_com::MultiCommunicator::new(config)?;
 		let uuid = communicator.uuid();
 		Ok(Self {
 			uuid,

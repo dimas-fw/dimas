@@ -12,7 +12,7 @@ use crate::traits::CommunicatorImplementationMethods;
 #[derive(Debug)]
 pub enum CommunicatorImplementation {
 	/// zenoh
-	Zenoh(crate::zenoh::ZenohCommunicator),
+	Zenoh(crate::zenoh::Communicator),
 }
 
 impl CommunicatorImplementationMethods for CommunicatorImplementation {}

@@ -10,20 +10,16 @@ extern crate alloc;
 extern crate std;
 
 // region:		--- modules
+#[cfg(feature = "unstable")]
+use super::LivelinessSubscriber;
+use super::{CommunicatorMethods, Observer, Publisher, Querier, Responder};
 use crate::error::Error;
 use alloc::{boxed::Box, string::String, sync::Arc, vec::Vec};
-use dimas_core::{
-	enums::OperationState,
-	error::Result,
-	traits::Capability,
-};
+use dimas_core::{enums::OperationState, error::Result, traits::Capability};
 #[cfg(feature = "std")]
 use std::{collections::HashMap, sync::RwLock};
 use tracing::error;
 use zenoh::Session;
-#[cfg(feature = "unstable")]
-use super::LivelinessSubscriber;
-use super::{CommunicatorMethods, Observer, Publisher, Querier, Responder};
 // endregion:	--- modules
 
 // region:		--- Communicator
@@ -32,9 +28,8 @@ pub trait Communicator: Capability + CommunicatorMethods + Send + Sync {
 	/// Get the liveliness subscribers
 	#[cfg(feature = "unstable")]
 	#[must_use]
-	fn liveliness_subscribers(
-		&self,
-	) -> Arc<RwLock<HashMap<String, Box<dyn LivelinessSubscriber>>>>;
+	fn liveliness_subscribers(&self)
+		-> Arc<RwLock<HashMap<String, Box<dyn LivelinessSubscriber>>>>;
 
 	/// Get the observers
 	#[must_use]
@@ -214,6 +209,4 @@ pub trait Communicator: Capability + CommunicatorMethods + Send + Sync {
 
 	/// get all sessions
 	fn sessions(&self) -> Vec<Arc<Session>>;
-
-
 }

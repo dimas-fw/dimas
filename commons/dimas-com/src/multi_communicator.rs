@@ -16,9 +16,8 @@ use crate::traits::LivelinessSubscriber;
 use crate::{
 	enums::CommunicatorImplementation,
 	traits::{
-		Communicator, CommunicatorImplementationMethods,
-		Observer, Publisher, Querier, Responder,
-		CommunicatorMethods,
+		Communicator, CommunicatorImplementationMethods, CommunicatorMethods, Observer, Publisher,
+		Querier, Responder,
 	},
 };
 use alloc::{
@@ -35,8 +34,10 @@ use zenoh::{config::ZenohId, Session};
 // endregion:   --- modules
 
 // region:		--- types
-// the initial size of the HashMaps
+/// the initial size of the `HashMaps`
 const INITIAL_SIZE: usize = 9;
+/// id for default communication session
+const DEFAULT: &str = "default";
 // endregion:	--- types
 
 // region:      --- MultiCommunicator
@@ -80,43 +81,6 @@ impl CommunicatorMethods for MultiCommunicator {
 	/// # Errors
 	/// - `NotImplemented`: there is no implementation within this communicator
 	fn put(&self, selector: &str, message: Message) -> Result<()> {
-		self.put_from("default", selector, message)
-	}
-
-	/// Send a delete message to the given `selector`.
-	/// # Errors
-	/// - `NotImplemented`: there is no implementation within this communicator
-	fn delete(&self, selector: &str) -> Result<()> {
-		self.delete_from("default", selector)
-	}
-
-	/// Send a query with an optional specification [`Message`] to the given `selector`.
-	/// # Errors
-	/// - `NotImplemented`: there is no implementation within this communicator
-	fn get(
-		&self,
-		selector: &str,
-		message: Option<Message>,
-		callback: Option<&mut dyn FnMut(QueryableMsg) -> Result<()>>,
-	) -> Result<()> {
-		self.get_from("default", selector, message, callback)
-	}
-
-	/// Request an observation for [`Message`] from the given `selector`
-	/// # Errors
-	/// - `NotImplemented`: there is no implementation within this communicator
-	fn observe(&self, selector: &str, message: Option<Message>) -> Result<()> {
-		self.observe_from("default", selector, message)
-	}
-
-	/// Request a stream configured by [`Message`] from the given `selector`
-	/// # Errors
-	/// - `NotImplemented`: there is no implementation within this communicator
-	fn watch(&self, selector: &str, message: Message) -> Result<()> {
-		self.watch_from("default", selector, message)
-	}
-
-	fn put_from(&self, session_id: &str, selector: &str, message: Message) -> Result<()> {
 		let publishers = self
 			.publishers
 			.read()
@@ -130,8 +94,8 @@ impl CommunicatorMethods for MultiCommunicator {
 					.communicators
 					.read()
 					.map_err(|_| Error::ReadAccess)?
-					.get(session_id)
-					.ok_or_else(|| Error::NoCommunicator(session_id.into()))
+					.get(DEFAULT)
+					.ok_or_else(|| Error::NoCommunicator(DEFAULT.into()))
 					.cloned()?;
 
 				comm.put(selector, message)
@@ -139,7 +103,10 @@ impl CommunicatorMethods for MultiCommunicator {
 		}
 	}
 
-	fn delete_from(&self, session_id: &str, selector: &str) -> Result<()> {
+	/// Send a delete message to the given `selector`.
+	/// # Errors
+	/// - `NotImplemented`: there is no implementation within this communicator
+	fn delete(&self, selector: &str) -> Result<()> {
 		let publishers = self
 			.publishers
 			.read()
@@ -153,8 +120,8 @@ impl CommunicatorMethods for MultiCommunicator {
 					.communicators
 					.read()
 					.map_err(|_| Error::ReadAccess)?
-					.get(session_id)
-					.ok_or_else(|| Error::NoCommunicator(session_id.into()))
+					.get(DEFAULT)
+					.ok_or_else(|| Error::NoCommunicator(DEFAULT.into()))
 					.cloned()?;
 
 				#[allow(clippy::match_wildcard_for_single_variants)]
@@ -165,9 +132,11 @@ impl CommunicatorMethods for MultiCommunicator {
 		}
 	}
 
-	fn get_from(
+	/// Send a query with an optional specification [`Message`] to the given `selector`.
+	/// # Errors
+	/// - `NotImplemented`: there is no implementation within this communicator
+	fn get(
 		&self,
-		session_id: &str,
 		selector: &str,
 		message: Option<Message>,
 		callback: Option<&mut dyn FnMut(QueryableMsg) -> Result<()>>,
@@ -185,11 +154,10 @@ impl CommunicatorMethods for MultiCommunicator {
 					.communicators
 					.read()
 					.map_err(|_| Error::ReadAccess)?
-					.get(session_id)
-					.ok_or_else(|| Error::NoCommunicator(session_id.into()))
+					.get(DEFAULT)
+					.ok_or_else(|| Error::NoCommunicator(DEFAULT.into()))
 					.cloned()?;
 
-				#[allow(clippy::match_wildcard_for_single_variants)]
 				match comm.as_ref() {
 					CommunicatorImplementation::Zenoh(zenoh) => {
 						zenoh.get(selector, message, callback)
@@ -199,12 +167,10 @@ impl CommunicatorMethods for MultiCommunicator {
 		}
 	}
 
-	fn observe_from(
-		&self,
-		session_id: &str,
-		selector: &str,
-		message: Option<Message>,
-	) -> Result<()> {
+	/// Request an observation for [`Message`] from the given `selector`
+	/// # Errors
+	/// - `NotImplemented`: there is no implementation within this communicator
+	fn observe(&self, selector: &str, message: Option<Message>) -> Result<()> {
 		let observers = self
 			.observers
 			.read()
@@ -218,8 +184,8 @@ impl CommunicatorMethods for MultiCommunicator {
 					.communicators
 					.read()
 					.map_err(|_| Error::ReadAccess)?
-					.get(session_id)
-					.ok_or_else(|| Error::NoCommunicator(session_id.into()))
+					.get(DEFAULT)
+					.ok_or_else(|| Error::NoCommunicator(DEFAULT.into()))
 					.cloned()?;
 
 				#[allow(clippy::match_wildcard_for_single_variants)]
@@ -230,7 +196,10 @@ impl CommunicatorMethods for MultiCommunicator {
 		}
 	}
 
-	fn watch_from(&self, _session: &str, _selector: &str, _message: Message) -> Result<()> {
+	/// Request a stream configured by [`Message`] from the given `selector`
+	/// # Errors
+	/// - `NotImplemented`: there is no implementation within this communicator
+	fn watch(&self, _selector: &str, _message: Message) -> Result<()> {
 		Err(Error::NotImplemented.into())
 	}
 }
@@ -279,13 +248,11 @@ impl Communicator for MultiCommunicator {
 			.communicators
 			.read()
 			.expect("snh")
-			.get("default")
+			.get(DEFAULT)
 			.cloned()
 			.expect("snh");
 		match com.as_ref() {
-			CommunicatorImplementation::Zenoh(communicator) => {
-				communicator.session()
-			}
+			CommunicatorImplementation::Zenoh(communicator) => communicator.session(),
 		}
 	}
 
@@ -306,13 +273,13 @@ impl Communicator for MultiCommunicator {
 	}
 
 	fn sessions(&self) -> Vec<Arc<Session>> {
-		let com: Vec<Arc<Session>> = self.communicators
+		let com: Vec<Arc<Session>> = self
+			.communicators
 			.read()
 			.expect("snh")
-			.iter().map(|(_id, com)| {
-				match com.as_ref() {
-					CommunicatorImplementation::Zenoh(communicator) => communicator.session(),
-				}
+			.iter()
+			.map(|(_id, com)| match com.as_ref() {
+				CommunicatorImplementation::Zenoh(communicator) => communicator.session(),
 			})
 			.collect();
 		com
@@ -323,7 +290,7 @@ impl MultiCommunicator {
 	/// Constructor
 	/// # Errors
 	pub fn new(config: &Config) -> Result<Self> {
-		let zenoh = crate::zenoh::ZenohCommunicator::new(config)?;
+		let zenoh = crate::zenoh::Communicator::new(config)?;
 		let uuid = zenoh.session().zid();
 		let mode = zenoh.mode().to_string();
 		let com = Self {

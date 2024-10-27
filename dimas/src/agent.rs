@@ -364,8 +364,7 @@ where
 		NoCallback,
 		Storage<Box<dyn Responder>>,
 	> {
-		ObservableBuilder::new("default", self.context.clone())
-			.storage(self.context.responders())
+		ObservableBuilder::new("default", self.context.clone()).storage(self.context.responders())
 	}
 
 	/// Get an [`ObservableBuilder`], the builder for an `Observable`.
@@ -381,8 +380,7 @@ where
 		NoCallback,
 		Storage<Box<dyn Responder>>,
 	> {
-		ObservableBuilder::new(session_id, self.context.clone())
-			.storage(self.context.responders())
+		ObservableBuilder::new(session_id, self.context.clone()).storage(self.context.responders())
 	}
 
 	/// Get an [`ObserverBuilder`], the builder for an `Observer`.
@@ -390,8 +388,7 @@ where
 	pub fn observer(
 		&self,
 	) -> ObserverBuilder<P, NoSelector, NoCallback, NoCallback, Storage<Box<dyn Observer>>> {
-		ObserverBuilder::new("default", self.context.clone())
-			.storage(self.context.observers())
+		ObserverBuilder::new("default", self.context.clone()).storage(self.context.observers())
 	}
 
 	/// Get an [`ObserverBuilder`], the builder for an `Observer`.
@@ -400,15 +397,13 @@ where
 		&self,
 		session_id: impl Into<String>,
 	) -> ObserverBuilder<P, NoSelector, NoCallback, NoCallback, Storage<Box<dyn Observer>>> {
-		ObserverBuilder::new(session_id, self.context.clone())
-			.storage(self.context.observers())
+		ObserverBuilder::new(session_id, self.context.clone()).storage(self.context.observers())
 	}
 
 	/// Get a [`PublisherBuilder`], the builder for a s`Publisher`.
 	#[must_use]
 	pub fn publisher(&self) -> PublisherBuilder<P, NoSelector, Storage<Box<dyn Publisher>>> {
-		PublisherBuilder::new("default", self.context.clone())
-			.storage(self.context.publishers())
+		PublisherBuilder::new("default", self.context.clone()).storage(self.context.publishers())
 	}
 
 	/// Get a [`PublisherBuilder`], the builder for a s`Publisher`.
@@ -417,15 +412,13 @@ where
 		&self,
 		session_id: impl Into<String>,
 	) -> PublisherBuilder<P, NoSelector, Storage<Box<dyn Publisher>>> {
-		PublisherBuilder::new(session_id, self.context.clone())
-			.storage(self.context.publishers())
+		PublisherBuilder::new(session_id, self.context.clone()).storage(self.context.publishers())
 	}
 
 	/// Get a [`QuerierBuilder`], the builder for a `Querier`.
 	#[must_use]
 	pub fn querier(&self) -> QuerierBuilder<P, NoSelector, NoCallback, Storage<Box<dyn Querier>>> {
-		QuerierBuilder::new("default", self.context.clone())
-			.storage(self.context.queriers())
+		QuerierBuilder::new("default", self.context.clone()).storage(self.context.queriers())
 	}
 
 	/// Get a [`QuerierBuilder`], the builder for a `Querier`.
@@ -434,8 +427,7 @@ where
 		&self,
 		session_id: impl Into<String>,
 	) -> QuerierBuilder<P, NoSelector, NoCallback, Storage<Box<dyn Querier>>> {
-		QuerierBuilder::new(session_id, self.context.clone())
-			.storage(self.context.queriers())
+		QuerierBuilder::new(session_id, self.context.clone()).storage(self.context.queriers())
 	}
 
 	/// Get a [`QueryableBuilder`], the builder for a `Queryable`.
@@ -443,8 +435,7 @@ where
 	pub fn queryable(
 		&self,
 	) -> QueryableBuilder<P, NoSelector, NoCallback, Storage<Box<dyn Responder>>> {
-		QueryableBuilder::new("default", self.context.clone())
-			.storage(self.context.responders())
+		QueryableBuilder::new("default", self.context.clone()).storage(self.context.responders())
 	}
 
 	/// Get a [`QueryableBuilder`], the builder for a `Queryable`.
@@ -453,8 +444,7 @@ where
 		&self,
 		session_id: impl Into<String>,
 	) -> QueryableBuilder<P, NoSelector, NoCallback, Storage<Box<dyn Responder>>> {
-		QueryableBuilder::new(session_id, self.context.clone())
-			.storage(self.context.responders())
+		QueryableBuilder::new(session_id, self.context.clone()).storage(self.context.responders())
 	}
 
 	/// Get a [`SubscriberBuilder`], the builder for a `Subscriber`.
@@ -462,8 +452,7 @@ where
 	pub fn subscriber(
 		&self,
 	) -> SubscriberBuilder<P, NoSelector, NoCallback, Storage<Box<dyn Responder>>> {
-		SubscriberBuilder::new("default", self.context.clone())
-			.storage(self.context.responders())
+		SubscriberBuilder::new("default", self.context.clone()).storage(self.context.responders())
 	}
 
 	/// Get a [`SubscriberBuilder`], the builder for a `Subscriber`.
@@ -472,8 +461,7 @@ where
 		&self,
 		session_id: impl Into<String>,
 	) -> SubscriberBuilder<P, NoSelector, NoCallback, Storage<Box<dyn Responder>>> {
-		SubscriberBuilder::new(session_id, self.context.clone())
-			.storage(self.context.responders())
+		SubscriberBuilder::new(session_id, self.context.clone()).storage(self.context.responders())
 	}
 
 	/// Get a [`TimerBuilder`], the builder for a [`Timer`].

@@ -65,7 +65,7 @@ where
 			session_id: session_id.into(),
 			context,
 			activation_state: OperationState::Active,
-			timeout: Duration::from_millis(1000),
+			timeout: Duration::from_millis(100),
 			selector: NoSelector,
 			control_callback: NoCallback,
 			response_callback: NoCallback,
@@ -118,7 +118,7 @@ where
 	}
 
 	/// Set a timeout for the [`Observer`].
-	/// Default is 1000ms
+	/// Default is 100ms
 	#[must_use]
 	pub const fn timeout(mut self, timeout: Duration) -> Self {
 		self.timeout = timeout;

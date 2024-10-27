@@ -13,10 +13,12 @@ extern crate std;
 #[cfg(feature = "unstable")]
 use crate::traits::LivelinessSubscriber;
 use crate::{
-	enums::CommunicatorImplementation, error::Error, traits::{
-		Communicator, CommunicatorImplementationMethods, Observer, Publisher, Querier, Responder,
-		CommunicatorMethods,
-	}
+	enums::CommunicatorImplementation,
+	error::Error,
+	traits::{
+		Communicator, CommunicatorImplementationMethods, CommunicatorMethods, Observer, Publisher,
+		Querier, Responder,
+	},
 };
 use alloc::{
 	boxed::Box,
@@ -114,7 +116,7 @@ impl Communicator for SingleCommunicator {
 
 	fn session(&self, id: &str) -> Option<Arc<Session>> {
 		if id == "default" {
-			Some(self.communicator.session())			
+			Some(self.communicator.session())
 		} else {
 			None
 		}
@@ -138,13 +140,9 @@ impl CommunicatorMethods for SingleCommunicator {
 		#[allow(clippy::single_match_else)]
 		match publishers.get(selector) {
 			Some(publisher) => publisher.put(message),
-			None => {
-				match self.communicator.as_ref() {
-					CommunicatorImplementation::Zenoh(zenoh) => {
-						zenoh.put(selector, message)
-					}
-				}
-			}
+			None => match self.communicator.as_ref() {
+				CommunicatorImplementation::Zenoh(zenoh) => zenoh.put(selector, message),
+			},
 		}
 	}
 
@@ -157,13 +155,9 @@ impl CommunicatorMethods for SingleCommunicator {
 		#[allow(clippy::option_if_let_else)]
 		match publishers.get(selector) {
 			Some(publisher) => publisher.delete(),
-			None => {
-				match self.communicator.as_ref() {
-					CommunicatorImplementation::Zenoh(zenoh) => {
-						zenoh.delete(selector)
-					}
-				}
-			}
+			None => match self.communicator.as_ref() {
+				CommunicatorImplementation::Zenoh(zenoh) => zenoh.delete(selector),
+			},
 		}
 	}
 
@@ -181,7 +175,8 @@ impl CommunicatorMethods for SingleCommunicator {
 		#[allow(clippy::single_match_else)]
 		match queriers.get(selector) {
 			Some(querier) => querier.get(message, callback),
-			None => {
+			None =>
+			{
 				#[allow(clippy::match_wildcard_for_single_variants)]
 				match self.communicator.as_ref() {
 					CommunicatorImplementation::Zenoh(zenoh) => {
@@ -205,9 +200,7 @@ impl CommunicatorMethods for SingleCommunicator {
 		#[allow(clippy::option_if_let_else)]
 		match observers.get(selector) {
 			Some(observer) => observer.request(message),
-			None => {
-				Err(crate::error::Error::NotImplemented.into())
-			}
+			None => Err(crate::error::Error::NotImplemented.into()),
 		}
 	}
 
@@ -220,7 +213,7 @@ impl SingleCommunicator {
 	/// Constructor
 	/// # Errors
 	pub fn new(config: &Config) -> Result<Self> {
-		let zenoh = crate::zenoh::ZenohCommunicator::new(config)?;
+		let zenoh = crate::zenoh::Communicator::new(config)?;
 		let uuid = zenoh.session().zid();
 		let mode = zenoh.mode().to_string();
 		let com = Self {

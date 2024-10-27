@@ -11,10 +11,7 @@ extern crate alloc;
 extern crate std;
 
 // region:		--- modules
-use crate::{
-	error::Error,
-	traits::CommunicatorImplementationMethods,
-};
+use crate::{error::Error, traits::CommunicatorImplementationMethods};
 use alloc::{
 	borrow::ToOwned,
 	boxed::Box,
@@ -43,20 +40,20 @@ use zenoh::{
 /// [`Communicator`] handles all communication aspects
 #[allow(clippy::module_name_repetitions)]
 #[derive(Debug)]
-pub struct ZenohCommunicator {
+pub struct Communicator {
 	/// The zenoh session
 	session: Arc<Session>,
 	/// Mode of the session (router|peer|client)
 	mode: String,
 }
 
-impl Capability for ZenohCommunicator {
+impl Capability for Communicator {
 	fn manage_operation_state(&self, _state: &OperationState) -> Result<()> {
 		Ok(())
 	}
 }
 
-impl CommunicatorImplementationMethods for ZenohCommunicator {
+impl CommunicatorImplementationMethods for Communicator {
 	/// Send a put message [`Message`] using the given `selector`
 	/// # Errors
 	#[allow(clippy::needless_pass_by_value)]
@@ -147,7 +144,7 @@ impl CommunicatorImplementationMethods for ZenohCommunicator {
 	}
 }
 
-impl ZenohCommunicator {
+impl Communicator {
 	/// Constructor
 	/// # Errors
 	pub fn new(config: &dimas_config::Config) -> Result<Self> {
@@ -197,14 +194,14 @@ mod tests {
 
 	#[test]
 	const fn normal_types() {
-		is_normal::<ZenohCommunicator>();
+		is_normal::<Communicator>();
 	}
 
 	#[tokio::test(flavor = "multi_thread")]
 	//#[serial]
 	async fn communicator_create() -> Result<()> {
 		let cfg = dimas_config::Config::default();
-		let _peer = ZenohCommunicator::new(&cfg)?;
+		let _peer = Communicator::new(&cfg)?;
 		Ok(())
 	}
 }

@@ -21,3 +21,7 @@ pub mod single_communicator;
 pub mod traits;
 /// zenoh implementation
 pub mod zenoh;
+
+// flatten
+pub use multi_communicator::MultiCommunicator;
+pub use single_communicator::SingleCommunicator;
