@@ -15,13 +15,14 @@ use crate::traits::LivelinessSubscriber;
 use crate::{
 	enums::CommunicatorImplementation, error::Error, traits::{
 		Communicator, CommunicatorImplementationMethods, Observer, Publisher, Querier, Responder,
-		SingleSessionCommunicator, SingleSessionCommunicatorMethods,
+		CommunicatorMethods,
 	}
 };
 use alloc::{
 	boxed::Box,
 	string::{String, ToString},
 	sync::Arc,
+	vec::Vec,
 };
 use dimas_config::Config;
 use dimas_core::{enums::OperationState, message_types::Message, traits::Capability, Result};
@@ -106,9 +107,28 @@ impl Communicator for SingleCommunicator {
 	fn mode(&self) -> &std::string::String {
 		&self.mode
 	}
+
+	fn default_session(&self) -> Arc<Session> {
+		self.communicator.session()
+	}
+
+	fn session(&self, id: &str) -> Option<Arc<Session>> {
+		if id == "default" {
+			Some(self.communicator.session())			
+		} else {
+			None
+		}
+	}
+
+	#[allow(clippy::vec_init_then_push)]
+	fn sessions(&self) -> Vec<Arc<Session>> {
+		let mut res = Vec::with_capacity(1);
+		res.push(self.communicator.session());
+		res
+	}
 }
 
-impl SingleSessionCommunicatorMethods for SingleCommunicator {
+impl CommunicatorMethods for SingleCommunicator {
 	fn put(&self, selector: &str, message: Message) -> Result<()> {
 		let publishers = self
 			.publishers
@@ -193,12 +213,6 @@ impl SingleSessionCommunicatorMethods for SingleCommunicator {
 
 	fn watch(&self, _selector: &str, _message: dimas_core::message_types::Message) -> Result<()> {
 		Err(crate::error::Error::NotImplemented.into())
-	}
-}
-
-impl SingleSessionCommunicator for SingleCommunicator {
-	fn session(&self) -> Arc<Session> {
-		self.communicator.session()
 	}
 }
 

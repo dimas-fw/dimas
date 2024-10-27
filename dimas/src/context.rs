@@ -33,18 +33,18 @@
 // only for doc needed
 #[cfg(doc)]
 use crate::agent::Agent;
+#[cfg(doc)]
+use dimas_core::traits::Context;
 use crate::error::Error;
 use core::fmt::Debug;
 #[cfg(feature = "unstable")]
 use dimas_com::traits::LivelinessSubscriber;
 use dimas_com::traits::{
-	Communicator, MultiSessionCommunicator, MultiSessionCommunicatorMethods, Observer, Publisher,
-	Querier, Responder, SingleSessionCommunicatorMethods,
+	Communicator, CommunicatorMethods, Observer, Publisher,
+	Querier, Responder,
 };
-use dimas_com::{single_communicator::SingleCommunicator, traits::SingleSessionCommunicator};
+use dimas_com::single_communicator::SingleCommunicator;
 use dimas_config::Config;
-#[cfg(doc)]
-use dimas_core::traits::Context;
 use dimas_core::{
 	enums::{OperationState, TaskSignal},
 	message_types::{Message, QueryableMsg},
@@ -88,7 +88,7 @@ where
 	/// The [`Agent`]s property structure
 	props: Arc<RwLock<P>>,
 	/// The [`Agent`]s [`Communicator`]
-	communicator: Arc<SingleCommunicator>,
+	communicator: Arc<Box<dyn Communicator>>,
 	/// Registered [`Timer`]
 	timers: Arc<RwLock<HashMap<String, Timer<P>>>>,
 }
@@ -304,12 +304,12 @@ where
 	}
 
 	fn default_session(&self) -> Arc<Session> {
-		self.communicator.session()
+		self.communicator.default_session()
 	}
 
 	fn session(&self, session_id: &str) -> Option<Arc<Session>> {
 		if session_id == "default" {
-			Some(self.communicator.session())
+			Some(self.communicator.default_session())
 		} else {
 			None
 		}
@@ -337,7 +337,7 @@ where
 			prefix,
 			state: Arc::new(RwLock::new(OperationState::Created)),
 			sender,
-			communicator: Arc::new(communicator),
+			communicator: Arc::new(Box::new(communicator)),
 			props: Arc::new(RwLock::new(props)),
 			timers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 		})

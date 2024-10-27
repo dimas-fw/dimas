@@ -11,10 +11,10 @@ use dimas_core::{
 };
 // endregion:   --- modules
 
-// region:		--- SingleSessionCommunicatorMethods
+// region:		--- CommunicatorMethods
 /// the communication methods to be implemented by a single session Communicator implementation
 #[allow(clippy::module_name_repetitions)]
-pub trait SingleSessionCommunicatorMethods {
+pub trait CommunicatorMethods {
 	/// Send a put message [`Message`] to the given `selector`.
 	/// # Errors
 	/// - `NotImplemented`: there is no implementation within this communicator
@@ -54,13 +54,7 @@ pub trait SingleSessionCommunicatorMethods {
 	fn watch(&self, _selector: &str, _message: Message) -> Result<()> {
 		Err(Error::NotImplemented.into())
 	}
-}
-// endregion:   --- SingleSessionCommunicatorMethods
 
-// region:      --- MultiSessionCommunicatorMethods
-/// the communication methods to be implemented by a multi session Communicator
-#[allow(clippy::module_name_repetitions)]
-pub trait MultiSessionCommunicatorMethods {
 	/// Send a put message [`Message`] from the given `session` to the given `selector`.
 	/// # Errors
 	/// - `NotImplemented`: there is no implementation within this communicator
@@ -107,7 +101,7 @@ pub trait MultiSessionCommunicatorMethods {
 		Err(Error::NotImplemented.into())
 	}
 }
-// endregion:	--- MultiSessionCommunicatorMethods
+// endregion:	--- CommunicatorMethods
 
 // region:		--- CommunicatorImplementation
 /// the communication methods to be implemented by any Communicator implementation

@@ -16,21 +16,22 @@ use crate::traits::LivelinessSubscriber;
 use crate::{
 	enums::CommunicatorImplementation,
 	traits::{
-		Communicator, CommunicatorImplementationMethods, MultiSessionCommunicator,
-		MultiSessionCommunicatorMethods, Observer, Publisher, Querier, Responder,
-		SingleSessionCommunicatorMethods,
+		Communicator, CommunicatorImplementationMethods,
+		Observer, Publisher, Querier, Responder,
+		CommunicatorMethods,
 	},
 };
 use alloc::{
 	boxed::Box,
 	string::{String, ToString},
 	sync::Arc,
+	vec::Vec,
 };
 use dimas_config::Config;
 use dimas_core::message_types::{Message, QueryableMsg};
 use dimas_core::{enums::OperationState, traits::Capability, Result};
 use std::{collections::HashMap, sync::RwLock};
-use zenoh::config::ZenohId;
+use zenoh::{config::ZenohId, Session};
 // endregion:   --- modules
 
 // region:		--- types
@@ -74,7 +75,7 @@ impl Capability for MultiCommunicator {
 	}
 }
 
-impl SingleSessionCommunicatorMethods for MultiCommunicator {
+impl CommunicatorMethods for MultiCommunicator {
 	/// Send a put message [`Message`] to the given `selector`.
 	/// # Errors
 	/// - `NotImplemented`: there is no implementation within this communicator
@@ -114,9 +115,7 @@ impl SingleSessionCommunicatorMethods for MultiCommunicator {
 	fn watch(&self, selector: &str, message: Message) -> Result<()> {
 		self.watch_from("default", selector, message)
 	}
-}
 
-impl MultiSessionCommunicatorMethods for MultiCommunicator {
 	fn put_from(&self, session_id: &str, selector: &str, message: Message) -> Result<()> {
 		let publishers = self
 			.publishers
@@ -274,16 +273,28 @@ impl Communicator for MultiCommunicator {
 	fn responders(&self) -> Arc<RwLock<HashMap<String, Box<dyn Responder>>>> {
 		self.responders.clone()
 	}
-}
 
-impl MultiSessionCommunicator for MultiCommunicator {
-	#[allow(clippy::match_wildcard_for_single_variants)]
-	fn session(&self, session_id: &str) -> Option<Arc<zenoh::Session>> {
+	fn default_session(&self) -> Arc<Session> {
 		let com = self
 			.communicators
 			.read()
 			.expect("snh")
-			.get(session_id)
+			.get("default")
+			.cloned()
+			.expect("snh");
+		match com.as_ref() {
+			CommunicatorImplementation::Zenoh(communicator) => {
+				communicator.session()
+			}
+		}
+	}
+
+	fn session(&self, id: &str) -> Option<Arc<zenoh::Session>> {
+		let com = self
+			.communicators
+			.read()
+			.expect("snh")
+			.get(id)
 			.cloned()
 			.expect("snh");
 		match com.as_ref() {
@@ -292,6 +303,19 @@ impl MultiSessionCommunicator for MultiCommunicator {
 				Some(com)
 			}
 		}
+	}
+
+	fn sessions(&self) -> Vec<Arc<Session>> {
+		let com: Vec<Arc<Session>> = self.communicators
+			.read()
+			.expect("snh")
+			.iter().map(|(_id, com)| {
+				match com.as_ref() {
+					CommunicatorImplementation::Zenoh(communicator) => communicator.session(),
+				}
+			})
+			.collect();
+		com
 	}
 }
 

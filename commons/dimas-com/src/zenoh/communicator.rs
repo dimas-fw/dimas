@@ -13,7 +13,7 @@ extern crate std;
 // region:		--- modules
 use crate::{
 	error::Error,
-	traits::{CommunicatorImplementationMethods, SingleSessionCommunicator},
+	traits::CommunicatorImplementationMethods,
 };
 use alloc::{
 	borrow::ToOwned,

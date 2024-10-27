@@ -4,10 +4,10 @@
 //! 
 
 mod capabilities;
-mod communicators;
+mod communicator;
 mod methods;
 
 // flatten
 pub use capabilities::*;
-pub use communicators::*;
+pub use communicator::*;
 pub use methods::*;

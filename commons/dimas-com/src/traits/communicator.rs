@@ -11,7 +11,7 @@ extern crate std;
 
 // region:		--- modules
 use crate::error::Error;
-use alloc::{boxed::Box, string::String, sync::Arc};
+use alloc::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use dimas_core::{
 	enums::OperationState,
 	error::Result,
@@ -23,12 +23,12 @@ use tracing::error;
 use zenoh::Session;
 #[cfg(feature = "unstable")]
 use super::LivelinessSubscriber;
-use super::{MultiSessionCommunicatorMethods, Observer, Publisher, Querier, Responder, SingleSessionCommunicatorMethods};
+use super::{CommunicatorMethods, Observer, Publisher, Querier, Responder};
 // endregion:	--- modules
 
 // region:		--- Communicator
 /// the methodes to be implemented by any communicator
-pub trait Communicator {
+pub trait Communicator: Capability + CommunicatorMethods + Send + Sync {
 	/// Get the liveliness subscribers
 	#[cfg(feature = "unstable")]
 	#[must_use]
@@ -205,28 +205,15 @@ pub trait Communicator {
 	/// the mode of the communicator
 	#[must_use]
 	fn mode(&self) -> &String;
-}
 
-/// single session communicator
-#[allow(clippy::module_name_repetitions)]
-pub trait SingleSessionCommunicator:
-	Communicator + SingleSessionCommunicatorMethods + Capability + Send + Sync
-{
-	/// get the communicator session
-	fn session(&self) -> Arc<Session>;
-}
+	/// get the default session
+	fn default_session(&self) -> Arc<Session>;
 
-/// multi session communicator
-#[allow(clippy::module_name_repetitions)]
-pub trait MultiSessionCommunicator:
-	Communicator
-	+ SingleSessionCommunicatorMethods
-	+ MultiSessionCommunicatorMethods
-	+ Capability
-	+ Send
-	+ Sync
-{
-	/// get a communicator session
-	fn session(&self, session_id: &str) -> Option<Arc<Session>>;
+	/// get the session with `id`
+	fn session(&self, id: &str) -> Option<Arc<Session>>;
+
+	/// get all sessions
+	fn sessions(&self) -> Vec<Arc<Session>>;
+
+
 }
-// endregion:	--- Communicator
