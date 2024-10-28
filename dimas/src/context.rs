@@ -86,7 +86,7 @@ where
 	/// The [`Agent`]s property structure
 	props: Arc<RwLock<P>>,
 	/// The [`Agent`]s [`Communicator`]
-	communicator: Arc<Box<dyn Communicator>>,
+	communicator: Arc<dyn Communicator>,
 	/// Registered [`Timer`]
 	timers: Arc<RwLock<HashMap<String, Timer<P>>>>,
 }
@@ -327,7 +327,7 @@ where
 		sender: Sender<TaskSignal>,
 		prefix: Option<String>,
 	) -> Result<Self> {
-		let communicator = dimas_com::MultiCommunicator::new(config)?;
+		let communicator = dimas_com::communicator::from(config)?;
 		let uuid = communicator.uuid();
 		Ok(Self {
 			uuid,
@@ -335,7 +335,7 @@ where
 			prefix,
 			state: Arc::new(RwLock::new(OperationState::Created)),
 			sender,
-			communicator: Arc::new(Box::new(communicator)),
+			communicator,
 			props: Arc::new(RwLock::new(props)),
 			timers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 		})

@@ -48,7 +48,7 @@ pub trait Communicator: Capability + CommunicatorMethods + Send + Sync {
 	fn responders(&self) -> Arc<RwLock<HashMap<String, Box<dyn Responder>>>>;
 
 	/// Method for upgrading [`OperationState`] all registered capabilities
-	/// 
+	///
 	/// The capabilities are upgraded in the order
 	/// - [`LivelinessSubscriber`]s
 	/// - [`Responder`]: `Observable`, `Queryable`, `Subscriber`
@@ -127,7 +127,7 @@ pub trait Communicator: Capability + CommunicatorMethods + Send + Sync {
 	}
 
 	/// Method for downgrading [`OperationState`] all registered capabilities
-	/// 
+	///
 	/// The capabilities are downgraded in reverse order of their start in [`Communicator::upgrade_capabilities`]
 	///
 	/// # Errors
