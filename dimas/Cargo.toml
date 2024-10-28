@@ -24,6 +24,7 @@ chrono = { workspace = true }
 derive_more = { workspace = true, features = ["from"] }
 dirs = { workspace = true }
 dimas-com = { workspace = true }
+dimas-commands = { workspace = true }
 dimas-config = { workspace = true }
 dimas-core = { workspace = true }
 dimas-macros = { workspace =true }

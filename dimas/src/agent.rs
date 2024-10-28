@@ -55,10 +55,10 @@ use dimas_com::builder::{
 	ObservableBuilder, ObserverBuilder, PublisherBuilder, QuerierBuilder, QueryableBuilder,
 	SubscriberBuilder,
 };
-use dimas_com::messages::{AboutEntity, PingEntity};
 #[cfg(feature = "unstable")]
 use dimas_com::traits::LivelinessSubscriber;
 use dimas_com::traits::{Observer, Publisher, Querier, Responder};
+use dimas_commands::messages::{AboutEntity, PingEntity};
 use dimas_config::Config;
 use dimas_core::{
 	builder_states::{NoCallback, NoInterval, NoSelector, Storage},
