@@ -1,6 +1,6 @@
 // Copyright © 2024 Stephan Kunz
 
-//! Errors from com
+//! `dimas-time` errors
 
 #[doc(hidden)]
 extern crate alloc;
@@ -8,39 +8,28 @@ extern crate alloc;
 #[cfg(feature = "std")]
 extern crate std;
 
-#[cfg(feature = "std")]
-use std::string::String;
+use alloc::string::String;
+use thiserror::Error;
 
 // region:		--- Error
-/// Com error type.
+/// `dimas-time` error type.
+#[derive(Error, Debug)]
 pub enum Error {
-	/// A Mutex is poisoned.
+	/// a Mutex is poisoned.
+	#[error("a Mutex poison error happened in {0}")]
 	MutexPoison(String),
 }
 // region:		--- Error
 
-// region:      --- boilerplate
-impl core::fmt::Display for Error {
-	fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> {
-		write!(fmt, "{self:?}")
-	}
-}
+#[cfg(test)]
+mod tests {
+	use super::*;
 
-impl core::fmt::Debug for Error {
-	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-		match self {
-			Self::MutexPoison(location) => {
-				write!(f, "an Mutex poison error happened in {location}")
-			}
-		}
-	}
-}
+	// check, that the auto traits are available
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
-impl core::error::Error for Error {
-	fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
-		match *self {
-			Self::MutexPoison { .. } => None,
-		}
+	#[test]
+	const fn normal_types() {
+		is_normal::<Error>();
 	}
 }
-// endregion:   --- boilerplate

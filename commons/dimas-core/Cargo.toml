@@ -23,6 +23,7 @@ workspace = true
 
 [dependencies]
 bitcode = { workspace = true}
+thiserror = { workspace = true }
 tokio = { workspace = true}
 tracing = { workspace = true}
 tracing-subscriber = { workspace = true}

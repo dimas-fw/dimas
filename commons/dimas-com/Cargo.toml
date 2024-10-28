@@ -27,6 +27,7 @@ dimas-config = { workspace = true }
 dimas-core = { workspace = true }
 futures = { workspace = true }
 itertools = { workspace = true }
+thiserror = { workspace = true }
 tokio = { workspace = true}
 tracing = { workspace = true}
 tracing-subscriber = { workspace = true}

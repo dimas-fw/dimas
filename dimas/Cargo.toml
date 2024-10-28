@@ -30,6 +30,7 @@ dimas-core = { workspace = true }
 dimas-macros = { workspace =true }
 dimas-time = { workspace = true }
 futures = { workspace = true }
+thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "signal", "sync", "time"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }

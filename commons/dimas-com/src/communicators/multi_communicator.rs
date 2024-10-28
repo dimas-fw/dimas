@@ -84,7 +84,7 @@ impl CommunicatorMethods for MultiCommunicator {
 		let publishers = self
 			.publishers
 			.read()
-			.map_err(|_| Error::ReadAccess)?;
+			.map_err(|_| Error::ReadAccess("publishers".into()))?;
 
 		#[allow(clippy::single_match_else)]
 		match publishers.get(selector) {
@@ -93,7 +93,7 @@ impl CommunicatorMethods for MultiCommunicator {
 				let comm = self
 					.communicators
 					.read()
-					.map_err(|_| Error::ReadAccess)?
+					.map_err(|_| Error::ReadAccess("publishers".into()))?
 					.get(DEFAULT)
 					.ok_or_else(|| Error::NoCommunicator(DEFAULT.into()))
 					.cloned()?;
@@ -110,7 +110,7 @@ impl CommunicatorMethods for MultiCommunicator {
 		let publishers = self
 			.publishers
 			.read()
-			.map_err(|_| Error::ReadAccess)?;
+			.map_err(|_| Error::ReadAccess("publishers".into()))?;
 
 		#[allow(clippy::single_match_else)]
 		match publishers.get(selector) {
@@ -119,7 +119,7 @@ impl CommunicatorMethods for MultiCommunicator {
 				let comm = self
 					.communicators
 					.read()
-					.map_err(|_| Error::ReadAccess)?
+					.map_err(|_| Error::ReadAccess("publishers".into()))?
 					.get(DEFAULT)
 					.ok_or_else(|| Error::NoCommunicator(DEFAULT.into()))
 					.cloned()?;
@@ -144,7 +144,7 @@ impl CommunicatorMethods for MultiCommunicator {
 		let queriers = self
 			.queriers
 			.read()
-			.map_err(|_| Error::ReadAccess)?;
+			.map_err(|_| Error::ReadAccess("queriers".into()))?;
 
 		#[allow(clippy::single_match_else)]
 		match queriers.get(selector) {
@@ -153,7 +153,7 @@ impl CommunicatorMethods for MultiCommunicator {
 				let comm = self
 					.communicators
 					.read()
-					.map_err(|_| Error::ReadAccess)?
+					.map_err(|_| Error::ReadAccess("queriers".into()))?
 					.get(DEFAULT)
 					.ok_or_else(|| Error::NoCommunicator(DEFAULT.into()))
 					.cloned()?;
@@ -174,7 +174,7 @@ impl CommunicatorMethods for MultiCommunicator {
 		let observers = self
 			.observers
 			.read()
-			.map_err(|_| Error::ReadAccess)?;
+			.map_err(|_| Error::ReadAccess("observers".into()))?;
 
 		#[allow(clippy::single_match_else)]
 		match observers.get(selector) {
@@ -183,7 +183,7 @@ impl CommunicatorMethods for MultiCommunicator {
 				let comm = self
 					.communicators
 					.read()
-					.map_err(|_| Error::ReadAccess)?
+					.map_err(|_| Error::ReadAccess("observers".into()))?
 					.get(DEFAULT)
 					.ok_or_else(|| Error::NoCommunicator(DEFAULT.into()))
 					.cloned()?;

@@ -1,109 +1,62 @@
 // Copyright © 2024 Stephan Kunz
 
-//! Errors
+//! `dimas` errors
 
-#[doc(hidden)]
-extern crate alloc;
-
-//#[cfg(feature = "std")]
-//extern crate std;
+use thiserror::Error;
 
 // region:		--- Error
-/// Com error type.
+/// `dimas` error type
+#[derive(Error, Debug)]
 pub enum Error {
-	/// activation of liveliness failed
 	#[cfg(feature = "unstable")]
+	/// activation of liveliness failed
+	#[error("activation of liveliness failed: reason {source:?}")]
 	ActivateLiveliness {
 		/// the original zenoh error
 		source: Box<dyn core::error::Error + Send + Sync>,
 	},
 	/// manage state failed
+	#[error("managing state failed")]
 	ManageState,
 	/// callback is missing
+	#[error("callback is missing")]
 	MissingCallback,
-	/// callback is missing
+	/// callback is not implemented
+	#[error("communicator is not implemented")]
 	NotImplemented,
 	/// get from collection failed
+	#[error("get in {0} failed")]
 	Get(String),
 	/// get mutable from collection failed
+	#[error("get mutable in {0} failed")]
 	GetMut(String),
 	/// a Mutex is poisoned.
+	#[error("a Mutex poison error happened in {0}")]
 	MutexPoison(String),
 	/// read access failed
+	#[error("accesssing the storage for read failed")]
 	ReadAccess,
 	/// write access failed
+	#[error("accesssing the storage for write failed")]
 	WriteAccess,
-	/// read access failed
+	/// read access to context failed
+	#[error("read context for {0} failed")]
 	ReadContext(String),
-	/// write access failed
+	/// write access to context failed
+	#[error("write context for {0} failed")]
 	ModifyStruct(String),
 }
 // region:		--- Error
 
-// region:      --- boilerplate
-impl core::fmt::Display for Error {
-	fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> {
-		write!(fmt, "{self:?}")
-	}
-}
+#[cfg(test)]
+mod tests {
+	use super::*;
 
-impl core::fmt::Debug for Error {
-	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-		match self {
-			#[cfg(feature = "unstable")]
-			Self::ActivateLiveliness { source } => {
-				write!(f, "activation of liveliness failed: reason {source}")
-			}
-			Self::ManageState => {
-				write!(f, "managing state failed")
-			}
-			Self::MissingCallback => {
-				write!(f, "callback is missing")
-			}
-			Self::Get(location) => {
-				write!(f, "get in {location} failed")
-			}
-			Self::GetMut(location) => {
-				write!(f, "get mutable in {location} failed")
-			}
-			Self::MutexPoison(location) => {
-				write!(f, "an Mutex poison error happened in {location}")
-			}
-			Self::NotImplemented => {
-				write!(f, "communicator is not implemented")
-			}
-			Self::ReadAccess => {
-				write!(f, "accesssing the storage for read failed")
-			}
-			Self::WriteAccess => {
-				write!(f, "accesssing the storage for write failed")
-			}
-			Self::ReadContext(location) => {
-				write!(f, "read context for {location} failed")
-			}
-			Self::ModifyStruct(location) => {
-				write!(f, "write context for {location} failed")
-			}
-		}
-	}
-}
+	// check, that the auto traits are available
+	const fn is_normal<T: Sized + Send + Sync>() {}
 
-impl core::error::Error for Error {
-	fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
-		match *self {
-			#[cfg(feature = "unstable")]
-			Self::ActivateLiveliness { ref source } => Some(source.as_ref()),
-			Self::ManageState
-			| Self::MissingCallback
-			| Self::Get(_)
-			| Self::GetMut(_)
-			| Self::MutexPoison { .. }
-			| Self::NotImplemented
-			| Self::ReadAccess
-			| Self::WriteAccess
-			| Self::ReadContext(_)
-			| Self::ModifyStruct(_) => None,
-		}
+	#[test]
+	const fn normal_types() {
+		is_normal::<Error>();
 	}
 }
-// endregion:   --- boilerplate

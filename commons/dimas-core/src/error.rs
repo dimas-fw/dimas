@@ -6,10 +6,14 @@
 #[doc(hidden)]
 extern crate alloc;
 
+#[cfg(feature = "std")]
+extern crate std;
+
 // region:		--- modules
 #[cfg(doc)]
 use super::enums::OperationState;
 use alloc::{boxed::Box, string::String};
+use thiserror::Error;
 // endregion:	--- modules
 
 // region:		--- types
@@ -18,64 +22,35 @@ pub type Result<T> = core::result::Result<T, Box<dyn core::error::Error + Send +
 // endregion:	--- types
 
 // region:		--- Error
-/// Core error type.
+/// `dimas-core` error type.
+#[derive(Error, Debug)]
 pub enum Error {
 	/// decoding failed
+	#[error("decoding failed: reason {source}")]
 	Decoding {
 		/// the original bitcode error
 		source: Box<dyn core::error::Error + Send + Sync>,
 	},
 	/// sending reply failed
+	#[error("sending a reply failed: reason {source}")]
 	Reply {
 		/// the original zenoh error
 		source: Box<dyn core::error::Error + Send + Sync>,
 	},
 	/// empty request
+	#[error("query was empty")]
 	EmptyQuery,
 	/// Not available/implemented
+	#[error("no implementation available")]
 	NotImplemented,
 	/// An unknown [`OperationState`] is given
+	#[error("the operation state {state} is unknown")]
 	UnknownOperationState {
 		/// name of the operation state
 		state: String,
 	},
 }
 // region:		--- Error
-
-// region:      --- boilerplate
-impl core::fmt::Display for Error {
-	fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> {
-		write!(fmt, "{self:?}")
-	}
-}
-
-impl core::fmt::Debug for Error {
-	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-		match self {
-			Self::Decoding { source } => {
-				write!(f, "creation of zenoh session failed: reason {source}")
-			}
-			Self::Reply { source } => write!(f, "publishing a put message failed: reason {source}"),
-			Self::EmptyQuery => write!(f, "query was empty"),
-			Self::NotImplemented => {
-				write!(f, "no implementation available")
-			}
-			Self::UnknownOperationState { state } => {
-				write!(f, "the operation state {state} is unknown")
-			}
-		}
-	}
-}
-
-impl core::error::Error for Error {
-	fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
-		match *self {
-			Self::Decoding { ref source } | Self::Reply { ref source } => Some(source.as_ref()),
-			Self::EmptyQuery | Self::NotImplemented | Self::UnknownOperationState { .. } => None,
-		}
-	}
-}
-// endregion:   --- boilerplate
 
 #[cfg(test)]
 mod tests {
