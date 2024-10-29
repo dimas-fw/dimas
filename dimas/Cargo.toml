@@ -39,5 +39,8 @@ zenoh = { workspace = true }
 [dev-dependencies]
 doc-comment = { workspace = true }
 
+[build-dependencies]
+
+
 [features]
 unstable = ["zenoh/unstable", "dimas-com/unstable", "dimas-core/unstable"]
