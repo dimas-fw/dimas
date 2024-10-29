@@ -15,6 +15,9 @@ repository.workspace = true
 description = "dimas-com - communication library for DiMAS"
 documentation = "https://docs.rs/dimas-com/latest/dimas-com/"
 readme = "README.md"
+exclude = [
+    "tests/**/*",
+]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

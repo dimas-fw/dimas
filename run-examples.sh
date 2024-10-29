@@ -45,31 +45,33 @@ tmux split-pane -v -p 50
 # start an example in each pane
 # publisher & subscriber
 tmux select-pane -t 0
-tmux send-keys "cargo run --bin publisher $1" C-m
+tmux send-keys "cargo run --example publisher $1" C-m
 tmux select-pane -t 1
-tmux send-keys "cargo run --bin subscriber $1" C-m
+tmux send-keys "cargo run --example subscriber $1" C-m
 
 # query & queryable
 tmux select-pane -t 3
-tmux send-keys "cargo run --bin querier $1" C-m
+tmux send-keys "cargo run --example querier $1" C-m
 tmux select-pane -t 4
-tmux send-keys "cargo run --bin queryable $1" C-m
+tmux send-keys "cargo run --example queryable $1" C-m
 
 # ping/pong
-tmux select-pane -t 2
-tmux send-keys "cargo run --bin ping $1" C-m
-tmux select-pane -t 5
-tmux send-keys "cargo run --bin pong $1" C-m
+#tmux select-pane -t 2
+#tmux send-keys "cargo run --example ping $1" C-m
+#tmux select-pane -t 5
+#tmux send-keys "cargo run --example pong $1" C-m
 
 # observation
 tmux select-pane -t 6
-tmux send-keys "cargo run --bin observer $1" C-m
+tmux send-keys "cargo run --example observer $1" C-m
 tmux select-pane -t 7
-tmux send-keys "cargo run --bin observable $1" C-m
+tmux send-keys "cargo run --example observable $1" C-m
+
+tmux select-pane -t 5
 
 # liveliness
-tmux select-pane -t 8
-tmux send-keys "cargo run --bin liveliness $1" C-m
+#tmux select-pane -t 8
+#tmux send-keys "cargo run --example liveliness $1" C-m
 
 
 tmux attach-session -t $session
