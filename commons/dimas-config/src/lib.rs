@@ -38,8 +38,8 @@
 //!  - current working directory
 //!  - `.config` directory below current working directory
 //!  - `.config` directory below home directory
-//!  - local config directory (`Linux`: `$XDG_CONFIG_HOME` or `$HOME/.config` | `Windows`: `{FOLDERID_LocalAppData}` | `MacOS`: `$HOME/Library/Application Support`)
-//!  - config directory (`Linux`: `$XDG_CONFIG_HOME` or `$HOME/.config` | `Windows`: `{FOLDERID_RoamingAppData}` | `MacOS`: `$HOME/Library/Application Support`)
+//!  - local config directory (`Linux`: `$XDG_CONFIG_HOME/zenoh` or `$HOME/.config/zenoh` | `Windows`: `{FOLDERID_LocalAppData}/zenoh` | `MacOS`: `$HOME/Library/Application Support/zenoh`)
+//!  - config directory (`Linux`: `$XDG_CONFIG_HOME/zenoh` or `$HOME/.config/zenoh` | `Windows`: `{FOLDERID_RoamingAppData}/zenoh` | `MacOS`: `$HOME/Library/Application Support/zenoh`)
 //!
 
 #[doc(hidden)]
