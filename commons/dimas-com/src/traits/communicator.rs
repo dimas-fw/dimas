@@ -10,7 +10,7 @@ extern crate alloc;
 extern crate std;
 
 // region:		--- modules
-#[cfg(feature = "unstable")]
+#[cfg(any(feature = "unstable", doc))]
 use super::LivelinessSubscriber;
 use super::{CommunicatorMethods, Observer, Publisher, Querier, Responder};
 use crate::error::Error;
