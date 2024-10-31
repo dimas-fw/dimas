@@ -42,10 +42,6 @@
 //!  - config directory (`Linux`: `$XDG_CONFIG_HOME` or `$HOME/.config` | `Windows`: `{FOLDERID_RoamingAppData}` | `MacOS`: `$HOME/Library/Application Support`)
 //!
 
-// region:		--- exports
-//pub use Config;
-// endregion:	--- exports
-
 #[doc(hidden)]
 extern crate alloc;
 
@@ -59,7 +55,7 @@ pub(crate) type Result<T> =
 // endregion:	--- types
 
 // region:		--- modules
-use alloc::{boxed::Box, string::String};
+use alloc::{boxed::Box, format, string::String};
 #[cfg(feature = "std")]
 use dirs::{config_dir, config_local_dir, home_dir};
 #[cfg(feature = "std")]
@@ -67,7 +63,7 @@ use std::env;
 #[cfg(feature = "std")]
 use std::io::{Error, ErrorKind};
 #[cfg(feature = "std")]
-use tracing::{debug, error, warn};
+use tracing::{debug, warn};
 // endregion:	--- modules
 
 // region:		--- utils
@@ -116,16 +112,14 @@ impl Default for Config {
 					Ok(content) => match json5::from_str(&content) {
 						Ok(result) => result,
 						Err(error) => {
-							error!("{}", error);
-							warn!("using default zenoh configuration instead");
+							warn!("{}, using default zenoh configuration instead", error);
 							Self {
 								zenoh: zenoh::Config::default(),
 							}
 						}
 					},
 					Err(error) => {
-						error!("{}", error);
-						warn!("using default zenoh configuration instead");
+						warn!("{}, using default zenoh configuration instead", error);
 						Self {
 							zenoh: zenoh::Config::default(),
 						}
@@ -133,8 +127,7 @@ impl Default for Config {
 				}
 			}
 			Err(error) => {
-				error!("{}", error);
-				warn!("using default zenoh configuration instead");
+				warn!("{}, using default zenoh configuration instead", error);
 				Self {
 					zenoh: zenoh::Config::default(),
 				}
@@ -241,6 +234,7 @@ impl Config {
 #[cfg(feature = "std")]
 pub fn find_config_file(filename: &str) -> Result<std::path::PathBuf> {
 	// handle environment path current working directory `CWD`
+
 	if let Ok(cwd) = env::current_dir() {
 		#[cfg(not(test))]
 		let path = cwd.join(filename);
@@ -276,15 +270,16 @@ pub fn find_config_file(filename: &str) -> Result<std::path::PathBuf> {
 		.into_iter()
 		.flatten()
 	{
-		let file = path.join(filename);
+		let file = path.join("zenoh").join(filename);
 		if file.is_file() {
-			return Ok(path);
+			return Ok(file);
 		}
 	}
 
+	let text = format!("file {filename} not found");
 	Err(Box::new(Error::new(
 		ErrorKind::NotFound,
-		"file {filename} not found",
+		text,
 	)))
 }
 // endregion:	--- functions
