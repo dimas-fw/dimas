@@ -38,8 +38,8 @@
 //!  - current working directory
 //!  - `.config` directory below current working directory
 //!  - `.config` directory below home directory
-//!  - local config directory (`Linux`: `$XDG_CONFIG_HOME/zenoh` or `$HOME/.config/zenoh` | `Windows`: `{FOLDERID_LocalAppData}/zenoh` | `MacOS`: `$HOME/Library/Application Support/zenoh`)
-//!  - config directory (`Linux`: `$XDG_CONFIG_HOME/zenoh` or `$HOME/.config/zenoh` | `Windows`: `{FOLDERID_RoamingAppData}/zenoh` | `MacOS`: `$HOME/Library/Application Support/zenoh`)
+//!  - local config directory (`Linux`: `$XDG_CONFIG_HOME/dimas` or `$HOME/.config/dimas` | `Windows`: `{FOLDERID_LocalAppData}/dimas` | `MacOS`: `$HOME/Library/Application Support/dimas`)
+//!  - config directory (`Linux`: `$XDG_CONFIG_HOME/dimas` or `$HOME/.config/dimas` | `Windows`: `{FOLDERID_RoamingAppData}/dimas` | `MacOS`: `$HOME/Library/Application Support/dimas`)
 //!
 
 #[doc(hidden)]
@@ -270,7 +270,7 @@ pub fn find_config_file(filename: &str) -> Result<std::path::PathBuf> {
 		.into_iter()
 		.flatten()
 	{
-		let file = path.join("zenoh").join(filename);
+		let file = path.join("dimas").join(filename);
 		if file.is_file() {
 			return Ok(file);
 		}
