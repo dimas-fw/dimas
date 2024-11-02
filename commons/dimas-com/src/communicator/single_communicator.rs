@@ -213,7 +213,7 @@ impl SingleCommunicator {
 	/// Constructor
 	/// # Errors
 	pub fn new(config: &Config) -> Result<Self> {
-		let zenoh = crate::zenoh::Communicator::new(config)?;
+		let zenoh = crate::zenoh::Communicator::new(config.zenoh_config())?;
 		let uuid = zenoh.session().zid();
 		let mode = zenoh.mode().to_string();
 		let com = Self {

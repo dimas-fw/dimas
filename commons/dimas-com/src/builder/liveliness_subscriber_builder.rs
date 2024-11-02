@@ -99,6 +99,13 @@ where
 		}
 	}
 
+	/// Set the session id.
+	#[must_use]
+	pub fn session_id(mut self, session_id: &str) -> Self {
+		self.session_id = session_id.into();
+		self
+	}
+
 	/// Set an explicite token for the liveliness subscriber.
 	#[must_use]
 	pub fn token(self, token: impl Into<String>) -> Self {

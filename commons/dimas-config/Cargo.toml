@@ -29,6 +29,7 @@ derive_more = { workspace = true, features = ["from"] }
 dirs = { workspace = true}
 json5 = { workspace = true}
 serde = { workspace = true }
+thiserror = { workspace = true }
 tracing = { workspace = true}
 zenoh = { workspace = true}
 

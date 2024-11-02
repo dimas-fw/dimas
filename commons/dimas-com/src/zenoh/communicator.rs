@@ -147,14 +147,13 @@ impl CommunicatorImplementationMethods for Communicator {
 impl Communicator {
 	/// Constructor
 	/// # Errors
-	pub fn new(config: &dimas_config::Config) -> Result<Self> {
-		let cfg = config.zenoh_config();
+	pub fn new(config: &zenoh::Config) -> Result<Self> {
 		#[cfg(feature = "unstable")]
-		let kind = cfg.mode().unwrap_or(WhatAmI::Peer).to_string();
+		let kind = config.mode().unwrap_or(WhatAmI::Peer).to_string();
 		#[cfg(not(feature = "unstable"))]
 		let kind = WhatAmI::Peer.to_string();
 		let session = Arc::new(
-			zenoh::open(cfg.to_owned())
+			zenoh::open(config.to_owned())
 				.wait()
 				.map_err(|source| Error::CreateCommunicator { source })?,
 		);
@@ -201,7 +200,7 @@ mod tests {
 	//#[serial]
 	async fn communicator_create() -> Result<()> {
 		let cfg = dimas_config::Config::default();
-		let _peer = Communicator::new(&cfg)?;
+		let _peer = Communicator::new(cfg.zenoh_config())?;
 		Ok(())
 	}
 }

@@ -84,6 +84,13 @@ where
 		self.activation_state = state;
 		self
 	}
+
+	/// Set the session id.
+	#[must_use]
+	pub fn session_id(mut self, session_id: &str) -> Self {
+		self.session_id = session_id.into();
+		self
+	}
 }
 
 impl<P, CC, RC, S> ObserverBuilder<P, NoSelector, CC, RC, S>
