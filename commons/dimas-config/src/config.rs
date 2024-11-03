@@ -51,7 +51,6 @@ extern crate std;
 use crate::utils::{find_config_file, read_config_file};
 use crate::Result;
 use alloc::vec::Vec;
-use core::marker::PhantomData;
 #[cfg(feature = "std")]
 use tracing::{debug, warn};
 // endregion:	--- modules
@@ -64,39 +63,6 @@ pub struct Session {
 	#[serde(deserialize_with = "zenoh::Config::deserialize")]
 	pub config: zenoh::Config,
 }
-
-fn deserialize_sessions<'de, D>(deserializer: D) -> core::result::Result<Vec<Session>, D::Error>
-where
-	D: serde::Deserializer<'de>,
-{
-	struct Sessions(PhantomData<Vec<Session>>);
-
-	impl<'de> serde::de::Visitor<'de> for Sessions {
-		type Value = Vec<Session>;
-
-		fn expecting(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
-			formatter.write_str("string or list of strings")
-		}
-
-		//        fn visit_str<E>(self, value: &str) -> core::result::Result<Self::Value, E>
-		//            where E: serde::de::Error
-		//        {
-		//			std::dbg!(value);
-		//			std::panic!();
-		//            Ok(std::vec![])
-		//            //Ok(std::vec![value.to_owned()])
-		//        }
-
-		fn visit_seq<S>(self, visitor: S) -> core::result::Result<Self::Value, S::Error>
-		where
-			S: serde::de::SeqAccess<'de>,
-		{
-			serde::Deserialize::deserialize(serde::de::value::SeqAccessDeserializer::new(visitor))
-		}
-	}
-
-	deserializer.deserialize_any(Sessions(PhantomData))
-}
 // endregion:	--- Session
 
 // region:		--- Config
@@ -106,8 +72,7 @@ where
 pub struct Config {
 	#[serde(deserialize_with = "zenoh::Config::deserialize")]
 	zenoh: zenoh::Config,
-	#[serde(deserialize_with = "deserialize_sessions")]
-	sessions: Vec<Session>,
+	sessions: Option<Vec<Session>>,
 }
 
 #[cfg(not(feature = "std"))]
@@ -140,7 +105,7 @@ impl Default for Config {
 							warn!("{}, using default dimas configuration instead", error);
 							Self {
 								zenoh: zenoh::Config::default(),
-								sessions: Vec::new(),
+								sessions: None,
 							}
 						}
 					},
@@ -148,7 +113,7 @@ impl Default for Config {
 						warn!("{}, using default dimas configuration instead", error);
 						Self {
 							zenoh: zenoh::Config::default(),
-							sessions: Vec::new(),
+							sessions: None,
 						}
 					}
 				}
@@ -157,7 +122,7 @@ impl Default for Config {
 				warn!("{}, using default dimas configuration instead", error);
 				Self {
 					zenoh: zenoh::Config::default(),
-					sessions: Vec::new(),
+					sessions: None,
 				}
 			}
 		}
@@ -257,7 +222,7 @@ impl Config {
 	/// Method to get access to the the sessions in [`Config`].
 	///
 	#[must_use]
-	pub const fn sessions(&self) -> &Vec<Session> {
+	pub const fn sessions(&self) -> &Option<Vec<Session>> {
 		&self.sessions
 	}
 }

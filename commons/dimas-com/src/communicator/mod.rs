@@ -29,7 +29,7 @@ use dimas_core::Result;
 /// Create a [`Communicator`] from a [`Config`]
 /// # Errors
 pub fn from(config: &Config) -> Result<Arc<dyn Communicator>> {
-	if config.sessions().is_empty() {
+	if config.sessions().is_none() {
 		Ok(Arc::new(SingleCommunicator::new(config)?))
 	} else {
 		Ok(Arc::new(MultiCommunicator::new(config)?))
