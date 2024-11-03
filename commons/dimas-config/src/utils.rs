@@ -16,9 +16,13 @@ use alloc::{
 #[cfg(feature = "std")]
 use dirs::{config_dir, config_local_dir, home_dir};
 #[cfg(feature = "std")]
-use std::env;
-#[cfg(feature = "std")]
-use std::path::PathBuf;
+use std::{
+	env,
+ 	path::PathBuf,
+	fs::File,
+	io::{BufRead, BufReader}
+};
+
 // endregion:	--- modules
 
 // region:		--- utils
@@ -29,8 +33,29 @@ use std::path::PathBuf;
 #[cfg(feature = "std")]
 pub fn read_config_file(path: &PathBuf) -> Result<String> {
 	let filename = path.to_string_lossy().to_string();
-	let input = std::fs::read_to_string(path)?;
+	let input = read_file_without_comments(path)?;
 	parse_config_file(&filename, input)
+}
+
+/// read file and remove comments
+/// 
+/// # Errors
+#[cfg(feature = "std")]
+fn read_file_without_comments(path: &PathBuf) -> Result<String> {
+	let file = File::open(path)?;
+    let reader = BufReader::new(file);
+	let mut result = String::new();
+    for line in reader.lines() {
+		let line = line?.trim().to_string();
+        let pos = line.find("//");
+		if let Some(pos) = pos {
+			result.push_str(&line[..pos]);
+		} else {
+			result.push_str(&line);
+		}
+    }
+
+	Ok(result)
 }
 
 /// parse a config string
@@ -39,7 +64,7 @@ pub fn read_config_file(path: &PathBuf) -> Result<String> {
 /// # Errors
 #[cfg(feature = "std")]
 pub fn parse_config_file(filename: &String, mut input: String) -> Result<String> {
-	// we always start from the very beginning, thus we need no recursion to replace nested includes
+	// we always start from the very beginning
 	while let Some(pos) = input.find("#include ") {
 		// calculate offsets
 		let start = pos - 1;
@@ -57,7 +82,8 @@ pub fn parse_config_file(filename: &String, mut input: String) -> Result<String>
 				.ok_or_else(|| Error::InvalidInclude(filename.clone()))?;
 			load_path = path.join(load_file);
 		}
-		let content = std::fs::read_to_string(load_path)?;
+		let content = read_file_without_comments(&load_path)?;
+		let content = parse_config_file(filename, content)?;
 		input.replace_range(start..end, &content);
 	}
 	Ok(input)
