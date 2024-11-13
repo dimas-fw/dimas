@@ -97,6 +97,13 @@ where
 		self.allowed_origin = allowed_origin;
 		self
 	}
+
+	/// Set the session id.
+	#[must_use]
+	pub fn session_id(mut self, session_id: &str) -> Self {
+		self.session_id = session_id.into();
+		self
+	}
 }
 
 impl<P, C, S> QueryableBuilder<P, NoSelector, C, S>

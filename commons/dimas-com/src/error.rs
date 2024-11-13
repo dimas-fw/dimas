@@ -107,5 +107,11 @@ pub enum Error {
 		/// observables selector
 		selector: String,
 	},
+	/// Found unknown communication protocol
+	#[error("the protocol '{protocol}' is unknown")]
+	UnknownProtocol {
+		/// protocol name
+		protocol: String,
+	},
 }
 // region:		--- Error

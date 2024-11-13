@@ -222,7 +222,8 @@ where
 				.ok_or_else(|| Error::Get("publishers".into()))?
 				.put(message)?;
 		} else {
-			todo!(); //self.communicator.put(selector, message)?;
+			dbg!(&selector);
+			self.communicator.put(selector, message)?;
 		};
 		Ok(())
 	}
@@ -309,7 +310,7 @@ where
 		if session_id == "default" {
 			Some(self.communicator.default_session())
 		} else {
-			None
+			self.communicator.session(session_id)
 		}
 	}
 }
@@ -390,7 +391,8 @@ where
 		self.timers.clone()
 	}
 
-	/// Internal function for starting all registere)d tasks.<br>
+	/// Internal function for starting all registere)d tasks.
+	///
 	/// The tasks are started in the order
 	/// - [`LivelinessSubscriber`]s
 	/// - [`Queryable`]s
@@ -423,7 +425,8 @@ where
 		Ok(())
 	}
 
-	/// Internal function for stopping all registered tasks.<br>
+	/// Internal function for stopping all registered tasks.
+	///
 	/// The tasks are stopped in reverse order of their start in [`Context::start_registered_tasks()`]
 	///
 	/// # Errors

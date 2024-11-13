@@ -21,18 +21,15 @@ extern crate alloc;
 extern crate std;
 
 // region:      --- factory method
-use crate::{enums::CommunicatorImplementation, traits::Communicator};
-use alloc::{sync::Arc, vec::Vec};
+use crate::traits::Communicator;
+use alloc::sync::Arc;
 use dimas_config::Config;
 use dimas_core::Result;
 
 /// Create a [`Communicator`] from a [`Config`]
 /// # Errors
 pub fn from(config: &Config) -> Result<Arc<dyn Communicator>> {
-	let _implementations: Vec<CommunicatorImplementation> = Vec::new();
-	let num_implementations = 0u8;
-
-	if num_implementations == 0 {
+	if config.sessions().is_none() {
 		Ok(Arc::new(SingleCommunicator::new(config)?))
 	} else {
 		Ok(Arc::new(MultiCommunicator::new(config)?))

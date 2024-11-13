@@ -103,6 +103,13 @@ where
 			.replace(Arc::new(Mutex::new(callback)));
 		self
 	}
+
+	/// Set the session id.
+	#[must_use]
+	pub fn session_id(mut self, session_id: &str) -> Self {
+		self.session_id = session_id.into();
+		self
+	}
 }
 
 impl<P, C, S> SubscriberBuilder<P, NoSelector, C, S>

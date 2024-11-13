@@ -290,7 +290,7 @@ impl MultiCommunicator {
 	/// Constructor
 	/// # Errors
 	pub fn new(config: &Config) -> Result<Self> {
-		let zenoh = crate::zenoh::Communicator::new(config)?;
+		let zenoh = crate::zenoh::Communicator::new(config.zenoh_config())?;
 		let uuid = zenoh.session().zid();
 		let mode = zenoh.mode().to_string();
 		let com = Self {
@@ -313,6 +313,30 @@ impl MultiCommunicator {
 				"default".to_string(),
 				Arc::new(CommunicatorImplementation::Zenoh(zenoh)),
 			);
+		// create the additional sessions
+		if let Some(sessions) = config.sessions() {
+			for session in sessions {
+				match session.protocol.as_str() {
+					"zenoh" => {
+						let zenoh = crate::zenoh::Communicator::new(&session.config)?;
+						com.communicators
+							.write()
+							.map_err(|_| Error::ModifyStruct("commmunicators".into()))?
+							.insert(
+								session.name.clone(),
+								Arc::new(CommunicatorImplementation::Zenoh(zenoh)),
+							);
+					}
+					_ => {
+						return Err(Error::UnknownProtocol {
+							protocol: session.protocol.clone(),
+						}
+						.into());
+					}
+				}
+			}
+		}
+
 		Ok(com)
 	}
 }

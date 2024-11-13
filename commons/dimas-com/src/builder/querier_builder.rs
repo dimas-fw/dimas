@@ -101,6 +101,13 @@ where
 		self
 	}
 
+	/// Set the session id.
+	#[must_use]
+	pub fn session_id(mut self, session_id: &str) -> Self {
+		self.session_id = session_id.into();
+		self
+	}
+
 	/// Set the [`QueryTarget`] of the [`Querier`].
 	#[must_use]
 	pub const fn target(mut self, target: QueryTarget) -> Self {

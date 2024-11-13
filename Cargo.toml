@@ -32,7 +32,7 @@ unwrap_used = "deny"
 [workspace.package]
 rust-version = "1.81.0"
 edition = "2021"
-version = "0.4.0"
+version = "0.4.1"
 authors = [
 	"stepkun <stephan.kunz@kabelbw.de>",
 ]
@@ -54,19 +54,19 @@ clap = "4.1.0"
 chrono = "0.4.34"
 derive_more = { version="1.0.0" }
 #dimas = { path = "dimas" }
-dimas = "0.4.0"
+dimas = "0.4.1"
 #dimas-com = { path = "commons/dimas-com" }
-dimas-com = "0.4.0"
+dimas-com = "0.4.1"
 #dimas-commands = { path = "commons/dimas-commands" }
-dimas-commands = "0.4.0"
+dimas-commands = "0.4.1"
 #dimas-config = { path = "commons/dimas-config" }
-dimas-config = "0.4.0"
+dimas-config = "0.4.1"
 #dimas-core = { path = "commons/dimas-core" }
-dimas-core = "0.4.0"
+dimas-core = "0.4.1"
 #dimas-macros = { path = "commons/dimas-macros" }
-dimas-macros = "0.4.0"
+dimas-macros = "0.4.1"
 #dimas-time = { path = "commons/dimas-time" }
-dimas-time = "0.4.0"
+dimas-time = "0.4.1"
 dirs = "5.0.0"
 doc-comment = "0.3.0"
 futures = "0.3.30"

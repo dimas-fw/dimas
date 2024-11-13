@@ -291,7 +291,7 @@ where
 	/// Flag to control whether sending liveliness or not
 	#[cfg(feature = "unstable")]
 	liveliness: bool,
-	/// The liveliness token - typically the uuid sent to other participants<br>
+	/// The liveliness token - typically the uuid sent to other participants.
 	/// Is available in the [`LivelinessSubscriber`] callback
 	#[cfg(feature = "unstable")]
 	liveliness_token: RwLock<Option<LivelinessToken>>,
@@ -470,7 +470,8 @@ where
 		TimerBuilder::new(self.context.clone()).storage(self.context.timers())
 	}
 
-	/// Start the agent.<br>
+	/// Start the agent.
+	///
 	/// The agent can be stopped properly using `ctrl-c`
 	///
 	/// # Errors
@@ -530,7 +531,7 @@ where
 	/// Flag to control whether sending liveliness or not
 	#[cfg(feature = "unstable")]
 	liveliness: bool,
-	/// The liveliness token - typically the uuid sent to other participants<br>
+	/// The liveliness token - typically the uuid sent to other participants.
 	/// Is available in the [`LivelinessSubscriber`] callback
 	#[cfg(feature = "unstable")]
 	liveliness_token: RwLock<Option<LivelinessToken>>,

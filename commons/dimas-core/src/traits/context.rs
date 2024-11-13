@@ -46,7 +46,8 @@ pub trait ContextAbstraction: Debug + Send + Sync {
 	#[must_use]
 	fn state(&self) -> OperationState;
 
-	/// Set the [`OperationState`].<br>
+	/// Set the [`OperationState`].
+	///
 	/// Setting new state is done step by step
 	/// # Errors
 	fn set_state(&self, state: OperationState) -> Result<()>;

@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+## [0.4.1] - 2024-11-13
+
+### Fixed
+
+- make multi session communication work
+- bug in configuration directory
+
 ## [0.4.0] - 2024-10-31
 
 ### Added
@@ -23,7 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - macro `dimas::main`
 - module for time related stuff
 - traits `Communicator`, `Observer`, `Publisher`, `Querier`, `Responder` in dimas-com
-- multi session/protocol communication with traits `SingleSessionCommunicator` & `MultiSessionCommunicator`
+- multi session/protocol communication with traits
+  `SingleSessionCommunicator` & `MultiSessionCommunicator`
 
 ### Changed
 

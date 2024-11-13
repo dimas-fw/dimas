@@ -93,6 +93,13 @@ where
 		self
 	}
 
+	/// Set the session id.
+	#[must_use]
+	pub fn session_id(mut self, session_id: &str) -> Self {
+		self.session_id = session_id.into();
+		self
+	}
+
 	/// Set the publishers congestion control
 	#[must_use]
 	pub const fn set_congestion_control(mut self, congestion_control: CongestionControl) -> Self {

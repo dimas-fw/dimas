@@ -199,3 +199,12 @@ and more complex examples in [dimas-fw/examples](https://github.com/dimas-fw/exa
 ## Features
 
 - unstable: Enables the unstable features.
+
+## License
+
+Licensed with a proprietary "NGMC" license, see [license file](LICENSE)
+
+## Contribution
+
+Any contribution intentionally submitted for inclusion in the work by you,
+shall be licensed with the same "NGMC" license, without any additional terms or conditions.
