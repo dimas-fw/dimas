@@ -15,7 +15,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-## [0.4.2] - 2024-??-??
+## [0.4.3] - 2024-??-??
+
+### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+- Some forgotten dbg!(...) statements
+
+## [0.4.2] - 2025-05-15
 
 ### Changed
 - Updated dependencies

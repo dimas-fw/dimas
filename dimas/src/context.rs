@@ -222,7 +222,6 @@ where
 				.ok_or_else(|| Error::Get("publishers".into()))?
 				.put(message)?;
 		} else {
-			dbg!(&selector);
 			self.communicator.put(selector, message)?;
 		};
 		Ok(())

@@ -32,7 +32,7 @@ unwrap_used = "deny"
 [workspace.package]
 rust-version = "1.85.0"
 edition = "2024"
-version = "0.4.2"
+version = "0.4.3"
 authors = [
 	"stepkun <stephan.kunz@kabelbw.de>",
 ]
@@ -49,24 +49,24 @@ homepage = "https://dimas-fw.github.io/"
 repository = "https://github.com/dimas-fw/dimas/"
 
 [workspace.dependencies]
-bitcode = "0.6.0"
+bitcode = "0.6.6"
 clap = "4.1.0"
 chrono = "0.4.34"
 derive_more = { version="2.0.1" }
-#dimas = { path = "dimas" }
-dimas = "0.4.2"
-#dimas-com = { path = "commons/dimas-com" }
-dimas-com = "0.4.2"
-#dimas-commands = { path = "commons/dimas-commands" }
-dimas-commands = "0.4.2"
-#dimas-config = { path = "commons/dimas-config" }
-dimas-config = "0.4.2"
-#dimas-core = { path = "commons/dimas-core" }
-dimas-core = "0.4.2"
-#dimas-macros = { path = "commons/dimas-macros" }
-dimas-macros = "0.4.2"
-#dimas-time = { path = "commons/dimas-time" }
-dimas-time = "0.4.2"
+dimas = { path = "dimas" }
+#dimas = "0.4.3"
+dimas-com = { path = "commons/dimas-com" }
+#dimas-com = "0.4.3"
+dimas-commands = { path = "commons/dimas-commands" }
+#dimas-commands = "0.4.3"
+dimas-config = { path = "commons/dimas-config" }
+#dimas-config = "0.4.3"
+dimas-core = { path = "commons/dimas-core" }
+#dimas-core = "0.4.3"
+dimas-macros = { path = "commons/dimas-macros" }
+#dimas-macros = "0.4.3"
+dimas-time = { path = "commons/dimas-time" }
+#dimas-time = "0.4.3"
 dirs = "6.0.0"
 doc-comment = "0.3.3"
 futures = "0.3.31"
