@@ -4,6 +4,9 @@
 //! dimas-com implements the communication capabilities.
 //!
 
+#[cfg(feature = "std")]
+extern crate std;
+
 // /// Builders
 #[cfg(feature = "std")]
 pub mod builder;

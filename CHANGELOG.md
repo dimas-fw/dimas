@@ -15,6 +15,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+## [0.4.2] - 2024-??-??
+
+### Changed
+- Updated dependencies
+- Minimum Rust version adapted to 1.85 due to dependencies
+
+### Fixed
+- Some missing comments
+- Solved complaints of Clippy
+- Missing std lib for tokio
+
 ## [0.4.1] - 2024-11-13
 
 ### Fixed

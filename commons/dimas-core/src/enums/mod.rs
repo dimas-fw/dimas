@@ -8,7 +8,6 @@ extern crate alloc;
 
 // region:		--- modules
 use crate::error::Error;
-use alloc::vec::Vec;
 use alloc::{
 	boxed::Box,
 	string::{String, ToString},

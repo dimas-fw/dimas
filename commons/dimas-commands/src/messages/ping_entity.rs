@@ -7,7 +7,7 @@
 extern crate alloc;
 
 // region:		--- modules
-use alloc::{string::String, vec::Vec};
+use alloc::string::String;
 use bitcode::{Decode, Encode};
 use core::fmt::Display;
 // endregion:	--- modules

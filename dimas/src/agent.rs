@@ -301,6 +301,7 @@ impl<P> Debug for Agent<P>
 where
 	P: Debug + Send + Sync + 'static,
 {
+	#[allow(clippy::or_fun_call)]
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Agent")
 			.field("id", &self.context.uuid())
