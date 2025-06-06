@@ -5,7 +5,6 @@
 //!
 
 // region:    	--- modules
-#[cfg(feature = "unstable")]
 mod liveliness_subscriber_builder;
 mod observable_builder;
 mod observer_builder;
@@ -15,7 +14,6 @@ mod queryable_builder;
 mod subscriber_builder;
 
 // flatten
-#[cfg(feature = "unstable")]
 pub use liveliness_subscriber_builder::LivelinessSubscriberBuilder;
 pub use observable_builder::ObservableBuilder;
 pub use observer_builder::ObserverBuilder;

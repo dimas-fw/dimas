@@ -14,19 +14,19 @@ use crate::error::Error;
 use alloc::sync::Arc;
 use alloc::{boxed::Box, string::String, vec::Vec};
 use dimas_core::{
+	Result,
 	enums::{OperationState, TaskSignal},
 	message_types::Message,
 	traits::{Capability, Context},
-	Result,
 };
 use futures::future::BoxFuture;
 #[cfg(feature = "std")]
 use tokio::{sync::Mutex, task::JoinHandle};
-use tracing::{error, info, instrument, warn, Level};
+use tracing::{Level, error, info, instrument, warn};
+use zenoh::Session;
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
 use zenoh::sample::SampleKind;
-use zenoh::Session;
 // endregion:	--- modules
 
 // region:    	--- types
@@ -127,7 +127,7 @@ where
 		}
 	}
 	/// Start or restart the subscriber.
-	/// An already running subscriber will be stopped, eventually damaged Mutexes will be repaired
+	/// An already running subscriber will be stopped.
 	#[instrument(level = Level::TRACE, skip_all)]
 	fn start(&self) -> Result<()> {
 		self.stop()?;

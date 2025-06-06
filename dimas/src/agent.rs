@@ -49,34 +49,28 @@ use crate::context::ContextImpl;
 use crate::error::Error;
 use chrono::Local;
 use core::{fmt::Debug, time::Duration};
-#[cfg(feature = "unstable")]
 use dimas_com::builder::LivelinessSubscriberBuilder;
 use dimas_com::builder::{
 	ObservableBuilder, ObserverBuilder, PublisherBuilder, QuerierBuilder, QueryableBuilder,
 	SubscriberBuilder,
 };
-#[cfg(feature = "unstable")]
 use dimas_com::traits::LivelinessSubscriber;
 use dimas_com::traits::{Observer, Publisher, Querier, Responder};
 use dimas_commands::messages::{AboutEntity, PingEntity};
 use dimas_config::Config;
 use dimas_core::{
+	Result,
 	builder_states::{NoCallback, NoInterval, NoSelector, Storage},
 	enums::{OperationState, Signal, TaskSignal},
 	message_types::{Message, QueryMsg},
 	traits::{Capability, Context, ContextAbstraction},
-	Result,
 };
 use dimas_time::{Timer, TimerBuilder};
 use std::sync::Arc;
-#[cfg(feature = "unstable")]
 use std::sync::RwLock;
 use tokio::{select, signal, sync::mpsc};
 use tracing::{error, info, warn};
-#[cfg(feature = "unstable")]
 use zenoh::liveliness::LivelinessToken;
-#[cfg(feature = "unstable")]
-use zenoh::Wait;
 // endregion:	--- modules
 
 // region:	   --- callbacks
@@ -243,9 +237,7 @@ where
 		let agent = Agent {
 			rx,
 			context,
-			#[cfg(feature = "unstable")]
 			liveliness: false,
-			#[cfg(feature = "unstable")]
 			liveliness_token: RwLock::new(None),
 		};
 
@@ -289,11 +281,9 @@ where
 	/// The agents context structure
 	context: Arc<ContextImpl<P>>,
 	/// Flag to control whether sending liveliness or not
-	#[cfg(feature = "unstable")]
 	liveliness: bool,
 	/// The liveliness token - typically the uuid sent to other participants.
 	/// Is available in the [`LivelinessSubscriber`] callback
-	#[cfg(feature = "unstable")]
 	liveliness_token: RwLock<Option<LivelinessToken>>,
 }
 
@@ -327,13 +317,11 @@ where
 	}
 
 	/// Activate sending liveliness information
-	#[cfg(feature = "unstable")]
 	pub fn liveliness(&mut self, activate: bool) {
 		self.liveliness = activate;
 	}
 
 	/// Get a [`LivelinessSubscriberBuilder`], the builder for a `LivelinessSubscriber`.
-	#[cfg(feature = "unstable")]
 	#[must_use]
 	pub fn liveliness_subscriber(
 		&self,
@@ -343,7 +331,6 @@ where
 	}
 
 	/// Get a [`LivelinessSubscriberBuilder`], the builder for a `LivelinessSubscriber`.
-	#[cfg(feature = "unstable")]
 	#[must_use]
 	pub fn liveliness_subscriber_for(
 		&self,
@@ -479,7 +466,6 @@ where
 	#[tracing::instrument(skip_all)]
 	pub async fn start(self) -> Result<Self> {
 		// activate sending liveliness
-		#[cfg(feature = "unstable")]
 		if self.liveliness {
 			let session = self.context.session("default");
 			let token_str = self
@@ -493,7 +479,7 @@ where
 				.expect("snh")
 				.liveliness()
 				.declare_token(&token_str)
-				.wait()
+				.await
 				.map_err(|source| Error::ActivateLiveliness { source })?;
 
 			self.liveliness_token
@@ -507,9 +493,7 @@ where
 		RunningAgent {
 			rx: self.rx,
 			context: self.context,
-			#[cfg(feature = "unstable")]
 			liveliness: self.liveliness,
-			#[cfg(feature = "unstable")]
 			liveliness_token: self.liveliness_token,
 		}
 		.run()
@@ -530,11 +514,9 @@ where
 	/// The agents context structure
 	context: Arc<ContextImpl<P>>,
 	/// Flag to control whether sending liveliness or not
-	#[cfg(feature = "unstable")]
 	liveliness: bool,
 	/// The liveliness token - typically the uuid sent to other participants.
 	/// Is available in the [`LivelinessSubscriber`] callback
-	#[cfg(feature = "unstable")]
 	liveliness_token: RwLock<Option<LivelinessToken>>,
 }
 
@@ -550,7 +532,6 @@ where
 				// `TaskSignal`s
 				Some(signal) = self.rx.recv() => {
 					match signal {
-						#[cfg(feature = "unstable")]
 						TaskSignal::RestartLiveliness(selector) => {
 							self.context.liveliness_subscribers()
 								.write()
@@ -623,7 +604,6 @@ where
 		self.context.set_state(OperationState::Created)?;
 
 		// stop liveliness
-		#[cfg(feature = "unstable")]
 		if self.liveliness {
 			self.liveliness_token
 				.write()
@@ -633,9 +613,7 @@ where
 		let r = Agent {
 			rx: self.rx,
 			context: self.context,
-			#[cfg(feature = "unstable")]
 			liveliness: self.liveliness,
-			#[cfg(feature = "unstable")]
 			liveliness_token: self.liveliness_token,
 		};
 		Ok(r)

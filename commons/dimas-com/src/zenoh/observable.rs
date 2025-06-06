@@ -15,22 +15,22 @@ use alloc::{
 use bitcode::encode;
 use core::time::Duration;
 use dimas_core::{
+	Result,
 	enums::{OperationState, TaskSignal},
 	message_types::{ControlResponse, Message, ObservableResponse},
 	traits::{Capability, Context},
 	utils::feedback_selector_from,
-	Result,
 };
 use futures::future::BoxFuture;
 #[cfg(feature = "std")]
 use tokio::{sync::Mutex, task::JoinHandle};
-use tracing::{error, info, instrument, warn, Level};
+use tracing::{Level, error, info, instrument, warn};
+use zenoh::Wait;
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
-use zenoh::Wait;
 use zenoh::{
-	qos::{CongestionControl, Priority},
 	Session,
+	qos::{CongestionControl, Priority},
 };
 // endregion:	--- modules
 
@@ -146,7 +146,7 @@ where
 	}
 
 	/// Start or restart the Observable.
-	/// An already running Observable will be stopped, eventually damaged Mutexes will be repaired
+	/// An already running Observable will be stopped.
 	#[instrument(level = Level::TRACE, skip_all)]
 	fn start(&self) -> Result<()> {
 		self.stop()?;
@@ -219,7 +219,7 @@ where
 								{
 									Ok(()) => {}
 									Err(err) => error!("could not send cancel state due to {err}"),
-								};
+								}
 							};
 						};
 						handle.abort();
@@ -293,7 +293,7 @@ where
 						match query.reply(&key, encoded).wait() {
 							Ok(()) => {},
 							Err(err) => error!("failed to reply with {err}"),
-						};
+						}
 					} else {
 						// start a computation
 						// create Message from payload
@@ -332,7 +332,7 @@ where
 									let ctx_clone = ctx.clone();
 									execution_handle.lock().await.replace(tokio::spawn( async move {
 										let res = execution_function_clone.lock().await(ctx_clone).await.unwrap_or_else(|_| { todo!() });
-										if !matches!(tx_clone.send(res).await, Ok(())) { error!("failed to send back execution result") };
+										if !matches!(tx_clone.send(res).await, Ok(())) { error!("failed to send back execution result") }
 									}));
 
 									// start feedback timer
@@ -344,7 +344,7 @@ where
 								match query.reply(&key, encoded).wait() {
 									Ok(()) => {},
 									Err(err) => error!("failed to reply with {err}"),
-								};
+								}
 							}
 							Err(error) => error!("control callback failed with {error}"),
 						}
@@ -366,20 +366,20 @@ where
 								match p.put(Message::encode(&response).value().clone()).wait() {
 									Ok(()) => {},
 									Err(err) => error!("could not send cancel state due to {err}"),
-								};
+								}
 							} else {
 								error!("missing publisher");
-							};
+							}
 						} else {
 							error!("unexpected absence of execution handle");
-						};
+						}
 					}
 					// acknowledge cancel request
 					let encoded: Vec<u8> = encode(&ControlResponse::Canceled);
 					match query.reply(&key, encoded).wait() {
 						Ok(()) => {},
 						Err(err) => error!("failed to reply with {err}"),
-					};
+					}
 				} else {
 					error!("observable got unknown parameter: {p}");
 				}
@@ -397,7 +397,7 @@ where
 							match p.put(Message::encode(&response).value()).wait() {
 								Ok(()) => {},
 								Err(err) => error!("publishing result failed due to {err}"),
-							};
+							}
 						}
 					);
 				}
@@ -417,7 +417,7 @@ where
 				match publisher.put(Message::encode(&response).value().clone()).wait() {
 					Ok(()) => {},
 					Err(err) => error!("publishing feedback failed due to {err}"),
-				};
+				}
 
 				// restart timer
 				feedback_timer.set(tokio::time::sleep(feedback_interval));

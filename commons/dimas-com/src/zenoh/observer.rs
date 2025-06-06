@@ -17,23 +17,23 @@ use alloc::{
 use bitcode::decode;
 use core::time::Duration;
 use dimas_core::{
+	Result,
 	enums::OperationState,
 	message_types::{ControlResponse, Message, ObservableResponse},
 	traits::{Capability, Context},
 	utils::{cancel_selector_from, feedback_selector_from, request_selector_from},
-	Result,
 };
 use futures::future::BoxFuture;
 #[cfg(feature = "std")]
 use tokio::{sync::Mutex, task::JoinHandle};
-use tracing::{error, instrument, warn, Level};
+use tracing::{Level, error, instrument, warn};
+use zenoh::Session;
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
-use zenoh::Session;
 use zenoh::{
+	Wait,
 	query::{ConsolidationMode, QueryTarget},
 	sample::SampleKind,
-	Wait,
 };
 
 use crate::error::Error;

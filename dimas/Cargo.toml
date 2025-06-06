@@ -15,7 +15,7 @@ description = "dimas - a framework for Distributed Multi Agent Systems"
 documentation = "https://docs.rs/dimas/latest/dimas/"
 readme = "README.md"
 exclude = [
-    "tests/**/*",
+    "tests/**",
 ]
 
 [lints]

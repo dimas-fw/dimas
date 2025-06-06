@@ -10,7 +10,6 @@ extern crate alloc;
 extern crate std;
 
 // region:		--- modules
-#[cfg(feature = "unstable")]
 use crate::traits::LivelinessSubscriber;
 use crate::{
 	enums::CommunicatorImplementation,
@@ -27,9 +26,9 @@ use alloc::{
 	vec::Vec,
 };
 use dimas_config::Config;
-use dimas_core::{enums::OperationState, message_types::Message, traits::Capability, Result};
+use dimas_core::{Result, enums::OperationState, message_types::Message, traits::Capability};
 use std::{collections::HashMap, sync::RwLock};
-use zenoh::{config::ZenohId, Session};
+use zenoh::{Session, config::ZenohId};
 // endregion:	--- modules
 
 // region:		--- types
@@ -50,7 +49,6 @@ pub struct SingleCommunicator {
 	/// Registered Communicator
 	communicator: Arc<CommunicatorImplementation>,
 	/// Registered [`LivelinessSubscriber`]
-	#[cfg(feature = "unstable")]
 	liveliness_subscribers: Arc<RwLock<HashMap<String, Box<dyn LivelinessSubscriber>>>>,
 	/// Registered [`Observer`]
 	observers: Arc<RwLock<HashMap<String, Box<dyn Observer>>>>,
@@ -75,7 +73,6 @@ impl Capability for SingleCommunicator {
 
 impl Communicator for SingleCommunicator {
 	/// Get the liveliness subscribers
-	#[cfg(feature = "unstable")]
 	fn liveliness_subscribers(
 		&self,
 	) -> Arc<RwLock<HashMap<String, Box<dyn LivelinessSubscriber>>>> {
@@ -221,7 +218,6 @@ impl SingleCommunicator {
 			mode,
 			communicator: Arc::new(CommunicatorImplementation::Zenoh(zenoh)),
 			state: OperationState::Created,
-			#[cfg(feature = "unstable")]
 			liveliness_subscribers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 			observers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 			publishers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),

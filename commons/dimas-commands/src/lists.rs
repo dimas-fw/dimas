@@ -19,12 +19,12 @@ use chrono::Local;
 use core::time::Duration;
 use dimas_com::{traits::CommunicatorImplementationMethods, zenoh::Communicator};
 use dimas_config::Config;
-use dimas_core::{enums::Signal, message_types::Message, utils::selector_from, Result};
+use dimas_core::{Result, enums::Signal, message_types::Message, utils::selector_from};
 #[cfg(feature = "std")]
 use std::collections::HashMap;
 use zenoh::{
-	config::{Locator, WhatAmI},
 	Wait,
+	config::{Locator, WhatAmI},
 };
 // endregion:	--- modules
 

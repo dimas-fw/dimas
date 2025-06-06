@@ -18,9 +18,9 @@ use dirs::{config_dir, config_local_dir, home_dir};
 #[cfg(feature = "std")]
 use std::{
 	env,
- 	path::PathBuf,
 	fs::File,
-	io::{BufRead, BufReader}
+	io::{BufRead, BufReader},
+	path::PathBuf,
 };
 
 // endregion:	--- modules
@@ -38,22 +38,22 @@ pub fn read_config_file(path: &PathBuf) -> Result<String> {
 }
 
 /// read file and remove comments
-/// 
+///
 /// # Errors
 #[cfg(feature = "std")]
 fn read_file_without_comments(path: &PathBuf) -> Result<String> {
 	let file = File::open(path)?;
-    let reader = BufReader::new(file);
+	let reader = BufReader::new(file);
 	let mut result = String::new();
-    for line in reader.lines() {
+	for line in reader.lines() {
 		let line = line?.trim().to_string();
-        let pos = line.find("//");
+		let pos = line.find("//");
 		if let Some(pos) = pos {
 			result.push_str(&line[..pos]);
 		} else {
 			result.push_str(&line);
 		}
-    }
+	}
 
 	Ok(result)
 }
@@ -130,7 +130,7 @@ pub fn find_config_file(filename: &str) -> Result<std::path::PathBuf> {
 		if path.is_file() {
 			return Ok(path);
 		}
-	};
+	}
 
 	// handle typical config directories
 	for path in [home_dir(), config_local_dir(), config_dir()]

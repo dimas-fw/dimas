@@ -13,10 +13,10 @@ use crate::error::Error;
 use alloc::sync::Arc;
 use core::{fmt::Debug, time::Duration};
 use dimas_core::{
+	Result,
 	enums::OperationState,
 	message_types::{Message, QueryableMsg},
 	traits::{Capability, Context},
-	Result,
 };
 use futures::future::BoxFuture;
 #[cfg(feature = "std")]
@@ -27,13 +27,13 @@ use std::{
 };
 #[cfg(feature = "std")]
 use tokio::sync::Mutex;
-use tracing::{error, instrument, warn, Level};
+use tracing::{Level, error, instrument, warn};
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
 use zenoh::{
+	Session, Wait,
 	query::{ConsolidationMode, QueryTarget},
 	sample::SampleKind,
-	Session, Wait,
 };
 // endregion:	--- modules
 

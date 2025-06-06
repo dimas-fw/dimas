@@ -21,18 +21,18 @@ use alloc::{
 };
 use core::{fmt::Debug, time::Duration};
 use dimas_core::{
+	Result,
 	enums::OperationState,
 	message_types::{Message, QueryableMsg},
 	traits::Capability,
-	Result,
 };
 use zenoh::config::WhatAmI;
 #[cfg(feature = "unstable")]
 use zenoh::sample::Locality;
 use zenoh::{
+	Session, Wait,
 	query::{ConsolidationMode, QueryTarget},
 	sample::SampleKind,
-	Session, Wait,
 };
 // endregion:	--- modules
 
@@ -95,7 +95,7 @@ impl CommunicatorImplementationMethods for Communicator {
 		let builder = builder.allowed_destination(Locality::Any);
 
 		let query = builder
-			.timeout(Duration::from_millis(250))
+			.timeout(Duration::from_millis(5000))
 			.wait()
 			.map_err(|source| Error::QueryCreation { source })?;
 
@@ -123,8 +123,8 @@ impl CommunicatorImplementationMethods for Communicator {
 						}
 					},
 					Err(err) => {
-						let content: Vec<u8> = err.payload().to_bytes().into_owned();
-						todo!(">> Received (ERROR: '{:?}' for {})", &content, &selector);
+						let content= err.payload().try_to_string()?;
+						std::println!(">> Zenoh Communicator received (ERROR: '{:?}' for {})", &content, &selector);
 					}
 				}
 				unreached = false;

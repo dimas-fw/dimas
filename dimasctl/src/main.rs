@@ -7,7 +7,7 @@ use clap::{Parser, Subcommand};
 use core::time::Duration;
 use dimas_com::zenoh::Communicator;
 use dimas_config::Config;
-use dimas_core::{enums::OperationState, Result};
+use dimas_core::{Result, enums::OperationState};
 // endregion:	--- modules
 
 // region:		--- Cli

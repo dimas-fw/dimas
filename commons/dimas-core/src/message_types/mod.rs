@@ -8,9 +8,9 @@ extern crate alloc;
 // region:		--- modules
 use crate::error::{Error, Result};
 use alloc::{boxed::Box, string::ToString, vec::Vec};
-use bitcode::{decode, encode, Decode, Encode};
+use bitcode::{Decode, Encode, decode, encode};
 use core::ops::Deref;
-use zenoh::{query::Query, Wait};
+use zenoh::{Wait, query::Query};
 // endregion:	--- modules
 
 // region:		--- Message

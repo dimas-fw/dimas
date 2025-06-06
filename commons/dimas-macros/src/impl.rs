@@ -5,7 +5,7 @@
 
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{parse::Parser, punctuated::Punctuated, ItemFn, Meta, Token};
+use syn::{ItemFn, Meta, Token, parse::Parser, punctuated::Punctuated};
 
 type Arguments = Punctuated<Meta, Token![,]>;
 
@@ -56,14 +56,14 @@ fn parse_config(args: Arguments) -> Result<Config, syn::Error> {
 									return Err(syn::Error::new(
 										syn::spanned::Spanned::span(lit),
 										format!("value `{ident}` is no positive integer: {err}"),
-									))
+									));
 								}
 							},
 							_ => {
 								return Err(syn::Error::new(
 									syn::spanned::Spanned::span(lit),
 									format!("value `{ident}` is no positive integer"),
-								))
+								));
 							}
 						};
 					}
@@ -141,7 +141,7 @@ pub fn main(args: TokenStream, main_fn: TokenStream) -> TokenStream {
 						.worker_threads(#num_threads)
 						.thread_name_fn(|| "dimas_worker".into())
 						.build()
-						.unwrap()
+						.expect("build of tokio runtime failed")
 						.block_on(async #body)
 				}
 			}

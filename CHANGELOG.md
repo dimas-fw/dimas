@@ -15,13 +15,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-## [0.4.3] - 2024-??-??
+## [0.5.0] - 2024-06-06
 
 ### Added
+- Example for liveliness
 
 ### Changed
+- Made liveliness stable
+- Formatting
 
 ### Fixed
+- Multiple incoming liveliness messages from the same agent
+- Error message when zenoh communicator received an error  
 
 ### Removed
 - Some forgotten dbg!(...) statements

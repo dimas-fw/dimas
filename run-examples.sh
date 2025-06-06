@@ -67,11 +67,10 @@ tmux send-keys "cargo run --example observer $1" C-m
 tmux select-pane -t 7
 tmux send-keys "cargo run --example observable $1" C-m
 
-tmux select-pane -t 5
-
 # liveliness
-#tmux select-pane -t 8
-#tmux send-keys "cargo run --example liveliness $1" C-m
+tmux select-pane -t 8
+tmux send-keys "cargo run --example liveliness $1" C-m
 
+tmux select-pane -t 5
 
 tmux attach-session -t $session

@@ -11,7 +11,6 @@ extern crate std;
 
 // region:		--- modules
 use crate::error::Error;
-#[cfg(feature = "unstable")]
 use crate::traits::LivelinessSubscriber;
 use crate::{
 	enums::CommunicatorImplementation,
@@ -28,9 +27,9 @@ use alloc::{
 };
 use dimas_config::Config;
 use dimas_core::message_types::{Message, QueryableMsg};
-use dimas_core::{enums::OperationState, traits::Capability, Result};
+use dimas_core::{Result, enums::OperationState, traits::Capability};
 use std::{collections::HashMap, sync::RwLock};
-use zenoh::{config::ZenohId, Session};
+use zenoh::{Session, config::ZenohId};
 // endregion:   --- modules
 
 // region:		--- types
@@ -53,7 +52,6 @@ pub struct MultiCommunicator {
 	/// Registered Communicators
 	communicators: Arc<RwLock<HashMap<String, Arc<CommunicatorImplementation>>>>,
 	/// Registered [`LivelinessSubscriber`]
-	#[cfg(feature = "unstable")]
 	liveliness_subscribers: Arc<RwLock<HashMap<String, Box<dyn LivelinessSubscriber>>>>,
 	/// Registered [`Observer`]
 	observers: Arc<RwLock<HashMap<String, Box<dyn Observer>>>>,
@@ -216,7 +214,6 @@ impl Communicator for MultiCommunicator {
 	}
 
 	/// Get the liveliness subscribers
-	#[cfg(feature = "unstable")]
 	fn liveliness_subscribers(
 		&self,
 	) -> Arc<RwLock<HashMap<String, Box<dyn LivelinessSubscriber>>>> {
@@ -298,7 +295,6 @@ impl MultiCommunicator {
 			mode,
 			state: OperationState::Created,
 			communicators: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
-			#[cfg(feature = "unstable")]
 			liveliness_subscribers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 			observers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),
 			publishers: Arc::new(RwLock::new(HashMap::with_capacity(INITIAL_SIZE))),

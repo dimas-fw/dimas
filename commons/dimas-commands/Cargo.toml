@@ -14,7 +14,7 @@ description = "dimas-commands - commands library for DiMAS"
 documentation = "https://docs.rs/dimas-commmands/latest/dimas-commands/"
 readme = "README.md"
 exclude = [
-    "tests/**/*",
+    "tests/**",
 ]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

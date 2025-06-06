@@ -25,11 +25,11 @@ use alloc::{
 use core::time::Duration;
 use dimas_core::builder_states::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use dimas_core::{
+	Result,
 	enums::OperationState,
 	message_types::{ControlResponse, Message},
 	traits::Context,
 	utils::selector_from,
-	Result,
 };
 use futures::future::{BoxFuture, Future};
 #[cfg(feature = "std")]

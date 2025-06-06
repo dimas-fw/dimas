@@ -18,7 +18,7 @@ use alloc::{
 	sync::Arc,
 };
 use dimas_core::builder_states::{NoSelector, NoStorage, Selector, Storage};
-use dimas_core::{enums::OperationState, traits::Context, utils::selector_from, Result};
+use dimas_core::{Result, enums::OperationState, traits::Context, utils::selector_from};
 #[cfg(feature = "std")]
 use std::{collections::HashMap, sync::RwLock};
 use zenoh::bytes::Encoding;

@@ -35,7 +35,6 @@
 use crate::agent::Agent;
 use crate::error::Error;
 use core::fmt::Debug;
-#[cfg(feature = "unstable")]
 use dimas_com::traits::LivelinessSubscriber;
 use dimas_com::traits::{
 	Communicator, CommunicatorMethods, Observer, Publisher, Querier, Responder,
@@ -44,10 +43,10 @@ use dimas_config::Config;
 #[cfg(doc)]
 use dimas_core::traits::Context;
 use dimas_core::{
+	Result,
 	enums::{OperationState, TaskSignal},
 	message_types::{Message, QueryableMsg},
 	traits::{Capability, ContextAbstraction},
-	Result,
 };
 use dimas_time::Timer;
 use std::{
@@ -55,7 +54,7 @@ use std::{
 	sync::{Arc, RwLock},
 };
 use tokio::sync::mpsc::Sender;
-use tracing::{info, instrument, Level};
+use tracing::{Level, info, instrument};
 use zenoh::Session;
 // endregion:	--- modules
 
@@ -97,12 +96,10 @@ where
 {
 	type Props = P;
 	/// Get the name
-	#[must_use]
 	fn name(&self) -> Option<&String> {
 		self.name.as_ref()
 	}
 
-	#[must_use]
 	fn fq_name(&self) -> Option<String> {
 		if self.name().is_some() && self.prefix().is_some() {
 			Some(format!(
@@ -117,22 +114,18 @@ where
 		}
 	}
 
-	#[must_use]
 	fn state(&self) -> OperationState {
 		self.state.read().expect("snh").clone()
 	}
 
-	#[must_use]
 	fn uuid(&self) -> String {
 		self.uuid.clone()
 	}
 
-	#[must_use]
 	fn prefix(&self) -> Option<&String> {
 		self.prefix.as_ref()
 	}
 
-	#[must_use]
 	fn sender(&self) -> &Sender<TaskSignal> {
 		&self.sender
 	}
@@ -352,7 +345,6 @@ where
 	}
 
 	/// Get the liveliness subscribers
-	#[cfg(feature = "unstable")]
 	#[must_use]
 	pub fn liveliness_subscribers(
 		&self,

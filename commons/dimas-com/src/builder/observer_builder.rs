@@ -22,11 +22,11 @@ use alloc::{
 use core::time::Duration;
 use dimas_core::builder_states::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use dimas_core::{
+	Result,
 	enums::OperationState,
 	message_types::{ControlResponse, ObservableResponse},
 	traits::Context,
 	utils::selector_from,
-	Result,
 };
 use futures::future::Future;
 #[cfg(feature = "std")]

@@ -15,7 +15,7 @@ use alloc::{
 	sync::Arc,
 };
 use dimas_core::{
-	enums::OperationState, message_types::QueryMsg, traits::Context, utils::selector_from, Result,
+	Result, enums::OperationState, message_types::QueryMsg, traits::Context, utils::selector_from,
 };
 use futures::future::Future;
 #[cfg(feature = "std")]

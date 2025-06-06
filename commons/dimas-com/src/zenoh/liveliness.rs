@@ -1,7 +1,8 @@
 // Copyright © 2023 Stephan Kunz
 
 //! Module `liveliness` provides a `LivelinessSubscriber` which can be created using the `LivelinessSubscriberBuilder`.
-//! A `LivelinessSubscriber` can optional subscribe on a delete message.
+//!
+//! A `LivelinessSubscriber` subscribes on put and delete messages.
 
 #[doc(hidden)]
 extern crate alloc;
@@ -13,21 +14,21 @@ extern crate std;
 use alloc::sync::Arc;
 use alloc::{
 	boxed::Box,
+	collections::BTreeSet,
 	string::{String, ToString},
 };
-use core::time::Duration;
 use dimas_core::{
+	Result,
 	enums::{OperationState, TaskSignal},
 	traits::{Capability, Context},
-	Result,
 };
 use futures::future::BoxFuture;
 #[cfg(feature = "std")]
 use tokio::{sync::Mutex, task::JoinHandle};
 use tracing::info;
-use tracing::{error, instrument, warn, Level};
-use zenoh::sample::SampleKind;
+use tracing::{Level, error, instrument, warn};
 use zenoh::Session;
+use zenoh::sample::SampleKind;
 // endregion:	--- modules
 
 // region:    	--- types
@@ -54,6 +55,7 @@ where
 	put_callback: ArcLivelinessCallback<P>,
 	delete_callback: Option<ArcLivelinessCallback<P>>,
 	handle: std::sync::Mutex<Option<JoinHandle<()>>>,
+	known_agents: Arc<Mutex<BTreeSet<String>>>,
 }
 
 impl<P> core::fmt::Debug for LivelinessSubscriber<P>
@@ -71,7 +73,6 @@ where
 	P: Send + Sync + 'static,
 {
 	/// get token
-	#[must_use]
 	fn token(&self) -> &String {
 		&self.token
 	}
@@ -113,27 +114,25 @@ where
 			put_callback,
 			delete_callback,
 			handle: std::sync::Mutex::new(None),
+			#[cfg(feature = "std")]
+			known_agents: Arc::new(Mutex::new(BTreeSet::new())),
 		}
 	}
 
 	/// Start or restart the liveliness subscriber.
-	/// An already running subscriber will be stopped before,
-	/// eventually damaged Mutexes will be repaired
+	/// An already running subscriber will be stopped before.
 	#[instrument(level = Level::TRACE, skip_all)]
 	fn start(&self) -> Result<()> {
 		self.stop()?;
 
 		// liveliness handling
 		let key = self.token.clone();
-		let session1 = self.session.clone();
-		let token1 = self.token.clone();
+		let known_agents = self.known_agents.clone();
 		let session2 = self.session.clone();
 		let token2 = self.token.clone();
-		let p_cb1 = self.put_callback.clone();
 		let p_cb2 = self.put_callback.clone();
 		let d_cb = self.delete_callback.clone();
 		let ctx = self.context.clone();
-		let ctx1 = self.context.clone();
 		let ctx2 = self.context.clone();
 
 		self.handle.lock().map_or_else(
@@ -152,14 +151,10 @@ where
 						};
 					}));
 
-					let timeout = Duration::from_millis(250);
-					// the initial liveliness query
-					if let Err(error) = run_initial(session1, token1, p_cb1, ctx1, timeout).await {
-						error!("running initial liveliness query failed with {error}");
-					};
-
-					// the liveliness subscriber
-					if let Err(error) = run_liveliness(session2, token2, p_cb2, d_cb, ctx2).await {
+					// the liveliness subscriber with history
+					if let Err(error) =
+						run_liveliness(session2, token2, p_cb2, d_cb, ctx2, known_agents).await
+					{
 						error!("running liveliness subscriber failed with {error}");
 					};
 				}));
@@ -188,83 +183,48 @@ async fn run_liveliness<P>(
 	p_cb: ArcLivelinessCallback<P>,
 	d_cb: Option<ArcLivelinessCallback<P>>,
 	ctx: Context<P>,
+	known_agents: Arc<Mutex<BTreeSet<String>>>,
 ) -> Result<()> {
 	let subscriber = session
 		.liveliness()
 		.declare_subscriber(&token)
+		.history(true)
 		.await?;
 
-	loop {
-		let result = subscriber.recv_async().await;
-		match result {
-			Ok(sample) => {
-				let id = sample.key_expr().split('/').last().unwrap_or("");
-				// skip own live message
-				if id == ctx.uuid() {
-					continue;
-				};
-				match sample.kind() {
-					SampleKind::Put => {
-						let ctx = ctx.clone();
-						let mut lock = p_cb.lock().await;
-						if let Err(error) = lock(ctx, id.to_string()).await {
-							error!("liveliness put callback failed with {error}");
-						}
+	while let Ok(sample) = subscriber.recv_async().await {
+		let id = sample.key_expr().split('/').last().unwrap_or("");
+		// skip own live message
+		if id == ctx.uuid() {
+			continue;
+		};
+		// lock known_agents to avoid concurrent access during handling.
+		// drop lock directly after last access
+		let mut guard = known_agents.lock().await;
+		match sample.kind() {
+			SampleKind::Put => {
+				if guard.get(id).is_none() {
+					guard.insert(id.into());
+					drop(guard);
+					let ctx = ctx.clone();
+					let mut lock = p_cb.lock().await;
+					if let Err(error) = lock(ctx, id.to_string()).await {
+						error!("liveliness put callback failed with {error}");
 					}
-					SampleKind::Delete => {
-						if let Some(cb) = d_cb.clone() {
-							let ctx = ctx.clone();
-							let mut lock = cb.lock().await;
-							if let Err(err) = lock(ctx, id.to_string()).await {
-								error!("liveliness delete callback failed with {err}");
-							}
+				}
+			}
+			SampleKind::Delete => {
+				if guard.get(id).is_some() {
+					guard.remove(id);
+					drop(guard);
+					if let Some(cb) = d_cb.clone() {
+						let ctx = ctx.clone();
+						let mut lock = cb.lock().await;
+						if let Err(err) = lock(ctx, id.to_string()).await {
+							error!("liveliness delete callback failed with {err}");
 						}
 					}
 				}
 			}
-			Err(error) => {
-				error!("liveliness receive failed with {error}");
-			}
-		}
-	}
-}
-
-#[instrument(name="initial liveliness", level = Level::ERROR, skip_all)]
-async fn run_initial<P>(
-	session: Arc<Session>,
-	token: String,
-	p_cb: ArcLivelinessCallback<P>,
-	ctx: Context<P>,
-	timeout: Duration,
-) -> Result<()> {
-	let result = session
-		.liveliness()
-		.get(&token)
-		.timeout(timeout)
-		.await;
-
-	match result {
-		Ok(replies) => {
-			while let Ok(reply) = replies.recv_async().await {
-				match reply.result() {
-					Ok(sample) => {
-						let id = sample.key_expr().split('/').last().unwrap_or("");
-						// skip own live message
-						if id == ctx.uuid() {
-							continue;
-						};
-						let ctx = ctx.clone();
-						let mut lock = p_cb.lock().await;
-						if let Err(error) = lock(ctx, id.to_string()).await {
-							error!("lveliness initial query put callback failed with {error}");
-						}
-					}
-					Err(err) => error!(">> liveliness initial query failed with {:?})", err),
-				}
-			}
-		}
-		Err(error) => {
-			error!("livelieness initial query receive failed with {error}");
 		}
 	}
 	Ok(())

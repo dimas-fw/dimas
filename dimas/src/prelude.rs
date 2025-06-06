@@ -29,11 +29,11 @@ pub use zenoh::sample::Locality;
 // dimas stuff
 pub use crate::agent::Agent;
 pub use dimas_config::Config;
+pub use dimas_core::Result;
 pub use dimas_core::message_types::{
 	ControlResponse, Message, ObservableResponse, QueryMsg, QueryableMsg,
 };
 pub use dimas_core::traits::Context;
 pub use dimas_core::utils::init_tracing;
-pub use dimas_core::Result;
 pub use dimas_macros::main;
 pub use dimas_time::Timer;

@@ -8,7 +8,6 @@ use thiserror::Error;
 /// `dimas` error type
 #[derive(Error, Debug)]
 pub enum Error {
-	#[cfg(feature = "unstable")]
 	/// activation of liveliness failed
 	#[error("activation of liveliness failed: reason {source:?}")]
 	ActivateLiveliness {

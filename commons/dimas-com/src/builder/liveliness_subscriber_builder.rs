@@ -17,7 +17,7 @@ use crate::{
 };
 use alloc::{boxed::Box, format, string::String, sync::Arc};
 use dimas_core::builder_states::{Callback, NoCallback, NoStorage, Storage};
-use dimas_core::{enums::OperationState, traits::Context, utils::selector_from, Result};
+use dimas_core::{Result, enums::OperationState, traits::Context, utils::selector_from};
 use futures::future::Future;
 #[cfg(feature = "std")]
 use std::{collections::HashMap, sync::RwLock};

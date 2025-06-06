@@ -20,8 +20,8 @@ use alloc::{
 use core::time::Duration;
 use dimas_core::builder_states::{Callback, NoCallback, NoSelector, NoStorage, Selector, Storage};
 use dimas_core::{
-	enums::OperationState, message_types::QueryableMsg, traits::Context, utils::selector_from,
-	Result,
+	Result, enums::OperationState, message_types::QueryableMsg, traits::Context,
+	utils::selector_from,
 };
 use futures::Future;
 #[cfg(feature = "std")]

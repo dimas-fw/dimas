@@ -13,15 +13,15 @@ extern crate std;
 use alloc::{boxed::Box, string::String, sync::Arc};
 use core::{fmt::Debug, time::Duration};
 use dimas_core::{
+	Result,
 	enums::{OperationState, TaskSignal},
 	traits::{Capability, Context},
-	Result,
 };
 #[cfg(feature = "std")]
 use std::sync::Mutex;
 #[cfg(feature = "std")]
 use tokio::{task::JoinHandle, time};
-use tracing::{error, info, instrument, warn, Level};
+use tracing::{Level, error, info, instrument, warn};
 // endregion:	--- modules
 
 // region:		--- types
@@ -162,7 +162,7 @@ where
 	}
 
 	/// Start or restart the timer
-	/// An already running timer will be stopped, eventually damaged Mutexes will be repaired
+	/// An already running timer will be stopped.
 	#[instrument(level = Level::TRACE, skip_all)]
 	fn start(&self) -> Result<()> {
 		self.stop()?;
@@ -203,7 +203,7 @@ where
 									error!("could not restart timer: {}", reason);
 								} else {
 									info!("restarting timer!");
-								};
+								}
 							}));
 							run_timer(interval, cb, ctx2).await;
 						}));
@@ -248,7 +248,7 @@ where
 									error!("could not restart timer: {}", reason);
 								} else {
 									info!("restarting timer!");
-								};
+								}
 							}));
 							tokio::time::sleep(delay).await;
 							run_timer(interval, cb, ctx2).await;

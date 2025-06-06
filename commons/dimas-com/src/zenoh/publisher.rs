@@ -12,14 +12,14 @@ extern crate std;
 use crate::error::Error;
 use alloc::{string::String, sync::Arc};
 use core::fmt::Debug;
-use dimas_core::{enums::OperationState, message_types::Message, traits::Capability, Result};
-use tracing::{instrument, Level};
+use dimas_core::{Result, enums::OperationState, message_types::Message, traits::Capability};
+use tracing::{Level, instrument};
+use zenoh::{
+	Session, Wait,
+	qos::{CongestionControl, Priority},
+};
 #[cfg(feature = "unstable")]
 use zenoh::{qos::Reliability, sample::Locality};
-use zenoh::{
-	qos::{CongestionControl, Priority},
-	Session, Wait,
-};
 // endregion:	--- modules
 
 // region:		--- Publisher

@@ -43,7 +43,7 @@ Your `Cargo.toml` should include:
 
 ```toml
 [dependencies]
-dimas = "0.4.0"
+dimas = "0.5"
 ```
 
 It makes sense to return a `Result`, as most DiMAS `Agent`s functions return one.
@@ -77,7 +77,7 @@ The `Cargo.toml` for this publisher/subscriber example should include
 
 ```toml
 [dependencies]
-dimas = version = "0.4"
+dimas = version = "0.5"
 ```
 
 ### Publisher
@@ -100,7 +100,7 @@ async fn main() -> Result<()> {
     let properties = AgentProps { counter: 0 };
 
     // create an agent with the properties and default configuration
-    let mut agent = Agent::new(properties)
+    let agent = Agent::new(properties)
        .config(&Config::default())?;
 
     // create publisher for topic "hello"
@@ -202,7 +202,7 @@ and more complex examples in [dimas-fw/examples](https://github.com/dimas-fw/exa
 
 ## License
 
-Licensed with a proprietary "NGMC" license, see [license file](LICENSE)
+Licensed with a proprietary "NGMC" license, see [license file](https://github.com/dimas-fw/dimas/blob/main/LICENSE)
 
 ## Contribution
 

@@ -16,10 +16,10 @@ use alloc::{
 };
 use dimas_com::{traits::CommunicatorImplementationMethods, zenoh::Communicator};
 use dimas_core::{
+	Result,
 	enums::{OperationState, Signal},
 	message_types::Message,
 	utils::selector_from,
-	Result,
 };
 #[cfg(feature = "std")]
 use std::collections::HashMap;

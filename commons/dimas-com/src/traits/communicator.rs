@@ -10,7 +10,6 @@ extern crate alloc;
 extern crate std;
 
 // region:		--- modules
-#[cfg(any(feature = "unstable", doc))]
 use super::LivelinessSubscriber;
 use super::{CommunicatorMethods, Observer, Publisher, Querier, Responder};
 use crate::error::Error;
@@ -26,10 +25,9 @@ use zenoh::Session;
 /// the methodes to be implemented by any communicator
 pub trait Communicator: Capability + CommunicatorMethods + Send + Sync {
 	/// Get the liveliness subscribers
-	#[cfg(feature = "unstable")]
 	#[must_use]
 	fn liveliness_subscribers(&self)
-		-> Arc<RwLock<HashMap<String, Box<dyn LivelinessSubscriber>>>>;
+	-> Arc<RwLock<HashMap<String, Box<dyn LivelinessSubscriber>>>>;
 
 	/// Get the observers
 	#[must_use]
@@ -60,7 +58,6 @@ pub trait Communicator: Capability + CommunicatorMethods + Send + Sync {
 	/// Currently none
 	fn upgrade_capabilities(&self, new_state: &OperationState) -> Result<()> {
 		// start liveliness subscriber
-		#[cfg(feature = "unstable")]
 		self.liveliness_subscribers()
 			.write()
 			.map_err(|_| Error::ModifyStruct("liveliness subscribers".into()))?
@@ -183,7 +180,6 @@ pub trait Communicator: Capability + CommunicatorMethods + Send + Sync {
 			});
 
 		// stop all registered liveliness subscribers
-		#[cfg(feature = "unstable")]
 		self.liveliness_subscribers()
 			.write()
 			.map_err(|_| Error::ModifyStruct("liveliness subscribers".into()))?

@@ -23,7 +23,7 @@ use alloc::{
 	sync::Arc,
 };
 use core::time::Duration;
-use dimas_core::{enums::OperationState, traits::Context, Result};
+use dimas_core::{Result, enums::OperationState, traits::Context};
 use std::{
 	collections::HashMap,
 	sync::{Mutex, RwLock},
@@ -78,7 +78,7 @@ where
 
 	/// Set the consolidation mode
 	#[must_use]
-	pub fn delay(mut self, delay: Duration) -> Self {
+	pub const fn delay(mut self, delay: Duration) -> Self {
 		self.delay.replace(delay);
 		self
 	}

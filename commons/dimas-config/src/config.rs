@@ -48,8 +48,8 @@ extern crate alloc;
 extern crate std;
 
 // region:		--- modules
-use crate::utils::{find_config_file, read_config_file};
 use crate::Result;
+use crate::utils::{find_config_file, read_config_file};
 use alloc::vec::Vec;
 #[cfg(feature = "std")]
 use tracing::{debug, warn};
