@@ -15,6 +15,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+## [0.5.1] - 2024-??-??
+
+### Added
+- README for examples
+
+### Changed
+
+### Fixed
+- Nightly Clippy complaints
+
+### Removed
+
 ## [0.5.0] - 2024-06-06
 
 ### Added

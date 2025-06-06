@@ -37,14 +37,14 @@ pub struct Publisher {
 	priority: Priority,
 	#[cfg(feature = "unstable")]
 	reliability: Reliability,
-	publisher: std::sync::Mutex<Option<zenoh::pubsub::Publisher<'static>>>,
+	declared_publ: std::sync::Mutex<Option<zenoh::pubsub::Publisher<'static>>>,
 }
 
 impl Debug for Publisher {
 	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		f.debug_struct("Publisher")
 			.field("selector", &self.selector)
-			.field("initialized", &self.publisher)
+			.field("initialized", &self.declared_publ)
 			.finish_non_exhaustive()
 	}
 }
@@ -60,7 +60,7 @@ impl crate::traits::Publisher for Publisher {
 	///
 	#[instrument(name="publish", level = Level::ERROR, skip_all)]
 	fn put(&self, message: Message) -> Result<()> {
-		self.publisher.lock().map_or_else(
+		self.declared_publ.lock().map_or_else(
 			|_| todo!(),
 			|publisher| match publisher
 				.as_ref()
@@ -79,7 +79,7 @@ impl crate::traits::Publisher for Publisher {
 	///
 	#[instrument(level = Level::ERROR, skip_all)]
 	fn delete(&self) -> Result<()> {
-		self.publisher.lock().map_or_else(
+		self.declared_publ.lock().map_or_else(
 			|_| todo!(),
 			|publisher| match publisher
 				.as_ref()
@@ -132,7 +132,7 @@ impl Publisher {
 			priority,
 			#[cfg(feature = "unstable")]
 			reliability,
-			publisher: std::sync::Mutex::new(None),
+			declared_publ: std::sync::Mutex::new(None),
 		}
 	}
 
@@ -157,7 +157,7 @@ impl Publisher {
 
 		let new_publisher = builder.wait()?;
 		//.map_err(|_| DimasError::Put.into())?;
-		self.publisher.lock().map_or_else(
+		self.declared_publ.lock().map_or_else(
 			|_| todo!(),
 			|mut publisher| {
 				publisher.replace(new_publisher);
@@ -171,7 +171,7 @@ impl Publisher {
 	///
 	#[allow(clippy::unnecessary_wraps)]
 	fn de_init(&self) -> Result<()> {
-		self.publisher.lock().map_or_else(
+		self.declared_publ.lock().map_or_else(
 			|_| todo!(),
 			|mut publisher| {
 				publisher.take();

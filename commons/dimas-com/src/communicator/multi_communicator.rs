@@ -274,8 +274,7 @@ impl Communicator for MultiCommunicator {
 			.communicators
 			.read()
 			.expect("snh")
-			.iter()
-			.map(|(_id, com)| match com.as_ref() {
+			.values().map(|com| match com.as_ref() {
 				CommunicatorImplementation::Zenoh(communicator) => communicator.session(),
 			})
 			.collect();

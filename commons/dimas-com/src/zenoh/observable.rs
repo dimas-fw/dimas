@@ -176,14 +176,14 @@ where
 							error!("could not restart observable: {}", reason);
 						} else {
 							info!("restarting observable!");
-						};
+						}
 					}));
 					if let Err(error) =
 						run_observable(session, selector, interval, ccb, fcb, fcbp, efc, efch, ctx2)
 							.await
 					{
 						error!("observable failed with {error}");
-					};
+					}
 				}));
 
 				Ok(())
@@ -220,8 +220,8 @@ where
 									Ok(()) => {}
 									Err(err) => error!("could not send cancel state due to {err}"),
 								}
-							};
-						};
+							}
+						}
 						handle.abort();
 					});
 				}

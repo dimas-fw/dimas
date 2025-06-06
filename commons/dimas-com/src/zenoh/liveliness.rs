@@ -148,7 +148,7 @@ where
 							error!("could not restart liveliness subscriber: {}", reason);
 						} else {
 							info!("restarting liveliness subscriber!");
-						};
+						}
 					}));
 
 					// the liveliness subscriber with history
@@ -156,14 +156,14 @@ where
 						run_liveliness(session2, token2, p_cb2, d_cb, ctx2, known_agents).await
 					{
 						error!("running liveliness subscriber failed with {error}");
-					};
+					}
 				}));
 				Ok(())
 			},
 		)
 	}
 
-	/// Stop a running LivelinessSubscriber
+	/// Stop a running [`LivelinessSubscriber`]
 	#[instrument(level = Level::TRACE)]
 	fn stop(&self) -> Result<()> {
 		self.handle.lock().map_or_else(
@@ -192,11 +192,11 @@ async fn run_liveliness<P>(
 		.await?;
 
 	while let Ok(sample) = subscriber.recv_async().await {
-		let id = sample.key_expr().split('/').last().unwrap_or("");
+		let id = sample.key_expr().split('/').next_back().unwrap_or("");
 		// skip own live message
 		if id == ctx.uuid() {
 			continue;
-		};
+		}
 		// lock known_agents to avoid concurrent access during handling.
 		// drop lock directly after last access
 		let mut guard = known_agents.lock().await;

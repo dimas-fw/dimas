@@ -317,7 +317,7 @@ where
 	}
 
 	/// Activate sending liveliness information
-	pub fn liveliness(&mut self, activate: bool) {
+	pub const fn liveliness(&mut self, activate: bool) {
 		self.liveliness = activate;
 	}
 
@@ -486,7 +486,7 @@ where
 				.write()
 				.map_err(|_| Error::ModifyStruct("liveliness".into()))?
 				.replace(token);
-		};
+		}
 
 		self.context.set_state(OperationState::Active)?;
 
@@ -575,7 +575,7 @@ where
 						TaskSignal::Shutdown => {
 							return self.stop();
 						}
-					};
+					}
 				}
 
 				// shutdown signal "ctrl-c"

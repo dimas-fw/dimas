@@ -134,7 +134,7 @@ where
 								});
 							} else {
 								error!("unexpected response on cancelation");
-							};
+							}
 						}
 						SampleKind::Delete => {
 							error!("Delete in cancel");
@@ -173,7 +173,7 @@ where
 		if let Some(message) = message {
 			let value = message.value().to_owned();
 			query = query.payload(value);
-		};
+		}
 
 		#[cfg(feature = "unstable")]
 		let query = query.allowed_destination(Locality::Any);
@@ -231,9 +231,9 @@ where
 												run_observation(session, selector, ctx, rcb).await
 											{
 												error!("observation failed with {error}");
-											};
+											}
 										});
-									};
+									}
 									// call control callback
 									let ctx = self.context.clone();
 									let ccb = self.control_callback.clone();
@@ -251,7 +251,7 @@ where
 						}
 					},
 					Err(err) => error!("request response error: {:?})", err),
-				};
+				}
 				unreached = false;
 			}
 			if unreached {
@@ -362,13 +362,13 @@ async fn run_observation<P>(
 								let ctx = ctx.clone();
 								if let Err(error) = rcb.lock().await(ctx, response).await {
 									error!("response callback failed with {error}");
-								};
+								}
 								if stop {
 									break;
-								};
+								}
 							}
 							Err(_) => todo!(),
-						};
+						}
 					}
 					SampleKind::Delete => {
 						error!("unexpected delete in observation response");

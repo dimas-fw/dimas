@@ -12,7 +12,7 @@ members = [
 	"commons/dimas-time",
 	"dimas",
 	"dimasctl",
-	"dimasmon",
+#	"dimasmon",
 ]
 
 [workspace.lints.rust]
@@ -51,18 +51,18 @@ repository = "https://github.com/dimas-fw/dimas/"
 [workspace.dependencies]
 dimas = { path = "dimas" }
 #dimas = "0.5.0"
-dimas-com = { path = "commons/dimas-com" }
-#dimas-com = "0.5.0"
+dimas-time = { path = "commons/dimas-time" }
+#dimas-time = "0.5.0"
 dimas-commands = { path = "commons/dimas-commands" }
 #dimas-commands = "0.5.0"
+dimas-com = { path = "commons/dimas-com" }
+#dimas-com = "0.5.0"
 dimas-config = { path = "commons/dimas-config" }
 #dimas-config = "0.5.0"
 dimas-core = { path = "commons/dimas-core" }
 #dimas-core = "0.5.0"
 dimas-macros = { path = "commons/dimas-macros" }
 #dimas-macros = "0.5.0"
-dimas-time = { path = "commons/dimas-time" }
-#dimas-time = "0.5.0"
 bitcode = "0.6.6"
 clap = "4.5.39"
 chrono = "0.4.41"
