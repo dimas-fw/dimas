@@ -463,6 +463,8 @@ where
 	/// The agent can be stopped properly using `ctrl-c`
 	///
 	/// # Errors
+	/// 
+	/// # Panics
 	#[tracing::instrument(skip_all)]
 	pub async fn start(self) -> Result<Self> {
 		// activate sending liveliness

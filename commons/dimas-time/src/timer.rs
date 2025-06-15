@@ -163,6 +163,7 @@ where
 
 	/// Start or restart the timer
 	/// An already running timer will be stopped.
+	#[allow(clippy::cognitive_complexity)]
 	#[instrument(level = Level::TRACE, skip_all)]
 	fn start(&self) -> Result<()> {
 		self.stop()?;

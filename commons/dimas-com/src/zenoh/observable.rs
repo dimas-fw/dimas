@@ -235,6 +235,7 @@ where
 // region:		--- functions
 #[allow(clippy::significant_drop_tightening)]
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_lines)]
 #[instrument(name="observable", level = Level::ERROR, skip_all)]
 async fn run_observable<P>(
 	session: Arc<Session>,

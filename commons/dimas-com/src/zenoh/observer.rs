@@ -93,6 +93,7 @@ where
 	}
 
 	/// Cancel a running observation
+	#[allow(clippy::cognitive_complexity)]
 	#[instrument(level = Level::ERROR, skip_all)]
 	fn cancel(&self) -> Result<()> {
 		// TODO: make a proper "key: value" implementation
@@ -159,6 +160,7 @@ where
 	}
 
 	/// Request an observation with an optional [`Message`].
+	#[allow(clippy::cognitive_complexity)]
 	#[instrument(level = Level::ERROR, skip_all)]
 	fn request(&self, message: Option<Message>) -> Result<()> {
 		let session = self.session.clone();

@@ -202,7 +202,7 @@ and more complex examples in [dimas-fw/examples](https://github.com/dimas-fw/exa
 
 ## License
 
-Licensed with a proprietary "NGMC" license, see [license file](https://github.com/dimas-fw/dimas/blob/main/LICENSE)
+Licensed with the fair use "NGMC" license, see [license file](https://github.com/dimas-fw/dimas/blob/main/LICENSE)
 
 ## Contribution
 
