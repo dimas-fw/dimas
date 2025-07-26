@@ -29,7 +29,7 @@ pub enum OperationState {
 	Configured,
 	/// Entity is listening to important messages only
 	Inactive,
-	/// Entity has full situational awareness but does
+	/// Entity has full situational awareness but does not act
 	Standby,
 	/// Entity is fully operational
 	Active,

@@ -32,7 +32,7 @@ unwrap_used = "deny"
 [workspace.package]
 rust-version = "1.85.0"
 edition = "2024"
-version = "0.5.0"
+version = "0.5.1"
 authors = [
 	"stepkun <stephan.kunz@kabelbw.de>",
 ]
@@ -50,21 +50,21 @@ repository = "https://github.com/dimas-fw/dimas/"
 
 [workspace.dependencies]
 dimas = { path = "dimas" }
-#dimas = "0.5.0"
+#dimas = "0.5.1"
 dimas-time = { path = "commons/dimas-time" }
-#dimas-time = "0.5.0"
+#dimas-time = "0.5.1"
 dimas-commands = { path = "commons/dimas-commands" }
-#dimas-commands = "0.5.0"
+#dimas-commands = "0.5.1"
 dimas-com = { path = "commons/dimas-com" }
-#dimas-com = "0.5.0"
+#dimas-com = "0.5.1"
 dimas-config = { path = "commons/dimas-config" }
-#dimas-config = "0.5.0"
+#dimas-config = "0.5.1"
 dimas-core = { path = "commons/dimas-core" }
-#dimas-core = "0.5.0"
+#dimas-core = "0.5.1"
 dimas-macros = { path = "commons/dimas-macros" }
-#dimas-macros = "0.5.0"
+#dimas-macros = "0.5.1"
 bitcode = "0.6.6"
-clap = "4.5.39"
+clap = "4.5.40"
 chrono = "0.4.41"
 derive_more = { version="2.0.1" }
 dirs = "6.0.0"
@@ -74,8 +74,8 @@ hostname = "0.4.1"
 itertools = "0.14.0"
 json5 = "0.4.1"
 serde = "1.0.219"
-slint = "1.11.0"
-slint-build = "1.11.0"
+slint = "1.12.0"
+slint-build = "1.12.0"
 thiserror = "2.0.12"
 tokio = "1.45.1"
 tracing = "0.1.41"
