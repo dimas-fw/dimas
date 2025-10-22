@@ -21,11 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - README for examples
 
 ### Changed
+- minimum Rust version to 1.88.0
 
 ### Fixed
 - Clippy complaints
-
-### Removed
 
 ## [0.5.0] - 2024-06-06
 

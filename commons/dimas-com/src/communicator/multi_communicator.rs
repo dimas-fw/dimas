@@ -274,7 +274,8 @@ impl Communicator for MultiCommunicator {
 			.communicators
 			.read()
 			.expect("snh")
-			.values().map(|com| match com.as_ref() {
+			.values()
+			.map(|com| match com.as_ref() {
 				CommunicatorImplementation::Zenoh(communicator) => communicator.session(),
 			})
 			.collect();
@@ -288,7 +289,7 @@ impl MultiCommunicator {
 	pub fn new(config: &Config) -> Result<Self> {
 		let zenoh = crate::zenoh::Communicator::new(config.zenoh_config())?;
 		let uuid = zenoh.session().zid();
-		let mode = zenoh.mode().to_string();
+		let mode = zenoh.mode().clone();
 		let com = Self {
 			uuid,
 			mode,

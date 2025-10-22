@@ -150,7 +150,7 @@ where
 					std::thread::sleep(self.timeout);
 				} else {
 					return Err(Error::AccessingObservable {
-						selector: self.selector.to_string(),
+						selector: self.selector.clone(),
 					}
 					.into());
 				}
@@ -261,7 +261,7 @@ where
 					std::thread::sleep(self.timeout);
 				} else {
 					return Err(Error::AccessingObservable {
-						selector: self.selector.to_string(),
+						selector: self.selector.clone(),
 					}
 					.into());
 				}

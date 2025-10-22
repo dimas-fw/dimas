@@ -99,7 +99,7 @@ where
 	let name = ctx
 		.fq_name()
 		.unwrap_or_else(|| String::from("--"));
-	let mode = ctx.mode().to_string();
+	let mode = ctx.mode().clone();
 	let zid = ctx.uuid();
 	let state = ctx.state();
 	let value = AboutEntity::new(name, mode, zid, state);
@@ -136,7 +136,7 @@ where
 	let name = ctx
 		.fq_name()
 		.unwrap_or_else(|| String::from("--"));
-	let mode = ctx.mode().to_string();
+	let mode = ctx.mode().clone();
 	let zid = ctx.uuid();
 	let state = ctx.state();
 	let value = AboutEntity::new(name, mode, zid, state);
@@ -167,7 +167,7 @@ where
 	let name = ctx
 		.fq_name()
 		.unwrap_or_else(|| String::from("--"));
-	let mode = ctx.mode().to_string();
+	let mode = ctx.mode().clone();
 	let zid = ctx.uuid();
 	let state = ctx.state();
 	let value = AboutEntity::new(name, mode, zid, state);
@@ -463,19 +463,17 @@ where
 	/// The agent can be stopped properly using `ctrl-c`
 	///
 	/// # Errors
-	/// 
+	///
 	/// # Panics
 	#[tracing::instrument(skip_all)]
 	pub async fn start(self) -> Result<Self> {
 		// activate sending liveliness
 		if self.liveliness {
 			let session = self.context.session("default");
-			let token_str = self
-				.context
-				.prefix()
-				.map_or(self.context.uuid(), |prefix| {
-					format!("{}/{}", prefix, self.context.uuid())
-				});
+			let token_str = self.context.prefix().map_or_else(
+				|| self.context.uuid(),
+				|prefix| format!("{}/{}", prefix, self.context.uuid()),
+			);
 
 			let token = session
 				.expect("snh")
