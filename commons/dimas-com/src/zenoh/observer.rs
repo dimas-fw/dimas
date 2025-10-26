@@ -93,6 +93,7 @@ where
 	}
 
 	/// Cancel a running observation
+	#[allow(clippy::cognitive_complexity)]
 	#[instrument(level = Level::ERROR, skip_all)]
 	fn cancel(&self) -> Result<()> {
 		// TODO: make a proper "key: value" implementation
@@ -134,7 +135,7 @@ where
 								});
 							} else {
 								error!("unexpected response on cancelation");
-							};
+							}
 						}
 						SampleKind::Delete => {
 							error!("Delete in cancel");
@@ -149,7 +150,7 @@ where
 					std::thread::sleep(self.timeout);
 				} else {
 					return Err(Error::AccessingObservable {
-						selector: self.selector.to_string(),
+						selector: self.selector.clone(),
 					}
 					.into());
 				}
@@ -159,6 +160,7 @@ where
 	}
 
 	/// Request an observation with an optional [`Message`].
+	#[allow(clippy::cognitive_complexity)]
 	#[instrument(level = Level::ERROR, skip_all)]
 	fn request(&self, message: Option<Message>) -> Result<()> {
 		let session = self.session.clone();
@@ -173,7 +175,7 @@ where
 		if let Some(message) = message {
 			let value = message.value().to_owned();
 			query = query.payload(value);
-		};
+		}
 
 		#[cfg(feature = "unstable")]
 		let query = query.allowed_destination(Locality::Any);
@@ -231,9 +233,9 @@ where
 												run_observation(session, selector, ctx, rcb).await
 											{
 												error!("observation failed with {error}");
-											};
+											}
 										});
-									};
+									}
 									// call control callback
 									let ctx = self.context.clone();
 									let ccb = self.control_callback.clone();
@@ -251,7 +253,7 @@ where
 						}
 					},
 					Err(err) => error!("request response error: {:?})", err),
-				};
+				}
 				unreached = false;
 			}
 			if unreached {
@@ -259,7 +261,7 @@ where
 					std::thread::sleep(self.timeout);
 				} else {
 					return Err(Error::AccessingObservable {
-						selector: self.selector.to_string(),
+						selector: self.selector.clone(),
 					}
 					.into());
 				}
@@ -362,13 +364,13 @@ async fn run_observation<P>(
 								let ctx = ctx.clone();
 								if let Err(error) = rcb.lock().await(ctx, response).await {
 									error!("response callback failed with {error}");
-								};
+								}
 								if stop {
 									break;
-								};
+								}
 							}
 							Err(_) => todo!(),
-						};
+						}
 					}
 					SampleKind::Delete => {
 						error!("unexpected delete in observation response");

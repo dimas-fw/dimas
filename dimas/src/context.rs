@@ -216,7 +216,7 @@ where
 				.put(message)?;
 		} else {
 			self.communicator.put(selector, message)?;
-		};
+		}
 		Ok(())
 	}
 
@@ -264,7 +264,7 @@ where
 		} else {
 			self.communicator
 				.get(selector, message, callback)?;
-		};
+		}
 		Ok(())
 	}
 

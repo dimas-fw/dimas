@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Schema] - 2024-??-??
+## [Schema] - 2025-??-??
 
 ### Added
 
@@ -14,6 +14,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 ### Removed
+
+## [0.5.1] - 2025-10-26
+
+### Added
+- README for examples
+
+### Changed
+- minimum Rust version to 1.88.0
+- updated dependencies
+
+### Fixed
+- Clippy complaints
+- tmux script updated
 
 ## [0.5.0] - 2024-06-06
 

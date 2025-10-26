@@ -155,7 +155,7 @@ where
 							error!("could not restart subscriber: {}", reason);
 						} else {
 							info!("restarting subscriber!");
-						};
+						}
 					}));
 					if let Err(error) = run_subscriber(
 						session,
@@ -169,7 +169,7 @@ where
 					.await
 					{
 						error!("spawning subscriber failed with {error}");
-					};
+					}
 				}));
 				Ok(())
 			},

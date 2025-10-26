@@ -120,7 +120,7 @@ where
 		let selector = self
 			.context
 			.prefix()
-			.map_or(topic.to_string(), |prefix| format!("{prefix}/{topic}"));
+			.map_or_else(|| topic.to_string(), |prefix| format!("{prefix}/{topic}"));
 		let Self {
 			context,
 			activation_state,
