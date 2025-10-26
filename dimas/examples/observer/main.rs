@@ -44,7 +44,7 @@ async fn control_response(ctx: Context<AgentProps>, response: ControlResponse) -
 		ControlResponse::Canceled => {
 			println!("Canceled fibonacci up to {}", ctx.read()?.limit);
 		}
-	};
+	}
 	Ok(())
 }
 
