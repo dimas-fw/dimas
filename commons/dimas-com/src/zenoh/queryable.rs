@@ -148,7 +148,7 @@ where
 							error!("could not restart queryable: {}", reason);
 						} else {
 							info!("restarting queryable!");
-						};
+						}
 					}));
 					if let Err(error) = run_queryable(
 						session,
@@ -162,7 +162,7 @@ where
 					.await
 					{
 						error!("queryable failed with {error}");
-					};
+					}
 				}));
 				Ok(())
 			},

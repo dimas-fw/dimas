@@ -87,7 +87,7 @@ pub trait Communicator: Capability + CommunicatorMethods + Send + Sync {
 						publisher.1.selector(),
 						reason
 					);
-				};
+				}
 			});
 
 		// init all registered observers
@@ -102,7 +102,7 @@ pub trait Communicator: Capability + CommunicatorMethods + Send + Sync {
 						observer.1.selector(),
 						reason
 					);
-				};
+				}
 			});
 
 		// init all registered queries
@@ -117,7 +117,7 @@ pub trait Communicator: Capability + CommunicatorMethods + Send + Sync {
 						query.1.selector(),
 						reason
 					);
-				};
+				}
 			});
 
 		Ok(())
@@ -143,7 +143,7 @@ pub trait Communicator: Capability + CommunicatorMethods + Send + Sync {
 						query.1.selector(),
 						reason
 					);
-				};
+				}
 			});
 
 		// de-init all registered observers
@@ -158,7 +158,7 @@ pub trait Communicator: Capability + CommunicatorMethods + Send + Sync {
 						observer.1.selector(),
 						reason
 					);
-				};
+				}
 			});
 
 		// de-init all registered publishers

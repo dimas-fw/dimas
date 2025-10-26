@@ -99,7 +99,7 @@ where
 	let name = ctx
 		.fq_name()
 		.unwrap_or_else(|| String::from("--"));
-	let mode = ctx.mode().to_string();
+	let mode = ctx.mode().clone();
 	let zid = ctx.uuid();
 	let state = ctx.state();
 	let value = AboutEntity::new(name, mode, zid, state);
@@ -136,7 +136,7 @@ where
 	let name = ctx
 		.fq_name()
 		.unwrap_or_else(|| String::from("--"));
-	let mode = ctx.mode().to_string();
+	let mode = ctx.mode().clone();
 	let zid = ctx.uuid();
 	let state = ctx.state();
 	let value = AboutEntity::new(name, mode, zid, state);
@@ -167,7 +167,7 @@ where
 	let name = ctx
 		.fq_name()
 		.unwrap_or_else(|| String::from("--"));
-	let mode = ctx.mode().to_string();
+	let mode = ctx.mode().clone();
 	let zid = ctx.uuid();
 	let state = ctx.state();
 	let value = AboutEntity::new(name, mode, zid, state);
@@ -317,7 +317,7 @@ where
 	}
 
 	/// Activate sending liveliness information
-	pub fn liveliness(&mut self, activate: bool) {
+	pub const fn liveliness(&mut self, activate: bool) {
 		self.liveliness = activate;
 	}
 
@@ -463,17 +463,17 @@ where
 	/// The agent can be stopped properly using `ctrl-c`
 	///
 	/// # Errors
+	///
+	/// # Panics
 	#[tracing::instrument(skip_all)]
 	pub async fn start(self) -> Result<Self> {
 		// activate sending liveliness
 		if self.liveliness {
 			let session = self.context.session("default");
-			let token_str = self
-				.context
-				.prefix()
-				.map_or(self.context.uuid(), |prefix| {
-					format!("{}/{}", prefix, self.context.uuid())
-				});
+			let token_str = self.context.prefix().map_or_else(
+				|| self.context.uuid(),
+				|prefix| format!("{}/{}", prefix, self.context.uuid()),
+			);
 
 			let token = session
 				.expect("snh")
@@ -486,7 +486,7 @@ where
 				.write()
 				.map_err(|_| Error::ModifyStruct("liveliness".into()))?
 				.replace(token);
-		};
+		}
 
 		self.context.set_state(OperationState::Active)?;
 
@@ -575,7 +575,7 @@ where
 						TaskSignal::Shutdown => {
 							return self.stop();
 						}
-					};
+					}
 				}
 
 				// shutdown signal "ctrl-c"
